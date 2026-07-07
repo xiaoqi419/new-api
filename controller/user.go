@@ -342,6 +342,35 @@ func GetUser(c *gin.Context) {
 	return
 }
 
+// GetUserIps 管理员查看指定用户的历史去重 IP 列表（来源于日志）。
+func GetUserIps(c *gin.Context) {
+	id, err := strconv.Atoi(c.Query("id"))
+	if err != nil || id == 0 {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	user, err := model.GetUserById(id, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	myRole := c.GetInt("role")
+	if !canManageTargetRole(myRole, user.Role) {
+		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
+		return
+	}
+	stats, err := model.GetUserDistinctIps(id, 200)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    stats,
+	})
+}
+
 func GenerateAccessToken(c *gin.Context) {
 	id := c.GetInt("id")
 	user, err := model.GetUserById(id, true)
@@ -633,6 +662,9 @@ func UpdateUser(c *gin.Context) {
 		updatedUser.Password = "" // rollback to what it should be
 	}
 	updatePassword := updatedUser.Password != ""
+	if updatedUser.MaxConcurrency < 0 {
+		updatedUser.MaxConcurrency = 0
+	}
 	if err := updatedUser.Edit(updatePassword); err != nil {
 		common.ApiError(c, err)
 		return

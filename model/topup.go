@@ -19,6 +19,7 @@ type TopUp struct {
 	TradeNo         string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
 	PaymentMethod   string  `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
+	GroupBuyId      int     `json:"group_buy_id" gorm:"index;default:0"`
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
@@ -30,6 +31,8 @@ const (
 	PaymentMethodWaffo        = "waffo"
 	PaymentMethodWaffoPancake = "waffo_pancake"
 	PaymentMethodBalance      = "balance"
+	PaymentMethodWechatPay    = "wechatpay"
+	PaymentMethodAlipay       = "alipay_direct"
 )
 
 const (
@@ -39,6 +42,8 @@ const (
 	PaymentProviderWaffo        = "waffo"
 	PaymentProviderWaffoPancake = "waffo_pancake"
 	PaymentProviderBalance      = "balance"
+	PaymentProviderWechatPay    = "wechatpay"
+	PaymentProviderAlipay       = "alipay"
 )
 
 var (
@@ -111,6 +116,10 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		return errors.New("未提供支付单号")
 	}
 
+	if handled, gerr := TrySettleGroupBuyOrder(referenceId, PaymentProviderStripe, callerIp); handled {
+		return gerr
+	}
+
 	var quota float64
 	topUp := &TopUp{}
 
@@ -155,6 +164,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 	}
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
+	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
 
 	return nil
 }
@@ -322,12 +332,17 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		return errors.New("未提供订单号")
 	}
 
+	if handled, gerr := TrySettleGroupBuyOrder(tradeNo, "", callerIp); handled {
+		return gerr
+	}
+
 	refCol := "`trade_no`"
 	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		refCol = `"trade_no"`
 	}
 
 	var userId int
+	var topUpId int
 	var quotaToAdd int
 	var payMoney float64
 	var paymentMethod string
@@ -376,6 +391,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		}
 
 		userId = topUp.UserId
+		topUpId = topUp.Id
 		payMoney = topUp.Money
 		paymentMethod = topUp.PaymentMethod
 		return nil
@@ -387,11 +403,16 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 
 	// 事务外记录日志，避免阻塞
 	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
+	CreateInviterRebate(userId, topUpId, tradeNo, quotaToAdd)
 	return nil
 }
 func RechargeCreem(referenceId string, customerEmail string, customerName string, callerIp string) (err error) {
 	if referenceId == "" {
 		return errors.New("未提供支付单号")
+	}
+
+	if handled, gerr := TrySettleGroupBuyOrder(referenceId, PaymentProviderCreem, callerIp); handled {
+		return gerr
 	}
 
 	var quota int64
@@ -460,6 +481,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	}
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
+	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
 
 	return nil
 }
@@ -467,6 +489,10 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 	if tradeNo == "" {
 		return errors.New("未提供支付单号")
+	}
+
+	if handled, gerr := TrySettleGroupBuyOrder(tradeNo, PaymentProviderWaffo, callerIp); handled {
+		return gerr
 	}
 
 	var quotaToAdd int
@@ -522,6 +548,78 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 
 	if quotaToAdd > 0 {
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
+		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
+	}
+
+	return nil
+}
+
+// RechargeOfficialOrder 完成微信/支付宝官方直连订单并给用户加额度（幂等）。
+// 充值额度按 Amount * QuotaPerUnit 计算，与易支付保持一致，确保管理员补单口径相同。
+func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource string, callerIp string) (err error) {
+	if tradeNo == "" {
+		return errors.New("未提供支付单号")
+	}
+
+	if handled, gerr := TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp); handled {
+		return gerr
+	}
+
+	var quotaToAdd int
+	var paymentMethod string
+	topUp := &TopUp{}
+
+	refCol := "`trade_no`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return errors.New("充值订单不存在")
+		}
+
+		if topUp.PaymentProvider != expectedProvider {
+			return ErrPaymentMethodMismatch
+		}
+
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil // 幂等：已成功直接返回
+		}
+
+		if topUp.Status != common.TopUpStatusPending {
+			return errors.New("充值订单状态错误")
+		}
+
+		dAmount := decimal.NewFromInt(topUp.Amount)
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		if quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		paymentMethod = topUp.PaymentMethod
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		common.SysError(logSource + " topup failed: " + err.Error())
+		return errors.New("充值失败，请稍后重试")
+	}
+
+	if quotaToAdd > 0 {
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("%s充值成功，充值额度: %v，支付金额: %.2f", logSource, logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, paymentMethod, logSource)
+		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 	}
 
 	return nil
@@ -530,6 +628,10 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 func RechargeWaffoPancake(tradeNo string) (err error) {
 	if tradeNo == "" {
 		return errors.New("未提供支付单号")
+	}
+
+	if handled, gerr := TrySettleGroupBuyOrder(tradeNo, PaymentProviderWaffoPancake, ""); handled {
+		return gerr
 	}
 
 	var quotaToAdd int
@@ -583,6 +685,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 
 	if quotaToAdd > 0 {
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
+		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 	}
 
 	return nil

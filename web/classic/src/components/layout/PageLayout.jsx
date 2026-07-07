@@ -22,6 +22,7 @@ import { Layout } from '@douyinfe/semi-ui';
 import SiderBar from './SiderBar';
 import App from '../../App';
 import FooterBar from './Footer';
+import ConsoleSubNav from './ConsoleSubNav';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '../common/ErrorBoundary';
 import React, { useContext, useEffect, useState } from 'react';
@@ -37,6 +38,7 @@ import {
 } from '../../helpers';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
+import { useAppearance } from '../../context/Theme';
 import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
 const { Sider, Content, Header } = Layout;
@@ -49,6 +51,7 @@ const PageLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { i18n } = useTranslation();
   const location = useLocation();
+  const appearance = useAppearance();
 
   const cardProPages = [
     '/console/channel',
@@ -62,7 +65,11 @@ const PageLayout = () => {
     '/pricing',
   ];
 
-  const shouldHideFooter = cardProPages.includes(location.pathname);
+  const shouldHideFooter = location.pathname.startsWith('/console')
+    ? true
+    : appearance.preset === 'apimart'
+      ? false
+      : cardProPages.includes(location.pathname);
 
   const shouldInnerPadding =
     location.pathname.includes('/console') &&
@@ -70,7 +77,26 @@ const PageLayout = () => {
     location.pathname !== '/console/playground';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
-  const showSider = isConsoleRoute && (!isMobile || drawerOpen);
+  const adminConsoleRoutes = [
+    '/console/channel',
+    '/console/user',
+    '/console/redemption',
+    '/console/setting',
+    '/console/models',
+    '/console/deployment',
+    '/console/subscription',
+  ];
+  const isAdminConsoleRoute = adminConsoleRoutes.some((path) =>
+    location.pathname.startsWith(path),
+  );
+  const useApimartTopNav =
+    appearance.preset === 'apimart' &&
+    isConsoleRoute &&
+    (appearance.console_layout === 'topnav' ||
+      (appearance.console_layout === 'hybrid' && !isAdminConsoleRoute));
+  const showConsoleSubNav = useApimartTopNav;
+  const showSider =
+    isConsoleRoute && !useApimartTopNav && (!isMobile || drawerOpen);
   const isFixedLayout = isConsoleRoute || location.pathname === '/pricing';
 
   useEffect(() => {
@@ -169,6 +195,7 @@ const PageLayout = () => {
           onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
           drawerOpen={drawerOpen}
         />
+        {showConsoleSubNav && <ConsoleSubNav />}
       </Header>
       <Layout
         style={{
@@ -218,6 +245,9 @@ const PageLayout = () => {
               overflowY: isFixedLayout && !isMobile ? 'hidden' : 'visible',
               WebkitOverflowScrolling: 'touch',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
+              paddingTop: showConsoleSubNav
+                ? 'var(--app-subnav-height)'
+                : undefined,
               position: 'relative',
               minHeight: 0,
             }}

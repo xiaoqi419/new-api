@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Typography } from '@douyinfe/semi-ui';
 import { getFooterHTML, getLogo, getSystemName } from '../../helpers';
 import { StatusContext } from '../../context/Status';
+import { useAppearance } from '../../context/Theme';
 
 const FooterBar = () => {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ const FooterBar = () => {
   const systemName = getSystemName();
   const logo = getLogo();
   const [statusState] = useContext(StatusContext);
+  const appearance = useAppearance();
   const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
 
   const loadFooter = () => {
@@ -214,13 +216,104 @@ const FooterBar = () => {
     [logo, systemName, t, currentYear, isDemoSiteMode],
   );
 
+  const wordmarkFooter = useMemo(
+    () => (
+      <footer className='app-wordmark-footer'>
+        <div className='app-wordmark-footer-inner'>
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mb-14'>
+            <div>
+              <Typography.Text strong className='!text-semi-color-text-0'>
+                {t('市场')}
+              </Typography.Text>
+              <div className='flex flex-col gap-2 mt-3 text-sm'>
+                <a href='/pricing' className='app-footer-link'>
+                  {t('模型广场')}
+                </a>
+                <a href='/console/playground' className='app-footer-link'>
+                  {t('操练场')}
+                </a>
+                <a href='/console/token' className='app-footer-link'>
+                  {t('API 密钥')}
+                </a>
+              </div>
+            </div>
+            <div>
+              <Typography.Text strong className='!text-semi-color-text-0'>
+                {t('资源')}
+              </Typography.Text>
+              <div className='flex flex-col gap-2 mt-3 text-sm'>
+                <a href='/docs' className='app-footer-link'>
+                  {t('接入文档')}
+                </a>
+                <a
+                  href={statusState?.status?.docs_link || '#'}
+                  className='app-footer-link'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  {t('API 文档')}
+                </a>
+                <a href='/about' className='app-footer-link'>
+                  {t('关于')}
+                </a>
+                <a href='/privacy-policy' className='app-footer-link'>
+                  {t('隐私政策')}
+                </a>
+              </div>
+            </div>
+            <div>
+              <Typography.Text strong className='!text-semi-color-text-0'>
+                {t('账户')}
+              </Typography.Text>
+              <div className='flex flex-col gap-2 mt-3 text-sm'>
+                <a href='/console' className='app-footer-link'>
+                  {t('控制台')}
+                </a>
+                <a href='/console/topup' className='app-footer-link'>
+                  {t('账单')}
+                </a>
+                <a href='/console/personal' className='app-footer-link'>
+                  {t('个人设置')}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className='app-wordmark'>{systemName}</div>
+
+          <div className='flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-semi-color-border'>
+            <Typography.Text className='text-sm !text-semi-color-text-1'>
+              © {currentYear} {systemName}. {t('版权所有')}
+            </Typography.Text>
+            <div className='text-sm'>
+              <span className='!text-semi-color-text-1'>
+                {t('设计与开发由')}{' '}
+              </span>
+              <a
+                href='https://github.com/QuantumNous/new-api'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='!text-semi-color-primary font-medium'
+              >
+                New API
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    ),
+    [systemName, currentYear, t, statusState?.status?.docs_link],
+  );
+
   useEffect(() => {
     loadFooter();
   }, []);
 
   return (
     <div className='w-full'>
-      {footer ? (
+      {appearance.footer_variant === 'wordmark' ? (
+        wordmarkFooter
+      ) : footer ? (
         <footer className='relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden'>
           <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-4'>
             <div

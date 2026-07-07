@@ -23,7 +23,9 @@ import {
   useContext,
   useState,
   useEffect,
+  useMemo,
 } from 'react';
+import { StatusContext } from '../Status';
 
 const ThemeContext = createContext(null);
 export const useTheme = () => useContext(ThemeContext);
@@ -33,6 +35,103 @@ export const useActualTheme = () => useContext(ActualThemeContext);
 
 const SetThemeContext = createContext(null);
 export const useSetTheme = () => useContext(SetThemeContext);
+
+export const classicAppearance = {
+  preset: 'classic',
+  color_mode: 'auto',
+  console_layout: 'sidebar',
+  allow_user_color_mode: false,
+  footer_variant: 'default',
+  content_width: 'normal',
+};
+
+export const apimartAppearance = {
+  preset: 'apimart',
+  color_mode: 'light',
+  console_layout: 'sidebar',
+  allow_user_color_mode: true,
+  footer_variant: 'wordmark',
+  content_width: 'wide',
+};
+
+// 本项目默认外观为 apimart（开箱即截图效果）。
+export const defaultAppearance = apimartAppearance;
+
+export const appearancePresetBundles = {
+  classic: classicAppearance,
+  apimart: apimartAppearance,
+};
+
+const AppearanceContext = createContext(defaultAppearance);
+export const useAppearance = () => useContext(AppearanceContext);
+
+const enumOrDefault = (value, allowed, fallback) =>
+  allowed.includes(value) ? value : fallback;
+
+export const normalizeAppearance = (appearance = {}) => {
+  let value = appearance || {};
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      value = {};
+    }
+  }
+  return {
+    preset: enumOrDefault(value.preset, ['classic', 'apimart'], 'apimart'),
+    color_mode: enumOrDefault(
+      value.color_mode,
+      ['light', 'dark', 'auto'],
+      'light',
+    ),
+    console_layout: enumOrDefault(
+      value.console_layout,
+      ['sidebar', 'topnav', 'hybrid'],
+      'sidebar',
+    ),
+    allow_user_color_mode: value.allow_user_color_mode === true,
+    footer_variant: enumOrDefault(
+      value.footer_variant,
+      ['default', 'wordmark'],
+      'wordmark',
+    ),
+    content_width: enumOrDefault(
+      value.content_width,
+      ['normal', 'compact', 'wide'],
+      'wide',
+    ),
+  };
+};
+
+export const resolveAppearancePreset = (appearance = {}) => {
+  const normalized = normalizeAppearance(appearance);
+  const isLegacyNoopApimart =
+    normalized.preset === 'apimart' &&
+    normalized.color_mode === classicAppearance.color_mode &&
+    normalized.console_layout === classicAppearance.console_layout &&
+    normalized.allow_user_color_mode ===
+      classicAppearance.allow_user_color_mode &&
+    normalized.footer_variant === classicAppearance.footer_variant &&
+    normalized.content_width === classicAppearance.content_width;
+
+  if (isLegacyNoopApimart) {
+    return normalizeAppearance(appearancePresetBundles.apimart);
+  }
+
+  return normalized;
+};
+
+const getStoredAppearance = () => {
+  try {
+    const raw = localStorage.getItem('ui_appearance');
+    if (!raw) {
+      return normalizeAppearance(appearancePresetBundles.apimart);
+    }
+    return resolveAppearancePreset(raw);
+  } catch {
+    return normalizeAppearance(appearancePresetBundles.apimart);
+  }
+};
 
 // 检测系统主题偏好
 const getSystemTheme = () => {
@@ -45,18 +144,32 @@ const getSystemTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  const [statusState] = useContext(StatusContext);
+  const [storedAppearance] = useState(getStoredAppearance);
+  const appearance = useMemo(
+    () =>
+      resolveAppearancePreset(
+        statusState?.status?.ui_appearance || storedAppearance,
+      ),
+    [statusState?.status?.ui_appearance, storedAppearance],
+  );
+
+  // 用户显式选择的主题（未选择时为 null，回退到管理员设定的默认 color_mode）
   const [theme, _setTheme] = useState(() => {
     try {
-      return localStorage.getItem('theme-mode') || 'auto';
+      return localStorage.getItem('theme-mode') || null;
     } catch {
-      return 'auto';
+      return null;
     }
   });
 
   const [systemTheme, setSystemTheme] = useState(getSystemTheme());
 
-  // 计算实际应用的主题
-  const actualTheme = theme === 'auto' ? systemTheme : theme;
+  // 计算实际应用的主题：允许用户切换时，优先用用户选择，否则用管理员默认 color_mode
+  const effectiveTheme = appearance.allow_user_color_mode
+    ? theme || appearance.color_mode
+    : appearance.color_mode;
+  const actualTheme = effectiveTheme === 'auto' ? systemTheme : effectiveTheme;
 
   // 监听系统主题变化
   useEffect(() => {
@@ -85,7 +198,10 @@ export const ThemeProvider = ({ children }) => {
       body.removeAttribute('theme-mode');
       document.documentElement.classList.remove('dark');
     }
-  }, [actualTheme]);
+    document.documentElement.dataset.uiPreset = appearance.preset;
+    document.documentElement.dataset.consoleLayout = appearance.console_layout;
+    document.documentElement.dataset.contentWidth = appearance.content_width;
+  }, [actualTheme, appearance]);
 
   const setTheme = useCallback((newTheme) => {
     let themeValue;
@@ -107,7 +223,11 @@ export const ThemeProvider = ({ children }) => {
   return (
     <SetThemeContext.Provider value={setTheme}>
       <ActualThemeContext.Provider value={actualTheme}>
-        <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+        <ThemeContext.Provider value={effectiveTheme}>
+          <AppearanceContext.Provider value={appearance}>
+            {children}
+          </AppearanceContext.Provider>
+        </ThemeContext.Provider>
       </ActualThemeContext.Provider>
     </SetThemeContext.Provider>
   );

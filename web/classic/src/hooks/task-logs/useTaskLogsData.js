@@ -56,6 +56,7 @@ export const useTaskLogsData = () => {
   const [activePage, setActivePage] = useState(1);
   const [logCount, setLogCount] = useState(0);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   // User and admin
   const isAdminUser = isAdmin();
@@ -225,9 +226,9 @@ export const useTaskLogsData = () => {
     setPageSize(payload.page_size || pageSize);
   };
 
-  // Load logs function
-  const loadLogs = async (page = 1, size = pageSize) => {
-    setLoading(true);
+  // Load logs function（silent=true 时静默刷新：不显示 loading、不弹错误，用于自动轮询）
+  const loadLogs = async (page = 1, size = pageSize, silent = false) => {
+    if (!silent) setLoading(true);
     const { channel_id, task_id, start_timestamp, end_timestamp } =
       getFormValues();
     let localStartTimestamp = parseInt(Date.parse(start_timestamp) / 1000);
@@ -235,14 +236,19 @@ export const useTaskLogsData = () => {
     let url = isAdminUser
       ? `/api/task/?p=${page}&page_size=${size}&channel_id=${channel_id}&task_id=${task_id}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`
       : `/api/task/self?p=${page}&page_size=${size}&task_id=${task_id}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
-    const res = await API.get(url);
-    const { success, message, data } = res.data;
-    if (success) {
-      syncPageData(data);
-    } else {
-      showError(message);
+    try {
+      const res = await API.get(url);
+      const { success, message, data } = res.data;
+      if (success) {
+        syncPageData(data);
+      } else if (!silent) {
+        showError(message);
+      }
+    } catch (err) {
+      if (!silent) showError(err.message);
+    } finally {
+      if (!silent) setLoading(false);
     }
-    setLoading(false);
   };
 
   // Page handlers
@@ -309,6 +315,23 @@ export const useTaskLogsData = () => {
     loadLogs(1, localPageSize).then();
   }, []);
 
+  // 是否存在未完成任务（用于驱动自动刷新）
+  const hasActiveTasks = logs.some((log) =>
+    ['', 'NOT_START', 'SUBMITTED', 'QUEUED', 'IN_PROGRESS'].includes(
+      log.status,
+    ),
+  );
+
+  // 自动刷新：存在进行中的任务时每 5 秒静默刷新当前页，全部完成后自动停止
+  useEffect(() => {
+    if (!autoRefresh || !hasActiveTasks) return undefined;
+    const timer = setInterval(() => {
+      loadLogs(activePage, pageSize, true);
+    }, 5000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, hasActiveTasks, activePage, pageSize]);
+
   return {
     // Basic state
     logs,
@@ -317,6 +340,9 @@ export const useTaskLogsData = () => {
     logCount,
     pageSize,
     isAdminUser,
+    autoRefresh,
+    setAutoRefresh,
+    hasActiveTasks,
 
     // Modal state
     isModalOpen,

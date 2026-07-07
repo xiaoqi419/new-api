@@ -388,6 +388,7 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		userCache.WriteContext(c)
+		c.Set("user_max_concurrency", userCache.MaxConcurrency)
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group
@@ -424,6 +425,7 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	c.Set("token_id", token.Id)
 	c.Set("token_key", token.Key)
 	c.Set("token_name", token.Name)
+	c.Set("token_max_concurrency", token.MaxConcurrency)
 	c.Set("token_unlimited_quota", token.UnlimitedQuota)
 	if !token.UnlimitedQuota {
 		c.Set("token_quota", token.RemainQuota)

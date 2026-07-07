@@ -81,6 +81,7 @@ const EditTokenModal = (props) => {
     allow_ips: '',
     group: '',
     cross_group_retry: false,
+    max_concurrency: 0,
     tokenCount: 1,
   });
 
@@ -426,6 +427,20 @@ const EditTokenModal = (props) => {
                     />
                   </Col>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
+                    <Form.InputNumber
+                      field='max_concurrency'
+                      label={t('最大并发数')}
+                      min={0}
+                      step={1}
+                      precision={0}
+                      placeholder={t('0 表示不限制')}
+                      extraText={t(
+                        '该令牌允许的同时在途请求数，0 表示不限制；超出后将排队等待',
+                      )}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col xs={24} sm={24} md={24} lg={10} xl={10}>
                     <Form.DatePicker
                       field='expired_time'
                       label={t('过期时间')}
@@ -552,7 +567,10 @@ const EditTokenModal = (props) => {
                         ? `▾ ${t('收起原生额度输入')}`
                         : `▸ ${t('使用原生额度输入')}`}
                     </div>
-                    <div style={{ display: showQuotaInput ? 'block' : 'none' }} className='mt-2'>
+                    <div
+                      style={{ display: showQuotaInput ? 'block' : 'none' }}
+                      className='mt-2'
+                    >
                       <Form.InputNumber
                         field='remain_quota'
                         label={t('额度')}

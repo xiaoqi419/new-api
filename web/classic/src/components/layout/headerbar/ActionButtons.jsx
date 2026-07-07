@@ -23,6 +23,7 @@ import NotificationButton from './NotificationButton';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
 import UserArea from './UserArea';
+import { useAppearance } from '../../../context/Theme';
 
 const ActionButtons = ({
   isNewYear,
@@ -40,8 +41,10 @@ const ActionButtons = ({
   navigate,
   t,
 }) => {
+  const appearance = useAppearance();
+
   return (
-    <div className='flex items-center gap-2 md:gap-3'>
+    <div className='app-header-actions flex items-center gap-2 md:gap-3'>
       <NewYearButton isNewYear={isNewYear} />
 
       <NotificationButton
@@ -50,7 +53,9 @@ const ActionButtons = ({
         t={t}
       />
 
-      <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} t={t} />
+      {appearance.allow_user_color_mode && (
+        <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} t={t} />
+      )}
 
       <LanguageSelector
         currentLang={currentLang}

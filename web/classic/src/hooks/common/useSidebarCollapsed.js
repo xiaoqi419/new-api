@@ -22,9 +22,11 @@ import { useState, useCallback } from 'react';
 const KEY = 'default_collapse_sidebar';
 
 export const useSidebarCollapsed = () => {
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(KEY) === 'true',
-  );
+  const [collapsed, setCollapsed] = useState(() => {
+    const stored = localStorage.getItem(KEY);
+    // 默认折叠为精简图标栏；仅当用户显式展开过才保持展开
+    return stored === null ? true : stored === 'true';
+  });
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => {

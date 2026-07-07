@@ -34,7 +34,13 @@ import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
+import Rebate from './pages/Rebate';
+import InviteRanking from './pages/InviteRanking';
+import UserRanking from './pages/UserRanking';
+import Invitation from './pages/Invitation';
 import TopUp from './pages/TopUp';
+import GroupBuy from './pages/GroupBuy';
+import GroupBuyAdmin from './pages/GroupBuyAdmin';
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -53,8 +59,15 @@ import SetupCheck from './components/layout/SetupCheck';
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
+const Docs = lazy(() => import('./pages/Docs'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const AssetLibrary = lazy(() => import('./pages/AssetLibrary'));
+const VideoGeneration = lazy(() => import('./pages/VideoGeneration'));
+const GroupMonitor = lazy(() => import('./pages/GroupMonitor'));
+const GroupMonitorDetail = lazy(
+  () => import('./pages/GroupMonitor/GroupMonitorDetail'),
+);
 
 function DynamicOAuth2Callback() {
   const { provider } = useParams();
@@ -160,6 +173,54 @@ function App() {
           element={
             <AdminRoute>
               <Redemption />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/rebate'
+          element={
+            <AdminRoute>
+              <Rebate />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/invite-ranking'
+          element={
+            <AdminRoute>
+              <InviteRanking />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/user-ranking'
+          element={
+            <AdminRoute>
+              <UserRanking />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/invitation'
+          element={
+            <PrivateRoute>
+              <Invitation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/groupbuy'
+          element={
+            <PrivateRoute>
+              <GroupBuy />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/groupbuy-admin'
+          element={
+            <AdminRoute>
+              <GroupBuyAdmin />
             </AdminRoute>
           }
         />
@@ -316,6 +377,46 @@ function App() {
           }
         />
         <Route
+          path='/console/asset-library'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <AssetLibrary />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/video-generation'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <VideoGeneration />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/channel-monitor'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <GroupMonitor />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/channel-monitor/detail'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <GroupMonitorDetail />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
           path='/pricing'
           element={
             pricingRequireAuth ? (
@@ -339,6 +440,14 @@ function App() {
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
               <About />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/docs'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Docs />
             </Suspense>
           }
         />

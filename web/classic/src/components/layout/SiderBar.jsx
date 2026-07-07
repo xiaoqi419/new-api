@@ -35,7 +35,12 @@ const routerMap = {
   channel: '/console/channel',
   token: '/console/token',
   redemption: '/console/redemption',
+  rebate: '/console/rebate',
+  groupbuy: '/console/groupbuy-admin',
+  invite_ranking: '/console/invite-ranking',
+  user_ranking: '/console/user-ranking',
   topup: '/console/topup',
+  invitation: '/console/invitation',
   user: '/console/user',
   subscription: '/console/subscription',
   log: '/console/log',
@@ -45,6 +50,9 @@ const routerMap = {
   detail: '/console',
   pricing: '/pricing',
   task: '/console/task',
+  video_generation: '/console/video-generation',
+  asset_library: '/console/asset-library',
+  channel_monitor: '/console/channel-monitor',
   models: '/console/models',
   deployment: '/console/deployment',
   playground: '/console/playground',
@@ -105,10 +113,29 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className:
           localStorage.getItem('enable_task') === 'true' ? '' : 'tableHiddle',
       },
+      {
+        text: t('视频生成'),
+        itemKey: 'video_generation',
+        to: '/video-generation',
+        alwaysVisible: true,
+      },
+      {
+        text: t('素材库'),
+        itemKey: 'asset_library',
+        to: '/asset-library',
+        alwaysVisible: true,
+      },
+      {
+        text: t('渠道监控'),
+        itemKey: 'channel_monitor',
+        to: '/channel-monitor',
+        alwaysVisible: true,
+      },
     ];
 
     // 根据配置过滤项目
     const filteredItems = items.filter((item) => {
+      if (item.alwaysVisible) return true;
       const configVisible = isModuleVisible('console', item.itemKey);
       return configVisible;
     });
@@ -128,6 +155,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
+      },
+      {
+        text: t('邀请中心'),
+        itemKey: 'invitation',
+        to: '/invitation',
       },
       {
         text: t('个人设置'),
@@ -175,6 +207,30 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('兑换码管理'),
         itemKey: 'redemption',
         to: '/redemption',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('邀请返现'),
+        itemKey: 'rebate',
+        to: '/rebate',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('拼团管理'),
+        itemKey: 'groupbuy',
+        to: '/groupbuy-admin',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('拉新排行'),
+        itemKey: 'invite_ranking',
+        to: '/invite-ranking',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('用户排行'),
+        itemKey: 'user_ranking',
+        to: '/user-ranking',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

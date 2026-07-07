@@ -279,6 +279,10 @@ func migrateDB() error {
 		&Log{},
 		&Midjourney{},
 		&TopUp{},
+		&RebateRecord{},
+		&GroupBuyPackage{},
+		&GroupBuy{},
+		&GroupBuyParticipant{},
 		&QuotaData{},
 		&Task{},
 		&Model{},
@@ -297,6 +301,8 @@ func migrateDB() error {
 		&SystemInstance{},
 		&SystemTask{},
 		&SystemTaskLock{},
+		&VolcAssetGroup{},
+		&VolcAsset{},
 	)
 	if err != nil {
 		return err
@@ -331,6 +337,10 @@ func migrateDBFast() error {
 		{&Log{}, "Log"},
 		{&Midjourney{}, "Midjourney"},
 		{&TopUp{}, "TopUp"},
+		{&RebateRecord{}, "RebateRecord"},
+		{&GroupBuyPackage{}, "GroupBuyPackage"},
+		{&GroupBuy{}, "GroupBuy"},
+		{&GroupBuyParticipant{}, "GroupBuyParticipant"},
 		{&QuotaData{}, "QuotaData"},
 		{&Task{}, "Task"},
 		{&Model{}, "Model"},
@@ -349,6 +359,8 @@ func migrateDBFast() error {
 		{&SystemInstance{}, "SystemInstance"},
 		{&SystemTask{}, "SystemTask"},
 		{&SystemTaskLock{}, "SystemTaskLock"},
+		{&VolcAssetGroup{}, "VolcAssetGroup"},
+		{&VolcAsset{}, "VolcAsset"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

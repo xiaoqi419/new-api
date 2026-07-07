@@ -25,8 +25,8 @@ body.sidebar-collapsed {
 }
 
 body {
-  font-family: Lato, 'Helvetica Neue', Arial, Helvetica, 'Microsoft YaHei',
-    sans-serif;
+  font-family:
+    Lato, 'Helvetica Neue', Arial, Helvetica, 'Microsoft YaHei', sans-serif;
   color: var(--semi-color-text-0);
   background-color: var(--semi-color-bg-0);
 }
@@ -71,8 +71,8 @@ body {
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 /* ==================== 布局相关样式 ==================== */
@@ -171,21 +171,21 @@ code {
 
 /* 侧边栏导航项样式 */
 .sidebar-nav-item {
-  border-radius: 6px;
+  border-radius: 10px;
   margin: 3px 8px;
   transition: all 0.15s ease;
   padding: 8px 12px;
 }
 
 .sidebar-nav-item:hover {
-  background-color: rgba(var(--semi-blue-0), 0.08);
+  background-color: var(--semi-color-primary-light-default);
   color: var(--semi-color-primary);
 }
 
 .sidebar-nav-item-selected {
-  background-color: rgba(var(--semi-blue-0), 0.12);
+  background-color: var(--semi-color-primary-light-hover);
   color: var(--semi-color-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* 图标容器样式 */
@@ -389,7 +389,9 @@ code {
   line-height: 1;
   background-color: var(--semi-color-fill-0);
   color: var(--semi-color-text-2);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .sbg-badge-active {
@@ -829,11 +831,8 @@ html:not(.dark) .blur-ball-teal {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(
-      circle at -5% -10%,
-      var(--pb1) 0%,
-      transparent 60%
-    ),
+  background:
+    radial-gradient(circle at -5% -10%, var(--pb1) 0%, transparent 60%),
     radial-gradient(circle at 105% -10%, var(--pb2) 0%, transparent 55%),
     radial-gradient(circle at 5% 110%, var(--pb3) 0%, transparent 55%),
     radial-gradient(circle at 105% 110%, var(--pb4) 0%, transparent 50%);
@@ -907,7 +906,8 @@ html.dark .with-pastel-balls::before {
     max-width: 80px;
   }
 
-  .semi-input-prefix-text, .semi-input-suffix-text {
+  .semi-input-prefix-text,
+  .semi-input-suffix-text {
     margin: 0;
   }
 
@@ -925,11 +925,12 @@ html.dark .with-pastel-balls::before {
 }
 
 .pricing-sidebar {
-  width: clamp(280px, 24vw, 520px) !important;
-  min-width: clamp(280px, 24vw, 520px) !important;
-  max-width: clamp(280px, 24vw, 520px) !important;
+  width: clamp(240px, 20vw, 320px) !important;
+  min-width: clamp(240px, 20vw, 320px) !important;
+  max-width: clamp(240px, 20vw, 320px) !important;
   height: calc(100vh - 60px);
   background-color: var(--semi-color-bg-0);
+  border-left: 1px solid var(--semi-color-border);
   overflow: auto;
 }
 
@@ -942,6 +943,72 @@ html.dark .with-pastel-balls::before {
 
 .pricing-pagination-divider {
   border-color: var(--semi-color-border);
+}
+
+/* 模型卡片装饰波形流动动画 */
+.pcw-line {
+  will-change: transform;
+}
+
+@keyframes pcwFlowA {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-16px, 2px, 0);
+  }
+}
+
+@keyframes pcwFlowB {
+  0% {
+    transform: translate3d(0, 1px, 0);
+  }
+  100% {
+    transform: translate3d(-22px, -2px, 0);
+  }
+}
+
+@keyframes pcwFlowC {
+  0% {
+    transform: translate3d(0, -1px, 0);
+  }
+  100% {
+    transform: translate3d(-12px, 3px, 0);
+  }
+}
+
+@keyframes pcwFlowD {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-26px, -1px, 0);
+  }
+}
+
+.pcw-line-1 {
+  animation: pcwFlowA 5.5s ease-in-out infinite alternate;
+}
+
+.pcw-line-2 {
+  animation: pcwFlowB 7s ease-in-out infinite alternate;
+}
+
+.pcw-line-3 {
+  animation: pcwFlowC 6.2s ease-in-out infinite alternate;
+}
+
+.pcw-line-4 {
+  animation: pcwFlowD 8s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcw-line-1,
+  .pcw-line-2,
+  .pcw-line-3,
+  .pcw-line-4 {
+    animation: none;
+  }
 }
 
 .pricing-content-mobile {
@@ -1019,7 +1086,47 @@ html.dark .with-pastel-balls::before {
 .semi-select,
 .semi-button,
 .semi-datepicker-range-input {
-  border-radius: 10px !important;
+  border-radius: var(--app-radius-lg) !important;
+}
+
+/* ==================== UI 弧度与质感优化(布局与配色不变) ==================== */
+.semi-card {
+  border-radius: var(--app-radius-lg) !important;
+}
+
+.semi-modal-content {
+  border-radius: var(--app-radius-xl) !important;
+  box-shadow: var(--app-shadow-lg);
+}
+
+.semi-dropdown-menu {
+  border-radius: var(--app-radius-lg) !important;
+  box-shadow: var(--app-shadow-lg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-ui-preset='apimart'])
+    .semi-card:not(.app-card-pro):not(:has(.semi-table)) {
+    transition:
+      transform 150ms var(--app-ease),
+      box-shadow 150ms var(--app-ease);
+  }
+
+  @media (min-width: 641px) {
+    html:not([data-ui-preset='apimart'])
+      .semi-card:not(.app-card-pro):not(:has(.semi-table)):hover {
+      transform: translateY(-1px);
+      box-shadow: var(--app-shadow-md);
+    }
+  }
+
+  .semi-button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  .semi-table-tbody > .semi-table-row {
+    transition: background-color 120ms var(--app-ease);
+  }
 }
 
 @keyframes slideInLeft {
@@ -1045,4 +1152,3830 @@ html.dark .with-pastel-balls::before {
   }
 }
 
-.ec-dbcd0a3c01b55203 { forced-color-adjust: auto; }
+.ec-dbcd0a3c01b55203 {
+  forced-color-adjust: auto;
+}
+
+/* ==================== APIMart 外观系统（移植自 appearance 参考实现）==================== */
+/* ==================== APIMart 首页复刻布局 ==================== */
+html[data-ui-preset='apimart'] .app-home-market {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 1.5rem 5rem;
+  overflow: hidden;
+  background: #030405;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-ui-preset='apimart'] .app-home-hero {
+  position: relative;
+  width: calc(100% + 3rem);
+  max-width: none;
+  min-height: 900px;
+  margin: 0 -1.5rem;
+  padding: 12rem 1.5rem 5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  isolation: isolate;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    #030405;
+  background-size: 96px 96px;
+  mask-image: radial-gradient(circle at center, black 0, transparent 72%);
+}
+
+html[data-ui-preset='apimart'] .app-home-stars {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #7c5cff;
+  box-shadow: 0 0 12px currentColor;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(1) {
+  top: 13%;
+  left: 8%;
+  color: #4f8cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(2) {
+  top: 22%;
+  left: 20%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(3) {
+  top: 14%;
+  left: 35%;
+  color: #19d98b;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(4) {
+  top: 13%;
+  left: 68%;
+  color: #f4bd22;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(5) {
+  top: 11%;
+  left: 85%;
+  width: 7px;
+  height: 7px;
+  color: #ff4fa4;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(6) {
+  top: 36%;
+  left: 12%;
+  width: 6px;
+  height: 6px;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(7) {
+  top: 34%;
+  left: 75%;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(8) {
+  top: 45%;
+  left: 6%;
+  color: #ff4fa4;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(9) {
+  top: 48%;
+  left: 22%;
+  color: #f4bd22;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(10) {
+  top: 52%;
+  left: 82%;
+  color: #4f8cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(11) {
+  top: 60%;
+  left: 15%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(12) {
+  top: 63%;
+  left: 42%;
+  color: #ff4fa4;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(13) {
+  top: 66%;
+  left: 60%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(14) {
+  top: 46%;
+  left: 92%;
+  width: 6px;
+  height: 6px;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(15) {
+  top: 25%;
+  left: 88%;
+  color: #4f8cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(16) {
+  top: 28%;
+  left: 25%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(n + 17) {
+  width: 2px;
+  height: 2px;
+  opacity: 0.8;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(17) {
+  top: 18%;
+  left: 55%;
+  color: #4f8cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(18) {
+  top: 31%;
+  left: 41%;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(19) {
+  top: 39%;
+  left: 53%;
+  color: #19d98b;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(20) {
+  top: 57%;
+  left: 31%;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(21) {
+  top: 69%;
+  left: 74%;
+  color: #19d98b;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(22) {
+  top: 72%;
+  left: 86%;
+  color: #f4bd22;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(23) {
+  top: 19%;
+  left: 73%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(24) {
+  top: 41%;
+  left: 28%;
+  color: #19d98b;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(25) {
+  top: 54%;
+  left: 48%;
+  color: #ff4fa4;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(26) {
+  top: 75%;
+  left: 20%;
+  color: #7c5cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(27) {
+  top: 77%;
+  left: 54%;
+  color: #f4bd22;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(28) {
+  top: 80%;
+  left: 68%;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(29) {
+  top: 83%;
+  left: 37%;
+  color: #4f8cff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(30) {
+  top: 84%;
+  left: 91%;
+  color: #ff4fa4;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(31) {
+  top: 8%;
+  left: 50%;
+  color: #19d98b;
+}
+
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(32) {
+  top: 8%;
+  left: 30%;
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero-center {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-title {
+  max-width: 820px;
+  margin: 0 !important;
+  color: #7b61ff !important;
+  font-size: 2.55rem !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  font-weight: 780 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-subtitle {
+  display: block;
+  margin-top: 0.8rem;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+html[data-ui-preset='apimart'] .app-home-subnote {
+  display: block;
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.44) !important;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions {
+  justify-content: center;
+  margin-top: 1.7rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions .semi-button {
+  min-width: 126px;
+  border-radius: 7px !important;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats {
+  width: 100%;
+  max-width: 720px;
+  margin: 3.3rem auto 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2.3rem;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats div {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats strong {
+  display: block;
+  color: #ffffff;
+  font-size: 2.7rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-1 strong {
+  color: #16d59c;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-2 strong {
+  color: #a855ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-3 strong {
+  color: #f5b821;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats span {
+  display: block;
+  margin-top: 0.65rem;
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-section {
+  width: 100%;
+  max-width: 760px;
+  padding-top: 7rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-hot-section {
+  padding-top: 0;
+  margin-top: -3rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading {
+  margin-bottom: 1.5rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading.center {
+  align-items: center;
+  gap: 0.45rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography {
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem !important;
+  font-style: italic;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.15 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading em {
+  color: rgba(255, 255, 255, 0.98);
+  font-style: italic;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography-text {
+  color: rgba(255, 255, 255, 0.42) !important;
+  font-family: inherit;
+  font-size: 0.85rem !important;
+  font-style: normal;
+  font-weight: 700 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-mosaic {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: 94px;
+  gap: 0.8rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card {
+  position: relative;
+  min-height: 0;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, transparent 18%, rgba(0, 0, 0, 0.82) 100%), #090a0d;
+  color: #fff;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 34%),
+    var(--home-card-accent, rgba(47, 109, 246, 0.48));
+  opacity: 0.9;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 68%;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9));
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.small {
+  grid-column: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.wide {
+  grid-column: span 3;
+  grid-row: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.large {
+  grid-column: span 3;
+  grid-row: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-cyan {
+  --home-card-accent: linear-gradient(135deg, #233d4d, #0c1115);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-blue {
+  --home-card-accent: linear-gradient(135deg, #244b8f, #0b111a);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-green {
+  --home-card-accent: linear-gradient(135deg, #09291c, #050608);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-teal {
+  --home-card-accent: linear-gradient(135deg, #124c55, #070b0f);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-orange {
+  --home-card-accent: linear-gradient(135deg, #624019, #090604);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-violet {
+  --home-card-accent: linear-gradient(135deg, #2d234d, #050507);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.tone-pink {
+  --home-card-accent: linear-gradient(135deg, #4d263d, #050507);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-price {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
+  min-height: 1.25rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: #16cdd5;
+  color: #041014;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-brand,
+html[data-ui-preset='apimart'] .app-home-model-card strong {
+  position: relative;
+  z-index: 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-brand small {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card strong {
+  margin-top: 0.35rem;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+html[data-ui-preset='apimart'] .app-home-center-link {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-steps-section {
+  max-width: 820px;
+}
+
+html[data-ui-preset='apimart'] .app-home-step-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-step-track::before {
+  content: '';
+  position: absolute;
+  top: 32px;
+  left: 16%;
+  right: 16%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(124, 92, 255, 0.5),
+    rgba(245, 184, 33, 0.42)
+  );
+}
+
+html[data-ui-preset='apimart'] .app-home-step {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-step span {
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #7c5cff;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 850;
+  box-shadow: 0 0 34px rgba(124, 92, 255, 0.42);
+}
+
+html[data-ui-preset='apimart'] .app-home-step:nth-child(2) span {
+  background: #c04dff;
+}
+
+html[data-ui-preset='apimart'] .app-home-step:nth-child(3) span {
+  background: #f97316;
+}
+
+html[data-ui-preset='apimart'] .app-home-step strong {
+  display: block;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-step p {
+  max-width: 190px;
+  margin: 0.55rem auto 0;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-actions {
+  margin-top: 2.2rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-section {
+  display: block;
+  max-width: 760px;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: #0d0f12;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs button {
+  min-height: 30px;
+  padding: 0 0.8rem;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs button.active {
+  background: #2f6df6;
+  color: #fff;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-showcase {
+  display: grid;
+  grid-template-columns: 1fr 0.95fr;
+  gap: 2rem;
+  align-items: center;
+  min-height: 300px;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #101114;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy span {
+  color: #2f6df6;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy strong {
+  display: block;
+  margin-top: 0.75rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.25rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy p {
+  margin-top: 0.8rem;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy ul {
+  margin: 1rem 0 1.35rem;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy li {
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.8rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy li::before {
+  content: '✓';
+  margin-right: 0.45rem;
+  color: #2f6df6;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-visual {
+  position: relative;
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-visual img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  opacity: 0.42;
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 320px);
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  text-align: left;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card span {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card p {
+  margin: 0.9rem 0;
+  padding: 0.7rem;
+  border-radius: 7px;
+  background: #edf4ff;
+  color: #2563eb;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.65rem;
+  border-radius: 6px;
+  background: #2f6df6;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 3.5rem;
+  row-gap: 1.65rem;
+  margin-top: 2rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item span {
+  color: #ff4fa4;
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item:nth-child(2) span,
+html[data-ui-preset='apimart'] .app-home-value-item:nth-child(5) span {
+  color: #08d9ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item:nth-child(3) span {
+  color: #f5b821;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item:nth-child(4) span {
+  color: #a855ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item:nth-child(6) span {
+  color: #16d59c;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.94rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item p {
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-section {
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.5rem 2rem;
+  align-items: center;
+  margin-top: 1.4rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  filter: grayscale(0.15);
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq {
+  display: block;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 22px;
+  gap: 1rem;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button span {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button strong {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button svg {
+  justify-self: end;
+  color: rgba(255, 255, 255, 0.62);
+  transition: transform 150ms ease;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item.open button svg {
+  transform: rotate(180deg);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item p {
+  margin: -0.2rem 0 1.2rem 58px;
+  max-width: 620px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.8rem;
+  line-height: 1.75;
+}
+
+@media (max-width: 767px) {
+  html[data-ui-preset='apimart'] .app-home-market {
+    padding: 0 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hero {
+    width: calc(100% + 2rem);
+    min-height: 760px;
+    margin: 0 -1rem;
+    padding: 9rem 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-title {
+    font-size: 2.3rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-stats strong {
+    font-size: 2.15rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-section {
+    max-width: 100%;
+    padding-top: 5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hot-section {
+    margin-top: -2rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography {
+    font-size: 1.65rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 112px;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-card.small,
+  html[data-ui-preset='apimart'] .app-home-model-card.wide,
+  html[data-ui-preset='apimart'] .app-home-model-card.large {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-step-track,
+  html[data-ui-preset='apimart'] .app-home-api-showcase,
+  html[data-ui-preset='apimart'] .app-home-value-list {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-step-track {
+    gap: 2rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-step-track::before {
+    display: none;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-api-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-api-showcase {
+    padding: 1.25rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-provider-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-faq-item button {
+    grid-template-columns: 34px minmax(0, 1fr) 22px;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-faq-item p {
+    margin-left: 50px;
+  }
+}
+
+@layer tailwind-components {
+  @tailwind components;
+}
+
+@layer tailwind-utils {
+  @tailwind utilities;
+}
+
+/* ==================== 全局外观主题 token ==================== */
+:root {
+  --app-bg: var(--semi-color-bg-0);
+  --app-surface: var(--semi-color-bg-1);
+  --app-surface-raised: var(--semi-color-bg-2);
+  --app-surface-soft: var(--semi-color-fill-0);
+  --app-border: var(--semi-color-border);
+  --app-border-strong: var(--semi-color-border);
+  --app-text: var(--semi-color-text-0);
+  --app-text-secondary: var(--semi-color-text-1);
+  --app-text-muted: var(--semi-color-text-2);
+  --app-primary: var(--semi-color-primary);
+  --app-primary-hover: var(--semi-color-primary-hover);
+  --app-radius: 8px;
+  --app-radius-sm: calc(var(--app-radius) * 0.75);
+  --app-radius-lg: calc(var(--app-radius) * 1.5);
+  --app-radius-xl: calc(var(--app-radius) * 2);
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --app-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --app-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --app-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --app-content-width: 1200px;
+  --app-header-height: 64px;
+  --app-subnav-height: 44px;
+}
+
+html.dark {
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --app-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.34);
+  --app-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+html[data-content-width='compact'] {
+  --app-content-width: 1120px;
+}
+
+html[data-content-width='wide'] {
+  --app-content-width: 1440px;
+}
+
+html[data-ui-preset='apimart'] {
+  --app-radius: 6px;
+  --app-content-width: 1800px;
+}
+
+html[data-ui-preset='apimart'] body {
+  background: var(--app-bg);
+}
+
+html[data-ui-preset='apimart'].dark {
+  --app-bg: #030405;
+  --app-surface: #0b0d10;
+  --app-surface-raised: #111318;
+  --app-surface-soft: #171a20;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.14);
+  --app-text: rgba(255, 255, 255, 0.92);
+  --app-text-secondary: rgba(255, 255, 255, 0.72);
+  --app-text-muted: rgba(255, 255, 255, 0.52);
+  --app-primary: #2f6df6;
+  --app-primary-hover: #4a82ff;
+}
+
+html[data-ui-preset='apimart']:not(.dark) {
+  --app-bg: #f6f7f9;
+  --app-surface: #ffffff;
+  --app-surface-raised: #ffffff;
+  --app-surface-soft: #f1f3f6;
+  --app-border: rgba(15, 23, 42, 0.1);
+  --app-border-strong: rgba(15, 23, 42, 0.16);
+  --app-text: #0f172a;
+  --app-text-secondary: #334155;
+  --app-text-muted: #64748b;
+  --app-primary: #2f6df6;
+  --app-primary-hover: #255bd8;
+}
+
+html[data-ui-preset='apimart'] .app-layout,
+html[data-ui-preset='apimart'] .semi-layout,
+html[data-ui-preset='apimart'] .semi-layout-content {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .semi-card {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface-raised) !important;
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .semi-table-container,
+html[data-ui-preset='apimart']
+  .semi-table-thead
+  > .semi-table-row
+  > .semi-table-row-head,
+html[data-ui-preset='apimart']
+  .semi-table-tbody
+  > .semi-table-row
+  > .semi-table-row-cell {
+  border-color: var(--app-border) !important;
+}
+
+html[data-ui-preset='apimart'].dark
+  .semi-table-thead
+  > .semi-table-row
+  > .semi-table-row-head,
+html[data-ui-preset='apimart'].dark
+  .semi-table-tbody
+  > .semi-table-row
+  > .semi-table-row-cell {
+  background: var(--app-surface-raised) !important;
+  color: var(--app-text-secondary);
+}
+
+html[data-ui-preset='apimart'] .semi-input-wrapper,
+html[data-ui-preset='apimart'] .semi-select,
+html[data-ui-preset='apimart'] .semi-datepicker,
+html[data-ui-preset='apimart'] .semi-datepicker-range-input {
+  border-color: var(--app-border) !important;
+  background: var(--app-surface) !important;
+}
+
+html[data-ui-preset='apimart'] .semi-button {
+  border-radius: var(--app-radius) !important;
+}
+
+html[data-ui-preset='apimart'] .app-page-container {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-page-title {
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .app-page-description {
+  color: var(--app-text-muted);
+}
+
+html[data-ui-preset='apimart'] .app-card-pro {
+  border-radius: var(--app-radius) !important;
+  box-shadow: none !important;
+}
+
+html[data-ui-preset='apimart'] header {
+  background: color-mix(in srgb, var(--app-bg) 86%, transparent) !important;
+  border-bottom: 1px solid var(--app-border);
+  backdrop-filter: blur(16px);
+}
+
+html[data-ui-preset='apimart'] .app-header-inner {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-header-inner > div {
+  height: 48px !important;
+}
+
+html[data-ui-preset='apimart'] .app-header-logo img {
+  border-radius: 4px !important;
+}
+
+html[data-ui-preset='apimart'] .app-header-logo .semi-typography {
+  color: var(--app-text) !important;
+  font-size: 0.95rem !important;
+}
+
+html[data-ui-preset='apimart'] .app-header-nav {
+  flex: 0 1 auto;
+  justify-content: center;
+  margin-left: 1.5rem;
+  margin-right: 1.5rem;
+}
+
+html[data-ui-preset='apimart'] .app-header-nav-link {
+  min-height: 28px;
+  padding: 0.35rem 0.6rem !important;
+  border-radius: 6px;
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+html[data-ui-preset='apimart'] .app-header-nav-link:hover,
+html[data-ui-preset='apimart'] .app-header-nav-link.active {
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-primary) 26%, transparent);
+}
+
+html[data-ui-preset='apimart'] .app-header-actions {
+  gap: 0.4rem;
+}
+
+html[data-ui-preset='apimart'] .app-header-actions .semi-button {
+  min-width: 28px;
+  height: 28px;
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav {
+  height: var(--app-subnav-height);
+  border-top: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg) 92%, transparent);
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-inner {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: safe center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-arrow {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-surface);
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  transition:
+    color 150ms var(--app-ease),
+    background-color 150ms var(--app-ease),
+    border-color 150ms var(--app-ease),
+    opacity 150ms var(--app-ease);
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-arrow:hover:not(:disabled) {
+  color: var(--app-text);
+  background: var(--semi-color-fill-0);
+  border-color: var(--app-border-strong);
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--app-radius-xl);
+  color: var(--app-text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    color 150ms var(--app-ease),
+    background-color 150ms var(--app-ease);
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-link:hover {
+  color: var(--app-text);
+  background: var(--semi-color-fill-0);
+}
+
+html[data-ui-preset='apimart'] .app-console-subnav-link.active {
+  color: var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 15%, transparent);
+  font-weight: 650;
+}
+
+html[data-ui-preset='apimart'] .app-sider,
+html[data-ui-preset='apimart'] .sidebar-container,
+html[data-ui-preset='apimart'] .sidebar-nav {
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .app-wordmark-footer {
+  width: 100%;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-bg);
+}
+
+html[data-ui-preset='apimart'] .app-wordmark-footer-inner {
+  max-width: var(--app-content-width);
+  margin: 0 auto;
+  padding: 3rem 0.75rem 2rem;
+}
+
+html[data-ui-preset='apimart'] .app-wordmark {
+  font-size: 10rem;
+  line-height: 0.86;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--app-text);
+  opacity: 0.96;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui-preset='apimart'] .app-footer-link {
+  color: var(--app-text-muted);
+  transition: color 150ms ease;
+}
+
+html[data-ui-preset='apimart'] .app-footer-link:hover {
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .app-pricing-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--app-primary) 18%, transparent),
+      transparent 42%
+    ),
+    var(--app-surface-raised);
+}
+
+html[data-ui-preset='apimart'] .app-pricing-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+html[data-ui-preset='apimart'] .app-pricing-metric {
+  min-width: 92px;
+  padding: 0.75rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .app-pricing-metric span {
+  display: block;
+  color: var(--app-text);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+html[data-ui-preset='apimart'] .app-pricing-metric .semi-typography {
+  color: var(--app-text-muted);
+  font-size: 0.75rem;
+}
+
+html[data-ui-preset='apimart'] .pricing-layout {
+  height: auto;
+  min-height: 680px;
+  margin-top: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .pricing-sidebar {
+  height: 72vh;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+}
+
+html[data-ui-preset='apimart'] .pricing-content {
+  height: 72vh;
+  background: var(--app-bg);
+}
+
+html[data-ui-preset='apimart'] .pricing-search-header {
+  background: var(--app-bg);
+  border-bottom: 1px solid var(--app-border);
+}
+
+html[data-ui-preset='apimart'] .app-model-detail-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0.5rem 1rem;
+  flex-wrap: wrap;
+}
+
+html[data-ui-preset='apimart'] .app-market-page {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 4.5rem 1.5rem 3rem;
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 3rem;
+  padding: 2.5rem 3rem;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.32)),
+    url('/cover-4.webp');
+  background-size: cover;
+  background-position: center;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy {
+  max-width: 560px;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy .semi-typography {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-weight: 750;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy h1 {
+  margin: 0.6rem 0 0 !important;
+  color: #fff !important;
+  font-size: 2.8rem !important;
+  line-height: 1.08 !important;
+  letter-spacing: 0 !important;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy p {
+  max-width: 470px;
+  margin: 0.9rem 0 1rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.65;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-meta span {
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+html[data-ui-preset='apimart'] .app-market-shell {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 2rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-sidebar {
+  padding-right: 0.75rem;
+  border-right: 1px solid var(--app-border);
+}
+
+html[data-ui-preset='apimart']
+  .app-market-filter-block
+  + .app-market-filter-block {
+  margin-top: 1.6rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-filter-title {
+  margin-bottom: 0.6rem;
+  color: var(--app-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-market-filter-block button {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  color: var(--app-text-muted);
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-market-filter-block button:hover,
+html[data-ui-preset='apimart'] .app-market-filter-block button.active {
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .app-market-filter-block em {
+  color: var(--app-text-muted);
+  font-style: normal;
+  font-size: 0.72rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-content {
+  min-width: 0;
+}
+
+html[data-ui-preset='apimart'] .app-market-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-toolbar .semi-input-wrapper {
+  height: 34px;
+  border-radius: 6px !important;
+}
+
+html[data-ui-preset='apimart'] .app-market-count {
+  display: block;
+  margin-bottom: 0.85rem;
+  color: var(--app-text-muted) !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: #070809;
+  color: inherit;
+  text-align: left;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-card:hover {
+  border-color: color-mix(in srgb, var(--app-primary) 52%, transparent);
+}
+
+html[data-ui-preset='apimart'] .app-market-model-cover {
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8rem;
+  background:
+    radial-gradient(
+      circle at 18% 18%,
+      rgba(255, 255, 255, 0.22),
+      transparent 28%
+    ),
+    linear-gradient(135deg, rgba(47, 109, 246, 0.55), rgba(8, 10, 12, 0.96));
+}
+
+html[data-ui-preset='apimart']
+  .app-market-model-card.variant-1
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 78% 16%,
+      rgba(255, 255, 255, 0.24),
+      transparent 30%
+    ),
+    linear-gradient(135deg, rgba(143, 93, 246, 0.48), rgba(8, 10, 12, 0.96));
+}
+
+html[data-ui-preset='apimart']
+  .app-market-model-card.variant-2
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(255, 255, 255, 0.18),
+      transparent 30%
+    ),
+    linear-gradient(135deg, rgba(16, 185, 129, 0.42), rgba(8, 10, 12, 0.96));
+}
+
+html[data-ui-preset='apimart']
+  .app-market-model-card.variant-3
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 72% 24%,
+      rgba(255, 255, 255, 0.2),
+      transparent 30%
+    ),
+    linear-gradient(135deg, rgba(236, 72, 153, 0.38), rgba(8, 10, 12, 0.96));
+}
+
+html[data-ui-preset='apimart'] .app-market-model-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-price {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-body {
+  padding: 0.8rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-body strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-body p {
+  min-height: 2.6rem;
+  margin-top: 0.45rem;
+  color: var(--app-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+html[data-ui-preset='apimart'] .app-market-model-uptime {
+  margin-top: 0.7rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 1.25rem;
+}
+
+html[data-ui-preset='apimart'] .app-market-empty {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-market {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6rem 0.75rem 4rem;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart'] .app-home-hero,
+html[data-ui-preset='apimart'] .app-home-section,
+html[data-ui-preset='apimart'] .app-home-stats {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  align-items: center;
+  gap: 2rem;
+  min-height: 620px;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero-copy {
+  min-width: 0;
+}
+
+html[data-ui-preset='apimart'] .app-home-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  color: var(--app-text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-title {
+  max-width: 720px;
+  margin: 0 !important;
+  color: var(--app-text) !important;
+  font-size: 4.5rem !important;
+  line-height: 0.96 !important;
+  letter-spacing: 0 !important;
+  font-weight: 850 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-subtitle {
+  display: block;
+  max-width: 620px;
+  margin-top: 1.25rem;
+  color: var(--app-text-secondary) !important;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+html[data-ui-preset='apimart'] .app-home-baseurl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 720px;
+  margin-top: 2rem;
+  padding: 0.8rem;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--app-radius);
+  background: var(--app-surface-raised);
+}
+
+html[data-ui-preset='apimart'] .app-home-baseurl > div:first-child {
+  min-width: 0;
+}
+
+html[data-ui-preset='apimart'] .app-home-baseurl span {
+  display: block;
+  color: var(--app-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-baseurl strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--app-text);
+  font-size: 0.95rem;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    monospace;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui-preset='apimart'] .app-home-endpoint-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions .semi-button,
+html[data-ui-preset='apimart'] .app-home-endpoint-picker .semi-button {
+  border-radius: var(--app-radius) !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero-panel {
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--app-radius);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--app-primary) 18%, transparent),
+      transparent 46%
+    ),
+    var(--app-surface-raised);
+  padding: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-mini-card,
+html[data-ui-preset='apimart'] .app-home-code-card,
+html[data-ui-preset='apimart'] .app-home-model-card,
+html[data-ui-preset='apimart'] .app-home-step,
+html[data-ui-preset='apimart'] .app-home-api-card,
+html[data-ui-preset='apimart'] .app-home-value-card,
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .app-home-mini-card {
+  min-height: 128px;
+  padding: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-mini-card span,
+html[data-ui-preset='apimart'] .app-home-model-card span,
+html[data-ui-preset='apimart'] .app-home-api-card span,
+html[data-ui-preset='apimart'] .app-home-value-card span {
+  color: var(--app-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-mini-card strong,
+html[data-ui-preset='apimart'] .app-home-model-card strong,
+html[data-ui-preset='apimart'] .app-home-step strong,
+html[data-ui-preset='apimart'] .app-home-api-card strong,
+html[data-ui-preset='apimart'] .app-home-value-card strong,
+html[data-ui-preset='apimart'] .app-home-faq-item strong {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--app-text);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+html[data-ui-preset='apimart'] .app-home-mini-card small,
+html[data-ui-preset='apimart'] .app-home-model-card small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--app-text-muted);
+}
+
+html[data-ui-preset='apimart'] .app-home-code-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-code-card span {
+  color: var(--app-text-muted);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-code-card code {
+  color: var(--app-text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface-raised);
+}
+
+html[data-ui-preset='apimart'] .app-home-stats div {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .app-home-stats strong {
+  color: var(--app-text);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats span {
+  margin-top: 0.5rem;
+  color: var(--app-text-muted);
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-section {
+  padding-top: 6rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading.center {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography,
+html[data-ui-preset='apimart'] .app-home-section > .semi-typography {
+  color: var(--app-text) !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading a,
+html[data-ui-preset='apimart'] .app-home-api-card a {
+  color: var(--app-primary);
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-grid,
+html[data-ui-preset='apimart'] .app-home-value-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card,
+html[data-ui-preset='apimart'] .app-home-value-card {
+  min-height: 196px;
+  padding: 1rem;
+  color: inherit;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card p,
+html[data-ui-preset='apimart'] .app-home-step p,
+html[data-ui-preset='apimart'] .app-home-api-card p,
+html[data-ui-preset='apimart'] .app-home-value-card p,
+html[data-ui-preset='apimart'] .app-home-faq-item p {
+  margin-top: 0.75rem;
+  color: var(--app-text-muted);
+  line-height: 1.65;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card em {
+  display: inline-flex;
+  margin-top: 1rem;
+  color: var(--app-text);
+  font-style: normal;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-steps,
+html[data-ui-preset='apimart'] .app-home-api-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-step,
+html[data-ui-preset='apimart'] .app-home-api-card {
+  min-height: 210px;
+  padding: 1.25rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-step span {
+  color: var(--app-primary);
+  font-size: 1.75rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-section {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-section > div:first-child {
+  position: sticky;
+  top: 8rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-section .semi-typography {
+  color: var(--app-text-secondary);
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-section {
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-section .semi-typography {
+  color: var(--app-text) !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  display: flex;
+  gap: 1rem;
+  min-height: 142px;
+  padding: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item > span {
+  color: var(--app-primary);
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+@media (max-width: 767px) {
+  html[data-ui-preset='apimart'] .app-pricing-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  html[data-ui-preset='apimart'] .pricing-layout,
+  html[data-ui-preset='apimart'] .pricing-content {
+    min-height: 70vh;
+    height: auto;
+  }
+
+  html[data-ui-preset='apimart'] .app-header-inner > div {
+    height: 56px !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-header-nav {
+    justify-content: flex-start;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-header-nav-link {
+    font-size: 0.76rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-console-subnav-scroll {
+    justify-content: flex-start;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-page {
+    padding-top: 5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-spotlight {
+    min-height: 360px;
+    padding: 1.5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-spotlight-copy h1 {
+    font-size: 2.1rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-shell {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-filter-block {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-filter-block button {
+    width: auto;
+    display: inline-flex;
+    margin-right: 0.45rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-market {
+    padding-top: 5.25rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-wordmark {
+    font-size: 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-title {
+    font-size: 2.85rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-baseurl,
+  html[data-ui-preset='apimart'] .app-home-endpoint-picker {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-stats,
+  html[data-ui-preset='apimart'] .app-home-model-grid,
+  html[data-ui-preset='apimart'] .app-home-steps,
+  html[data-ui-preset='apimart'] .app-home-api-section,
+  html[data-ui-preset='apimart'] .app-home-api-grid,
+  html[data-ui-preset='apimart'] .app-home-value-grid,
+  html[data-ui-preset='apimart'] .app-home-faq {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-provider-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html[data-ui-preset='apimart'] .app-home-api-section > div:first-child {
+    position: static;
+  }
+}
+
+/* APIMart 首页最终覆盖：放在文件末尾，避免旧首页样式覆盖复刻布局。 */
+html[data-ui-preset='apimart'] .app-home-market {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 1.5rem 5rem;
+  overflow: hidden;
+  background: #030405;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-ui-preset='apimart'] .app-home-hero {
+  position: relative;
+  width: calc(100% + 3rem);
+  max-width: none;
+  min-height: 900px;
+  margin: 0 -1.5rem;
+  padding: 12rem 1.5rem 5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  isolation: isolate;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero-center {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-title {
+  max-width: 820px;
+  margin: 0 !important;
+  color: #7b61ff !important;
+  font-size: 2.55rem !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  font-weight: 780 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-subtitle {
+  display: block;
+  max-width: none;
+  margin-top: 0.8rem;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions {
+  justify-content: center;
+  margin-top: 1.7rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-actions .semi-button {
+  min-width: 126px;
+  border-radius: 7px !important;
+  font-weight: 800;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats {
+  width: 100%;
+  max-width: 720px;
+  margin: 3.3rem auto 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2.3rem;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats div {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats strong {
+  display: block;
+  color: #ffffff;
+  font-size: 2.7rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-1 strong {
+  color: #16d59c;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-2 strong {
+  color: #a855ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats .tone-3 strong {
+  color: #f5b821;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats span {
+  display: block;
+  margin-top: 0.65rem;
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-section {
+  width: 100%;
+  max-width: 760px;
+  padding-top: 7rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-hot-section {
+  padding-top: 0;
+  margin-top: -3rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading {
+  margin-bottom: 1.5rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading.center {
+  align-items: center;
+  gap: 0.45rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography {
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem !important;
+  font-style: italic;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.15 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading em {
+  color: rgba(255, 255, 255, 0.98);
+  font-style: italic;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography-text {
+  color: rgba(255, 255, 255, 0.42) !important;
+  font-family: inherit;
+  font-size: 0.85rem !important;
+  font-style: normal;
+  font-weight: 700 !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card {
+  position: relative;
+  min-height: 0;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, transparent 18%, rgba(0, 0, 0, 0.82) 100%), #090a0d;
+  color: #fff;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.small {
+  grid-column: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.wide,
+html[data-ui-preset='apimart'] .app-home-model-card.large {
+  grid-column: span 3;
+  grid-row: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card strong {
+  position: relative;
+  z-index: 2;
+  margin-top: 0.35rem;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+html[data-ui-preset='apimart'] .app-home-step {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-section {
+  display: block;
+  max-width: 760px;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-section {
+  text-align: center;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.5rem 2rem;
+  align-items: center;
+  margin-top: 1.4rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  filter: grayscale(0.15);
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-faq {
+  display: block;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  html[data-ui-preset='apimart'] .app-home-market {
+    padding: 0 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hero {
+    width: calc(100% + 2rem);
+    min-height: 760px;
+    margin: 0 -1rem;
+    padding: 9rem 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-title {
+    font-size: 2.3rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-section {
+    max-width: 100%;
+    padding-top: 5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 112px;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-card.small,
+  html[data-ui-preset='apimart'] .app-home-model-card.wide,
+  html[data-ui-preset='apimart'] .app-home-model-card.large {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-step-track,
+  html[data-ui-preset='apimart'] .app-home-api-showcase,
+  html[data-ui-preset='apimart'] .app-home-value-list {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-provider-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem;
+  }
+}
+
+/* APIMart 首页明暗模式与 1800px 宽度最终收口。 */
+html[data-ui-preset='apimart'] {
+  --app-home-bg: var(--app-bg);
+  --app-home-text: var(--app-text);
+  --app-home-text-strong: var(--app-text);
+  --app-home-text-secondary: var(--app-text-secondary);
+  --app-home-text-muted: var(--app-text-muted);
+  --app-home-border: var(--app-border);
+  --app-home-border-soft: var(--app-border);
+  --app-home-surface: var(--app-surface-raised);
+  --app-home-surface-soft: var(--app-surface-soft);
+  --app-home-grid-line: rgba(255, 255, 255, 0.018);
+  --app-home-hero-mask: radial-gradient(
+    circle at center,
+    black 0,
+    transparent 72%
+  );
+  --app-home-title-color: #7b61ff;
+  --app-home-model-tile-bg: #090a0d;
+  --app-home-model-tile-text: #ffffff;
+  --app-home-model-tile-border: rgba(255, 255, 255, 0.1);
+  --app-home-model-overlay: rgba(0, 0, 0, 0.86);
+  --app-home-model-highlight: rgba(255, 255, 255, 0.22);
+  --app-home-api-image-opacity: 0.42;
+  --app-home-chat-bg: rgba(248, 250, 252, 0.96);
+  --app-home-chat-text: #0f172a;
+  --app-home-chat-soft: #edf4ff;
+}
+
+html[data-ui-preset='apimart'].dark {
+  --app-home-bg: #030405;
+  --app-home-text: rgba(255, 255, 255, 0.9);
+  --app-home-text-strong: rgba(255, 255, 255, 0.94);
+  --app-home-text-secondary: rgba(255, 255, 255, 0.78);
+  --app-home-text-muted: rgba(255, 255, 255, 0.48);
+  --app-home-border: rgba(255, 255, 255, 0.09);
+  --app-home-border-soft: rgba(255, 255, 255, 0.06);
+  --app-home-surface: #101114;
+  --app-home-surface-soft: #0d0f12;
+  --app-home-grid-line: rgba(255, 255, 255, 0.018);
+  --app-home-title-color: #7b61ff;
+}
+
+html[data-ui-preset='apimart']:not(.dark) {
+  --app-home-bg: #f6f8fb;
+  --app-home-text: #0f172a;
+  --app-home-text-strong: #111827;
+  --app-home-text-secondary: #334155;
+  --app-home-text-muted: #64748b;
+  --app-home-border: rgba(15, 23, 42, 0.12);
+  --app-home-border-soft: rgba(15, 23, 42, 0.08);
+  --app-home-surface: #ffffff;
+  --app-home-surface-soft: #eef2f7;
+  --app-home-grid-line: rgba(15, 23, 42, 0.045);
+  --app-home-title-color: #5b45e8;
+  --app-home-model-tile-bg: #0f172a;
+  --app-home-model-tile-border: rgba(15, 23, 42, 0.12);
+  --app-home-api-image-opacity: 0.22;
+  --app-home-chat-bg: #ffffff;
+  --app-home-chat-text: #0f172a;
+  --app-home-chat-soft: #eff6ff;
+}
+
+html[data-ui-preset='apimart'] .app-home-market {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 1.5rem 5rem;
+  overflow: hidden;
+  background: var(--app-home-bg);
+  color: var(--app-home-text);
+}
+
+html[data-ui-preset='apimart'] .app-home-hero,
+html[data-ui-preset='apimart'] .app-home-section,
+html[data-ui-preset='apimart'] .app-home-hot-section,
+html[data-ui-preset='apimart'] .app-home-steps-section,
+html[data-ui-preset='apimart'] .app-home-api-section,
+html[data-ui-preset='apimart'] .app-home-provider-section {
+  width: 100%;
+  max-width: var(--app-content-width);
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero {
+  position: relative;
+  min-height: 900px;
+  padding: 12rem 1.5rem 5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  isolation: isolate;
+}
+
+html[data-ui-preset='apimart'] .app-home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(var(--app-home-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--app-home-grid-line) 1px, transparent 1px),
+    var(--app-home-bg);
+  background-size: 96px 96px;
+  mask-image: var(--app-home-hero-mask);
+}
+
+html[data-ui-preset='apimart'] .app-home-hero-center {
+  width: 100%;
+  max-width: var(--app-content-width);
+  margin: 0 auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-title {
+  max-width: var(--app-content-width);
+  margin: 0 !important;
+  color: var(--app-home-title-color) !important;
+  font-size: 2.55rem !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  font-weight: 780 !important;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter {
+  display: inline-grid;
+  grid-template-areas: 'text';
+  vertical-align: baseline;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter-measure,
+html[data-ui-preset='apimart'] .app-typewriter-live {
+  grid-area: text;
+  white-space: pre-wrap;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter-measure {
+  visibility: hidden;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter-live {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter-cursor {
+  width: 0.08em;
+  min-width: 2px;
+  height: 0.9em;
+  margin-left: 0.08em;
+  display: inline-block;
+  background: currentColor;
+  transform: translateY(0.1em);
+  animation: app-typewriter-cursor-blink 0.78s steps(1, end) infinite;
+}
+
+html[data-ui-preset='apimart'] .app-typewriter.done .app-typewriter-cursor {
+  display: none;
+}
+
+html[data-ui-preset='apimart'] .app-home-title .app-typewriter-live {
+  justify-content: flex-start;
+}
+
+@keyframes app-typewriter-cursor-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-preset='apimart'] .app-typewriter-cursor {
+    display: none;
+  }
+}
+
+html[data-ui-preset='apimart'] .app-home-subtitle {
+  display: block;
+  max-width: 900px;
+  margin: 0.8rem auto 0;
+  color: var(--app-home-text-secondary) !important;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+html[data-ui-preset='apimart'] .app-home-subnote {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--app-home-text-muted) !important;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats {
+  width: 100%;
+  max-width: 980px;
+  margin: 3.3rem auto 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2.3rem;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats div {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats strong {
+  display: block;
+  color: var(--app-home-text-strong);
+  font-size: 2.7rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+html[data-ui-preset='apimart'] .app-home-stats span {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--app-home-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+html[data-ui-preset='apimart'] .app-home-section {
+  padding-top: 7rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-hot-section {
+  padding-top: 0;
+  margin-top: -3rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography {
+  color: var(--app-home-text-strong) !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading em {
+  color: var(--app-home-text-strong);
+}
+
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography-text {
+  color: var(--app-home-text-muted) !important;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-mosaic {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 118px;
+  gap: 1rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card {
+  border-color: var(--app-home-model-tile-border);
+  background:
+    linear-gradient(
+      180deg,
+      transparent 18%,
+      var(--app-home-model-overlay) 100%
+    ),
+    var(--app-home-model-tile-bg);
+  background-position: center;
+  background-size: cover;
+  color: var(--app-home-model-tile-text);
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card::before {
+  background:
+    linear-gradient(135deg, var(--app-home-model-highlight), transparent 34%),
+    var(--home-card-accent, rgba(47, 109, 246, 0.48));
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card::after {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--app-home-model-overlay)
+  );
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.small {
+  grid-column: span 3;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card.wide,
+html[data-ui-preset='apimart'] .app-home-model-card.large {
+  grid-column: span 6;
+  grid-row: span 2;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-brand {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+html[data-ui-preset='apimart'] .app-home-icon-fallback {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--app-primary);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+html[data-ui-preset='apimart'] .app-home-model-card strong {
+  color: var(--app-home-model-tile-text);
+}
+
+html[data-ui-preset='apimart'] .app-home-step-track::before {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--app-home-step-1) 30%, transparent),
+    color-mix(in srgb, var(--app-home-step-2) 28%, transparent),
+    color-mix(in srgb, var(--app-home-step-3) 30%, transparent)
+  );
+}
+
+html[data-ui-preset='apimart'] .app-home-step-track {
+  --app-home-step-1: #2f6df6;
+  --app-home-step-2: #12b8c8;
+  --app-home-step-3: #f5b821;
+}
+
+html[data-ui-preset='apimart'] .app-home-step span {
+  background: linear-gradient(
+    135deg,
+    var(--app-home-step-1),
+    color-mix(in srgb, var(--app-home-step-1) 76%, #0b1020)
+  );
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--app-home-step-1) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+html[data-ui-preset='apimart'] .app-home-step:nth-child(2) span {
+  background: linear-gradient(
+    135deg,
+    var(--app-home-step-2),
+    color-mix(in srgb, var(--app-home-step-2) 76%, #06323a)
+  );
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--app-home-step-2) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+html[data-ui-preset='apimart'] .app-home-step:nth-child(3) span {
+  background: linear-gradient(
+    135deg,
+    var(--app-home-step-3),
+    color-mix(in srgb, var(--app-home-step-3) 74%, #4a2f00)
+  );
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--app-home-step-3) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+html[data-ui-preset='apimart'] .app-home-step strong,
+html[data-ui-preset='apimart'] .app-home-value-item strong,
+html[data-ui-preset='apimart'] .app-home-faq-item button strong {
+  color: var(--app-home-text-strong);
+}
+
+html[data-ui-preset='apimart'] .app-home-step p,
+html[data-ui-preset='apimart'] .app-home-value-item p,
+html[data-ui-preset='apimart'] .app-home-faq-item p {
+  color: var(--app-home-text-muted);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs {
+  border-color: var(--app-home-border);
+  background: var(--app-home-surface-soft);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs button {
+  color: var(--app-home-text-muted);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs button.active {
+  color: #ffffff;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-showcase {
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.85fr);
+  min-height: 360px;
+  border-color: var(--app-home-border);
+  background: var(--app-home-surface);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy strong {
+  color: var(--app-home-text-strong);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-copy p,
+html[data-ui-preset='apimart'] .app-home-api-copy li {
+  color: var(--app-home-text-muted);
+}
+
+html[data-ui-preset='apimart'] .app-home-api-visual img {
+  opacity: var(--app-home-api-image-opacity);
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card {
+  background: var(--app-home-chat-bg);
+  color: var(--app-home-chat-text);
+}
+
+html[data-ui-preset='apimart'] .app-home-chat-card p {
+  background: var(--app-home-chat-soft);
+}
+
+html[data-ui-preset='apimart'] .app-home-value-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 5rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-value-item {
+  border-bottom-color: var(--app-home-border-soft);
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-logo,
+html[data-ui-preset='apimart'] .app-home-provider-logo span {
+  color: var(--app-home-text-secondary);
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-marquee {
+  position: relative;
+  width: 100%;
+  margin-top: 2.3rem;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 9%,
+    #000 91%,
+    transparent 100%
+  );
+}
+
+html[data-ui-preset='apimart'] .app-home-provider-track {
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: clamp(3rem, 6vw, 7rem);
+  animation: app-provider-marquee 32s linear infinite;
+  will-change: transform;
+}
+
+html[data-ui-preset='apimart']
+  .app-home-provider-marquee:hover
+  .app-home-provider-track {
+  animation-play-state: paused;
+}
+
+html[data-ui-preset='apimart']
+  .app-home-provider-track
+  .app-home-provider-logo {
+  flex: 0 0 auto;
+  min-width: clamp(150px, 12vw, 230px);
+  min-height: 76px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border: 0;
+  background: transparent;
+  filter: none;
+}
+
+html[data-ui-preset='apimart']
+  .app-home-provider-track
+  .app-home-provider-logo
+  span {
+  font-size: clamp(1rem, 1.2vw, 1.55rem);
+  font-weight: 850;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+html[data-ui-preset='apimart']
+  .app-home-provider-track
+  .app-home-provider-logo
+  svg {
+  flex: 0 0 auto;
+}
+
+@keyframes app-provider-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-preset='apimart'] .app-home-provider-marquee {
+    mask-image: none;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-provider-track {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: none;
+    transform: none;
+  }
+}
+
+html[data-ui-preset='apimart'] .app-home-faq {
+  border-top-color: var(--app-home-border);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  border-bottom-color: var(--app-home-border);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button {
+  color: var(--app-home-text-strong);
+}
+
+html[data-ui-preset='apimart'] .app-home-faq-item button span,
+html[data-ui-preset='apimart'] .app-home-faq-item button svg {
+  color: var(--app-home-text-muted);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-stars span {
+  opacity: 0.58;
+}
+
+@media (max-width: 767px) {
+  html[data-ui-preset='apimart'] .app-home-market {
+    padding: 0 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hero,
+  html[data-ui-preset='apimart'] .app-home-section,
+  html[data-ui-preset='apimart'] .app-home-hot-section,
+  html[data-ui-preset='apimart'] .app-home-steps-section,
+  html[data-ui-preset='apimart'] .app-home-api-section,
+  html[data-ui-preset='apimart'] .app-home-provider-section {
+    max-width: 100%;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-hero {
+    min-height: 760px;
+    padding: 9rem 1rem 4rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-title {
+    font-size: 2.3rem !important;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 112px;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-model-card.small,
+  html[data-ui-preset='apimart'] .app-home-model-card.wide,
+  html[data-ui-preset='apimart'] .app-home-model-card.large {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  html[data-ui-preset='apimart'] .app-home-api-showcase,
+  html[data-ui-preset='apimart'] .app-home-value-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==================== APIMart 浅色模式卡片适配 ==================== */
+/* 模型广场卡片与首页热门模型瓦片在浅色模式下使用浅色背景与深色可读文字，
+   避免深色海报底 + 浅色模式深色文字导致的低对比度问题。 */
+
+html[data-ui-preset='apimart']:not(.dark) .app-market-model-card {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 18% 18%,
+      rgba(47, 109, 246, 0.12),
+      transparent 60%
+    ),
+    linear-gradient(135deg, rgba(47, 109, 246, 0.16), rgba(47, 109, 246, 0.04));
+}
+
+html[data-ui-preset='apimart']:not(.dark)
+  .app-market-model-card.variant-1
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 78% 16%,
+      rgba(143, 93, 246, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(135deg, rgba(143, 93, 246, 0.18), rgba(143, 93, 246, 0.04));
+}
+
+html[data-ui-preset='apimart']:not(.dark)
+  .app-market-model-card.variant-2
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(16, 185, 129, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.04));
+}
+
+html[data-ui-preset='apimart']:not(.dark)
+  .app-market-model-card.variant-3
+  .app-market-model-cover {
+  background:
+    radial-gradient(
+      circle at 72% 24%,
+      rgba(236, 72, 153, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(236, 72, 153, 0.04));
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-market-model-brand {
+  color: var(--app-text-secondary);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-market-model-price {
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card::after {
+  display: none;
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-cyan {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(22, 205, 213, 0.2),
+    rgba(22, 205, 213, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-blue {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(47, 109, 246, 0.2),
+    rgba(47, 109, 246, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-green {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.2),
+    rgba(16, 185, 129, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-teal {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(20, 184, 166, 0.2),
+    rgba(20, 184, 166, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-orange {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(249, 146, 38, 0.2),
+    rgba(249, 146, 38, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-violet {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(143, 93, 246, 0.2),
+    rgba(143, 93, 246, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card.tone-pink {
+  --home-card-accent: linear-gradient(
+    135deg,
+    rgba(236, 72, 153, 0.2),
+    rgba(236, 72, 153, 0.05)
+  );
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-brand {
+  color: var(--app-text-secondary);
+}
+
+html[data-ui-preset='apimart']:not(.dark) .app-home-model-card strong {
+  color: var(--app-text);
+}
+
+/* ==================== 接入文档页 (/docs) ==================== */
+.app-docs {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-text);
+  padding-top: var(--app-header-height, 64px);
+}
+
+.app-docs-shell {
+  display: flex;
+  gap: 40px;
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 36px 24px 96px;
+  align-items: flex-start;
+}
+
+.app-docs-toc {
+  position: sticky;
+  top: calc(var(--app-header-height, 64px) + 24px);
+  flex: 0 0 220px;
+  width: 220px;
+  max-height: calc(100vh - var(--app-header-height, 64px) - 48px);
+  overflow-y: auto;
+}
+
+.app-docs-toc-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.app-docs-toc-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-docs-toc-group-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-text-muted);
+}
+
+.app-docs-toc-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--app-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.5;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  transition: all 0.15s ease;
+}
+
+.app-docs-toc-link.is-sub {
+  padding-left: 28px;
+  font-size: 13px;
+}
+
+.app-docs-toc-link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-docs-toc-method {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+.app-docs-toc-method.m-get {
+  color: #2f6df6;
+}
+
+.app-docs-toc-method.m-post {
+  color: #16a34a;
+}
+
+.app-docs-toc-method.m-put {
+  color: #d97706;
+}
+
+.app-docs-toc-method.m-delete {
+  color: #dc2626;
+}
+
+.app-docs-toc-link:hover {
+  color: var(--app-text);
+  background: var(--app-surface-soft);
+}
+
+.app-docs-toc-link.active {
+  color: var(--app-primary);
+  border-left-color: var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 10%, transparent);
+  font-weight: 600;
+}
+
+.app-docs-toc-cat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--app-text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.app-docs-toc-cat:hover {
+  color: var(--app-text);
+  background: var(--app-surface-soft);
+}
+
+.app-docs-toc-cat.open .app-docs-toc-caret {
+  transform: rotate(0deg);
+}
+
+.app-docs-toc-super {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 6px;
+  margin-bottom: 4px;
+  border: none;
+  background: transparent;
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.app-docs-toc-super:hover {
+  color: var(--app-text);
+}
+
+.app-docs-toc-caret {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+
+.app-docs-toc-super.open .app-docs-toc-caret {
+  transform: rotate(0deg);
+}
+
+.app-docs-method-put {
+  background: #d97706;
+}
+
+.app-docs-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-docs-hero {
+  padding: 0 0 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.app-docs-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-primary) 14%, transparent);
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.app-docs-hero h1 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  font-weight: 750;
+  color: var(--app-text);
+}
+
+.app-docs-hero p {
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--app-text-secondary);
+  max-width: 720px;
+}
+
+.app-docs-baseurl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  background: var(--app-surface);
+}
+
+.app-docs-baseurl span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-muted);
+}
+
+.app-docs-baseurl code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  color: var(--app-text);
+}
+
+.app-docs-baseurl button {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.app-docs-baseurl button:hover {
+  color: var(--app-primary);
+}
+
+.app-docs-section {
+  scroll-margin-top: calc(var(--app-header-height, 64px) + 20px);
+  padding: 28px 0;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.app-docs-section:last-child {
+  border-bottom: none;
+}
+
+.app-docs-section h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.app-docs-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--app-primary);
+}
+
+.app-docs-h2-method {
+  vertical-align: middle;
+  margin-left: 10px;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.app-docs-section h3 {
+  margin: 24px 0 10px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--app-text);
+}
+
+.app-docs-section h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--app-text);
+}
+
+.app-docs-section p {
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--app-text-secondary);
+}
+
+.app-docs-section p b,
+.app-docs-section p code,
+.app-docs-section li code,
+.app-docs-section td code {
+  color: var(--app-text);
+}
+
+.app-docs-section code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--app-surface-soft);
+  border: 1px solid var(--app-border);
+}
+
+.app-docs-note {
+  padding: 12px 14px;
+  border-left: 3px solid var(--app-primary);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--app-primary) 7%, transparent);
+  font-size: 13.5px !important;
+  color: var(--app-text-secondary) !important;
+}
+
+.app-docs-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  background: var(--app-surface);
+}
+
+.app-docs-endpoint code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13.5px;
+  color: var(--app-text);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.app-docs-method {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+
+.app-docs-method-post {
+  background: #16a34a;
+}
+
+.app-docs-method-get {
+  background: #2f6df6;
+}
+
+.app-docs-method-delete {
+  background: #dc2626;
+}
+
+.app-docs-code {
+  position: relative;
+  margin: 0 0 18px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  background: var(--app-surface-raised);
+  overflow: hidden;
+}
+
+.app-docs-code-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--app-text-muted);
+  background: var(--app-surface-soft);
+  border-bottom-right-radius: 6px;
+  z-index: 1;
+}
+
+.app-docs-code-copy {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: var(--app-surface);
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.15s ease;
+}
+
+.app-docs-code-copy:hover {
+  color: var(--app-primary);
+  border-color: var(--app-primary);
+}
+
+.app-docs-code pre {
+  margin: 0;
+  padding: 38px 16px 16px;
+  overflow-x: auto;
+}
+
+.app-docs-code code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12.8px;
+  line-height: 1.65;
+  color: var(--app-text);
+  background: transparent;
+  border: none;
+  padding: 0;
+  white-space: pre;
+}
+
+.app-docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 16px;
+  font-size: 13.5px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  overflow: hidden;
+}
+
+.app-docs-table th,
+.app-docs-table td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text-secondary);
+  vertical-align: top;
+}
+
+.app-docs-table th {
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+  font-weight: 650;
+}
+
+.app-docs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.app-docs-table code {
+  font-size: 12px;
+}
+
+.app-docs-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 4px 0 20px;
+}
+
+.app-docs-card {
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  background: var(--app-surface);
+}
+
+.app-docs-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--app-text-muted);
+}
+
+.app-docs-list {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.app-docs-list li {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--app-text-secondary);
+}
+
+@media (max-width: 960px) {
+  .app-docs-toc {
+    display: none;
+  }
+
+  .app-docs-shell {
+    padding: 24px 16px 72px;
+  }
+}
+
+/* ==================== 简洁化覆盖：白 + 浅紫、去彩虹、去渐变 ==================== */
+/* 统一主色为浅紫（原为 Semi 默认蓝）。放在文件末尾以覆盖既有规则。 */
+:root,
+body {
+  --semi-color-primary: #7c5cff;
+  --semi-color-primary-hover: #6a46f0;
+  --semi-color-primary-active: #5a37db;
+  --semi-color-primary-disabled: #c9bcff;
+  --semi-color-primary-light-default: rgba(124, 92, 255, 0.1);
+  --semi-color-primary-light-hover: rgba(124, 92, 255, 0.16);
+  --semi-color-primary-light-active: rgba(124, 92, 255, 0.24);
+  --semi-color-link: #7c5cff;
+  --semi-color-link-hover: #6a46f0;
+  --semi-color-link-active: #5a37db;
+  --semi-color-focus-border: #7c5cff;
+}
+
+html.dark,
+html.dark body {
+  --semi-color-primary: #a78bfa;
+  --semi-color-primary-hover: #b9a2ff;
+  --semi-color-primary-active: #c9b8ff;
+  --semi-color-primary-disabled: #4b3f7a;
+  --semi-color-primary-light-default: rgba(167, 139, 250, 0.16);
+  --semi-color-primary-light-hover: rgba(167, 139, 250, 0.24);
+  --semi-color-primary-light-active: rgba(167, 139, 250, 0.32);
+  --semi-color-link: #a78bfa;
+  --semi-color-link-hover: #b9a2ff;
+  --semi-color-link-active: #c9b8ff;
+  --semi-color-focus-border: #a78bfa;
+}
+
+/* 首页统计数字：去彩虹，统一为单色文本，靠字号字重分层 */
+html[data-ui-preset='apimart'] .app-home-stats strong,
+html[data-ui-preset='apimart'] .app-home-stats .tone-0 strong,
+html[data-ui-preset='apimart'] .app-home-stats .tone-1 strong,
+html[data-ui-preset='apimart'] .app-home-stats .tone-2 strong,
+html[data-ui-preset='apimart'] .app-home-stats .tone-3 strong {
+  color: var(--semi-color-text-0) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* 首页英雄标题：统一浅紫（与主色一致） */
+html[data-ui-preset='apimart'] .app-home-title {
+  color: var(--semi-color-primary) !important;
+}
+
+/* 模型广场 hero：去彩虹封面图，改为干净的浅紫渐隐面 */
+html[data-ui-preset='apimart'] .app-market-spotlight {
+  background: linear-gradient(
+    135deg,
+    var(--semi-color-primary-light-default),
+    var(--semi-color-bg-1)
+  ) !important;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy .semi-typography,
+html[data-ui-preset='apimart'] .app-market-spotlight-copy h1 {
+  color: var(--semi-color-text-0) !important;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-copy p {
+  color: var(--semi-color-text-1) !important;
+}
+
+html[data-ui-preset='apimart'] .app-market-spotlight-meta span {
+  background: var(--semi-color-fill-0) !important;
+  color: var(--semi-color-text-1) !important;
+}
+
+/* 模型卡封面：中性化（去彩色渐变），仅保留厂商图标带色 */
+html[data-ui-preset='apimart'] .app-market-model-cover,
+html[data-ui-preset='apimart']
+  .app-market-model-card[class*='variant-']
+  .app-market-model-cover {
+  background: var(--semi-color-fill-0) !important;
+}
+
+html.dark[data-ui-preset='apimart'] .app-market-model-cover,
+html.dark[data-ui-preset='apimart']
+  .app-market-model-card[class*='variant-']
+  .app-market-model-cover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ==================== 控制台整体协调：统一画布 + 浅紫强调 ==================== */
+/* apimart 主强调色统一为浅紫（原为蓝 #2f6df6），与全局主色一致 */
+html[data-ui-preset='apimart']:not(.dark) {
+  --app-primary: #7c5cff;
+  --app-primary-hover: #6a46f0;
+}
+
+html[data-ui-preset='apimart'].dark {
+  --app-primary: #a78bfa;
+  --app-primary-hover: #b9a2ff;
+}
+
+/* 侧边栏融入内容画布：与内容共用 --app-bg，去掉“白条”割裂感 */
+html[data-ui-preset='apimart'] .app-sider,
+html[data-ui-preset='apimart'] .sidebar-container,
+html[data-ui-preset='apimart'] .sidebar-nav {
+  background: var(--app-bg) !important;
+}
+
+/* 底部折叠按钮同样融入画布，去掉分隔线与阴影 */
+html[data-ui-preset='apimart'] .sidebar-collapse-button {
+  background: var(--app-bg) !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 卡片轻微“悬浮”于画布之上：柔和边框 + 极轻阴影，圆角更协调 */
+html[data-ui-preset='apimart'] .semi-card {
+  border-radius: 10px !important;
+  box-shadow: var(--app-shadow-sm);
+}

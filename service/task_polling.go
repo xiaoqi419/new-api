@@ -428,6 +428,17 @@ func updateVideoTasks(ctx context.Context, platform constant.TaskPlatform, chann
 	return nil
 }
 
+// shouldApplyTaskResultProgress 决定是否把上游返回的进度写入任务。
+// 非终态任务(排队/进行中)即使上游报 100% 也不写入,否则任务会被存成
+// "非终态 + 100%",随后被 GetAllUnFinishSyncTasks / GetTimedOutUnfinishedTasks
+// 永久漏掉,卡死在 in_progress + 100%。
+func shouldApplyTaskResultProgress(status model.TaskStatus, progress string) bool {
+	if progress != taskcommon.ProgressComplete {
+		return true
+	}
+	return status == model.TaskStatusSuccess || status == model.TaskStatusFailure
+}
+
 func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *model.Channel, taskId string, taskM map[string]*model.Task) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -556,7 +567,7 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	default:
 		return fmt.Errorf("unknown task status %s for task %s", taskResult.Status, task.TaskID)
 	}
-	if taskResult.Progress != "" {
+	if taskResult.Progress != "" && shouldApplyTaskResultProgress(task.Status, taskResult.Progress) {
 		task.Progress = taskResult.Progress
 	}
 

@@ -116,6 +116,29 @@ func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	return logs, err
 }
 
+type UserIpStat struct {
+	Ip       string `json:"ip"`
+	Count    int64  `json:"count"`
+	LastTime int64  `json:"last_time"`
+}
+
+// GetUserDistinctIps 聚合某用户在日志中出现过的去重 IP（含登录日志与请求日志），
+// 返回每个 IP 的出现次数与最近时间，按最近时间倒序。
+func GetUserDistinctIps(userId int, limit int) ([]UserIpStat, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var stats []UserIpStat
+	err := LOG_DB.Model(&Log{}).
+		Select("ip, count(*) as count, max(created_at) as last_time").
+		Where("user_id = ? and ip <> ''", userId).
+		Group("ip").
+		Order("last_time desc").
+		Limit(limit).
+		Scan(&stats).Error
+	return stats, err
+}
+
 func RecordLog(userId int, logType int, content string) {
 	if logType == LogTypeConsume && !common.LogConsumeEnabled {
 		return

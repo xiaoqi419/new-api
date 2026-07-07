@@ -117,6 +117,9 @@ func main() {
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
 
+	// 拼团过期 sweeper：定期将未成团的拼团置为失败并退款
+	controller.StartGroupBuyExpiryTask()
+
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
 	service.StartSystemInstanceReporter()
@@ -139,6 +142,9 @@ func main() {
 	// switch are enforced inside the runner and each handler's Enabled().
 	controller.RegisterScheduledSystemTasks()
 	service.StartSystemTaskRunner()
+
+	// 模型健康探测：定时对各分组 chat 模型发起最小请求，点亮模型广场健康条与渠道监控可用率。
+	controller.StartHealthProbe()
 
 	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
 		common.BatchUpdateEnabled = true

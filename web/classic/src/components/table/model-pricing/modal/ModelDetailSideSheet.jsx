@@ -18,15 +18,24 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { SideSheet, Typography, Button, Divider } from '@douyinfe/semi-ui';
+import {
+  SideSheet,
+  Typography,
+  Button,
+  Divider,
+  Tabs,
+  TabPane,
+} from '@douyinfe/semi-ui';
 import { IconClose } from '@douyinfe/semi-icons';
 
-import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 import ModelHeader from './components/ModelHeader';
+import ModelMetaTags from './components/ModelMetaTags';
 import ModelBasicInfo from './components/ModelBasicInfo';
 import ModelEndpoints from './components/ModelEndpoints';
 import ModelPricingTable from './components/ModelPricingTable';
 import DynamicPricingBreakdown from './components/DynamicPricingBreakdown';
+import ModelPerformance from './components/ModelPerformance';
+import ModelApi from './components/ModelApi';
 
 const { Text } = Typography;
 
@@ -44,9 +53,12 @@ const ModelDetailSideSheet = ({
   vendorsMap,
   endpointMap,
   autoGroups,
+  perfMap = {},
+  serverAddress = '',
   t,
 }) => {
-  const isMobile = useIsMobile();
+  const isDynamic =
+    modelData?.billing_mode === 'tiered_expr' && modelData?.billing_expr;
 
   return (
     <SideSheet
@@ -58,10 +70,9 @@ const ModelDetailSideSheet = ({
         padding: '0',
         display: 'flex',
         flexDirection: 'column',
-        borderBottom: '1px solid var(--semi-color-border)',
       }}
       visible={visible}
-      width={isMobile ? '100%' : 600}
+      width='100%'
       closeIcon={
         <Button
           className='semi-button-tertiary semi-button-size-small semi-button-borderless'
@@ -72,7 +83,7 @@ const ModelDetailSideSheet = ({
       }
       onCancel={onClose}
     >
-      <div style={{ paddingTop: 16, paddingBottom: 16 }}>
+      <div className='w-full max-w-[1400px] mx-auto px-6 pt-3 pb-8'>
         {!modelData && (
           <div className='flex justify-center items-center py-10'>
             <Text type='secondary'>{t('加载中...')}</Text>
@@ -80,48 +91,69 @@ const ModelDetailSideSheet = ({
         )}
         {modelData && (
           <>
-            <div style={{ padding: '0 24px' }}>
-              <ModelBasicInfo
-                modelData={modelData}
-                vendorsMap={vendorsMap}
-                t={t}
-              />
-            </div>
-            <Divider margin={16} />
-            <div style={{ padding: '0 24px' }}>
-              <ModelEndpoints
-                modelData={modelData}
-                endpointMap={endpointMap}
-                t={t}
-              />
-            </div>
-            {modelData.billing_mode === 'tiered_expr' && modelData.billing_expr && (
-              <>
-                <Divider margin={16} />
-                <div style={{ padding: '0 24px' }}>
-                  <DynamicPricingBreakdown
-                    billingExpr={modelData.billing_expr}
+            <ModelMetaTags
+              modelData={modelData}
+              vendorsMap={vendorsMap}
+              t={t}
+            />
+            <Tabs type='line' lazyRender>
+              <TabPane tab={t('概览')} itemKey='overview'>
+                <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 pt-3'>
+                  {/* 左栏：简介 + API 端点 */}
+                  <div className='flex flex-col gap-4'>
+                    <ModelBasicInfo
+                      modelData={modelData}
+                      vendorsMap={vendorsMap}
+                      t={t}
+                    />
+                    <Divider margin={12} />
+                    <ModelEndpoints
+                      modelData={modelData}
+                      endpointMap={endpointMap}
+                      t={t}
+                    />
+                  </div>
+
+                  {/* 右栏：定价 + 性能表现 */}
+                  <div className='flex flex-col gap-4'>
+                    {isDynamic && (
+                      <>
+                        <DynamicPricingBreakdown
+                          billingExpr={modelData.billing_expr}
+                          t={t}
+                        />
+                        <Divider margin={12} />
+                      </>
+                    )}
+                    <ModelPricingTable
+                      modelData={modelData}
+                      groupRatio={groupRatio}
+                      currency={currency}
+                      siteDisplayType={siteDisplayType}
+                      tokenUnit={tokenUnit}
+                      displayPrice={displayPrice}
+                      showRatio={showRatio}
+                      usableGroup={usableGroup}
+                      autoGroups={autoGroups}
+                      t={t}
+                    />
+                    <Divider margin={12} />
+                    <ModelPerformance modelData={modelData} t={t} />
+                  </div>
+                </div>
+              </TabPane>
+
+              <TabPane tab={t('开发文档')} itemKey='api'>
+                <div className='pt-3'>
+                  <ModelApi
+                    modelData={modelData}
+                    endpointMap={endpointMap}
+                    serverAddress={serverAddress}
                     t={t}
                   />
                 </div>
-              </>
-            )}
-            <Divider margin={16} />
-            <div style={{ padding: '0 24px' }}>
-              <ModelPricingTable
-                modelData={modelData}
-                groupRatio={groupRatio}
-                currency={currency}
-                siteDisplayType={siteDisplayType}
-                tokenUnit={tokenUnit}
-                displayPrice={displayPrice}
-                showRatio={showRatio}
-                usableGroup={usableGroup}
-                autoGroups={autoGroups}
-                t={t}
-              />
-            </div>
-            <Divider margin={16} />
+              </TabPane>
+            </Tabs>
           </>
         )}
       </div>

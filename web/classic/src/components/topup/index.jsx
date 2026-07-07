@@ -35,10 +35,12 @@ import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
 
 import RechargeCard from './RechargeCard';
+import GroupBuyCard from './GroupBuyCard';
 import InvitationCard from './InvitationCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
+import WechatPayModal from './modals/WechatPayModal';
 
 // Reject non-navigable schemes (e.g. javascript:, data:) and relative URLs.
 // Only http / https are allowed for backend-provided redirect targets.
@@ -78,7 +80,17 @@ const TopUp = () => {
   const [enableStripeTopUp, setEnableStripeTopUp] = useState(
     statusState?.status?.enable_stripe_topup || false,
   );
+  const [enableWechatPayTopUp, setEnableWechatPayTopUp] = useState(false);
+  const [wechatPayNative, setWechatPayNative] = useState(true);
+  const [wechatPayH5, setWechatPayH5] = useState(false);
+  const [wechatPayJSAPI, setWechatPayJSAPI] = useState(false);
+  const [enableAlipayTopUp, setEnableAlipayTopUp] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
+
+  // 微信扫码支付弹窗
+  const [wechatPayOpen, setWechatPayOpen] = useState(false);
+  const [wechatPayQr, setWechatPayQr] = useState('');
+  const [wechatPayTradeNo, setWechatPayTradeNo] = useState('');
 
   // Creem 相关状态
   const [creemProducts, setCreemProducts] = useState([]);
@@ -224,6 +236,16 @@ const TopUp = () => {
         showError(t('管理员未开启 Waffo 充值！'));
         return;
       }
+    } else if (payment === 'wechatpay') {
+      if (!enableWechatPayTopUp) {
+        showError(t('管理员未开启微信支付！'));
+        return;
+      }
+    } else if (payment === 'alipay_direct') {
+      if (!enableAlipayTopUp) {
+        showError(t('管理员未开启支付宝！'));
+        return;
+      }
     } else {
       if (!enableOnlineTopUp) {
         showError(t('管理员未开启在线充值！'));
@@ -266,6 +288,101 @@ const TopUp = () => {
       setConfirmLoading(true);
       try {
         await waffoTopUp(Number.isFinite(payMethodIndex) ? payMethodIndex : 0);
+      } finally {
+        setOpen(false);
+        setConfirmLoading(false);
+      }
+      return;
+    }
+
+    if (payWay === 'wechatpay') {
+      const ua = navigator.userAgent || '';
+      const inWeChat = /MicroMessenger/i.test(ua);
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      setConfirmLoading(true);
+      try {
+        // 微信内置浏览器：优先 JSAPI（需服务号网页授权）
+        if (inWeChat && wechatPayJSAPI) {
+          const res = await API.post('/api/user/wechatpay/jsapi/prepare', {
+            amount: parseInt(topUpCount),
+          });
+          const { message, data } = res.data;
+          if (message === 'success' && data?.authorize_url) {
+            window.location.href = data.authorize_url;
+          } else {
+            showError(
+              typeof data === 'string' ? data : message || t('支付失败'),
+            );
+          }
+          return;
+        }
+        // 手机外部浏览器：H5 唤起微信
+        if (isMobile && !inWeChat && wechatPayH5) {
+          const res = await API.post('/api/user/wechatpay/pay', {
+            amount: parseInt(topUpCount),
+            payment_method: 'wechatpay',
+            scene: 'h5',
+          });
+          const { message, data } = res.data;
+          if (message === 'success' && data?.h5_url) {
+            if (isSafeHttpCheckoutUrl(data.h5_url)) {
+              window.location.href = data.h5_url;
+            } else {
+              showError(t('支付跳转地址不安全'));
+            }
+          } else {
+            showError(
+              typeof data === 'string' ? data : message || t('支付失败'),
+            );
+          }
+          return;
+        }
+        // 其余场景（PC / 默认）：Native 扫码
+        const res = await API.post('/api/user/wechatpay/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: 'wechatpay',
+          scene: 'native',
+        });
+        const { message, data } = res.data;
+        if (message === 'success' && data?.qr_code) {
+          setWechatPayQr(data.qr_code);
+          setWechatPayTradeNo(data.trade_no || '');
+          setWechatPayOpen(true);
+        } else {
+          const errorMsg =
+            typeof data === 'string' ? data : message || t('支付失败');
+          showError(errorMsg);
+        }
+      } catch (e) {
+        showError(t('支付请求失败'));
+      } finally {
+        setOpen(false);
+        setConfirmLoading(false);
+      }
+      return;
+    }
+
+    if (payWay === 'alipay_direct') {
+      setConfirmLoading(true);
+      try {
+        const res = await API.post('/api/user/alipay/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: 'alipay_direct',
+        });
+        const { message, data } = res.data;
+        if (message === 'success' && data?.pay_url) {
+          if (isSafeHttpCheckoutUrl(data.pay_url)) {
+            window.open(data.pay_url, '_blank');
+          } else {
+            showError(t('支付跳转地址不安全'));
+          }
+        } else {
+          const errorMsg =
+            typeof data === 'string' ? data : message || t('支付失败');
+          showError(errorMsg);
+        }
+      } catch (e) {
+        showError(t('支付请求失败'));
       } finally {
         setOpen(false);
         setConfirmLoading(false);
@@ -634,9 +751,15 @@ const TopUp = () => {
               }
 
               if (!method.color) {
-                if (method.type === 'alipay') {
+                if (
+                  method.type === 'alipay' ||
+                  method.type === 'alipay_direct'
+                ) {
                   method.color = 'rgba(var(--semi-blue-5), 1)';
-                } else if (method.type === 'wxpay') {
+                } else if (
+                  method.type === 'wxpay' ||
+                  method.type === 'wechatpay'
+                ) {
                   method.color = 'rgba(var(--semi-green-5), 1)';
                 } else if (method.type === 'stripe') {
                   method.color = 'rgba(var(--semi-purple-5), 1)';
@@ -672,6 +795,11 @@ const TopUp = () => {
           setEnableOnlineTopUp(enableOnlineTopUp);
           setEnableStripeTopUp(enableStripeTopUp);
           setEnableCreemTopUp(enableCreemTopUp);
+          setEnableWechatPayTopUp(data.enable_wechatpay_topup || false);
+          setWechatPayNative(data.wechatpay_native || false);
+          setWechatPayH5(data.wechatpay_h5 || false);
+          setWechatPayJSAPI(data.wechatpay_jsapi || false);
+          setEnableAlipayTopUp(data.enable_alipay_topup || false);
           setEnableWaffoTopUp(enableWaffoTopUp);
           setWaffoPayMethods(data.waffo_pay_methods || []);
           setWaffoMinTopUp(data.waffo_min_topup || 1);
@@ -941,6 +1069,19 @@ const TopUp = () => {
         t={t}
       />
 
+      {/* 微信扫码支付模态框 */}
+      <WechatPayModal
+        t={t}
+        visible={wechatPayOpen}
+        qrCode={wechatPayQr}
+        tradeNo={wechatPayTradeNo}
+        onSuccess={() => {
+          setWechatPayOpen(false);
+          getUserQuota().then();
+        }}
+        onCancel={() => setWechatPayOpen(false)}
+      />
+
       {/* Creem 充值确认模态框 */}
       <Modal
         title={t('确定要充值 $')}
@@ -976,6 +1117,8 @@ const TopUp = () => {
           enableOnlineTopUp={enableOnlineTopUp}
           enableStripeTopUp={enableStripeTopUp}
           enableCreemTopUp={enableCreemTopUp}
+          enableWechatPayTopUp={enableWechatPayTopUp}
+          enableAlipayTopUp={enableAlipayTopUp}
           creemProducts={creemProducts}
           creemPreTopUp={creemPreTopUp}
           enableWaffoTopUp={enableWaffoTopUp}
@@ -1027,6 +1170,12 @@ const TopUp = () => {
           complianceConfirmed={topupInfo.payment_compliance_confirmed !== false}
         />
       </div>
+
+      <GroupBuyCard
+        t={t}
+        enableWechatPayTopUp={enableWechatPayTopUp}
+        enableAlipayTopUp={enableAlipayTopUp}
+      />
     </div>
   );
 };

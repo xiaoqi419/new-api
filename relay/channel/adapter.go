@@ -81,3 +81,8 @@ type TaskAdaptor interface {
 type OpenAIVideoConverter interface {
 	ConvertToOpenAIVideo(originTask *model.Task) ([]byte, error)
 }
+
+// ArkVideoConverter 将内部 task 转换为火山官方 Ark 视频任务对象格式输出给下游。
+type ArkVideoConverter interface {
+	ConvertToArkVideo(originTask *model.Task) ([]byte, error)
+}

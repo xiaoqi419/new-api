@@ -24,6 +24,8 @@ import PricingQuotaTypes from '../filter/PricingQuotaTypes';
 import PricingEndpointTypes from '../filter/PricingEndpointTypes';
 import PricingVendors from '../filter/PricingVendors';
 import PricingTags from '../filter/PricingTags';
+import PricingModalities from '../filter/PricingModalities';
+import PricingContextLength from '../filter/PricingContextLength';
 
 import { resetPricingFilters } from '../../../../helpers/utils';
 import { usePricingFilterCounts } from '../../../../hooks/model-pricing/usePricingFilterCounts';
@@ -50,6 +52,12 @@ const PricingSidebar = ({
   setFilterVendor,
   filterTag,
   setFilterTag,
+  filterInputModality,
+  setFilterInputModality,
+  filterOutputModality,
+  setFilterOutputModality,
+  filterContextBucket,
+  setFilterContextBucket,
   currentPage,
   setCurrentPage,
   tokenUnit,
@@ -86,6 +94,9 @@ const PricingSidebar = ({
       setFilterEndpointType,
       setFilterVendor,
       setFilterTag,
+      setFilterInputModality,
+      setFilterOutputModality,
+      setFilterContextBucket,
       setCurrentPage,
       setTokenUnit,
     });
@@ -144,6 +155,35 @@ const PricingSidebar = ({
         filterEndpointType={filterEndpointType}
         setFilterEndpointType={setFilterEndpointType}
         models={endpointTypeModels}
+        allModels={categoryProps.models}
+        loading={loading}
+        t={t}
+      />
+
+      <PricingModalities
+        dimension='input'
+        activeValue={filterInputModality}
+        onChange={setFilterInputModality}
+        models={categoryProps.models}
+        allModels={categoryProps.models}
+        loading={loading}
+        t={t}
+      />
+
+      <PricingModalities
+        dimension='output'
+        activeValue={filterOutputModality}
+        onChange={setFilterOutputModality}
+        models={categoryProps.models}
+        allModels={categoryProps.models}
+        loading={loading}
+        t={t}
+      />
+
+      <PricingContextLength
+        activeValue={filterContextBucket}
+        onChange={setFilterContextBucket}
+        models={categoryProps.models}
         allModels={categoryProps.models}
         loading={loading}
         t={t}

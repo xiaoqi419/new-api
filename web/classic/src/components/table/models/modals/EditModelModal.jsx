@@ -33,7 +33,7 @@ import {
   Col,
   Row,
 } from '@douyinfe/semi-ui';
-import { Save, X, FileText } from 'lucide-react';
+import { Save, X, FileText, Layers } from 'lucide-react';
 import { IconAlertTriangle, IconLink } from '@douyinfe/semi-icons';
 import { API, showError, showSuccess } from '../../../../helpers';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +58,35 @@ const nameRuleOptions = [
   { label: '包含名称匹配', value: 2 },
   { label: '后缀名称匹配', value: 3 },
 ];
+
+const modalityOptions = ['text', 'image', 'audio', 'video', 'file'];
+
+const capabilityOptions = [
+  'function_calling',
+  'streaming',
+  'vision',
+  'json_mode',
+  'structured_output',
+  'reasoning',
+  'tools',
+  'system_prompt',
+  'web_search',
+  'code_interpreter',
+  'caching',
+  'embeddings',
+];
+
+const splitCsv = (s) =>
+  typeof s === 'string'
+    ? s
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : Array.isArray(s)
+      ? s
+      : [];
+
+const joinCsv = (v) => (Array.isArray(v) ? v.join(',') : v || '');
 
 const EditModelModal = (props) => {
   const { t } = useTranslation();
@@ -124,6 +153,14 @@ const EditModelModal = (props) => {
     name_rule: props.editingModel?.model_name ? 0 : undefined, // 通过未配置模型过来的固定为精确匹配
     status: true,
     sync_official: true,
+    context_length: undefined,
+    max_output_tokens: undefined,
+    knowledge_cutoff: '',
+    release_date: '',
+    parameter_count: '',
+    input_modalities: [],
+    output_modalities: [],
+    capabilities: [],
   });
 
   const handleCancel = () => {
@@ -151,6 +188,10 @@ const EditModelModal = (props) => {
         // 处理status/sync_official，将数字转为布尔值
         data.status = data.status === 1;
         data.sync_official = (data.sync_official ?? 1) === 1;
+        // 目录元数据：CSV 字符串转数组供多选展示
+        data.input_modalities = splitCsv(data.input_modalities);
+        data.output_modalities = splitCsv(data.output_modalities);
+        data.capabilities = splitCsv(data.capabilities);
         if (formApiRef.current) {
           formApiRef.current.setValues({ ...getInitValues(), ...data });
         }
@@ -198,6 +239,11 @@ const EditModelModal = (props) => {
         endpoints: values.endpoints || '',
         status: values.status ? 1 : 0,
         sync_official: values.sync_official ? 1 : 0,
+        context_length: Number(values.context_length) || 0,
+        max_output_tokens: Number(values.max_output_tokens) || 0,
+        input_modalities: joinCsv(values.input_modalities),
+        output_modalities: joinCsv(values.output_modalities),
+        capabilities: joinCsv(values.capabilities),
       };
 
       if (isEdit) {
@@ -539,6 +585,114 @@ const EditModelModal = (props) => {
                       field='status'
                       label={t('状态')}
                       size='large'
+                    />
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* 模型目录信息（仅用于模型广场展示） */}
+              <Card className='!rounded-2xl shadow-sm border-0 mt-2'>
+                <div className='flex items-center mb-2'>
+                  <Avatar size='small' color='blue' className='mr-2 shadow-md'>
+                    <Layers size={16} />
+                  </Avatar>
+                  <div>
+                    <Text className='text-lg font-medium'>
+                      {t('模型目录信息')}
+                    </Text>
+                    <div className='text-xs text-gray-600'>
+                      {t('用于模型广场展示的上下文、模态与能力等信息，留空则不展示')}
+                    </div>
+                  </div>
+                </div>
+                <Row gutter={12}>
+                  <Col span={12}>
+                    <Form.InputNumber
+                      field='context_length'
+                      label={t('上下文长度 (tokens)')}
+                      placeholder={t('如：1000000')}
+                      min={0}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.InputNumber
+                      field='max_output_tokens'
+                      label={t('最大输出 (tokens)')}
+                      placeholder={t('如：128000')}
+                      min={0}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='knowledge_cutoff'
+                      label={t('知识库截止')}
+                      placeholder={t('如：2025-01')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='release_date'
+                      label={t('发布日期')}
+                      placeholder={t('如：2025-03')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='parameter_count'
+                      label={t('参数规模')}
+                      placeholder={t('如：8B / MoE')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Select
+                      field='input_modalities'
+                      label={t('输入模态')}
+                      multiple
+                      filter
+                      allowCreate
+                      placeholder={t('选择输入模态')}
+                      optionList={modalityOptions.map((m) => ({
+                        label: m,
+                        value: m,
+                      }))}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Select
+                      field='output_modalities'
+                      label={t('输出模态')}
+                      multiple
+                      filter
+                      allowCreate
+                      placeholder={t('选择输出模态')}
+                      optionList={modalityOptions.map((m) => ({
+                        label: m,
+                        value: m,
+                      }))}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Select
+                      field='capabilities'
+                      label={t('能力')}
+                      multiple
+                      filter
+                      allowCreate
+                      placeholder={t('选择模型能力')}
+                      optionList={capabilityOptions.map((c) => ({
+                        label: c,
+                        value: c,
+                      }))}
+                      style={{ width: '100%' }}
                     />
                   </Col>
                 </Row>

@@ -95,10 +95,56 @@ func GetTopUpInfo(c *gin.Context) {
 		}
 	}
 
+	// 微信支付 / 支付宝官方商户直连
+	enableWechatPay := isWechatPayTopUpEnabled()
+	if enableWechatPay {
+		hasWechatPay := false
+		for _, method := range payMethods {
+			if method["type"] == model.PaymentMethodWechatPay {
+				hasWechatPay = true
+				break
+			}
+		}
+		if !hasWechatPay {
+			payMethods = append(payMethods, map[string]string{
+				"name":      "微信支付",
+				"type":      model.PaymentMethodWechatPay,
+				"color":     "rgba(var(--semi-green-5), 1)",
+				"min_topup": strconv.Itoa(setting.WechatPayMinTopUp),
+			})
+		}
+	}
+
+	enableAlipay := isAlipayTopUpEnabled()
+	if enableAlipay {
+		hasAlipay := false
+		for _, method := range payMethods {
+			if method["type"] == model.PaymentMethodAlipay {
+				hasAlipay = true
+				break
+			}
+		}
+		if !hasAlipay {
+			payMethods = append(payMethods, map[string]string{
+				"name":      "支付宝",
+				"type":      model.PaymentMethodAlipay,
+				"color":     "rgba(var(--semi-blue-5), 1)",
+				"min_topup": strconv.Itoa(setting.AlipayMinTopUp),
+			})
+		}
+	}
+
 	data := gin.H{
 		"enable_online_topup":              isEpayTopUpEnabled(),
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
 		"enable_creem_topup":               isCreemTopUpEnabled(),
+		"enable_wechatpay_topup":           enableWechatPay,
+		"enable_alipay_topup":              enableAlipay,
+		"wechatpay_native":                 enableWechatPay && setting.WechatPayNative,
+		"wechatpay_h5":                     enableWechatPay && setting.WechatPayH5,
+		"wechatpay_jsapi":                  enableWechatPay && setting.WechatPayJSAPI,
+		"wechatpay_min_topup":              setting.WechatPayMinTopUp,
+		"alipay_min_topup":                 setting.AlipayMinTopUp,
 		"enable_waffo_topup":               enableWaffo,
 		"enable_waffo_pancake_topup":       enableWaffoPancake,
 		"enable_redemption":                complianceConfirmed,
@@ -383,6 +429,14 @@ func EpayNotify(c *gin.Context) {
 			return
 		}
 		if topUp.Status == common.TopUpStatusPending {
+			if topUp.GroupBuyId != 0 {
+				if _, gerr := model.TrySettleGroupBuyOrder(verifyInfo.ServiceTradeNo, model.PaymentProviderEpay, c.ClientIP()); gerr != nil {
+					logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 拼团结算失败 trade_no=%s user_id=%d client_ip=%s error=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), gerr.Error()))
+				} else {
+					logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 拼团订单已结算 trade_no=%s user_id=%d", topUp.TradeNo, topUp.UserId))
+				}
+				return
+			}
 			if topUp.PaymentMethod != verifyInfo.Type {
 				logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 实际支付方式与订单不同 trade_no=%s order_payment_method=%s actual_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentMethod, verifyInfo.Type, c.ClientIP()))
 				topUp.PaymentMethod = verifyInfo.Type
@@ -405,6 +459,7 @@ func EpayNotify(c *gin.Context) {
 			}
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d money=%.2f topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, topUp.Money, common.GetJsonString(topUp)))
 			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "epay")
+			model.CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		}
 	} else {
 		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 忽略事件 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))

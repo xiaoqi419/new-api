@@ -18,17 +18,16 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Button, Input, Modal, Image } from '@douyinfe/semi-ui';
-import { IconKey } from '@douyinfe/semi-icons';
+import { Button, Modal, Image, Typography } from '@douyinfe/semi-ui';
 import { SiWechat } from 'react-icons/si';
 
 const WeChatBindModal = ({
   t,
   showWeChatBindModal,
   setShowWeChatBindModal,
-  inputs,
-  handleInputChange,
-  bindWeChat,
+  wechatBindCode,
+  wechatBindLoading,
+  refreshWeChatBindCode,
   status,
 }) => {
   return (
@@ -47,30 +46,38 @@ const WeChatBindModal = ({
       className='modern-modal'
     >
       <div className='space-y-4 py-4 text-center'>
-        <Image src={status.wechat_qrcode} className='mx-auto' />
+        {status.wechat_qrcode && (
+          <Image
+            src={status.wechat_qrcode}
+            className='mx-auto'
+            style={{ maxWidth: 200 }}
+          />
+        )}
         <div className='text-gray-600'>
           <p>
-            {t('微信扫码关注公众号，输入「验证码」获取验证码（三分钟内有效）')}
+            {t(
+              '请使用微信扫码关注公众号，将下方验证码发送给公众号，完成后将自动绑定（3 分钟内有效）',
+            )}
           </p>
         </div>
-        <Input
-          placeholder={t('验证码')}
-          name='wechat_verification_code'
-          value={inputs.wechat_verification_code}
-          onChange={(v) => handleInputChange('wechat_verification_code', v)}
-          size='large'
-          className='!rounded-lg'
-          prefix={<IconKey />}
-        />
+        <div>
+          {wechatBindCode ? (
+            <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: 6 }}>
+              {wechatBindCode}
+            </div>
+          ) : (
+            <Typography.Text type='tertiary'>
+              {t('正在获取验证码...')}
+            </Typography.Text>
+          )}
+        </div>
         <Button
-          type='primary'
-          theme='solid'
-          size='large'
-          onClick={bindWeChat}
-          className='!rounded-lg w-full !bg-slate-600 hover:!bg-slate-700'
+          theme='borderless'
+          loading={wechatBindLoading}
+          onClick={refreshWeChatBindCode}
           icon={<SiWechat size={16} />}
         >
-          {t('绑定')}
+          {t('刷新验证码')}
         </Button>
       </div>
     </Modal>

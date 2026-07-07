@@ -114,13 +114,6 @@ const TaskLogsFilters = ({
             >
               {t('重置')}
             </Button>
-            <Button
-              type='tertiary'
-              onClick={() => setShowColumnSelector(true)}
-              size='small'
-            >
-              {t('列设置')}
-            </Button>
           </div>
         </div>
       </div>

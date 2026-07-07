@@ -119,7 +119,11 @@ const TwoFAVerification = ({ onSuccess, onBack, isModal = false }) => {
               setUseBackupCode(!useBackupCode);
               setVerificationCode('');
             }}
-            style={{ marginRight: 16, color: '#1890ff', padding: 0 }}
+            style={{
+              marginRight: 16,
+              color: 'var(--semi-color-primary)',
+              padding: 0,
+            }}
           >
             {useBackupCode ? '使用认证器验证码' : '使用备用码'}
           </Button>
@@ -129,7 +133,7 @@ const TwoFAVerification = ({ onSuccess, onBack, isModal = false }) => {
               theme='borderless'
               type='tertiary'
               onClick={onBack}
-              style={{ color: '#1890ff', padding: 0 }}
+              style={{ color: 'var(--semi-color-primary)', padding: 0 }}
             >
               返回登录
             </Button>
@@ -202,7 +206,11 @@ const TwoFAVerification = ({ onSuccess, onBack, isModal = false }) => {
               setUseBackupCode(!useBackupCode);
               setVerificationCode('');
             }}
-            style={{ marginRight: 16, color: '#1890ff', padding: 0 }}
+            style={{
+              marginRight: 16,
+              color: 'var(--semi-color-primary)',
+              padding: 0,
+            }}
           >
             {useBackupCode ? '使用认证器验证码' : '使用备用码'}
           </Button>
@@ -212,7 +220,7 @@ const TwoFAVerification = ({ onSuccess, onBack, isModal = false }) => {
               theme='borderless'
               type='tertiary'
               onClick={onBack}
-              style={{ color: '#1890ff', padding: 0 }}
+              style={{ color: 'var(--semi-color-primary)', padding: 0 }}
             >
               返回登录
             </Button>

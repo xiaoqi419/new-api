@@ -36,6 +36,35 @@ type Pricing struct {
 	BillingMode            string                  `json:"billing_mode,omitempty"`
 	BillingExpr            string                  `json:"billing_expr,omitempty"`
 	PricingVersion         string                  `json:"pricing_version,omitempty"`
+
+	// 模型目录展示元数据（来自 models 表，仅用于模型广场展示）
+	ContextLength    int      `json:"context_length,omitempty"`
+	MaxOutputTokens  int      `json:"max_output_tokens,omitempty"`
+	KnowledgeCutoff  string   `json:"knowledge_cutoff,omitempty"`
+	ReleaseDate      string   `json:"release_date,omitempty"`
+	ParameterCount   string   `json:"parameter_count,omitempty"`
+	InputModalities  []string `json:"input_modalities,omitempty"`
+	OutputModalities []string `json:"output_modalities,omitempty"`
+	Capabilities     []string `json:"capabilities,omitempty"`
+}
+
+// splitMetaCSV 将逗号分隔的目录元数据字符串拆分为去空白、去空项的切片。
+func splitMetaCSV(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 type PricingVendor struct {
@@ -303,6 +332,14 @@ func updatePricing() {
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.VendorID = meta.VendorID
+			pricing.ContextLength = meta.ContextLength
+			pricing.MaxOutputTokens = meta.MaxOutputTokens
+			pricing.KnowledgeCutoff = meta.KnowledgeCutoff
+			pricing.ReleaseDate = meta.ReleaseDate
+			pricing.ParameterCount = meta.ParameterCount
+			pricing.InputModalities = splitMetaCSV(meta.InputModalities)
+			pricing.OutputModalities = splitMetaCSV(meta.OutputModalities)
+			pricing.Capabilities = splitMetaCSV(meta.Capabilities)
 		}
 		modelPrice, findPrice := ratio_setting.GetModelPrice(model, false)
 		if findPrice {

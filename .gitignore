@@ -36,3 +36,6 @@ data/
 token_estimator_test.go
 skills-lock.json
 .playwright-mcp
+
+# Read-only upstream reference copy, must never be committed
+new-api2/

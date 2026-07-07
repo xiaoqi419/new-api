@@ -48,6 +48,14 @@ func SetApiRouter(router *gin.Engine) {
 		// Non-standard OAuth (WeChat, Telegram) - keep original routes
 		apiRouter.GET("/oauth/wechat", middleware.CriticalRateLimit(), controller.WeChatAuth)
 		apiRouter.POST("/oauth/wechat/bind", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.WeChatBind)
+		// 内置微信公众号验证码登录回调（无需外部 wechat-server）
+		// /api/wechat/callback 与 /api/wechat/mp 为同一处理，任填其一到公众号后台「服务器配置」
+		apiRouter.GET("/wechat/callback", controller.WeChatMpVerify)
+		apiRouter.POST("/wechat/callback", anonymousRequestBodyLimit, controller.WeChatMpMessage)
+		apiRouter.GET("/wechat/mp", controller.WeChatMpVerify)
+		apiRouter.POST("/wechat/mp", anonymousRequestBodyLimit, controller.WeChatMpMessage)
+		apiRouter.GET("/wechat/mp/login/code", middleware.CriticalRateLimit(), controller.WeChatMpLoginCode)
+		apiRouter.GET("/wechat/mp/login/check", controller.WeChatMpLoginCheck)
 		apiRouter.GET("/oauth/telegram/login", middleware.CriticalRateLimit(), controller.TelegramLogin)
 		apiRouter.GET("/oauth/telegram/bind", middleware.CriticalRateLimit(), controller.TelegramBind)
 		// Standard OAuth providers (GitHub, Discord, OIDC, LinuxDO) - unified route
@@ -64,6 +72,15 @@ func SetApiRouter(router *gin.Engine) {
 		// Universal secure verification routes
 		apiRouter.POST("/verify", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.UniversalVerify)
 
+		// 火山私域素材库（虚拟人像 AIGC）：控制台/接口共用，按用户本地归属隔离
+		arkAssetRoute := apiRouter.Group("/ark_asset")
+		arkAssetRoute.Use(middleware.TokenOrUserAuth())
+		{
+			arkAssetRoute.GET("", controller.ArkAssetLibraryList)
+			arkAssetRoute.POST("", controller.ArkAssetLibraryCreate)
+			arkAssetRoute.DELETE("/:asset_id", controller.ArkAssetLibraryDelete)
+		}
+
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), controller.Register)
@@ -75,6 +92,11 @@ func SetApiRouter(router *gin.Engine) {
 			userRoute.GET("/logout", controller.Logout)
 			userRoute.POST("/epay/notify", anonymousRequestBodyLimit, controller.EpayNotify)
 			userRoute.GET("/epay/notify", controller.EpayNotify)
+			// 微信支付 / 支付宝官方商户直连回调（公开放行，处理器内验签）
+			userRoute.POST("/wechatpay/notify", anonymousRequestBodyLimit, controller.WechatPayNotify)
+			userRoute.GET("/wechatpay/jsapi/callback", controller.WechatJSAPICallback)
+			userRoute.POST("/alipay/notify", anonymousRequestBodyLimit, controller.AlipayNotify)
+			userRoute.GET("/alipay/notify", controller.AlipayNotify)
 			userRoute.GET("/groups", controller.GetUserGroups)
 
 			selfRoute := userRoute.Group("/")
@@ -93,11 +115,18 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/passkey/verify/finish", controller.PasskeyVerifyFinish)
 				selfRoute.DELETE("/passkey", controller.PasskeyDelete)
 				selfRoute.GET("/aff", controller.GetAffCode)
+				selfRoute.GET("/self/rebate", controller.GetSelfRebate)
+				selfRoute.GET("/wechat/mp/bind/code", controller.WeChatMpBindCode)
+				selfRoute.GET("/wechat/mp/bind/check", controller.WeChatMpBindCheck)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				selfRoute.POST("/amount", controller.RequestAmount)
+				selfRoute.POST("/wechatpay/pay", middleware.CriticalRateLimit(), controller.RequestWechatPay)
+				selfRoute.POST("/wechatpay/jsapi/prepare", middleware.CriticalRateLimit(), controller.PrepareWechatJSAPI)
+				selfRoute.POST("/alipay/pay", middleware.CriticalRateLimit(), controller.RequestAlipay)
+				selfRoute.GET("/topup/status", controller.GetTopUpStatus)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
 				selfRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.RequestCreemPay)
@@ -107,6 +136,13 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
+
+				// 拼团充值
+				selfRoute.GET("/groupbuy/info", controller.GetGroupBuyInfo)
+				selfRoute.GET("/groupbuy/self", controller.GetSelfGroupBuys)
+				selfRoute.GET("/groupbuy/detail", controller.GetGroupBuyDetail)
+				selfRoute.POST("/groupbuy/create", middleware.CriticalRateLimit(), controller.CreateGroupBuy)
+				selfRoute.POST("/groupbuy/join", middleware.CriticalRateLimit(), controller.JoinGroupBuy)
 
 				// 2FA routes
 				selfRoute.GET("/2fa/status", controller.Get2FAStatus)
@@ -128,6 +164,7 @@ func SetApiRouter(router *gin.Engine) {
 			adminRoute.Use(middleware.AdminAuth())
 			{
 				adminRoute.GET("/", controller.GetAllUsers)
+				adminRoute.GET("/ips", controller.GetUserIps)
 				adminRoute.GET("/topup", controller.GetAllTopUps)
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.GET("/search", controller.SearchUsers)
@@ -291,6 +328,37 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		rebateRoute := apiRouter.Group("/rebate")
+		rebateRoute.Use(middleware.AdminAuth())
+		{
+			rebateRoute.GET("/", controller.GetRebateRecords)
+			rebateRoute.POST("/pay", controller.PayRebate)
+			rebateRoute.POST("/cancel", controller.CancelRebate)
+			rebateRoute.GET("/users", controller.GetRebateUsers)
+			rebateRoute.GET("/ranking", controller.GetInviteRanking)
+			rebateRoute.PUT("/user_ratio", controller.SetUserRebateRatio)
+		}
+
+		userRankingRoute := apiRouter.Group("/user_ranking")
+		userRankingRoute.Use(middleware.AdminAuth())
+		{
+			userRankingRoute.GET("/", controller.GetUserRanking)
+		}
+
+		groupBuyAdminRoute := apiRouter.Group("/group_buy")
+		groupBuyAdminRoute.Use(middleware.AdminAuth())
+		{
+			groupBuyAdminRoute.GET("/packages", controller.AdminListGroupBuyPackages)
+			groupBuyAdminRoute.POST("/packages", controller.AdminCreateGroupBuyPackage)
+			groupBuyAdminRoute.PUT("/packages", controller.AdminUpdateGroupBuyPackage)
+			groupBuyAdminRoute.DELETE("/packages/:id", controller.AdminDeleteGroupBuyPackage)
+			groupBuyAdminRoute.GET("/orders", controller.AdminListGroupBuys)
+			groupBuyAdminRoute.GET("/orders/:id", controller.AdminGetGroupBuy)
+			groupBuyAdminRoute.POST("/orders/:id/cancel", controller.AdminCancelGroupBuy)
+			groupBuyAdminRoute.GET("/refunds", controller.AdminListGroupBuyRefundPending)
+			groupBuyAdminRoute.POST("/refunds/:id/done", controller.AdminMarkGroupBuyRefunded)
+		}
+
 		redemptionRoute := apiRouter.Group("/redemption")
 		redemptionRoute.Use(middleware.AdminAuth())
 		{
@@ -343,6 +411,14 @@ func SetApiRouter(router *gin.Engine) {
 		groupRoute.Use(middleware.AdminAuth())
 		{
 			groupRoute.GET("/", controller.GetGroups)
+		}
+
+		// 渠道监控（按用户分组聚合健康度），普通用户亦可查看
+		groupMonitorRoute := apiRouter.Group("/group/monitor")
+		groupMonitorRoute.Use(middleware.UserAuth())
+		{
+			groupMonitorRoute.GET("", controller.GetGroupMonitor)
+			groupMonitorRoute.GET("/detail", controller.GetGroupMonitorDetail)
 		}
 
 		prefillGroupRoute := apiRouter.Group("/prefill_group")

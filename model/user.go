@@ -46,6 +46,7 @@ type User struct {
 	AffQuota         int            `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int            `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
 	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	RebateRatio      *float64       `json:"rebate_ratio" gorm:"column:rebate_ratio"` // 该用户作为邀请人的专属返现比例；为空时使用全局默认
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
@@ -53,17 +54,19 @@ type User struct {
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	CreatedAt        int64          `json:"created_at" gorm:"autoCreateTime;column:created_at"`
 	LastLoginAt      int64          `json:"last_login_at" gorm:"default:0;column:last_login_at"`
+	MaxConcurrency   int            `json:"max_concurrency" gorm:"type:int;default:0;column:max_concurrency"` // 用户级最大并发，0=不限
 }
 
 func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
-		Id:       user.Id,
-		Group:    user.Group,
-		Quota:    user.Quota,
-		Status:   user.Status,
-		Username: user.Username,
-		Setting:  user.Setting,
-		Email:    user.Email,
+		Id:             user.Id,
+		Group:          user.Group,
+		Quota:          user.Quota,
+		Status:         user.Status,
+		Username:       user.Username,
+		Setting:        user.Setting,
+		Email:          user.Email,
+		MaxConcurrency: user.MaxConcurrency,
 	}
 	return cache
 }
@@ -528,10 +531,11 @@ func (user *User) Edit(updatePassword bool) error {
 
 	newUser := *user
 	updates := map[string]interface{}{
-		"username":     newUser.Username,
-		"display_name": newUser.DisplayName,
-		"group":        newUser.Group,
-		"remark":       newUser.Remark,
+		"username":        newUser.Username,
+		"display_name":    newUser.DisplayName,
+		"group":           newUser.Group,
+		"remark":          newUser.Remark,
+		"max_concurrency": newUser.MaxConcurrency,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password

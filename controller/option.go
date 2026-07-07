@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/QuantumNous/new-api/setting/ui_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -191,7 +192,7 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	case "WeChatAuthEnabled":
-		if option.Value == "true" && common.WeChatServerAddress == "" {
+		if option.Value == "true" && common.WeChatServerAddress == "" && common.WeChatMpToken == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "无法启用微信登录，请先填入微信登录相关配置信息！",
@@ -331,6 +332,26 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ui_setting.appearance":
+		normalized, validateErr := ui_setting.ValidateAppearanceJSONString(option.Value.(string))
+		if validateErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": validateErr.Error(),
+			})
+			return
+		}
+		option.Value = normalized
+	case "ui_setting.apimart_home":
+		normalized, validateErr := ui_setting.ValidateApimartHomeJSONString(option.Value.(string))
+		if validateErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": validateErr.Error(),
+			})
+			return
+		}
+		option.Value = normalized
 	}
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {

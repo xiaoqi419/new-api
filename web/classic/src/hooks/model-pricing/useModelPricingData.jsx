@@ -23,6 +23,10 @@ import { API, copy, showError, showInfo, showSuccess } from '../../helpers';
 import { Modal } from '@douyinfe/semi-ui';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
+import {
+  matchContextBucket,
+  modelHasModality,
+} from '../../components/table/model-pricing/filter/catalogFilters';
 
 export const useModelPricingData = () => {
   const { t } = useTranslation();
@@ -39,6 +43,9 @@ export const useModelPricingData = () => {
   const [filterEndpointType, setFilterEndpointType] = useState('all'); // 端点类型筛选: 'all' | string
   const [filterVendor, setFilterVendor] = useState('all'); // 供应商筛选: 'all' | 'unknown' | string
   const [filterTag, setFilterTag] = useState('all'); // 模型标签筛选: 'all' | string
+  const [filterInputModality, setFilterInputModality] = useState('all'); // 输入模态筛选
+  const [filterOutputModality, setFilterOutputModality] = useState('all'); // 输出模态筛选
+  const [filterContextBucket, setFilterContextBucket] = useState('all'); // 上下文长度区间筛选
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [currency, setCurrency] = useState('USD');
@@ -51,6 +58,7 @@ export const useModelPricingData = () => {
   const [usableGroup, setUsableGroup] = useState({});
   const [endpointMap, setEndpointMap] = useState({});
   const [autoGroups, setAutoGroups] = useState([]);
+  const [perfMap, setPerfMap] = useState({});
 
   const [statusState] = useContext(StatusContext);
   const [userState] = useContext(UserContext);
@@ -142,6 +150,27 @@ export const useModelPricingData = () => {
       });
     }
 
+    // 输入模态筛选
+    if (filterInputModality !== 'all') {
+      result = result.filter((model) =>
+        modelHasModality(model, 'input', filterInputModality),
+      );
+    }
+
+    // 输出模态筛选
+    if (filterOutputModality !== 'all') {
+      result = result.filter((model) =>
+        modelHasModality(model, 'output', filterOutputModality),
+      );
+    }
+
+    // 上下文长度区间筛选
+    if (filterContextBucket !== 'all') {
+      result = result.filter((model) =>
+        matchContextBucket(model.context_length, filterContextBucket),
+      );
+    }
+
     // 搜索筛选
     if (searchValue.length > 0) {
       const searchTerm = searchValue.toLowerCase();
@@ -166,6 +195,9 @@ export const useModelPricingData = () => {
     filterEndpointType,
     filterVendor,
     filterTag,
+    filterInputModality,
+    filterOutputModality,
+    filterContextBucket,
   ]);
 
   const rowSelection = useMemo(
@@ -260,8 +292,28 @@ export const useModelPricingData = () => {
     setLoading(false);
   };
 
+  // 拉取各模型真实性能摘要（/api/perf-metrics/summary）。无监控数据时静默忽略。
+  const loadPerfSummary = async () => {
+    try {
+      const res = await API.get('/api/perf-metrics/summary', {
+        params: { hours: 24 },
+      });
+      if (res.data?.success) {
+        const map = {};
+        const list = res.data.data?.models || [];
+        list.forEach((m) => {
+          if (m?.model_name) map[m.model_name] = m;
+        });
+        setPerfMap(map);
+      }
+    } catch (e) {
+      // 性能监控未启用或不可用时忽略
+    }
+  };
+
   const refresh = async () => {
     await loadPricing();
+    loadPerfSummary();
   };
 
   const copyText = async (text) => {
@@ -328,6 +380,9 @@ export const useModelPricingData = () => {
     filterEndpointType,
     filterVendor,
     filterTag,
+    filterInputModality,
+    filterOutputModality,
+    filterContextBucket,
     searchValue,
   ]);
 
@@ -357,6 +412,12 @@ export const useModelPricingData = () => {
     setFilterVendor,
     filterTag,
     setFilterTag,
+    filterInputModality,
+    setFilterInputModality,
+    filterOutputModality,
+    setFilterOutputModality,
+    filterContextBucket,
+    setFilterContextBucket,
     pageSize,
     setPageSize,
     currentPage,
@@ -374,6 +435,7 @@ export const useModelPricingData = () => {
     usableGroup,
     endpointMap,
     autoGroups,
+    perfMap,
 
     // 计算属性
     priceRate,

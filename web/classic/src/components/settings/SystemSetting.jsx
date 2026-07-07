@@ -43,6 +43,7 @@ import {
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import CustomOAuthSetting from './CustomOAuthSetting';
+import WeChatMpSetting from './WeChatMpSetting';
 
 const SystemSetting = () => {
   const { t } = useTranslation();
@@ -1630,6 +1631,8 @@ const SystemSetting = () => {
                   </Button>
                 </Form.Section>
               </Card>
+
+              <WeChatMpSetting />
 
               <Card>
                 <Form.Section text={t('配置 Telegram 登录')}>

@@ -24,6 +24,8 @@ import SettingsPaymentGateway from '../../pages/Setting/Payment/SettingsPaymentG
 import SettingsPaymentGatewayStripe from '../../pages/Setting/Payment/SettingsPaymentGatewayStripe';
 import SettingsPaymentGatewayCreem from '../../pages/Setting/Payment/SettingsPaymentGatewayCreem';
 import SettingsPaymentGatewayWaffo from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffo';
+import SettingsPaymentGatewayWechatPay from '../../pages/Setting/Payment/SettingsPaymentGatewayWechatPay';
+import SettingsPaymentGatewayAlipay from '../../pages/Setting/Payment/SettingsPaymentGatewayAlipay';
 import { API, showError, showSuccess, toBoolean } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 import RiskAcknowledgementModal from '../common/modals/RiskAcknowledgementModal';
@@ -51,6 +53,27 @@ const PaymentSetting = () => {
     StripeUnitPrice: 8.0,
     StripeMinTopUp: 1,
     StripePromotionCodesEnabled: false,
+
+    WechatPayEnabled: false,
+    WechatPayAppId: '',
+    WechatPayAppSecret: '',
+    WechatPayMchId: '',
+    WechatPayApiV3Key: '',
+    WechatPayCert: '',
+    WechatPayCertSerialNo: '',
+    WechatPayPrivateKey: '',
+    WechatPayNotifyUrl: '',
+    WechatPayNative: true,
+    WechatPayH5: false,
+    WechatPayJSAPI: false,
+    WechatPayMinTopUp: 1,
+
+    AlipayEnabled: false,
+    AlipayAppId: '',
+    AlipayPrivateKey: '',
+    AlipayPublicKey: '',
+    AlipayProduction: true,
+    AlipayMinTopUp: 1,
 
     'payment_setting.compliance_confirmed': false,
     'payment_setting.compliance_terms_version': '',
@@ -161,6 +184,12 @@ const PaymentSetting = () => {
           case 'StripeUnitPrice':
           case 'StripeMinTopUp':
             newInputs[item.key] = parseFloat(item.value);
+            break;
+          case 'AlipayProduction':
+          case 'WechatPayNative':
+          case 'WechatPayH5':
+          case 'WechatPayJSAPI':
+            newInputs[item.key] = toBoolean(item.value);
             break;
           default:
             if (item.key.endsWith('Enabled')) {
@@ -277,6 +306,20 @@ const PaymentSetting = () => {
               </Tabs.TabPane>
               <Tabs.TabPane tab={t('易支付设置')} itemKey='epay'>
                 <SettingsPaymentGateway
+                  options={inputs}
+                  refresh={onRefresh}
+                  hideSectionTitle
+                />
+              </Tabs.TabPane>
+              <Tabs.TabPane tab={t('微信支付设置')} itemKey='wechatpay'>
+                <SettingsPaymentGatewayWechatPay
+                  options={inputs}
+                  refresh={onRefresh}
+                  hideSectionTitle
+                />
+              </Tabs.TabPane>
+              <Tabs.TabPane tab={t('支付宝设置')} itemKey='alipay'>
+                <SettingsPaymentGatewayAlipay
                   options={inputs}
                   refresh={onRefresh}
                   hideSectionTitle

@@ -1080,6 +1080,9 @@ export const resetPricingFilters = ({
   setFilterEndpointType,
   setFilterVendor,
   setFilterTag,
+  setFilterInputModality,
+  setFilterOutputModality,
+  setFilterContextBucket,
   setCurrentPage,
   setTokenUnit,
 }) => {
@@ -1094,5 +1097,8 @@ export const resetPricingFilters = ({
   setFilterEndpointType?.(DEFAULT_PRICING_FILTERS.filterEndpointType);
   setFilterVendor?.(DEFAULT_PRICING_FILTERS.filterVendor);
   setFilterTag?.(DEFAULT_PRICING_FILTERS.filterTag);
+  setFilterInputModality?.('all');
+  setFilterOutputModality?.('all');
+  setFilterContextBucket?.('all');
   setCurrentPage?.(DEFAULT_PRICING_FILTERS.currentPage);
 };

@@ -59,6 +59,9 @@ type requestPayload struct {
 	Seed        *dto.IntValue  `json:"seed,omitempty"`
 	CameraFixed *dto.BoolValue `json:"camera_fixed,omitempty"`
 	Watermark   *dto.BoolValue `json:"watermark,omitempty"`
+	// 官方可选字段：指针类型区分"未传"与"显式空/零值"，priority:0 也会被保留发送。
+	SafetyIdentifier *dto.StringValue `json:"safety_identifier,omitempty"`
+	Priority         *dto.IntValue    `json:"priority,omitempty"`
 }
 
 type responsePayload struct {
@@ -132,47 +135,19 @@ func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *r
 	return nil
 }
 
-// EstimateBilling 检测请求 metadata 中是否包含视频输入，返回视频折扣 OtherRatio。
+// EstimateBilling 依据输出分辨率与是否含视频输入，返回相对基础档的计费 OtherRatio。
+// 该倍率会写入 BillingContext.OtherRatios，预扣费与最终 token 结算都会自动乘上它。
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInfo) map[string]float64 {
 	req, err := relaycommon.GetTaskRequest(c)
 	if err != nil {
 		return nil
 	}
-	if hasVideoInMetadata(req.Metadata) {
-		if ratio, ok := GetVideoInputRatio(info.OriginModelName); ok {
-			return map[string]float64{"video_input": ratio}
-		}
+	resolution := resolutionFromMetadata(req.Metadata)
+	hasVideo := hasVideoInput(req.Metadata)
+	if ratio, ok := GetVideoBillingRatio(info.OriginModelName, resolution, hasVideo); ok && ratio != 1.0 {
+		return map[string]float64{"seedance_price": ratio}
 	}
 	return nil
-}
-
-// hasVideoInMetadata 直接检查 metadata 的 content 数组是否包含 video_url 条目，
-// 避免构建完整的上游 requestPayload。
-func hasVideoInMetadata(metadata map[string]interface{}) bool {
-	if metadata == nil {
-		return false
-	}
-	contentRaw, ok := metadata["content"]
-	if !ok {
-		return false
-	}
-	contentSlice, ok := contentRaw.([]interface{})
-	if !ok {
-		return false
-	}
-	for _, item := range contentSlice {
-		itemMap, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if itemMap["type"] == "video_url" {
-			return true
-		}
-		if _, has := itemMap["video_url"]; has {
-			return true
-		}
-	}
-	return false
 }
 
 // BuildRequestBody converts request into Doubao specific format.
@@ -222,6 +197,12 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 	if dResp.ID == "" {
 		taskErr = service.TaskErrorWrapper(fmt.Errorf("task_id is empty"), "invalid_response", http.StatusInternalServerError)
 		return
+	}
+
+	// 火山官方 Ark 格式：创建任务仅返回 {"id": <task_id>}
+	if c.GetString("relay_response_format") == "ark" {
+		c.JSON(http.StatusOK, gin.H{"id": info.PublicTaskID})
+		return dResp.ID, responseBody, nil
 	}
 
 	ov := dto.NewOpenAIVideo()
@@ -365,4 +346,37 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, erro
 	}
 
 	return common.Marshal(openAIVideo)
+}
+
+// ConvertToArkVideo 以火山官方 Ark 任务对象格式输出。originTask.Data 存的就是上游原生 task 对象，
+// 这里原样透传，仅把 id 换成本平台的公开 task_id，并在缺失时补 status/model。
+func (a *TaskAdaptor) ConvertToArkVideo(originTask *model.Task) ([]byte, error) {
+	out := map[string]any{}
+	if len(originTask.Data) > 0 {
+		if err := common.Unmarshal(originTask.Data, &out); err != nil {
+			return nil, errors.Wrap(err, "unmarshal doubao task data failed")
+		}
+	}
+	out["id"] = originTask.TaskID
+	if s, ok := out["status"].(string); !ok || s == "" {
+		out["status"] = arkVideoStatus(originTask.Status)
+	}
+	if m, ok := out["model"].(string); !ok || m == "" {
+		out["model"] = originTask.Properties.OriginModelName
+	}
+	return common.Marshal(out)
+}
+
+// arkVideoStatus 把内部任务状态映射为火山官方 Ark 状态字符串。
+func arkVideoStatus(s model.TaskStatus) string {
+	switch s {
+	case model.TaskStatusSuccess:
+		return "succeeded"
+	case model.TaskStatusFailure:
+		return "failed"
+	case model.TaskStatusInProgress:
+		return "running"
+	default:
+		return "queued"
+	}
 }

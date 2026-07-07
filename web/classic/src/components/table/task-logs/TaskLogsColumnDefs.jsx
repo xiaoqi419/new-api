@@ -64,7 +64,7 @@ const colors = [
 ];
 
 // Render functions
-const renderTimestamp = (timestampInSeconds) => {
+export const renderTimestamp = (timestampInSeconds) => {
   const date = new Date(timestampInSeconds * 1000); // 从秒转换为毫秒
 
   const year = date.getFullYear(); // 获取年份
@@ -77,7 +77,7 @@ const renderTimestamp = (timestampInSeconds) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`; // 格式化输出
 };
 
-function renderDuration(submit_time, finishTime) {
+export function renderDuration(submit_time, finishTime) {
   if (!submit_time || !finishTime) return 'N/A';
   const durationSec = finishTime - submit_time;
   const color = durationSec > 60 ? 'red' : 'green';
@@ -90,7 +90,7 @@ function renderDuration(submit_time, finishTime) {
   );
 }
 
-const renderType = (type, t) => {
+export const renderType = (type, t) => {
   switch (type) {
     case 'MUSIC':
       return (
@@ -143,7 +143,7 @@ const renderType = (type, t) => {
   }
 };
 
-const renderPlatform = (platform, t) => {
+export const renderPlatform = (platform, t) => {
   let option = CHANNEL_OPTIONS.find(
     (opt) => String(opt.value) === String(platform),
   );
@@ -170,7 +170,7 @@ const renderPlatform = (platform, t) => {
   }
 };
 
-const renderStatus = (type, t) => {
+export const renderStatus = (type, t) => {
   switch (type) {
     case 'SUCCESS':
       return (

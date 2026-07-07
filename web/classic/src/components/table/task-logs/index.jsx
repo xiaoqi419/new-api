@@ -20,10 +20,9 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import { Layout } from '@douyinfe/semi-ui';
 import CardPro from '../../common/ui/CardPro';
-import TaskLogsTable from './TaskLogsTable';
+import TaskLogsCards from './TaskLogsCards';
 import TaskLogsActions from './TaskLogsActions';
 import TaskLogsFilters from './TaskLogsFilters';
-import ColumnSelectorModal from './modals/ColumnSelectorModal';
 import ContentModal from './modals/ContentModal';
 import AudioPreviewModal from './modals/AudioPreviewModal';
 import { useTaskLogsData } from '../../../hooks/task-logs/useTaskLogsData';
@@ -37,7 +36,6 @@ const TaskLogsPage = () => {
   return (
     <>
       {/* Modals */}
-      <ColumnSelectorModal {...taskLogsData} />
       <ContentModal {...taskLogsData} isVideo={false} />
       {/* 新增：视频预览弹窗 */}
       <ContentModal
@@ -68,7 +66,7 @@ const TaskLogsPage = () => {
           })}
           t={taskLogsData.t}
         >
-          <TaskLogsTable {...taskLogsData} />
+          <TaskLogsCards {...taskLogsData} />
         </CardPro>
       </Layout>
     </>

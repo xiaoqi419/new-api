@@ -216,6 +216,7 @@ const renderOperations = (
     showResetPasskeyModal,
     showResetTwoFAModal,
     showUserSubscriptionsModal,
+    showUserIpsModal,
     t,
   },
 ) => {
@@ -224,6 +225,11 @@ const renderOperations = (
   }
 
   const moreMenu = [
+    {
+      node: 'item',
+      name: t('查看 IP'),
+      onClick: () => showUserIpsModal(record),
+    },
     {
       node: 'item',
       name: t('订阅管理'),
@@ -316,6 +322,7 @@ export const getUsersColumns = ({
   showResetPasskeyModal,
   showResetTwoFAModal,
   showUserSubscriptionsModal,
+  showUserIpsModal,
 }) => {
   return [
     {
@@ -383,6 +390,7 @@ export const getUsersColumns = ({
           showResetPasskeyModal,
           showResetTwoFAModal,
           showUserSubscriptionsModal,
+          showUserIpsModal,
           t,
         }),
     },

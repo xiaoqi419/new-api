@@ -384,6 +384,24 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 		return
 	}
 
+	// 火山官方 Ark 视频格式: 走各 adaptor 的 ConvertToArkVideo
+	if c.GetString("relay_response_format") == "ark" {
+		adaptor := GetTaskAdaptor(originTask.Platform)
+		if adaptor == nil {
+			taskResp = service.TaskErrorWrapperLocal(fmt.Errorf("invalid channel id: %d", originTask.ChannelId), "invalid_channel_id", http.StatusBadRequest)
+			return
+		}
+		if converter, ok := adaptor.(channel.ArkVideoConverter); ok {
+			arkData, err := converter.ConvertToArkVideo(originTask)
+			if err != nil {
+				taskResp = service.TaskErrorWrapper(err, "convert_to_ark_video_failed", http.StatusInternalServerError)
+				return
+			}
+			respBody = arkData
+			return
+		}
+	}
+
 	// OpenAI Video API 格式: 走各 adaptor 的 ConvertToOpenAIVideo
 	if isOpenAIVideoAPI {
 		adaptor := GetTaskAdaptor(originTask.Platform)

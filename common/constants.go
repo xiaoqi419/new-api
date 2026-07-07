@@ -68,7 +68,7 @@ var TaskEnabled = true
 var DataExportEnabled = true
 var DataExportInterval = 5         // unit: minute
 var DataExportDefaultTime = "hour" // unit: minute
-var DefaultCollapseSidebar = false // default value of collapse sidebar
+var DefaultCollapseSidebar = true  // default value of collapse sidebar
 
 // Any options with "Secret", "Token" in its key won't be return by GetOptions
 
@@ -137,6 +137,13 @@ var WeChatServerAddress = ""
 var WeChatServerToken = ""
 var WeChatAccountQRCodeImageURL = ""
 
+// WeChatMpToken 为内置公众号消息回调的校验 Token，与微信公众平台后台配置一致。
+// 配置后可不依赖外部 wechat-server，由 new-api 自身托管验证码登录回调。
+var WeChatMpToken = ""
+var WeChatMpName = ""      // 公众号名称（展示用）
+var WeChatMpAppId = ""     // 公众号 AppID（选填）
+var WeChatMpAppSecret = "" // 公众号 AppSecret（选填）
+
 var TurnstileSiteKey = ""
 var TurnstileSecretKey = ""
 
@@ -146,6 +153,15 @@ var TelegramBotName = ""
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
 var QuotaForInvitee = 0
+
+// RebateEnabled 控制好友充值返现功能是否开启。
+var RebateEnabled = false
+
+// RebateRatio 全局默认返现比例（0-1），邀请人未单独设置时使用。
+var RebateRatio = 0.0
+
+// GroupBuyEnabled 控制拼团充值功能是否开启。
+var GroupBuyEnabled = false
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false
@@ -243,6 +259,12 @@ var (
 )
 
 var RateLimitKeyExpirationDuration = 20 * time.Minute
+
+// 并发限制：超出最大并发时等待空闲槽位的最长时长，超时返回 429。
+var ConcurrencyWaitTimeout = 30 * time.Second
+
+// 并发限制安全 TTL：分布式计数中超过该时长仍未释放的在途条目视为僵尸并清理，防止计数卡死。
+var ConcurrencySafetyTTL = 10 * time.Minute
 
 const (
 	UserStatusEnabled  = 1 // don't use 0, 0 is the default value!

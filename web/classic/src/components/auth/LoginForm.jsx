@@ -89,6 +89,8 @@ const LoginForm = () => {
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [showWeChatLoginModal, setShowWeChatLoginModal] = useState(false);
+  const [wechatCode, setWechatCode] = useState('');
+  const wechatPollRef = useRef(null);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [wechatLoading, setWechatLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
@@ -172,44 +174,82 @@ const LoginForm = () => {
     }
   }, []);
 
+  const stopWeChatPoll = () => {
+    if (wechatPollRef.current) {
+      clearInterval(wechatPollRef.current);
+      wechatPollRef.current = null;
+    }
+  };
+
+  const handleWeChatLoginSuccess = (data) => {
+    userDispatch({ type: 'login', payload: data });
+    localStorage.setItem('user', JSON.stringify(data));
+    setUserData(data);
+    updateAPI();
+    showSuccess(t('登录成功！'));
+    setShowWeChatLoginModal(false);
+    stopWeChatPoll();
+    navigate('/');
+  };
+
+  const pollWeChatLogin = async (code) => {
+    try {
+      const res = await API.get(`/api/wechat/mp/login/check?code=${code}`);
+      const { success, message, data } = res.data;
+      if (!success) {
+        stopWeChatPoll();
+        showError(message);
+        return;
+      }
+      if (data && data.id) {
+        handleWeChatLoginSuccess(data);
+      } else if (data && data.status === 'expired') {
+        stopWeChatPoll();
+        setWechatCode('');
+        showInfo(t('验证码已过期，请点击刷新重新获取'));
+      }
+      // pending：继续轮询
+    } catch (error) {
+      // 网络抖动忽略，继续轮询
+    }
+  };
+
+  const fetchWeChatLoginCode = async () => {
+    stopWeChatPoll();
+    setWechatCode('');
+    setWechatLoading(true);
+    try {
+      const res = await API.get('/api/wechat/mp/login/code');
+      const { success, message, data } = res.data;
+      if (success) {
+        setWechatCode(data.code);
+        const code = data.code;
+        wechatPollRef.current = setInterval(() => pollWeChatLogin(code), 2500);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(t('获取验证码失败，请重试'));
+    } finally {
+      setWechatLoading(false);
+    }
+  };
+
   const onWeChatLoginClicked = () => {
     if ((hasUserAgreement || hasPrivacyPolicy) && !agreedToTerms) {
       showInfo(t('请先阅读并同意用户协议和隐私政策'));
       return;
     }
-    setWechatLoading(true);
     setShowWeChatLoginModal(true);
-    setWechatLoading(false);
+    fetchWeChatLoginCode();
   };
 
-  const onSubmitWeChatVerificationCode = async () => {
-    if (turnstileEnabled && turnstileToken === '') {
-      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
-      return;
-    }
-    setWechatCodeSubmitLoading(true);
-    try {
-      const res = await API.get(
-        `/api/oauth/wechat?code=${inputs.wechat_verification_code}`,
-      );
-      const { success, message, data } = res.data;
-      if (success) {
-        userDispatch({ type: 'login', payload: data });
-        localStorage.setItem('user', JSON.stringify(data));
-        setUserData(data);
-        updateAPI();
-        navigate('/');
-        showSuccess('登录成功！');
-        setShowWeChatLoginModal(false);
-      } else {
-        showError(message);
-      }
-    } catch (error) {
-      showError('登录失败，请重试');
-    } finally {
-      setWechatCodeSubmitLoading(false);
-    }
+  const closeWeChatLoginModal = () => {
+    setShowWeChatLoginModal(false);
+    stopWeChatPoll();
   };
+
+  useEffect(() => () => stopWeChatPoll(), []);
 
   function handleChange(name, value) {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
@@ -869,42 +909,50 @@ const LoginForm = () => {
     );
   };
 
-  // 微信登录模态框
+  // 微信登录模态框：网页展示验证码，用户在公众号内发送该码后自动登录
   const renderWeChatLoginModal = () => {
     return (
       <Modal
         title={t('微信扫码登录')}
         visible={showWeChatLoginModal}
         maskClosable={true}
-        onOk={onSubmitWeChatVerificationCode}
-        onCancel={() => setShowWeChatLoginModal(false)}
-        okText={t('登录')}
+        footer={null}
+        onCancel={closeWeChatLoginModal}
         centered={true}
-        okButtonProps={{
-          loading: wechatCodeSubmitLoading,
-        }}
       >
         <div className='flex flex-col items-center'>
-          <img src={status.wechat_qrcode} alt='微信二维码' className='mb-4' />
+          {status.wechat_qrcode && (
+            <img
+              src={status.wechat_qrcode}
+              alt='微信二维码'
+              className='mb-4'
+              style={{ maxWidth: 200 }}
+            />
+          )}
+          <div className='text-center mb-3'>
+            <p>
+              {t(
+                '请使用微信扫码关注公众号，将下方验证码发送给公众号，完成后将自动登录（3 分钟内有效）',
+              )}
+            </p>
+          </div>
+          <div className='text-center mb-2'>
+            {wechatCode ? (
+              <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: 6 }}>
+                {wechatCode}
+              </div>
+            ) : (
+              <Text type='tertiary'>{t('正在获取验证码...')}</Text>
+            )}
+          </div>
+          <Button
+            theme='borderless'
+            loading={wechatLoading}
+            onClick={fetchWeChatLoginCode}
+          >
+            {t('刷新验证码')}
+          </Button>
         </div>
-
-        <div className='text-center mb-4'>
-          <p>
-            {t('微信扫码关注公众号，输入「验证码」获取验证码（三分钟内有效）')}
-          </p>
-        </div>
-
-        <Form>
-          <Form.Input
-            field='wechat_verification_code'
-            placeholder={t('验证码')}
-            label={t('验证码')}
-            value={inputs.wechat_verification_code}
-            onChange={(value) =>
-              handleChange('wechat_verification_code', value)
-            }
-          />
-        </Form>
       </Modal>
     );
   };

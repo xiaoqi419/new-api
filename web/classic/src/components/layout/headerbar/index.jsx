@@ -74,7 +74,7 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
         unreadKeys={getUnreadKeys()}
       />
 
-      <div className='w-full px-2'>
+      <div className='app-header-inner w-full px-2'>
         <div className='flex items-center justify-between h-16'>
           <div className='flex items-center'>
             <MobileMenuButton

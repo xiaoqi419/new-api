@@ -13,6 +13,12 @@ type ChannelSettings struct {
 	PassThroughBodyEnabled bool   `json:"pass_through_body_enabled,omitempty"`
 	SystemPrompt           string `json:"system_prompt,omitempty"`
 	SystemPromptOverride   bool   `json:"system_prompt_override,omitempty"`
+	Fallback               bool   `json:"fallback,omitempty"` // 兜底渠道：正常不参与选择，仅当同分组+模型下所有非兜底渠道不可用/重试失败后才启用
+	// 火山引擎私域素材库：管理类接口必须用 AK/SK 做 V4 签名（不能用 Ark API Key）。
+	// 与视频生成共用同一个 DoubaoVideo 渠道，仅管理员可见可配。
+	VolcAssetAK     string `json:"volc_asset_ak,omitempty"`     // AccessKeyId
+	VolcAssetSK     string `json:"volc_asset_sk,omitempty"`     // SecretAccessKey
+	VolcProjectName string `json:"volc_project_name,omitempty"` // 火山项目名，默认 default
 }
 
 type VertexKeyType string

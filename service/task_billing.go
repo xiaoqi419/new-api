@@ -215,6 +215,11 @@ func RecalculateTaskQuota(ctx context.Context, task *model.Task, actualQuota int
 	taskAdjustTokenQuota(ctx, task, quotaDelta)
 
 	task.Quota = actualQuota
+	// 差额结算发生在任务状态已落库之后，这里仅回写实际扣费额度，
+	// 否则任务记录会一直保留预扣额度，导致前端/统计显示失真。
+	if err := task.UpdateQuota(); err != nil {
+		logger.LogError(ctx, fmt.Sprintf("回写任务结算额度失败 task %s: %s", task.TaskID, err.Error()))
+	}
 
 	var logType int
 	var logQuota int

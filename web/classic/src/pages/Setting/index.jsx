@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Palette,
+  Paintbrush,
   CreditCard,
   Server,
   Activity,
@@ -49,6 +50,8 @@ import DrawingSetting from '../../components/settings/DrawingSetting';
 import PaymentSetting from '../../components/settings/PaymentSetting';
 import ModelDeploymentSetting from '../../components/settings/ModelDeploymentSetting';
 import PerformanceSetting from '../../components/settings/PerformanceSetting';
+import AppearanceSetting from '../../components/settings/AppearanceSetting';
+import ApimartHomeSetting from '../../components/settings/ApimartHomeSetting';
 
 const Setting = () => {
   const { t } = useTranslation();
@@ -157,6 +160,26 @@ const Setting = () => {
       ),
       content: <PerformanceSetting />,
       itemKey: 'performance',
+    });
+    panes.push({
+      tab: (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <Paintbrush size={18} />
+          {t('外观主题')}
+        </span>
+      ),
+      content: <AppearanceSetting />,
+      itemKey: 'appearance',
+    });
+    panes.push({
+      tab: (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <LayoutDashboard size={18} />
+          {t('APIMart 首页')}
+        </span>
+      ),
+      content: <ApimartHomeSetting />,
+      itemKey: 'apimart-home',
     });
     panes.push({
       tab: (

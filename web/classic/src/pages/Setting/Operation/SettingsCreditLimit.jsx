@@ -36,6 +36,9 @@ export default function SettingsCreditLimit(props) {
     PreConsumedQuota: '',
     QuotaForInviter: '',
     QuotaForInvitee: '',
+    RebateEnabled: false,
+    RebateRatio: '',
+    GroupBuyEnabled: false,
     'quota_setting.enable_free_model_pre_consume': true,
   });
   const refForm = useRef();
@@ -196,6 +199,58 @@ export default function SettingsCreditLimit(props) {
                     setInputs({
                       ...inputs,
                       'quota_setting.enable_free_model_pre_consume': value,
+                    })
+                  }
+                />
+              </Col>
+            </Row>
+
+            <Row>
+              <Col xs={24} sm={12} md={8} lg={8} xl={6}>
+                <Form.Switch
+                  label={t('开启好友充值返现')}
+                  field={'RebateEnabled'}
+                  extraText={t(
+                    '开启后，好友充值成功将按比例生成待返现记录，由管理员手动发放到邀请人余额',
+                  )}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      RebateEnabled: value,
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={6}>
+                <Form.InputNumber
+                  label={t('默认返现比例')}
+                  field={'RebateRatio'}
+                  step={0.01}
+                  min={0}
+                  max={1}
+                  extraText={t(
+                    '全局默认比例（0-1），如 0.1 表示返充值额度的 10%；可在邀请返现管理中为单个用户单独设置',
+                  )}
+                  placeholder={t('例如：0.1')}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      RebateRatio: String(value),
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={6}>
+                <Form.Switch
+                  label={t('开启拼团充值')}
+                  field={'GroupBuyEnabled'}
+                  extraText={t(
+                    '开启后用户可在充值页发起拼团；套餐、订单与退款在「拼团管理」中维护',
+                  )}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      GroupBuyEnabled: value,
                     })
                   }
                 />

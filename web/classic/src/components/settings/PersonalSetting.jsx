@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   API,
@@ -65,6 +65,9 @@ const PersonalSetting = () => {
   const [status, setStatus] = useState({});
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showWeChatBindModal, setShowWeChatBindModal] = useState(false);
+  const [wechatBindCode, setWechatBindCode] = useState('');
+  const [wechatBindLoading, setWechatBindLoading] = useState(false);
+  const wechatBindPollRef = useRef(null);
   const [showEmailBindModal, setShowEmailBindModal] = useState(false);
   const [showAccountDeleteModal, setShowAccountDeleteModal] = useState(false);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
@@ -397,19 +400,70 @@ const PersonalSetting = () => {
     }
   };
 
-  const bindWeChat = async () => {
-    if (inputs.wechat_verification_code === '') return;
-    const res = await API.post('/api/oauth/wechat/bind', {
-      code: inputs.wechat_verification_code,
-    });
-    const { success, message } = res.data;
-    if (success) {
-      showSuccess(t('微信账户绑定成功！'));
-      setShowWeChatBindModal(false);
-    } else {
-      showError(message);
+  const stopWeChatBindPoll = () => {
+    if (wechatBindPollRef.current) {
+      clearInterval(wechatBindPollRef.current);
+      wechatBindPollRef.current = null;
     }
   };
+
+  const pollWeChatBind = async (code) => {
+    try {
+      const res = await API.get(`/api/user/wechat/mp/bind/check?code=${code}`);
+      const { success, message, data } = res.data;
+      if (!success) {
+        stopWeChatBindPoll();
+        showError(message);
+        return;
+      }
+      if (data && data.status === 'bound') {
+        stopWeChatBindPoll();
+        showSuccess(t('微信账户绑定成功！'));
+        setShowWeChatBindModal(false);
+        getUserData();
+      } else if (data && data.status === 'expired') {
+        stopWeChatBindPoll();
+        setWechatBindCode('');
+        showInfo(t('验证码已过期，请点击刷新重新获取'));
+      }
+      // pending：继续轮询
+    } catch (error) {
+      // 网络抖动忽略
+    }
+  };
+
+  const fetchWeChatBindCode = async () => {
+    stopWeChatBindPoll();
+    setWechatBindCode('');
+    setWechatBindLoading(true);
+    try {
+      const res = await API.get('/api/user/wechat/mp/bind/code');
+      const { success, message, data } = res.data;
+      if (success) {
+        setWechatBindCode(data.code);
+        const code = data.code;
+        wechatBindPollRef.current = setInterval(
+          () => pollWeChatBind(code),
+          2500,
+        );
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(t('获取验证码失败，请重试'));
+    } finally {
+      setWechatBindLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showWeChatBindModal) {
+      fetchWeChatBindCode();
+    } else {
+      stopWeChatBindPoll();
+    }
+    return () => stopWeChatBindPoll();
+  }, [showWeChatBindModal]);
 
   const changePassword = async () => {
     // if (inputs.original_password === '') {
@@ -619,9 +673,9 @@ const PersonalSetting = () => {
         t={t}
         showWeChatBindModal={showWeChatBindModal}
         setShowWeChatBindModal={setShowWeChatBindModal}
-        inputs={inputs}
-        handleInputChange={handleInputChange}
-        bindWeChat={bindWeChat}
+        wechatBindCode={wechatBindCode}
+        wechatBindLoading={wechatBindLoading}
+        refreshWeChatBindCode={fetchWeChatBindCode}
         status={status}
       />
 
