@@ -303,6 +303,8 @@ func migrateDB() error {
 		&SystemTaskLock{},
 		&VolcAssetGroup{},
 		&VolcAsset{},
+		&CasbinRule{},
+		&AuthzRole{},
 	)
 	if err != nil {
 		return err

@@ -52,16 +52,15 @@ type requestPayload struct {
 	Tools                 []struct {
 		Type string `json:"type,omitempty"`
 	} `json:"tools,omitempty"`
-	Resolution  string         `json:"resolution,omitempty"`
-	Ratio       string         `json:"ratio,omitempty"`
-	Duration    *dto.IntValue  `json:"duration,omitempty"`
-	Frames      *dto.IntValue  `json:"frames,omitempty"`
-	Seed        *dto.IntValue  `json:"seed,omitempty"`
-	CameraFixed *dto.BoolValue `json:"camera_fixed,omitempty"`
-	Watermark   *dto.BoolValue `json:"watermark,omitempty"`
-	// 官方可选字段：指针类型区分"未传"与"显式空/零值"，priority:0 也会被保留发送。
-	SafetyIdentifier *dto.StringValue `json:"safety_identifier,omitempty"`
-	Priority         *dto.IntValue    `json:"priority,omitempty"`
+	SafetyIdentifier string         `json:"safety_identifier,omitempty"`
+	Priority         *dto.IntValue  `json:"priority,omitempty"`
+	Resolution       string         `json:"resolution,omitempty"`
+	Ratio            string         `json:"ratio,omitempty"`
+	Duration         *dto.IntValue  `json:"duration,omitempty"`
+	Frames           *dto.IntValue  `json:"frames,omitempty"`
+	Seed             *dto.IntValue  `json:"seed,omitempty"`
+	CameraFixed      *dto.BoolValue `json:"camera_fixed,omitempty"`
+	Watermark        *dto.BoolValue `json:"watermark,omitempty"`
 }
 
 type responsePayload struct {
@@ -135,19 +134,19 @@ func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *r
 	return nil
 }
 
-// EstimateBilling 依据输出分辨率与是否含视频输入，返回相对基础档的计费 OtherRatio。
-// 该倍率会写入 BillingContext.OtherRatios，预扣费与最终 token 结算都会自动乘上它。
+// EstimateBilling 根据请求 metadata 中的输出分辨率与是否包含视频输入，返回相对基准价的计费 OtherRatio。
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInfo) map[string]float64 {
 	req, err := relaycommon.GetTaskRequest(c)
 	if err != nil {
 		return nil
 	}
-	resolution := resolutionFromMetadata(req.Metadata)
-	hasVideo := hasVideoInput(req.Metadata)
-	if ratio, ok := GetVideoBillingRatio(info.OriginModelName, resolution, hasVideo); ok && ratio != 1.0 {
-		return map[string]float64{"seedance_price": ratio}
+	hasVideo := hasVideoInMetadata(req.Metadata)
+	resolution, _ := req.Metadata["resolution"].(string)
+	ratio, ok := GetVideoInputRatio(info.OriginModelName, resolution, hasVideo)
+	if !ok || ratio == 1.0 {
+		return nil
 	}
-	return nil
+	return map[string]float64{"video_input": ratio}
 }
 
 // BuildRequestBody converts request into Doubao specific format.
@@ -379,4 +378,33 @@ func arkVideoStatus(s model.TaskStatus) string {
 	default:
 		return "queued"
 	}
+}
+
+// hasVideoInMetadata 直接检查 metadata 的 content 数组是否包含 video_url 条目，
+// 避免构建完整的上游 requestPayload。
+func hasVideoInMetadata(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	contentRaw, ok := metadata["content"]
+	if !ok {
+		return false
+	}
+	contentSlice, ok := contentRaw.([]interface{})
+	if !ok {
+		return false
+	}
+	for _, item := range contentSlice {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if itemMap["type"] == "video_url" {
+			return true
+		}
+		if _, has := itemMap["video_url"]; has {
+			return true
+		}
+	}
+	return false
 }

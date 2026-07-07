@@ -13,104 +13,44 @@ var ModelList = []string{
 
 var ChannelName = "doubao-video"
 
-// seedancePrice 火山官方 Seedance 2.0 在线推理单价（元/百万 token），
-// 按 (模型, 输出分辨率档, 输入是否含视频) 区分。管理员只需把 ModelRatio 配成
-// “基础档(480p/720p)、输入不含视频”的单价，系统据此表自动追加相对 OtherRatio，
-// 无需为每个分辨率/输入形态单独配置。数据来源见 docs/seedance-2.0-接入方案.md §六。
-// 每档为 [不含视频单价, 含视频单价]。
-var seedancePrice = map[string]map[string][2]float64{
+// videoPriceKey 价格表的键：输出分辨率档（is1080p/is4k 均为 false 即 480p/720p 基准档）、输入是否含视频。
+type videoPriceKey struct {
+	is1080p  bool
+	is4k     bool
+	hasVideo bool
+}
+
+// videoPriceTable 各模型在不同 (输出分辨率档, 是否含视频输入) 下的单价（元/百万 token）。
+// 其中零值键 {480p/720p, 不含视频} 为基准价，等于管理员应配置的 ModelRatio；
+// 计费时取 实际单价/基准价 作为 OtherRatio。
+var videoPriceTable = map[string]map[videoPriceKey]float64{
 	"doubao-seedance-2-0-260128": {
-		"base":  {46, 28}, // 480p / 720p
-		"1080p": {51, 31},
-		"4k":    {26, 16},
+		{hasVideo: false}:                46.0,
+		{hasVideo: true}:                 28.0,
+		{is1080p: true, hasVideo: false}: 51.0,
+		{is1080p: true, hasVideo: true}:  31.0,
+		{is4k: true, hasVideo: false}:    26.0,
+		{is4k: true, hasVideo: true}:     16.0,
 	},
 	"doubao-seedance-2-0-fast-260128": {
-		"base": {37, 22}, // 不支持 1080p / 4k
-	},
-	"doubao-seedance-2-0-mini": {
-		"base": {23, 14}, // 不支持 1080p / 4k
+		{hasVideo: false}: 37.0,
+		{hasVideo: true}:  22.0,
 	},
 }
 
-// resolutionBucket 把分辨率归一到价格档位；未知或缺省视为基础档。
-func resolutionBucket(resolution string) string {
-	switch strings.ToLower(strings.TrimSpace(resolution)) {
-	case "1080p":
-		return "1080p"
-	case "4k", "2160p":
-		return "4k"
-	default: // 480p / 720p / 空 → 基础档
-		return "base"
-	}
-}
-
-// GetVideoBillingRatio 返回相对基础档(480p/720p、不含视频)的计费倍率。
-// ok=false 表示该模型未配置动态价格表，调用方应回退到默认 token×倍率。
-func GetVideoBillingRatio(modelName, resolution string, hasVideoInput bool) (float64, bool) {
-	tiers, ok := seedancePrice[modelName]
-	if !ok {
+// GetVideoInputRatio 返回指定模型在给定输出分辨率/是否含视频输入下，相对基准价的计费倍率。
+// 第二个返回值表示该模型是否配置了价格表；倍率为 1.0 时调用方可忽略该 OtherRatio。
+func GetVideoInputRatio(modelName, resolution string, hasVideo bool) (float64, bool) {
+	prices, ok := videoPriceTable[modelName]
+	base := prices[videoPriceKey{}] // 零值键 = {480p/720p, 不含视频} 基准价
+	if !ok || base <= 0 {
 		return 0, false
 	}
-	base, ok := tiers["base"]
-	if !ok || base[0] <= 0 {
-		return 0, false
-	}
-	tier, ok := tiers[resolutionBucket(resolution)]
+	res := strings.ToLower(strings.TrimSpace(resolution))
+	price, ok := prices[videoPriceKey{is1080p: res == "1080p", is4k: res == "4k", hasVideo: hasVideo}]
 	if !ok {
-		tier = base
+		// 未配置的组合（如 fast 无 1080p/4k，上游会自行报错）按基准价计费即可。
+		return 1.0, true
 	}
-	price := tier[0]
-	if hasVideoInput {
-		price = tier[1]
-	}
-	return price / base[0], true
-}
-
-// resolutionFromMetadata 从请求 metadata 读取输出分辨率；缺省 720p（与官方默认一致）。
-func resolutionFromMetadata(metadata map[string]interface{}) string {
-	if metadata != nil {
-		if r, ok := metadata["resolution"].(string); ok && strings.TrimSpace(r) != "" {
-			return r
-		}
-	}
-	return "720p"
-}
-
-// hasVideoInput 判断请求是否包含视频输入（据此选择含视频档单价）。
-// 兼容顶层 video_url / video 以及 content[] 中 type=video_url 的条目，并校验值非空，
-// 避免空 url 误判为视频输入、或官方顶层媒体请求被漏判。
-func hasVideoInput(metadata map[string]interface{}) bool {
-	if metadata == nil {
-		return false
-	}
-	if nonEmptyMedia(metadata["video_url"]) || nonEmptyMedia(metadata["video"]) {
-		return true
-	}
-	content, ok := metadata["content"].([]interface{})
-	if !ok {
-		return false
-	}
-	for _, item := range content {
-		im, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if im["type"] == "video_url" && nonEmptyMedia(im["video_url"]) {
-			return true
-		}
-	}
-	return false
-}
-
-// nonEmptyMedia 判断媒体字段是否为可用值：非空字符串，或含非空 url 的对象。
-func nonEmptyMedia(v interface{}) bool {
-	switch t := v.(type) {
-	case string:
-		return strings.TrimSpace(t) != ""
-	case map[string]interface{}:
-		if u, ok := t["url"].(string); ok {
-			return strings.TrimSpace(u) != ""
-		}
-	}
-	return false
+	return price / base, true
 }
