@@ -54,6 +54,60 @@ func AcquireConcurrency(scope string, id int, max int) (func(), bool) {
 	return acquireMemoryConcurrency(key, max)
 }
 
+// GetConcurrencyInUse 只读返回指定维度当前在途并发数。
+// supported=false 表示当前部署（内存信号量模式）无法读取实时并发，仅 Redis 模式可读。
+func GetConcurrencyInUse(scope string, id int) (inUse int, supported bool) {
+	if !(common.RedisEnabled && common.RDB != nil) {
+		return 0, false
+	}
+	key := fmt.Sprintf("%s:%d", scope, id)
+	return readRedisConcurrency(key), true
+}
+
+// GetTokenConcurrencyInUse 批量读取多个令牌的实时并发数（单次 pipeline，避免 N 次往返）。
+// 返回 map[tokenId]inUse 与 supported。内存模式下 supported=false。
+func GetTokenConcurrencyInUse(tokenIds []int) (map[int]int, bool) {
+	result := make(map[int]int, len(tokenIds))
+	if !(common.RedisEnabled && common.RDB != nil) {
+		return result, false
+	}
+	if len(tokenIds) == 0 {
+		return result, true
+	}
+	ctx := context.Background()
+	rdb := common.RDB
+	minScore := strconv.FormatInt(time.Now().Add(-common.ConcurrencySafetyTTL).UnixMilli(), 10)
+	pipe := rdb.TxPipeline()
+	cards := make(map[int]*redis.IntCmd, len(tokenIds))
+	for _, id := range tokenIds {
+		zkey := fmt.Sprintf("concurrency:token:%d", id)
+		pipe.ZRemRangeByScore(ctx, zkey, "0", minScore)
+		cards[id] = pipe.ZCard(ctx, zkey)
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return result, false
+	}
+	for id, cmd := range cards {
+		result[id] = int(cmd.Val())
+	}
+	return result, true
+}
+
+// readRedisConcurrency 清理过期占位后返回 ZSET 计数，作为实时并发数。
+func readRedisConcurrency(key string) int {
+	ctx := context.Background()
+	rdb := common.RDB
+	zkey := "concurrency:" + key
+	minScore := strconv.FormatInt(time.Now().Add(-common.ConcurrencySafetyTTL).UnixMilli(), 10)
+	pipe := rdb.TxPipeline()
+	pipe.ZRemRangeByScore(ctx, zkey, "0", minScore)
+	card := pipe.ZCard(ctx, zkey)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0
+	}
+	return int(card.Val())
+}
+
 func acquireMemoryConcurrency(key string, max int) (func(), bool) {
 	sem := getMemSemaphore(key, int64(max))
 	ctx, cancel := context.WithTimeout(context.Background(), common.ConcurrencyWaitTimeout)

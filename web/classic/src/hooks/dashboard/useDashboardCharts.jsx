@@ -55,6 +55,7 @@ export const useDashboardCharts = (
 ) => {
   // ========== 图表规格状态 ==========
   const [spec_pie, setSpecPie] = useState({
+    background: 'transparent',
     type: 'pie',
     data: [
       {
@@ -112,6 +113,7 @@ export const useDashboardCharts = (
   });
 
   const [spec_line, setSpecLine] = useState({
+    background: 'transparent',
     type: 'bar',
     data: [
       {
@@ -186,6 +188,7 @@ export const useDashboardCharts = (
   });
 
   const [spec_model_line, setSpecModelLine] = useState({
+    background: 'transparent',
     type: 'line',
     data: [
       {
@@ -244,6 +247,7 @@ export const useDashboardCharts = (
   });
 
   const [spec_rank_bar, setSpecRankBar] = useState({
+    background: 'transparent',
     type: 'bar',
     data: [
       {
@@ -288,6 +292,7 @@ export const useDashboardCharts = (
 
   // ========== Admin: 用户消耗排行 ==========
   const [spec_user_rank, setSpecUserRank] = useState({
+    background: 'transparent',
     type: 'bar',
     data: [{ id: 'userRankData', values: [] }],
     xField: 'rawQuota',
@@ -330,6 +335,7 @@ export const useDashboardCharts = (
 
   // ========== Admin: 用户消耗趋势 ==========
   const [spec_user_trend, setSpecUserTrend] = useState({
+    background: 'transparent',
     type: 'area',
     data: [{ id: 'userTrendData', values: [] }],
     xField: 'Time',

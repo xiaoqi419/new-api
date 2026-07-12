@@ -85,6 +85,7 @@ import {
   Trophy,
   TrendingUp,
   Activity,
+  FileText,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -145,6 +146,8 @@ export function getLucideIcon(key, selected = false) {
       return <Layers {...commonProps} color={iconColor} />;
     case 'redemption':
       return <Gift {...commonProps} color={iconColor} />;
+    case 'invoice':
+      return <FileText {...commonProps} color={iconColor} />;
     case 'rebate':
       return <Coins {...commonProps} color={iconColor} />;
     case 'invite_ranking':

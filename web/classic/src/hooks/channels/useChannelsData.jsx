@@ -448,12 +448,10 @@ export const useChannelsData = () => {
         res = await API.delete(`/api/channel/${id}/`);
         break;
       case 'enable':
-        data.status = 1;
-        res = await API.put('/api/channel/', data);
+        res = await API.post(`/api/channel/${id}/status`, { status: 1 });
         break;
       case 'disable':
-        data.status = 2;
-        res = await API.put('/api/channel/', data);
+        res = await API.post(`/api/channel/${id}/status`, { status: 2 });
         break;
       case 'priority':
         if (value === '') return;
@@ -475,12 +473,35 @@ export const useChannelsData = () => {
     const { success, message } = res.data;
     if (success) {
       showSuccess(t('操作成功完成！'));
-      let channel = res.data.data;
-      let newChannels = [...channels];
       if (action !== 'delete') {
-        record.status = channel.status;
+        // enable/disable 走独立状态接口，返回布尔而非渠道对象，直接用目标状态；
+        // 其余动作沿用后端返回的渠道对象。
+        let nextStatus;
+        if (action === 'enable') {
+          nextStatus = 1;
+        } else if (action === 'disable') {
+          nextStatus = 2;
+        } else {
+          nextStatus = res.data.data?.status;
+        }
+        record.status = nextStatus;
+        // 顶层数组与标签模式下的子渠道都要回写，且替换对象引用以触发表格重渲染。
+        const applyStatus = (item) => {
+          if (item.id === id) {
+            return { ...item, status: nextStatus };
+          }
+          if (item.children?.length) {
+            const children = item.children.map((child) =>
+              child.id === id ? { ...child, status: nextStatus } : child,
+            );
+            return { ...item, children };
+          }
+          return item;
+        };
+        setChannels(channels.map(applyStatus));
+      } else {
+        setChannels([...channels]);
       }
-      setChannels(newChannels);
     } else {
       showError(message);
     }

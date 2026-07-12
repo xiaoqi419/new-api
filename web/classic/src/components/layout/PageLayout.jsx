@@ -65,11 +65,17 @@ const PageLayout = () => {
     '/pricing',
   ];
 
+  // apimart 首页启用全屏分段（fullpage）布局，独立页脚会挤入锁定的视口，
+  // 故在首页隐藏 PageLayout 页脚，由首页自身的最后一屏承载页脚信息。
+  const isApimartFullpageHome =
+    appearance.preset === 'apimart' && location.pathname === '/';
   const shouldHideFooter = location.pathname.startsWith('/console')
     ? true
-    : appearance.preset === 'apimart'
-      ? false
-      : cardProPages.includes(location.pathname);
+    : isApimartFullpageHome
+      ? true
+      : appearance.preset === 'apimart'
+        ? false
+        : cardProPages.includes(location.pathname);
 
   const shouldInnerPadding =
     location.pathname.includes('/console') &&
@@ -97,7 +103,8 @@ const PageLayout = () => {
   const showConsoleSubNav = useApimartTopNav;
   const showSider =
     isConsoleRoute && !useApimartTopNav && (!isMobile || drawerOpen);
-  const isFixedLayout = isConsoleRoute || location.pathname === '/pricing';
+  const isFixedLayout =
+    isConsoleRoute || location.pathname === '/pricing' || isApimartFullpageHome;
 
   useEffect(() => {
     if (isMobile && drawerOpen && collapsed) {
@@ -181,6 +188,7 @@ const PageLayout = () => {
       }}
     >
       <Header
+        className='app-floating-header-wrap'
         style={{
           padding: 0,
           height: 'auto',
@@ -189,6 +197,7 @@ const PageLayout = () => {
           width: '100%',
           top: 0,
           zIndex: 100,
+          background: 'transparent',
         }}
       >
         <HeaderBar
@@ -247,7 +256,13 @@ const PageLayout = () => {
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               paddingTop: showConsoleSubNav
                 ? 'var(--app-subnav-height)'
-                : undefined,
+                : isApimartFullpageHome
+                  ? undefined
+                  : shouldInnerPadding
+                    ? isMobile
+                      ? 'calc(5px + var(--app-floating-header-height))'
+                      : 'calc(24px + var(--app-floating-header-height))'
+                    : 'var(--app-floating-header-height)',
               position: 'relative',
               minHeight: 0,
             }}

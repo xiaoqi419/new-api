@@ -50,6 +50,8 @@ const TokensTable = (tokensData) => {
     setShowEdit,
     refresh,
     groupRatios,
+    concurrencyMap,
+    concurrencySupported,
     t,
   } = tokensData;
 
@@ -69,6 +71,8 @@ const TokensTable = (tokensData) => {
       setShowEdit,
       refresh,
       groupRatios,
+      concurrencyMap,
+      concurrencySupported,
     });
   }, [
     t,
@@ -84,6 +88,8 @@ const TokensTable = (tokensData) => {
     setShowEdit,
     refresh,
     groupRatios,
+    concurrencyMap,
+    concurrencySupported,
   ]);
 
   // Handle compact mode by removing fixed positioning

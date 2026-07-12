@@ -1,3 +1,22 @@
+/*
+Copyright (C) 2025 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
 export const defaultApimartHomeConfig = {
   hero: {
     title: '统一 AI API 折扣聚合平台',
@@ -12,7 +31,12 @@ export const defaultApimartHomeConfig = {
     steps_subtitle: '几分钟内即可开始使用数百种 AI 模型',
     api_use_cases: '适合任何项目的 API',
     value_props: '为什么选择 {site} 作为您的 AI API 平台',
-    providers: '所有模型均可使用',
+    providers: '一把 Key 接入 全球 30+ AI 厂商',
+    providers_subtitle:
+      '文本对话、图像生成、视频合成、语音 TTS/STT、Embedding，海内外主流模型全部覆盖，按 token 计费透明可追溯。',
+    clients: '在 你喜欢的工具 里直接使用',
+    clients_subtitle:
+      '所有支持 OpenAI / Anthropic / Gemini 协议的客户端、IDE 插件、AI 代理与 Web UI 都可以直接填入我们的 base URL 和 API Key。',
     faq: '常见问题',
   },
   stats: [
@@ -112,6 +136,39 @@ export const defaultApimartHomeConfig = {
       bullets: ['统一鉴权、计费和日志', '支持流式输出、视觉输入和工具调用'],
       button: '探索聊天 API',
       image: '/cover-4.webp',
+      code_samples: {
+        Python: `from openai import OpenAI
+
+client = OpenAI(
+    base_url="{base}/v1",
+    api_key="YOUR_API_KEY",
+)
+
+resp = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(resp.choices[0].message.content)`,
+        'Node.js': `import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "{base}/v1",
+  apiKey: "YOUR_API_KEY",
+});
+
+const resp = await client.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "你好" }],
+});
+console.log(resp.choices[0].message.content);`,
+        cURL: `curl {base}/v1/chat/completions \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'`,
+      },
     },
     {
       name: 'Image API',
@@ -121,6 +178,42 @@ export const defaultApimartHomeConfig = {
       bullets: ['统一任务提交和结果查询', '支持多渠道成本和可用性切换'],
       button: '探索图像 API',
       image: '/cover-2.webp',
+      code_samples: {
+        Python: `from openai import OpenAI
+
+client = OpenAI(
+    base_url="{base}/v1",
+    api_key="YOUR_API_KEY",
+)
+
+img = client.images.generate(
+    model="gpt-image-1",
+    prompt="a cute cat astronaut",
+    size="1024x1024",
+)
+print(img.data[0].url)`,
+        'Node.js': `import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "{base}/v1",
+  apiKey: "YOUR_API_KEY",
+});
+
+const img = await client.images.generate({
+  model: "gpt-image-1",
+  prompt: "a cute cat astronaut",
+  size: "1024x1024",
+});
+console.log(img.data[0].url);`,
+        cURL: `curl {base}/v1/images/generations \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "gpt-image-1",
+    "prompt": "a cute cat astronaut",
+    "size": "1024x1024"
+  }'`,
+      },
     },
     {
       name: 'Video API',
@@ -130,6 +223,38 @@ export const defaultApimartHomeConfig = {
       bullets: ['适配异步任务工作流', '日志、额度和失败原因集中追踪'],
       button: '探索视频 API',
       image: '/cover-3.webp',
+      code_samples: {
+        Python: `import requests
+
+resp = requests.post(
+    "{base}/v1/video/generations",
+    headers={"Authorization": "Bearer YOUR_API_KEY"},
+    json={
+        "model": "sora-2",
+        "prompt": "a timelapse of a blooming flower",
+    },
+)
+print(resp.json())`,
+        'Node.js': `const resp = await fetch("{base}/v1/video/generations", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "sora-2",
+    prompt: "a timelapse of a blooming flower",
+  }),
+});
+console.log(await resp.json());`,
+        cURL: `curl {base}/v1/video/generations \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "sora-2",
+    "prompt": "a timelapse of a blooming flower"
+  }'`,
+      },
     },
   ],
   value_props: [
@@ -165,18 +290,36 @@ export const defaultApimartHomeConfig = {
     },
   ],
   providers: [
-    { name: 'ANTHROPIC', icon: 'claude' },
-    { name: 'OpenAI', icon: 'openai' },
-    { name: 'Google', icon: 'gemini' },
-    { name: 'DeepSeek', icon: 'deepseek' },
-    { name: 'Qwen', icon: 'qwen' },
-    { name: 'ByteDance', icon: 'volcengine' },
-    { name: 'Azure AI', icon: 'azure' },
-    { name: 'Midjourney', icon: 'midjourney' },
-    { name: 'Grok', icon: 'grok' },
-    { name: 'MiniMax', icon: 'minimax' },
-    { name: 'Wenxin', icon: 'wenxin' },
-    { name: 'Spark', icon: 'spark' },
+    { name: 'OpenAI', icon: 'openai', desc: '文本 · 图像 · 语音' },
+    { name: 'Anthropic', icon: 'claude', desc: '文本 · 代码' },
+    { name: 'Google Gemini', icon: 'gemini', desc: '文本 · 视觉 · 多模态' },
+    { name: 'xAI Grok', icon: 'grok', desc: '文本 · 推理' },
+    { name: 'DeepSeek', icon: 'deepseek', desc: '文本 · 推理' },
+    { name: '智谱 GLM', icon: 'zhipu', desc: '文本 · 多模态' },
+    { name: '阿里通义千问', icon: 'qwen', desc: '文本 · 代码 · 长文' },
+    { name: '月之暗面 Kimi', icon: 'moonshot', desc: '文本 · 长上下文' },
+    { name: '豆包 / 火山方舟', icon: 'volcengine', desc: '文本 · 多模态' },
+    { name: '百度文心', icon: 'wenxin', desc: '文本 · 多模态' },
+    { name: '字节跳动', icon: 'bytedance', desc: '视频 · 图像' },
+    { name: 'MiniMax', icon: 'minimax', desc: '文本 · 音频' },
+    { name: 'ChatGLM', icon: 'chatglm', desc: '文本 · 智能体' },
+    { name: '零一万物', icon: 'yi', desc: '文本' },
+    { name: 'Midjourney', icon: 'midjourney', desc: '图像生成' },
+    { name: 'Suno', icon: 'suno', desc: '音乐生成' },
+    { name: 'Stability AI', icon: 'stability', desc: '图像生成' },
+  ],
+  clients: [
+    { name: 'Cursor', icon: 'cursor', desc: 'AI 编程 IDE' },
+    { name: 'Claude Code', icon: 'claudecode', desc: '终端 AI 代理' },
+    { name: 'Codex CLI', icon: 'codex', desc: 'OpenAI 终端代理' },
+    { name: 'Cline', icon: 'cline', desc: 'VS Code AI 助手' },
+    { name: 'Roo Code', icon: 'roocode', desc: 'VS Code Fork' },
+    { name: 'Kilo Code', icon: 'kilocode', desc: 'VS Code 代理' },
+    { name: 'OpenCode', icon: 'opencode', desc: '开放 AI IDE' },
+    { name: 'Cherry Studio', icon: 'cherry', desc: '跨平台客户端' },
+    { name: 'LobeChat', icon: 'lobechat', desc: 'AI 助手界面' },
+    { name: 'Open WebUI', icon: 'openwebui', desc: '自托管 Web UI' },
+    { name: 'Dify', icon: 'dify', desc: 'AI 应用编排' },
   ],
   faq: [
     {
@@ -244,6 +387,27 @@ export const providerIconOptions = [
 const ensureArray = (value, fallback) =>
   Array.isArray(value) && value.length > 0 ? value : fallback;
 
+// 后端存储的 api_use_cases 可能缺少新增的 code_samples 字段（旧配置），
+// 此处按 name 匹配默认项补齐多语言代码示例，保证代码窗口始终有内容。
+const mergeApiUseCases = (configList) => {
+  const list = ensureArray(configList, defaultApimartHomeConfig.api_use_cases);
+  return list.map((item) => {
+    const hasSamples =
+      item && item.code_samples && Object.keys(item.code_samples).length > 0;
+    if (hasSamples) return item;
+    const fallback =
+      defaultApimartHomeConfig.api_use_cases.find(
+        (d) => d.name === item?.name,
+      ) || {};
+    return {
+      ...item,
+      code_samples:
+        fallback.code_samples ||
+        defaultApimartHomeConfig.api_use_cases[0].code_samples,
+    };
+  });
+};
+
 export const normalizeApimartHomeConfig = (value) => {
   let config = value || {};
   if (typeof config === 'string') {
@@ -269,10 +433,7 @@ export const normalizeApimartHomeConfig = (value) => {
       defaultApimartHomeConfig.featured_models,
     ),
     steps: ensureArray(config.steps, defaultApimartHomeConfig.steps),
-    api_use_cases: ensureArray(
-      config.api_use_cases,
-      defaultApimartHomeConfig.api_use_cases,
-    ),
+    api_use_cases: mergeApiUseCases(config.api_use_cases),
     value_props: ensureArray(
       config.value_props,
       defaultApimartHomeConfig.value_props,
@@ -281,6 +442,7 @@ export const normalizeApimartHomeConfig = (value) => {
       config.providers,
       defaultApimartHomeConfig.providers,
     ),
+    clients: ensureArray(config.clients, defaultApimartHomeConfig.clients),
     faq: ensureArray(config.faq, defaultApimartHomeConfig.faq),
   };
 };

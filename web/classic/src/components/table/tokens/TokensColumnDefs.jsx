@@ -348,6 +348,47 @@ const renderQuotaUsage = (text, record, t) => {
   );
 };
 
+// Render concurrency column: 实时并发 / 上限
+const renderConcurrency = (record, concurrencyMap, concurrencySupported, t) => {
+  const info = concurrencyMap?.[String(record.id)] || {};
+  const max = info.max ?? record.max_concurrency ?? 0;
+  const inUse = info.in_use ?? 0;
+
+  if (!max || max <= 0) {
+    return (
+      <Tag color='white' shape='circle'>
+        {t('不限')}
+      </Tag>
+    );
+  }
+
+  if (!concurrencySupported) {
+    return (
+      <Tooltip
+        content={t('当前部署未启用 Redis，无法读取实时并发，仅显示上限')}
+        position='top'
+      >
+        <Tag color='grey' shape='circle'>
+          {`— / ${max}`}
+        </Tag>
+      </Tooltip>
+    );
+  }
+
+  const pct = max > 0 ? Math.min((inUse / max) * 100, 100) : 0;
+  let color = 'green';
+  if (pct >= 100) color = 'red';
+  else if (pct >= 70) color = 'orange';
+
+  return (
+    <Tooltip content={`${t('实时并发')}: ${inUse} / ${max}`} position='top'>
+      <Tag color={color} shape='circle'>
+        {`${inUse} / ${max}`}
+      </Tag>
+    </Tooltip>
+  );
+};
+
 // Render operations column
 const renderOperations = (
   text,
@@ -480,6 +521,8 @@ export const getTokensColumns = ({
   setShowEdit,
   refresh,
   groupRatios = {},
+  concurrencyMap = {},
+  concurrencySupported = true,
 }) => {
   return [
     {
@@ -502,6 +545,12 @@ export const getTokensColumns = ({
       dataIndex: 'group',
       key: 'group',
       render: (text, record) => renderGroupColumn(text, record, t, groupRatios),
+    },
+    {
+      title: t('并发'),
+      key: 'concurrency',
+      render: (text, record) =>
+        renderConcurrency(record, concurrencyMap, concurrencySupported, t),
     },
     {
       title: t('密钥'),

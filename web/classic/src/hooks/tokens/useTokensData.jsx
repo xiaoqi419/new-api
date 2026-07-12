@@ -49,6 +49,10 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState(false); // 是否处于搜索结果视图
 
+  // 令牌实时并发（仅 Redis 部署可读，内存模式 supported=false）
+  const [concurrencyMap, setConcurrencyMap] = useState({});
+  const [concurrencySupported, setConcurrencySupported] = useState(true);
+
   // Selection state
   const [selectedKeys, setSelectedKeys] = useState([]);
 
@@ -114,9 +118,23 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
     setLoading(false);
   };
 
+  const loadConcurrency = async () => {
+    try {
+      const res = await API.get('/api/token/concurrency');
+      const { success, data } = res.data;
+      if (success && data) {
+        setConcurrencyMap(data.items || {});
+        setConcurrencySupported(data.supported !== false);
+      }
+    } catch (_) {
+      // 并发统计为附加信息，失败不打断令牌列表
+    }
+  };
+
   // Refresh function
   const refresh = async (page = activePage) => {
     await loadTokens(page);
+    loadConcurrency();
     setSelectedKeys([]);
   };
 
@@ -306,8 +324,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   // Search tokens function
   const searchTokens = async (page = 1, size = pageSize) => {
     const normalizedPage = Number.isInteger(page) && page > 0 ? page : 1;
-    const normalizedSize =
-      Number.isInteger(size) && size > 0 ? size : pageSize;
+    const normalizedSize = Number.isInteger(size) && size > 0 ? size : pageSize;
 
     const { searchKeyword, searchToken } = getFormValues();
     if (searchKeyword === '' && searchToken === '') {
@@ -448,6 +465,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
       .catch((reason) => {
         showError(reason);
       });
+    loadConcurrency();
     API.get('/api/user/self/groups')
       .then((res) => {
         if (res.data.success && res.data.data) {
@@ -470,6 +488,9 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
     pageSize,
     searching,
     groupRatios,
+    concurrencyMap,
+    concurrencySupported,
+    loadConcurrency,
 
     // Selection state
     selectedKeys,

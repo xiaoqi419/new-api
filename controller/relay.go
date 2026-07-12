@@ -65,6 +65,71 @@ func geminiRelayHandler(c *gin.Context, info *relaycommon.RelayInfo) *types.NewA
 	return err
 }
 
+// dispatchRelay 按 relayFormat 调用对应的中继处理器。
+func dispatchRelay(c *gin.Context, relayInfo *relaycommon.RelayInfo, relayFormat types.RelayFormat) *types.NewAPIError {
+	switch relayFormat {
+	case types.RelayFormatOpenAIRealtime:
+		return relay.WssHelper(c, relayInfo)
+	case types.RelayFormatClaude:
+		return relay.ClaudeHelper(c, relayInfo)
+	case types.RelayFormatGemini:
+		return geminiRelayHandler(c, relayInfo)
+	default:
+		return relayHandler(c, relayInfo)
+	}
+}
+
+// tryChannelFallbackUpstream 尝试渠道自带兜底转发：用备用 BaseURL + Key 重发一次。
+// attempted=false 表示未配置兜底、条件不满足或已在兜底中，未发起兜底请求。
+// 计费口径不变（渠道 Id/Type/分组均不变，仅替换转发目标与凭证）。
+func tryChannelFallbackUpstream(c *gin.Context, channel *model.Channel, relayInfo *relaycommon.RelayInfo, relayFormat types.RelayFormat) (*types.NewAPIError, bool) {
+	// 避免在兜底请求中再次触发兜底，造成循环。
+	if c.GetBool("in_channel_fallback") {
+		return nil, false
+	}
+	// 首次尝试时 getChannel 返回的是仅含 Id/Type/Name 的精简渠道对象（Setting 为空），
+	// 兜底配置存于渠道 Setting，需按渠道 Id 读取完整渠道（走缓存，不额外查库）。
+	settingChannel := channel
+	if settingChannel.Setting == nil && settingChannel.Id > 0 {
+		if full, err := model.CacheGetChannel(channel.Id); err == nil && full != nil {
+			settingChannel = full
+		}
+	}
+	fb := settingChannel.GetSetting().FallbackUpstream
+	if fb == nil || !fb.Enabled || strings.TrimSpace(fb.BaseURL) == "" {
+		return nil, false
+	}
+
+	// 备份原始转发目标与凭证，兜底结束后恢复，避免污染后续换渠道重试。
+	originalBaseURL := common.GetContextKeyString(c, constant.ContextKeyChannelBaseUrl)
+	originalKey := common.GetContextKeyString(c, constant.ContextKeyChannelKey)
+
+	fallbackKey := fb.Key
+	if strings.TrimSpace(fallbackKey) == "" {
+		fallbackKey = originalKey // 未单独配置兜底 Key 时复用原渠道 Key
+	}
+	common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, strings.TrimSpace(fb.BaseURL))
+	common.SetContextKey(c, constant.ContextKeyChannelKey, fallbackKey)
+	c.Set("in_channel_fallback", true)
+
+	defer func() {
+		common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, originalBaseURL)
+		common.SetContextKey(c, constant.ContextKeyChannelKey, originalKey)
+		c.Set("in_channel_fallback", false)
+	}()
+
+	// 重新读取请求体，供兜底请求消费。
+	bodyStorage, bodyErr := common.GetBodyStorage(c)
+	if bodyErr != nil {
+		return nil, false
+	}
+	c.Request.Body = io.NopCloser(bodyStorage)
+
+	logger.LogInfo(c, fmt.Sprintf("渠道 #%d 请求失败，尝试兜底转发至 %s", channel.Id, fb.BaseURL))
+	fallbackErr := dispatchRelay(c, relayInfo, relayFormat)
+	return fallbackErr, true
+}
+
 func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	requestId := c.GetString(common.RequestIdKey)
@@ -210,20 +275,23 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 		c.Request.Body = io.NopCloser(bodyStorage)
 
-		switch relayFormat {
-		case types.RelayFormatOpenAIRealtime:
-			newAPIError = relay.WssHelper(c, relayInfo)
-		case types.RelayFormatClaude:
-			newAPIError = relay.ClaudeHelper(c, relayInfo)
-		case types.RelayFormatGemini:
-			newAPIError = geminiRelayHandler(c, relayInfo)
-		default:
-			newAPIError = relayHandler(c, relayInfo)
-		}
+		newAPIError = dispatchRelay(c, relayInfo, relayFormat)
 
 		if newAPIError == nil {
 			relayInfo.LastError = nil
 			return
+		}
+
+		// 渠道自带兜底转发：本渠道请求失败且错误可重试时，用备用 BaseURL + Key 在同一渠道对象上重试一次。
+		// 兜底是渠道自身能力，不受全局重试次数门控（传 retryTimes=1 仅判断错误类型是否可重试）。
+		if shouldRetry(c, newAPIError, 1) {
+			if fallbackErr, attempted := tryChannelFallbackUpstream(c, channel, relayInfo, relayFormat); attempted {
+				if fallbackErr == nil {
+					relayInfo.LastError = nil
+					return
+				}
+				newAPIError = fallbackErr
+			}
 		}
 
 		newAPIError = service.NormalizeViolationFeeError(newAPIError)

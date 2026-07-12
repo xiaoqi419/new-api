@@ -96,7 +96,7 @@ func probeModelHealth(userID int, group, modelName string) {
 	defer cancel()
 
 	start := time.Now()
-	res := testChannel(ctx, channel, userID, modelName, string(constant.EndpointTypeOpenAI), false)
+	res := testChannel(ctx, channel, userID, modelName, string(constant.EndpointTypeOpenAI), false, true)
 	elapsedMs := time.Since(start).Milliseconds()
 	success := res.localErr == nil && res.newAPIError == nil
 

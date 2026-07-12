@@ -74,6 +74,14 @@ func GetTopUpById(id int) *TopUp {
 	return topUp
 }
 
+// GetSuccessTopUpsByUser 返回该用户所有已支付成功的充值订单，按完成时间倒序。
+func GetSuccessTopUpsByUser(userId int) ([]*TopUp, error) {
+	var topUps []*TopUp
+	err := DB.Where("user_id = ? AND status = ?", userId, common.TopUpStatusSuccess).
+		Order("id desc").Find(&topUps).Error
+	return topUps, err
+}
+
 func GetTopUpByTradeNo(tradeNo string) *TopUp {
 	var topUp *TopUp
 	var err error

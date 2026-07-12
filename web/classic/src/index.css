@@ -1250,7 +1250,7 @@ html[data-ui-preset='apimart'] .app-home-stars span {
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: #7c5cff;
+  background: #111111;
   box-shadow: 0 0 12px currentColor;
 }
 
@@ -1263,7 +1263,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(1) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(2) {
   top: 22%;
   left: 20%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(3) {
@@ -1291,7 +1291,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(6) {
   left: 12%;
   width: 6px;
   height: 6px;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(7) {
@@ -1321,7 +1321,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(10) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(11) {
   top: 60%;
   left: 15%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(12) {
@@ -1333,7 +1333,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(12) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(13) {
   top: 66%;
   left: 60%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(14) {
@@ -1353,7 +1353,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(15) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(16) {
   top: 28%;
   left: 25%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(n + 17) {
@@ -1401,7 +1401,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(22) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(23) {
   top: 19%;
   left: 73%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(24) {
@@ -1419,7 +1419,7 @@ html[data-ui-preset='apimart'] .app-home-stars span:nth-child(25) {
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(26) {
   top: 75%;
   left: 20%;
-  color: #7c5cff;
+  color: #111111;
 }
 
 html[data-ui-preset='apimart'] .app-home-stars span:nth-child(27) {
@@ -1745,7 +1745,7 @@ html[data-ui-preset='apimart'] .app-home-step-track::before {
   height: 1px;
   background: linear-gradient(
     90deg,
-    rgba(124, 92, 255, 0.5),
+    rgba(17, 17, 17, 0.5),
     rgba(245, 184, 33, 0.42)
   );
 }
@@ -1767,11 +1767,11 @@ html[data-ui-preset='apimart'] .app-home-step span {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #7c5cff;
+  background: #111111;
   color: #fff;
   font-size: 1.1rem;
   font-weight: 850;
-  box-shadow: 0 0 34px rgba(124, 92, 255, 0.42);
+  box-shadow: 0 0 34px rgba(17, 17, 17, 0.42);
 }
 
 html[data-ui-preset='apimart'] .app-home-step:nth-child(2) span {
@@ -2498,13 +2498,7 @@ html[data-ui-preset='apimart'] .app-wordmark-footer-inner {
 }
 
 html[data-ui-preset='apimart'] .app-wordmark {
-  font-size: 10rem;
-  line-height: 0.86;
-  font-weight: 800;
-  letter-spacing: 0;
-  color: var(--app-text);
-  opacity: 0.96;
-  overflow-wrap: anywhere;
+  display: none;
 }
 
 html[data-ui-preset='apimart'] .app-footer-link {
@@ -4909,32 +4903,32 @@ html[data-ui-preset='apimart']:not(.dark) .app-home-model-card strong {
 /* 统一主色为浅紫（原为 Semi 默认蓝）。放在文件末尾以覆盖既有规则。 */
 :root,
 body {
-  --semi-color-primary: #7c5cff;
-  --semi-color-primary-hover: #6a46f0;
-  --semi-color-primary-active: #5a37db;
-  --semi-color-primary-disabled: #c9bcff;
-  --semi-color-primary-light-default: rgba(124, 92, 255, 0.1);
-  --semi-color-primary-light-hover: rgba(124, 92, 255, 0.16);
-  --semi-color-primary-light-active: rgba(124, 92, 255, 0.24);
-  --semi-color-link: #7c5cff;
-  --semi-color-link-hover: #6a46f0;
-  --semi-color-link-active: #5a37db;
-  --semi-color-focus-border: #7c5cff;
+  --semi-color-primary: #111111;
+  --semi-color-primary-hover: #000000;
+  --semi-color-primary-active: #000000;
+  --semi-color-primary-disabled: #c4c4c4;
+  --semi-color-primary-light-default: rgba(17, 17, 17, 0.06);
+  --semi-color-primary-light-hover: rgba(17, 17, 17, 0.1);
+  --semi-color-primary-light-active: rgba(17, 17, 17, 0.16);
+  --semi-color-link: #111111;
+  --semi-color-link-hover: #000000;
+  --semi-color-link-active: #000000;
+  --semi-color-focus-border: #111111;
 }
 
 html.dark,
 html.dark body {
-  --semi-color-primary: #a78bfa;
-  --semi-color-primary-hover: #b9a2ff;
-  --semi-color-primary-active: #c9b8ff;
-  --semi-color-primary-disabled: #4b3f7a;
-  --semi-color-primary-light-default: rgba(167, 139, 250, 0.16);
-  --semi-color-primary-light-hover: rgba(167, 139, 250, 0.24);
-  --semi-color-primary-light-active: rgba(167, 139, 250, 0.32);
-  --semi-color-link: #a78bfa;
-  --semi-color-link-hover: #b9a2ff;
-  --semi-color-link-active: #c9b8ff;
-  --semi-color-focus-border: #a78bfa;
+  --semi-color-primary: #f5f5f5;
+  --semi-color-primary-hover: #ffffff;
+  --semi-color-primary-active: #ffffff;
+  --semi-color-primary-disabled: #4a4a4a;
+  --semi-color-primary-light-default: rgba(255, 255, 255, 0.12);
+  --semi-color-primary-light-hover: rgba(255, 255, 255, 0.18);
+  --semi-color-primary-light-active: rgba(255, 255, 255, 0.26);
+  --semi-color-link: #f5f5f5;
+  --semi-color-link-hover: #ffffff;
+  --semi-color-link-active: #ffffff;
+  --semi-color-focus-border: #f5f5f5;
 }
 
 /* 首页统计数字：去彩虹，统一为单色文本，靠字号字重分层 */
@@ -4994,13 +4988,13 @@ html.dark[data-ui-preset='apimart']
 /* ==================== 控制台整体协调：统一画布 + 浅紫强调 ==================== */
 /* apimart 主强调色统一为浅紫（原为蓝 #2f6df6），与全局主色一致 */
 html[data-ui-preset='apimart']:not(.dark) {
-  --app-primary: #7c5cff;
-  --app-primary-hover: #6a46f0;
+  --app-primary: #111111;
+  --app-primary-hover: #000000;
 }
 
 html[data-ui-preset='apimart'].dark {
-  --app-primary: #a78bfa;
-  --app-primary-hover: #b9a2ff;
+  --app-primary: #f5f5f5;
+  --app-primary-hover: #ffffff;
 }
 
 /* 侧边栏融入内容画布：与内容共用 --app-bg，去掉“白条”割裂感 */
@@ -5022,4 +5016,1553 @@ html[data-ui-preset='apimart'] .sidebar-collapse-button {
 html[data-ui-preset='apimart'] .semi-card {
   border-radius: 10px !important;
   box-shadow: var(--app-shadow-sm);
+}
+
+/* ============================================================
+   玻璃拟态首页样板（轻玻璃 · 紫粉双色光晕 · 明暗两态）
+   仅覆盖 .app-home-* 视觉，不改任何 JSX / 逻辑，可整段删除回退。
+   ============================================================ */
+
+/* 干净白底 + 玻璃调色板变量（明暗各一套）。
+   参考：干净白/浅灰底 + 实白玻璃卡 + 紫色关键词高亮，光晕仅作极淡点缀。 */
+html[data-ui-preset='apimart']:not(.dark) {
+  --glass-glow-purple: rgba(0, 0, 0, 0);
+  --glass-glow-pink: rgba(0, 0, 0, 0);
+  --glass-surface: rgba(255, 255, 255, 0.85);
+  --glass-surface-strong: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-border-soft: rgba(17, 17, 17, 0.12);
+  --glass-shadow: 0 6px 24px rgba(20, 24, 40, 0.06);
+  --glass-canvas: #fbfbfd;
+}
+
+html[data-ui-preset='apimart'].dark {
+  --glass-glow-purple: rgba(0, 0, 0, 0);
+  --glass-glow-pink: rgba(0, 0, 0, 0);
+  --glass-surface: rgba(24, 24, 34, 0.7);
+  --glass-surface-strong: rgba(30, 30, 44, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-soft: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.36);
+  --glass-canvas: #0a0a0f;
+}
+
+/* 页面画布：干净纯色底 */
+html[data-ui-preset='apimart'] .app-home-market {
+  position: relative;
+  background: var(--glass-canvas) !important;
+  isolation: isolate;
+}
+
+/* 顶部保持纯净留白，氛围光晕只在页面下半部极淡点缀，避开导航栏区域 */
+html[data-ui-preset='apimart'] .app-home-market::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      40vw 40vw at 12% 100%,
+      var(--glass-glow-purple),
+      transparent 60%
+    ),
+    radial-gradient(
+      38vw 38vw at 90% 98%,
+      var(--glass-glow-pink),
+      transparent 62%
+    );
+}
+
+/* Hero 网格背景弱化 */
+html[data-ui-preset='apimart'] .app-home-hero::before {
+  opacity: 0.35;
+}
+
+/* 通用玻璃面：section 内容卡片化（热门模型/步骤/API/卖点/供应商/FAQ 容器） */
+html[data-ui-preset='apimart'] .app-home-model-card,
+html[data-ui-preset='apimart'] .app-home-step,
+html[data-ui-preset='apimart'] .app-home-value-item,
+html[data-ui-preset='apimart'] .app-home-faq-item,
+html[data-ui-preset='apimart'] .app-home-chat-card,
+html[data-ui-preset='apimart'] .app-home-provider-logo {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  transition:
+    transform 200ms var(--app-ease),
+    box-shadow 200ms var(--app-ease),
+    border-color 200ms var(--app-ease);
+}
+
+/* 悬停上浮 + 主色描边点缀 */
+html[data-ui-preset='apimart'] .app-home-model-card:hover,
+html[data-ui-preset='apimart'] .app-home-step:hover,
+html[data-ui-preset='apimart'] .app-home-value-item:hover,
+html[data-ui-preset='apimart'] .app-home-faq-item:hover,
+html[data-ui-preset='apimart'] .app-home-provider-logo:hover {
+  transform: translateY(-3px);
+  border-color: rgba(17, 17, 17, 0.45) !important;
+  box-shadow: 0 16px 48px rgba(17, 17, 17, 0.22) !important;
+}
+
+/* 热门模型卡：图片卡保留自身封面，仅套玻璃描边 */
+html[data-ui-preset='apimart'] .app-home-model-card {
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+/* 步骤卡：圆角 + 内边距协调 */
+html[data-ui-preset='apimart'] .app-home-step {
+  border-radius: 14px !important;
+  padding: 1.4rem 1.3rem !important;
+}
+
+/* 卖点卡：去掉原下划线分隔，改为独立玻璃块 */
+html[data-ui-preset='apimart'] .app-home-value-item {
+  border-radius: 14px !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: 1.2rem 1.3rem !important;
+}
+
+/* FAQ 卡 */
+html[data-ui-preset='apimart'] .app-home-faq-item {
+  border-radius: 14px !important;
+  padding: 0.3rem 0.4rem !important;
+}
+
+/* 供应商 logo：胶囊玻璃片 */
+html[data-ui-preset='apimart'] .app-home-provider-logo {
+  border-radius: 999px !important;
+  padding: 0.55rem 1.15rem !important;
+  min-height: 48px;
+  filter: none;
+}
+
+/* ChatAI 悬浮卡：更强玻璃质感 */
+html[data-ui-preset='apimart'] .app-home-chat-card {
+  background: var(--glass-surface-strong) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+  border-radius: 16px !important;
+}
+
+/* API 展示区大面板玻璃化 */
+html[data-ui-preset='apimart'] .app-home-api-showcase {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--glass-shadow) !important;
+  padding: 1.6rem !important;
+}
+
+/* API tabs：玻璃胶囊 */
+html[data-ui-preset='apimart'] .app-home-api-tabs {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 999px !important;
+  padding: 0.3rem !important;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-api-tabs button.active {
+  background: linear-gradient(135deg, #111111, #333333) !important;
+  color: #fff !important;
+  border-radius: 999px !important;
+}
+
+/* 主 CTA 按钮渐变，呼应紫粉主题 */
+html[data-ui-preset='apimart']
+  .app-home-actions
+  .semi-button-primary.semi-button-solid {
+  background: linear-gradient(135deg, #111111, #333333) !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.32) !important;
+}
+
+/* 区块标题：干净深色黑字（参考图风格），关键词高亮由末尾规则处理 */
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-section-heading
+  .semi-typography.semi-typography-h2 {
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+  color: #14161f !important;
+}
+html[data-ui-preset='apimart'].dark
+  .app-home-section-heading
+  .semi-typography.semi-typography-h2 {
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+  color: #f4f4f8 !important;
+}
+
+/* 统计数字区玻璃条 */
+html[data-ui-preset='apimart'] .app-home-stats {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--glass-shadow) !important;
+  padding: 1.4rem 1rem !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-preset='apimart'] .app-home-model-card,
+  html[data-ui-preset='apimart'] .app-home-step,
+  html[data-ui-preset='apimart'] .app-home-value-item,
+  html[data-ui-preset='apimart'] .app-home-faq-item,
+  html[data-ui-preset='apimart'] .app-home-provider-logo {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   全屏分段滚动（fullpage）+ 进场动画
+   仅 apimart 首页生效；配合 useFullpage hook。可整段删除回退。
+   ============================================================ */
+
+/* 首页启用 fullpage 时锁定视口，禁用原文档滚动 */
+html[data-ui-preset='apimart'] .app-home-fullpage {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 0 !important;
+  position: relative;
+}
+
+/* 位移轨道：整体上下平移切屏 */
+html[data-ui-preset='apimart'] .app-home-fullpage-track {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.9s cubic-bezier(0.86, 0, 0.07, 1);
+  will-change: transform;
+}
+
+/* 每一屏 = 满视口；内容垂直居中但整体拉宽，避免“挤中间” */
+html[data-ui-preset='apimart'] .app-home-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 6rem 2rem 3rem !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+/* 非 hero / 非 API 屏内容从视口偏上开始，填充上方空白，视觉更饱满 */
+html[data-ui-preset='apimart']
+  .app-home-page:not(.app-home-hero):not(.app-home-api-section) {
+  justify-content: flex-start;
+  padding-top: 16vh !important;
+}
+
+/* 每屏内部内容统一拉宽到接近视口宽，卡片铺开不空 */
+html[data-ui-preset='apimart'] .app-home-page > .app-home-section-heading,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-model-mosaic,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-step-track,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-value-list,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-faq,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-api-showcase,
+html[data-ui-preset='apimart'] .app-home-page > .app-home-actions {
+  width: 100%;
+  max-width: min(1160px, 92vw);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-ui-preset='apimart'] .app-home-page::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* hero 特例：取消原 900px 最小高与大内边距，融入满屏 */
+html[data-ui-preset='apimart'] .app-home-fullpage .app-home-hero {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 5.5rem 1.5rem 3rem !important;
+}
+
+/* 分段进场动画：容器激活时，内部主要元素淡入 + 上移，依次入场 */
+html[data-ui-preset='apimart'] .app-home-page > * {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s var(--app-ease),
+    transform 0.7s var(--app-ease);
+}
+
+html[data-ui-preset='apimart'] .app-home-page[data-active='true'] > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 逐个延迟，制造层叠入场节奏 */
+html[data-ui-preset='apimart']
+  .app-home-page[data-active='true']
+  > *:nth-child(1) {
+  transition-delay: 0.08s;
+}
+html[data-ui-preset='apimart']
+  .app-home-page[data-active='true']
+  > *:nth-child(2) {
+  transition-delay: 0.2s;
+}
+html[data-ui-preset='apimart']
+  .app-home-page[data-active='true']
+  > *:nth-child(3) {
+  transition-delay: 0.32s;
+}
+html[data-ui-preset='apimart']
+  .app-home-page[data-active='true']
+  > *:nth-child(4) {
+  transition-delay: 0.44s;
+}
+
+/* hero 内的星点背景不参与进场位移 */
+html[data-ui-preset='apimart'] .app-home-page > .app-home-stars {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* 右侧分段圆点导航 */
+html[data-ui-preset='apimart'] .app-home-fullpage-nav {
+  position: fixed;
+  right: 1.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-fullpage-nav button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 17, 17, 0.5);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.3s var(--app-ease),
+    transform 0.3s var(--app-ease),
+    border-color 0.3s var(--app-ease);
+}
+
+html[data-ui-preset='apimart'] .app-home-fullpage-nav button:hover {
+  border-color: #111111;
+  transform: scale(1.25);
+}
+
+html[data-ui-preset='apimart'] .app-home-fullpage-nav button.active {
+  background: linear-gradient(135deg, #111111, #333333);
+  border-color: transparent;
+  transform: scale(1.35);
+}
+
+@media (max-width: 768px) {
+  html[data-ui-preset='apimart'] .app-home-fullpage-nav {
+    right: 0.6rem;
+  }
+  html[data-ui-preset='apimart'] .app-home-page {
+    padding: 4.5rem 1rem 2.5rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-preset='apimart'] .app-home-fullpage-track {
+    transition: none;
+  }
+  html[data-ui-preset='apimart'] .app-home-page > *,
+  html[data-ui-preset='apimart'] .app-home-page[data-active='true'] > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ============================================================
+   fullpage 各屏内容修正：拉满、放大、配色统一（去多彩杂色）
+   针对反馈：内容太少/挤中间/配色不好看/太挤。放文件末尾最高优先级。
+   ============================================================ */
+
+/* ---- 通用：区块标题更大更靠上，副标题清晰 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-section-heading {
+  margin-bottom: 2.4rem;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-section-heading
+  .semi-typography-h2 {
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+}
+
+/* ---- 屏2 热门模型：卡片放大、行更高、铺满宽度 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-mosaic {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-rows: 150px !important;
+  gap: 1rem !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-card {
+  border-radius: 16px !important;
+  padding: 1.1rem !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-card.large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+/* 无封面图的卡：统一紫粉玻璃，不再各种浅脏色 */
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-model-card:not([style*='background-image']) {
+  background: linear-gradient(
+    150deg,
+    rgba(17, 17, 17, 0.16),
+    rgba(17, 17, 17, 0.12)
+  ) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-model-card:not([style*='background-image'])::before {
+  display: none !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-model-card:not([style*='background-image'])
+  strong,
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-model-card:not([style*='background-image'])
+  .app-home-model-brand {
+  color: #1e1b3a !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-model-card:not([style*='background-image'])
+  small {
+  color: #4b4470 !important;
+}
+/* 价格标签统一紫，不再青绿 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-price {
+  background: rgba(17, 17, 17, 0.9) !important;
+  color: #fff !important;
+}
+
+/* ---- 屏3 步骤：卡片化 + 文字改深色（浅底可读）+ 圆点统一紫粉 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-step-track {
+  gap: 1.6rem !important;
+  margin-top: 0 !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-step {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--glass-shadow) !important;
+  padding: 2rem 1.4rem !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-step span,
+html[data-ui-preset='apimart'] .app-home-page .app-home-step:nth-child(2) span,
+html[data-ui-preset='apimart'] .app-home-page .app-home-step:nth-child(3) span {
+  background: linear-gradient(135deg, #111111, #333333) !important;
+  box-shadow: 0 8px 22px rgba(17, 17, 17, 0.32) !important;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-page .app-home-step strong {
+  color: #1e1b3a !important;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-page .app-home-step p {
+  color: #55507a !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-page .app-home-step strong {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-page .app-home-step p {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+/* 步骤间连线改紫粉 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-step-track::before {
+  background: linear-gradient(
+    90deg,
+    rgba(17, 17, 17, 0.5),
+    rgba(17, 17, 17, 0.5)
+  ) !important;
+}
+
+/* ---- 屏4 API：面板加宽去脏色，标签清晰 ---- */
+html[data-ui-preset='apimart'] .app-home-page.app-home-api-section {
+  max-width: none !important;
+  display: flex !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-showcase {
+  max-width: min(1100px, 92vw) !important;
+  padding: 2rem !important;
+}
+
+/* ---- 屏5 卖点：网格铺开 + 序号统一紫粉 + 文字可读 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-value-list {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 1.2rem !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-value-item span,
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-value-item:nth-child(n)
+  span {
+  color: #111111 !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-value-item
+  strong {
+  color: #1e1b3a !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-value-item
+  p {
+  color: #55507a !important;
+}
+
+/* ---- 屏7 FAQ：列表加宽、行更高，不再挤成一坨 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-faq {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.9rem !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-faq-item {
+  border-radius: 14px !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-faq-item > button {
+  padding: 1.15rem 1.4rem !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-faq-item
+  strong {
+  color: #1e1b3a !important;
+}
+
+/* ---- 屏1 hero：统计条加宽 ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-stats {
+  max-width: min(1000px, 92vw) !important;
+}
+
+/* ============================================================
+   干净白底重构：光晕收敛 / provider 规整网格 / 白玻璃卡 / 关键词高亮
+   ============================================================ */
+
+/* 玻璃卡在白底上更实更白，边框极浅、阴影更轻（参考图质感） */
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-card,
+html[data-ui-preset='apimart'] .app-home-page .app-home-step,
+html[data-ui-preset='apimart'] .app-home-page .app-home-value-item,
+html[data-ui-preset='apimart'] .app-home-page .app-home-faq-item,
+html[data-ui-preset='apimart'] .app-home-page .app-home-provider-logo {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* hover 上浮改为淡紫描边 + 轻阴影（不再重紫光） */
+html[data-ui-preset='apimart'] .app-home-page .app-home-model-card:hover,
+html[data-ui-preset='apimart'] .app-home-page .app-home-step:hover,
+html[data-ui-preset='apimart'] .app-home-page .app-home-value-item:hover,
+html[data-ui-preset='apimart'] .app-home-page .app-home-faq-item:hover,
+html[data-ui-preset='apimart'] .app-home-page .app-home-provider-logo:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border-soft) !important;
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.14) !important;
+}
+
+/* ---- 屏6 供应商：横向跑马灯 → 规整 5 列白卡网格（参考图） ---- */
+html[data-ui-preset='apimart'] .app-home-page .app-home-provider-marquee {
+  overflow: visible !important;
+  mask-image: none !important;
+  margin-top: 0 !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-provider-track {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.9rem !important;
+  animation: none !important;
+  transform: none !important;
+}
+/* 跑马灯为无缝滚动复制了一份 provider，网格模式下隐藏后半份 */
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-provider-track
+  .app-home-provider-logo:nth-child(n + 13) {
+  display: none !important;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-provider-track
+  .app-home-provider-logo {
+  flex: unset !important;
+  min-width: 0 !important;
+  min-height: 64px !important;
+  padding: 0.9rem 1rem !important;
+  border-radius: 14px !important;
+  justify-content: flex-start !important;
+  gap: 0.7rem !important;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-provider-track
+  .app-home-provider-logo
+  span {
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-provider-track
+  .app-home-provider-logo
+  span {
+  color: #14161f !important;
+}
+html[data-ui-preset='apimart'].dark
+  .app-home-page
+  .app-home-provider-track
+  .app-home-provider-logo
+  span {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+/* ---- 标题关键词高亮：数字/英文用紫色（用 em 包裹时生效） ---- */
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-section-heading
+  .semi-typography-h2
+  em {
+  color: #111111 !important;
+  font-style: normal;
+}
+
+/* 区块副标题更淡更规整 */
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-section-heading
+  .semi-typography-text {
+  color: #6b7280 !important;
+}
+
+/* hero 主标题：浅色黑字系（去掉偏亮紫，更沉稳），关键词由 title-color 控制 */
+html[data-ui-preset='apimart']:not(.dark) .app-home-fullpage .app-home-title {
+  color: #14161f !important;
+}
+
+/* CTA 主按钮保持紫粉渐变，但阴影收敛 */
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-actions
+  .semi-button-primary.semi-button-solid {
+  box-shadow: 0 6px 18px rgba(17, 17, 17, 0.24) !important;
+}
+
+/* stats 统计条在白底上更实 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-stats {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* ============================================================
+   第3屏 生态合成屏：PROVIDERS + CLIENTS（参考图布局）
+   ============================================================ */
+
+/* 合成屏：内容较多，允许内部滚动，内容顶部对齐 */
+html[data-ui-preset='apimart'] .app-home-page.app-home-ecosystem-section {
+  justify-content: flex-start !important;
+  padding-top: 5rem !important;
+  gap: 2.4rem;
+}
+
+html[data-ui-preset='apimart'] .app-home-eco-block {
+  width: 100%;
+  max-width: min(1120px, 92vw);
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* 胶囊标签（○ PROVIDERS / ⊗ CLIENTS） */
+html[data-ui-preset='apimart'] .app-home-eco-badge {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  margin-bottom: 0.9rem;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.1);
+  border: 1px solid rgba(17, 17, 17, 0.2);
+  color: #111111;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+/* 区块标题 + 副标题 */
+html[data-ui-preset='apimart'] .app-home-eco-block .app-home-section-heading {
+  margin-bottom: 1.6rem;
+}
+html[data-ui-preset='apimart']
+  .app-home-eco-block
+  .app-home-section-heading
+  .semi-typography-h2 {
+  font-size: 1.9rem !important;
+  font-weight: 800 !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-eco-block
+  .app-home-section-heading
+  .semi-typography-h2 {
+  color: #14161f !important;
+}
+html[data-ui-preset='apimart'].dark
+  .app-home-eco-block
+  .app-home-section-heading
+  .semi-typography-h2 {
+  color: #f4f4f8 !important;
+}
+/* 关键词高亮：纯黑加粗（无颜色） */
+html[data-ui-preset='apimart'] .app-home-hl {
+  font-style: normal;
+  font-weight: 800;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: #111111;
+}
+html[data-ui-preset='apimart'].dark .app-home-hl {
+  color: #f5f5f5;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-eco-block
+  .app-home-section-heading
+  .semi-typography-text {
+  color: #6b7280 !important;
+}
+html[data-ui-preset='apimart'].dark
+  .app-home-eco-block
+  .app-home-section-heading
+  .semi-typography-text {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* 卡片网格：5 列（参考图） */
+html[data-ui-preset='apimart'] .app-home-eco-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+/* 单卡：图标 + 名称 + 小灰字标签（左对齐，白玻璃卡） */
+html[data-ui-preset='apimart'] .app-home-eco-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  text-align: left;
+  transition:
+    transform 200ms var(--app-ease),
+    box-shadow 200ms var(--app-ease),
+    border-color 200ms var(--app-ease);
+}
+html[data-ui-preset='apimart'] .app-home-eco-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border-soft);
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.14);
+}
+
+html[data-ui-preset='apimart'] .app-home-eco-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(17, 17, 17, 0.06);
+}
+
+html[data-ui-preset='apimart'] .app-home-eco-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+html[data-ui-preset='apimart'] .app-home-eco-meta strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-eco-meta strong {
+  color: #14161f;
+}
+html[data-ui-preset='apimart'].dark .app-home-eco-meta strong {
+  color: rgba(255, 255, 255, 0.9);
+}
+html[data-ui-preset='apimart'] .app-home-eco-meta small {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-eco-meta small {
+  color: #8a90a0;
+}
+html[data-ui-preset='apimart'].dark .app-home-eco-meta small {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* 首字母占位色块 */
+html[data-ui-preset='apimart'] .app-home-eco-icon .app-home-icon-fallback {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #111111, #333333);
+  color: #fff;
+  font-weight: 800;
+}
+
+@media (max-width: 1024px) {
+  html[data-ui-preset='apimart'] .app-home-eco-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  html[data-ui-preset='apimart'] .app-home-eco-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================
+   第4屏 API 用例：右侧深色代码窗口（参考图第二张的代码框）
+   ============================================================ */
+
+/* showcase 面板在白底上：白玻璃、去脏色 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-showcase {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  border-radius: 20px !important;
+  align-items: stretch !important;
+}
+
+/* 左侧文案在白底可读 */
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-api-copy
+  strong {
+  color: #14161f !important;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-page .app-home-api-copy p,
+html[data-ui-preset='apimart']:not(.dark) .app-home-page .app-home-api-copy li {
+  color: #55507a !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-copy span {
+  color: #111111 !important;
+}
+
+/* 右侧列承载代码窗口 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-visual {
+  display: flex !important;
+  align-items: stretch;
+  min-height: 0;
+}
+
+/* 深色代码窗口（始终深色，无论明暗，参考图效果） */
+html[data-ui-preset='apimart'] .app-home-code-window {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(10, 12, 30, 0.28);
+}
+
+html[data-ui-preset='apimart'] .app-home-code-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.9rem;
+  background: #161b22;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+html[data-ui-preset='apimart'] .app-home-code-dots {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+html[data-ui-preset='apimart'] .app-home-code-dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  display: inline-block;
+}
+html[data-ui-preset='apimart'] .app-home-code-dots i:nth-child(1) {
+  background: #ff5f56;
+}
+html[data-ui-preset='apimart'] .app-home-code-dots i:nth-child(2) {
+  background: #ffbd2e;
+}
+html[data-ui-preset='apimart'] .app-home-code-dots i:nth-child(3) {
+  background: #27c93f;
+}
+html[data-ui-preset='apimart'] .app-home-code-lang {
+  color: #c9d1d9;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+html[data-ui-preset='apimart'] .app-home-code-copy {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  color: #9aa4b2;
+  font-size: 0.74rem;
+  cursor: pointer;
+  transition:
+    color 0.2s var(--app-ease),
+    border-color 0.2s var(--app-ease);
+}
+html[data-ui-preset='apimart'] .app-home-code-copy:hover {
+  color: #fff;
+  border-color: rgba(17, 17, 17, 0.6);
+}
+html[data-ui-preset='apimart'] .app-home-code-body {
+  margin: 0;
+  padding: 1.1rem 1.2rem;
+  overflow: auto;
+  background: #0d1117;
+}
+html[data-ui-preset='apimart'] .app-home-code-body code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #c9d1d9;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* ============================================================
+   第4屏 API：一模一样参考图版 —— 去白卡外框 + 两栏铺白底 +
+   标题移左栏左对齐 + 语言tab + API Base框 + 彩色语法高亮
+   ============================================================ */
+
+/* 该屏内容顶部对齐、左右两栏铺满，无居中标题、无白卡外框 */
+html[data-ui-preset='apimart'] .app-home-page.app-home-api-section {
+  justify-content: center !important;
+  align-items: center !important;
+  max-width: none !important;
+  display: flex !important;
+}
+
+/* showcase 直接是两栏，无背景/边框/阴影（铺在白底上） */
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-showcase {
+  width: 100%;
+  max-width: min(1160px, 92vw) !important;
+  margin: 0 auto;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  grid-template-columns: 1fr 1.05fr !important;
+  gap: 3rem !important;
+  align-items: center !important;
+}
+
+/* 左栏文案左对齐 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-copy {
+  text-align: left;
+}
+/* 内容切换 tab（Chat/Image/Video）在左栏标题上方，胶囊玻璃 */
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-api-copy
+  .app-home-api-tabs {
+  display: inline-flex !important;
+  gap: 0.3rem;
+  margin: 0 0 1.4rem !important;
+  padding: 0.28rem !important;
+  border-radius: 999px !important;
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-api-copy
+  .app-home-api-tabs
+  button {
+  border-radius: 999px !important;
+  padding: 0.3rem 0.9rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  background: transparent !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-api-copy
+  .app-home-api-tabs
+  button {
+  color: #55507a !important;
+}
+html[data-ui-preset='apimart']
+  .app-home-page
+  .app-home-api-copy
+  .app-home-api-tabs
+  button.active {
+  background: linear-gradient(135deg, #111111, #333333) !important;
+  color: #fff !important;
+}
+
+/* 左栏标题：大号加粗左对齐 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-copy strong {
+  display: block;
+  font-size: 1.9rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  margin-bottom: 0.9rem;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-home-page
+  .app-home-api-copy
+  strong {
+  color: #14161f !important;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-copy p {
+  margin-bottom: 1rem;
+}
+html[data-ui-preset='apimart'] .app-home-page .app-home-api-copy ul {
+  margin-bottom: 1.4rem;
+}
+
+/* 左栏 API Base 复制框 */
+html[data-ui-preset='apimart'] .app-home-api-baseurl {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.65rem 0.55rem 0.9rem;
+  margin-bottom: 1.3rem;
+  border-radius: 12px;
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  max-width: 420px;
+}
+html[data-ui-preset='apimart'] .app-home-api-baseurl-label {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #111111;
+  letter-spacing: 0.04em;
+}
+html[data-ui-preset='apimart'] .app-home-api-baseurl code {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+html[data-ui-preset='apimart']:not(.dark) .app-home-api-baseurl code {
+  color: #14161f;
+}
+html[data-ui-preset='apimart'].dark .app-home-api-baseurl code {
+  color: rgba(255, 255, 255, 0.9);
+}
+html[data-ui-preset='apimart'] .app-home-api-baseurl button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #111111, #333333);
+}
+
+/* 右栏代码窗顶部语言 tab（Python / Node.js / cURL） */
+html[data-ui-preset='apimart'] .app-home-code-langs {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: 0.4rem;
+}
+html[data-ui-preset='apimart'] .app-home-code-langs button {
+  padding: 0.2rem 0.7rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #8b949e;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s var(--app-ease);
+}
+html[data-ui-preset='apimart'] .app-home-code-langs button:hover {
+  color: #c9d1d9;
+}
+html[data-ui-preset='apimart'] .app-home-code-langs button.active {
+  background: rgba(17, 17, 17, 0.22);
+  color: #fff;
+}
+
+/* 代码窗更高一点，撑满右栏 */
+html[data-ui-preset='apimart'] .app-home-page .app-home-code-window {
+  min-height: 340px;
+}
+
+/* 彩色语法高亮 token */
+html[data-ui-preset='apimart'] .app-home-code-hl {
+  color: #c9d1d9;
+}
+html[data-ui-preset='apimart'] .app-home-code-hl .tok-kw {
+  color: #ff7b72;
+}
+html[data-ui-preset='apimart'] .app-home-code-hl .tok-str {
+  color: #a5d6ff;
+}
+html[data-ui-preset='apimart'] .app-home-code-hl .tok-num {
+  color: #79c0ff;
+}
+html[data-ui-preset='apimart'] .app-home-code-hl .tok-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+@media (max-width: 900px) {
+  html[data-ui-preset='apimart'] .app-home-page .app-home-api-showcase {
+    grid-template-columns: 1fr !important;
+    gap: 1.6rem !important;
+  }
+}
+
+/* ============================================================
+   悬浮玻璃胶囊导航栏（学 new default：居中 + 透明 + 悬浮）
+   全站生效。header 由 PageLayout 设为 fixed。
+   ============================================================ */
+
+:root {
+  --app-floating-header-height: 74px;
+}
+
+/* Semi Layout.Header 容器本身透明（去掉两侧浅色背景带） */
+.app-floating-header-wrap,
+.semi-layout-header.app-floating-header-wrap {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* header 外层透明，仅作定位容器，点击穿透到胶囊 */
+.app-header-floating {
+  width: 100%;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+/* 内层居中限宽 + 顶部留出悬浮间距（更窄，两侧留透明空白） */
+.app-header-floating .app-header-inner {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0.7rem 1rem 0;
+  box-sizing: border-box;
+}
+
+/* 玻璃胶囊本体 */
+.app-header-floating .app-header-capsule {
+  pointer-events: auto;
+  height: 56px;
+  padding: 0 0.5rem 0 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 8px 30px rgba(20, 24, 40, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.02);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  transition:
+    background 0.3s var(--app-ease, ease),
+    box-shadow 0.3s var(--app-ease, ease);
+}
+
+/* 暗色胶囊 */
+.dark .app-header-floating .app-header-capsule {
+  background: rgba(20, 20, 30, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 0 0 0.5px rgba(255, 255, 255, 0.03);
+}
+
+/* apimart 预设下胶囊高度与之前 48px 协调，改回统一 56px */
+html[data-ui-preset='apimart']
+  .app-header-floating
+  .app-header-inner
+  > .app-header-capsule {
+  height: 56px !important;
+}
+
+/* apimart 下 inner 用统一限宽（覆盖旧的 content-width 变量宽度） */
+html[data-ui-preset='apimart'] .app-header-floating .app-header-inner {
+  max-width: 920px;
+}
+
+@media (max-width: 768px) {
+  .app-header-floating .app-header-inner {
+    padding: 0.5rem 0.6rem 0;
+  }
+  .app-header-floating .app-header-capsule {
+    height: 52px;
+    border-radius: 14px;
+    padding: 0 0.4rem 0 0.75rem;
+  }
+}
+
+/* ==================== 黑白极简收尾：星点/装饰统一灰阶（去彩色） ==================== */
+html[data-ui-preset='apimart'] .app-home-stars span,
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(1),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(2),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(3),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(4),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(5),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(6),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(7),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(8),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(9),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(10),
+html[data-ui-preset='apimart'] .app-home-stars span:nth-child(n + 11) {
+  color: rgba(17, 17, 17, 0.28);
+}
+html[data-ui-preset='apimart'].dark .app-home-stars span,
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(1),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(2),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(3),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(4),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(5),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(6),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(7),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(8),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(9),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(10),
+html[data-ui-preset='apimart'].dark .app-home-stars span:nth-child(n + 11) {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+/* ==================== 模型广场：玻璃拟态统一（与首页同一套 --glass-* 变量） ====================
+   仅覆盖 .app-market-* 视觉，不改 JSX / 逻辑，可整段删除回退。 */
+
+/* 页面画布：干净底色，与首页一致 */
+html[data-ui-preset='apimart'] .app-market-page {
+  background: var(--glass-canvas);
+}
+
+/* 顶部 hero：白玻璃大卡（覆盖原深色封面渐变） */
+html[data-ui-preset='apimart'] .app-market-spotlight {
+  background: var(--glass-surface-strong) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+html[data-ui-preset='apimart']:not(.dark)
+  .app-market-spotlight
+  .app-market-spotlight-copy
+  .semi-typography {
+  color: var(--app-text-muted) !important;
+}
+html[data-ui-preset='apimart']
+  .app-market-spotlight
+  .app-market-spotlight-copy
+  .semi-typography-h1,
+html[data-ui-preset='apimart']
+  .app-market-spotlight
+  .app-market-spotlight-copy
+  h1 {
+  color: var(--app-text) !important;
+}
+
+/* 左侧筛选栏：玻璃侧卡 */
+html[data-ui-preset='apimart'] .app-market-sidebar {
+  align-self: start;
+  padding: 1.1rem 1rem !important;
+  padding-right: 1rem !important;
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-right: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* 工具栏 / 搜索区：玻璃条 */
+html[data-ui-preset='apimart'] .app-market-toolbar {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px !important;
+}
+
+/* 模型卡：半透明白玻璃 + blur + 轻阴影，hover 上浮（与首页模型卡一致） */
+html[data-ui-preset='apimart'] .app-market-model-card {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--glass-shadow) !important;
+  transition:
+    transform 200ms var(--app-ease),
+    box-shadow 200ms var(--app-ease),
+    border-color 200ms var(--app-ease);
+}
+html[data-ui-preset='apimart'] .app-market-model-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--glass-border-soft) !important;
+  box-shadow: 0 16px 48px rgba(17, 17, 17, 0.14) !important;
+}
+
+/* ==================== 登录 / 注册卡：玻璃拟态 ====================
+   通过 .semi-card 玻璃化统一，可整段删除回退。 */
+html[data-ui-preset='apimart'] .semi-card {
+  background: var(--glass-surface) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* ==================== 控制台：玻璃拟态统一 ====================
+   顶层面板/卡片玻璃化；表格容器用干净白 + 玻璃边框（不强上 blur 以免文字发虚）。
+   可整段删除回退。 */
+
+/* 表格容器：贴合玻璃卡（去实底，用玻璃描边与轻阴影） */
+html[data-ui-preset='apimart'] .semi-table-container {
+  background: transparent !important;
+}
+html[data-ui-preset='apimart'] .semi-table-tbody .semi-table-row:hover > td {
+  background: var(--semi-color-primary-light-default) !important;
+}
+
+/* 弹窗 / 侧边抽屉：玻璃面板 */
+html[data-ui-preset='apimart'] .semi-modal-content,
+html[data-ui-preset='apimart'] .semi-sidesheet-inner {
+  background: var(--glass-surface-strong) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* 标签页 / 面板底 tab 栏轻玻璃 */
+html[data-ui-preset='apimart'] .semi-tabs-bar {
+  background: transparent !important;
+}
+
+/* ==================== 控制台画布底纹：让玻璃卡的 blur 能透出层次 ====================
+   纯白底下 blur 看不出，给画布加极淡渐变 + 网点底纹，卡片玻璃质感才立体。
+   仅覆盖控制台/后台布局背景（首页 fullpage 有自己的画布，不受影响）。 */
+html[data-ui-preset='apimart']:not(.dark) .app-layout {
+  background:
+    radial-gradient(
+      40vw 40vw at 78% 92%,
+      rgba(160, 175, 205, 0.28),
+      transparent 62%
+    ),
+    radial-gradient(
+      30vw 30vw at 18% 88%,
+      rgba(185, 190, 205, 0.25),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #f6f7f9, #eef0f4) !important;
+}
+html[data-ui-preset='apimart'].dark .app-layout {
+  background:
+    radial-gradient(
+      40vw 40vw at 78% 92%,
+      rgba(70, 90, 140, 0.28),
+      transparent 62%
+    ),
+    linear-gradient(180deg, #060810, #0a0c14) !important;
+}
+
+/* 侧边栏透明贴合新画布（原来强制 --app-bg 实底，会盖住底纹） */
+html[data-ui-preset='apimart'] .app-sider,
+html[data-ui-preset='apimart'] .sidebar-container,
+html[data-ui-preset='apimart'] .sidebar-nav,
+html[data-ui-preset='apimart'] .sidebar-collapse-button {
+  background: transparent !important;
+}
+
+/* 关键：控制台内容层默认是实底灰，会盖住 .app-layout 的光斑底纹。
+   把这些中间层设为透明，光斑才能透到卡片背后。 */
+html[data-ui-preset='apimart'] .app-layout .semi-layout,
+html[data-ui-preset='apimart'] .app-layout .semi-layout-content,
+html[data-ui-preset='apimart'] .app-layout .semi-layout-has-sider {
+  background: transparent !important;
+}
+
+/* 玻璃卡：稍降不透明度 + 顶部浅色高光描边，体现玻璃边缘 */
+html[data-ui-preset='apimart']:not(.dark) .semi-card,
+html[data-ui-preset='apimart']:not(.dark) .app-market-model-card,
+html[data-ui-preset='apimart']:not(.dark) .app-market-spotlight,
+html[data-ui-preset='apimart']:not(.dark) .app-market-sidebar {
+  background: rgba(255, 255, 255, 0.55) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+  backdrop-filter: blur(22px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.95) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 10px 40px rgba(30, 40, 70, 0.1) !important;
+}
+html[data-ui-preset='apimart'].dark .semi-card,
+html[data-ui-preset='apimart'].dark .app-market-model-card,
+html[data-ui-preset='apimart'].dark .app-market-spotlight,
+html[data-ui-preset='apimart'].dark .app-market-sidebar {
+  background: rgba(24, 26, 40, 0.5) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+  backdrop-filter: blur(22px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ==================== 表格内部实底透明化：让玻璃卡背后的画布透过来 ====================
+   .semi-table-row-head（表头单元格）/ .semi-table-row（数据行）/ 固定列单元格
+   默认是白实底，会在玻璃卡里显成一块白，需要透明。 */
+html[data-ui-preset='apimart'] .semi-table-row-head,
+html[data-ui-preset='apimart'] .semi-table-thead .semi-table-row-head,
+html[data-ui-preset='apimart'] .semi-table-tbody .semi-table-row,
+html[data-ui-preset='apimart'] .semi-table-row-cell {
+  background: transparent !important;
+}
+
+/* 固定列（左右吸附列）不能透明，否则滚动时会透出下层文字叠印。
+   用与玻璃卡相近的半透明底 + blur 遮挡，兼顾玻璃感与可读性。 */
+html[data-ui-preset='apimart']:not(.dark) .semi-table-cell-fixed-left,
+html[data-ui-preset='apimart']:not(.dark) .semi-table-cell-fixed-right,
+html[data-ui-preset='apimart']:not(.dark)
+  .semi-table-row-head.semi-table-cell-fixed-left,
+html[data-ui-preset='apimart']:not(.dark)
+  .semi-table-row-head.semi-table-cell-fixed-right {
+  background: rgba(244, 246, 250, 0.92) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html[data-ui-preset='apimart'].dark .semi-table-cell-fixed-left,
+html[data-ui-preset='apimart'].dark .semi-table-cell-fixed-right,
+html[data-ui-preset='apimart'].dark
+  .semi-table-row-head.semi-table-cell-fixed-left,
+html[data-ui-preset='apimart'].dark
+  .semi-table-row-head.semi-table-cell-fixed-right {
+  background: rgba(18, 20, 30, 0.92) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* 表头底色：极淡分隔，不要纯白块 */
+html[data-ui-preset='apimart']:not(.dark) .semi-table-thead {
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+html[data-ui-preset='apimart'].dark .semi-table-thead {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* 行 hover：浅色高亮（覆盖固定列白底 hover） */
+html[data-ui-preset='apimart']
+  .semi-table-tbody
+  .semi-table-row:hover
+  .semi-table-row-cell,
+html[data-ui-preset='apimart']
+  .semi-table-tbody
+  .semi-table-row:hover
+  .semi-table-cell-fixed-left,
+html[data-ui-preset='apimart']
+  .semi-table-tbody
+  .semi-table-row:hover
+  .semi-table-cell-fixed-right {
+  background: var(--semi-color-primary-light-default) !important;
+}
+
+/* VChart / 图表容器背景透明（组件默认可能是白底） */
+html[data-ui-preset='apimart'] .semi-card canvas {
+  background: transparent !important;
+}
+
+/* 修复：Tailwind 的 mt-6 被 Semi/reset 覆盖成 0，导致拼团充值卡与上排卡紧贴。
+   在 apimart 下恢复卡片的上外边距间隔。 */
+html[data-ui-preset='apimart'] .semi-card.mt-6 {
+  margin-top: 1.5rem !important;
+}
+
+/* 修复：嵌套在玻璃卡内部的子 .semi-card（如“我的订阅”信息卡、套餐卡）
+   不应再套用顶层卡的白色高光描边（会在浅底上显成多余的亮边界线）。
+   内层卡改为无背景 + 极淡细边，融入父卡。 */
+html[data-ui-preset='apimart']:not(.dark) .semi-card .semi-card {
+  background: transparent !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: none !important;
+}
+html[data-ui-preset='apimart'].dark .semi-card .semi-card {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
 }

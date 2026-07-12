@@ -270,6 +270,7 @@ func SetApiRouter(router *gin.Engine) {
 		tokenRoute.Use(middleware.UserAuth())
 		{
 			tokenRoute.GET("/", controller.GetAllTokens)
+			tokenRoute.GET("/concurrency", controller.GetTokensConcurrency)
 			tokenRoute.GET("/search", middleware.SearchRateLimit(), controller.SearchTokens)
 			tokenRoute.GET("/:id", controller.GetToken)
 			tokenRoute.POST("/:id/key", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKey)
@@ -278,6 +279,23 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
 			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
+		}
+
+		invoiceRoute := apiRouter.Group("/invoice")
+		invoiceRoute.Use(middleware.UserAuth())
+		{
+			invoiceRoute.POST("/", controller.SubmitInvoiceRequest)
+			invoiceRoute.GET("/self", controller.GetSelfInvoices)
+			invoiceRoute.GET("/eligible_orders", controller.GetEligibleOrders)
+			invoiceRoute.GET("/download/:id", controller.DownloadInvoice)
+
+			invoiceAdminRoute := invoiceRoute.Group("/admin")
+			invoiceAdminRoute.Use(middleware.AdminAuth())
+			{
+				invoiceAdminRoute.GET("/", controller.GetAllInvoices)
+				invoiceAdminRoute.POST("/:id/issue", controller.IssueInvoice)
+				invoiceAdminRoute.POST("/:id/reject", controller.RejectInvoice)
+			}
 		}
 
 		usageRoute := apiRouter.Group("/usage")

@@ -14,11 +14,23 @@ type ChannelSettings struct {
 	SystemPrompt           string `json:"system_prompt,omitempty"`
 	SystemPromptOverride   bool   `json:"system_prompt_override,omitempty"`
 	Fallback               bool   `json:"fallback,omitempty"` // 兜底渠道：正常不参与选择，仅当同分组+模型下所有非兜底渠道不可用/重试失败后才启用
+	// FallbackUpstream 渠道自带兜底转发：本渠道请求失败（可重试错误）时，
+	// 立即用备用 BaseURL + Key 在同一渠道对象上重试一次，成功即返回。
+	// 计费口径不变（仍按原渠道原模型），仅替换转发目标与凭证。
+	FallbackUpstream *ChannelFallbackUpstream `json:"fallback_upstream,omitempty"`
 	// 火山引擎私域素材库：管理类接口必须用 AK/SK 做 V4 签名（不能用 Ark API Key）。
 	// 与视频生成共用同一个 DoubaoVideo 渠道，仅管理员可见可配。
 	VolcAssetAK     string `json:"volc_asset_ak,omitempty"`     // AccessKeyId
 	VolcAssetSK     string `json:"volc_asset_sk,omitempty"`     // SecretAccessKey
 	VolcProjectName string `json:"volc_project_name,omitempty"` // 火山项目名，默认 default
+}
+
+// ChannelFallbackUpstream 渠道级兜底转发配置。
+type ChannelFallbackUpstream struct {
+	Enabled bool   `json:"enabled,omitempty"`
+	BaseURL string `json:"base_url,omitempty"`
+	Key     string `json:"key,omitempty"`
+	Models  string `json:"models,omitempty"` // 兜底可用模型列表（逗号分隔，仅记录参考）
 }
 
 type VertexKeyType string

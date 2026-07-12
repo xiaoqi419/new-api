@@ -37,6 +37,7 @@ import { StatusContext } from '../../context/Status';
 import RechargeCard from './RechargeCard';
 import GroupBuyCard from './GroupBuyCard';
 import InvitationCard from './InvitationCard';
+import InvoiceCard from './InvoiceCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
@@ -1176,6 +1177,10 @@ const TopUp = () => {
         enableWechatPayTopUp={enableWechatPayTopUp}
         enableAlipayTopUp={enableAlipayTopUp}
       />
+
+      <div className='mt-6'>
+        <InvoiceCard t={t} />
+      </div>
     </div>
   );
 };

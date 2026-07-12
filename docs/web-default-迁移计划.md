@@ -1,9 +1,34 @@
-# web/default 迁移执行计划（功能对齐 + 白底浅紫配色）
+# web/default 迁移执行计划（功能对齐 · default 原生外观）
 
-> 目标：把目前只存在于 **web/classic**（Semi + Vite）的自定义功能，迁移/重建到 **web/default**（React 19 + Base UI/shadcn + Tailwind + TanStack Router/Query + Zod + RHF + TS），采用 web/default 的 UI 元素与样式，配色改为「白为主、浅紫为辅」。
+> 目标：把目前只存在于 **web/classic**（Semi + Vite）的自定义功能，迁移/重建到 **web/default**（React 19 + Base UI/shadcn + Tailwind + TanStack Router/Query + Zod + RHF + TS），采用 web/default 的 UI 元素与样式。
 >
 > 本文件为**执行计划**，不含代码改动。后端为两套主题共用，**无需后端改动**。
 > 品牌保护：QuantumNous / new-api 的所有标识、版权头、元数据在迁移中必须原样保留。
+
+---
+
+## 决策更新（2026-07-08，本次会话拍板）
+
+以下为最新决策，覆盖本文原先的旧取向：
+
+| 项 | 最新决策 | 说明 |
+|---|---|---|
+| 外观 | **直接用 default 原生外观**，放弃 APIMART 紫色/浅色/竖向侧边栏定制 | 不再做 `white-purple` 定制预设（原 §0/§4/§13），省掉约 3800 行 CSS；产品视觉将变为 default 原生样子，已接受 |
+| 执行节奏 | **暂缓迁移，方案存档，以后分批做** | 本文档即存档；后续按 Phase 逐块开工，classic 不下线直到 default 就绪 |
+| TypeScript | **严格补全类型** | 符合 default 规范，`bun run typecheck` 0 error |
+| 战略 | web/default 转主力，classic 冻结新功能进入维护期 | 两套 dist 共存，不立即退役 |
+| i18n | zh + en 必交，其余走 en 回退后补 | |
+
+> 因外观决策变更：原「Phase 0 · 配色与基建」中的 `white-purple` 预设任务作废，Phase 0 只保留「基建打通 + 试点热身 + 策略确认」。所有 DoD/门禁里「白紫预设视觉走查」改为「default 原生明暗色视觉走查」。
+
+---
+
+## 迁移规模速览（截至 2026-07-08 二开快照 aaae5d51）
+
+- classic 二开 = **32 新增文件 + 47 改动官方文件 + 3 删除**，约 6000+ 行业务 JSX。
+- 最大单页：Docs 2626 行；其次 VideoGeneration / GroupMonitor 各 581、GroupBuyAdmin 552、GroupBuy 354、Rebate 337、AssetLibrary 264、Invitation 202、UserRanking 158、InviteRanking 139。
+- 后端 API 全部就绪（见 §2），default 前端直接对接，**后端零改动**。
+- 技术栈差异（需重写而非搬运）：Semi→Base UI/Tailwind、react-router→TanStack Router 文件路由、Context→Zustand、自写 hooks→TanStack Query、Semi Table→TanStack Table、JS→严格 TS。
 
 ---
 
@@ -77,12 +102,14 @@
 
 ---
 
-## 4. Phase 0 · 配色与基建（0.5–1 天）
+## 4. Phase 0 · 基建打通（0.5–1 天）
+
+> 外观决策已定为 **default 原生外观**，原 `white-purple` 定制预设任务作废。
 
 | 任务 | 说明 | 验收 |
 |---|---|---|
-| 新增 `white-purple` 预设 | `styles/theme-presets.css` 加 `[data-theme-preset='white-purple']`：白底 `oklch(1 0 0)` + 浅紫 primary（约 `oklch(0.62 0.16 305)`），依赖既有「语义表面桥」自动生成淡紫卡片/边框/侧栏 | 切到该预设后：白底、浅紫点缀、明暗均正常 |
-| 注册到主题选择器 | 在主题设置 UI 的预设列表加入该项（含中英文名） | 用户可在设置里选中 |
+| default 编译/登录跑通 | 在本项目部署里确认 web/default 能构建、登录、进入基础控制台 | 可登录、控制台可用 |
+| 品牌/站点配置 | 沿用 QuantumNous/new-api 保护规范，确认 logo/标题/元数据保留 | 品牌标识原样保留 |
 | 试点热身 | 用一个最小功能（如「邀请中心」只读页）跑通 §3 全流程，沉淀模板 | 模板可复用，团队熟悉栈 |
 | 策略确认 | 确认默认主题/共存策略、i18n 语言范围 | 决策落文档 |
 
@@ -240,12 +267,14 @@
 
 ---
 
-## 13. 待你拍板（影响细化）
+## 13. 拍板记录（2026-07-08 已确认）
 
-1. 范围：全量 or 子集（先营收类）？
-2. 战略：web/default 转主力 + classic 冻结？还是长期双维护？
-3. i18n：仅 zh/en，还是全六语？
-4. 配色：定制 `white-purple`，还是用现成 `lavender-dream`？
-5. 优先级顺序是否按「营收优先」？
+1. 范围：**全量对齐**，按 Phase 组织，可随时裁剪。
+2. 战略：**web/default 转主力 + classic 冻结新功能**，两套 dist 共存，不立即退役。
+3. i18n：**zh/en 必交**，fr/ru/ja/vi 先走 en 回退后补。
+4. 配色：**用 default 原生外观**（放弃 APIMART / 不做 white-purple 定制）。
+5. 优先级：**营收/增长优先**（Phase 1）。
+6. 节奏：**暂缓，方案存档，以后分批开工**。
+7. TypeScript：**严格补全类型**。
 
-> 确认后，我可把每个功能进一步拆成带勾选项的任务卡（组件级清单 + 具体字段/接口参数），仍不写代码。
+> 下次开工时：从 Phase 0 基建打通开始，再按 Phase 1→2→3→4 逐块推进；每块独立验证、可回退，classic 全程不下线。可在开工时把单个功能进一步拆成带勾选项的组件级任务卡（字段/接口参数），仍以本文档 §2 的后端契约为准。

@@ -35,6 +35,7 @@ const routerMap = {
   channel: '/console/channel',
   token: '/console/token',
   redemption: '/console/redemption',
+  invoice: '/console/invoice',
   rebate: '/console/rebate',
   groupbuy: '/console/groupbuy-admin',
   invite_ranking: '/console/invite-ranking',
@@ -207,6 +208,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('兑换码管理'),
         itemKey: 'redemption',
         to: '/redemption',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('发票管理'),
+        itemKey: 'invoice',
+        to: '/invoice',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

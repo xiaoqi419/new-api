@@ -876,6 +876,11 @@ const EditChannelModal = (props) => {
           data.system_prompt_override =
             parsedSettings.system_prompt_override || false;
           data.fallback = parsedSettings.fallback || false;
+          const fbUp = parsedSettings.fallback_upstream || {};
+          data.fallback_upstream_enabled = fbUp.enabled || false;
+          data.fallback_upstream_base_url = fbUp.base_url || '';
+          data.fallback_upstream_key = fbUp.key || '';
+          data.fallback_upstream_models = fbUp.models || '';
           data.volc_asset_ak = parsedSettings.volc_asset_ak || '';
           data.volc_asset_sk = parsedSettings.volc_asset_sk || '';
           data.volc_project_name = parsedSettings.volc_project_name || '';
@@ -888,6 +893,10 @@ const EditChannelModal = (props) => {
           data.system_prompt = '';
           data.system_prompt_override = false;
           data.fallback = false;
+          data.fallback_upstream_enabled = false;
+          data.fallback_upstream_base_url = '';
+          data.fallback_upstream_key = '';
+          data.fallback_upstream_models = '';
           data.volc_asset_ak = '';
           data.volc_asset_sk = '';
           data.volc_project_name = '';
@@ -900,6 +909,10 @@ const EditChannelModal = (props) => {
         data.system_prompt = '';
         data.system_prompt_override = false;
         data.fallback = false;
+        data.fallback_upstream_enabled = false;
+        data.fallback_upstream_base_url = '';
+        data.fallback_upstream_key = '';
+        data.fallback_upstream_models = '';
         data.volc_asset_ak = '';
         data.volc_asset_sk = '';
         data.volc_project_name = '';
@@ -1064,6 +1077,55 @@ const EditChannelModal = (props) => {
       }
     } else {
       showError(message);
+    }
+    setLoading(false);
+  };
+
+  const fetchFallbackUpstreamModels = async () => {
+    const baseUrl = inputs.fallback_upstream_base_url;
+    const key = inputs.fallback_upstream_key || inputs.key;
+    if (!baseUrl) {
+      showError(t('请先填写备用 Base URL'));
+      return;
+    }
+    // 编辑模式下允许密钥为空或脱敏，由后端回退到 DB 中的真实兜底密钥；
+    // 新建模式必须填写明文密钥。
+    const useFallback = isEdit && !!channelId;
+    if (!useFallback && !key) {
+      showError(t('请先填写备用密钥或本渠道密钥'));
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = {
+        base_url: baseUrl,
+        type: inputs.type,
+        key: key,
+      };
+      if (useFallback) {
+        payload.channel_id = channelId;
+        payload.use_fallback = true;
+      }
+      const res = await API.post('/api/channel/fetch_models', payload, {
+        skipErrorHandler: true,
+      });
+      if (res && res.data && res.data.success) {
+        const uniqueModels = Array.from(new Set(res.data.data || []));
+        handleChannelSettingsChange(
+          'fallback_upstream_models',
+          uniqueModels.join(','),
+        );
+        showSuccess(
+          t('已获取 {{count}} 个模型').replace(
+            '{{count}}',
+            uniqueModels.length,
+          ),
+        );
+      } else {
+        showError(t('获取模型列表失败'));
+      }
+    } catch (error) {
+      showError(t('获取模型列表失败'));
     }
     setLoading(false);
   };
@@ -1776,6 +1838,12 @@ const EditChannelModal = (props) => {
       system_prompt: localInputs.system_prompt || '',
       system_prompt_override: localInputs.system_prompt_override || false,
       fallback: localInputs.fallback || false,
+      fallback_upstream: {
+        enabled: localInputs.fallback_upstream_enabled || false,
+        base_url: localInputs.fallback_upstream_base_url || '',
+        key: localInputs.fallback_upstream_key || '',
+        models: localInputs.fallback_upstream_models || '',
+      },
       volc_asset_ak: localInputs.volc_asset_ak || '',
       volc_asset_sk: localInputs.volc_asset_sk || '',
       volc_project_name: localInputs.volc_project_name || '',
@@ -1864,6 +1932,10 @@ const EditChannelModal = (props) => {
     delete localInputs.pass_through_body_enabled;
     delete localInputs.system_prompt;
     delete localInputs.system_prompt_override;
+    delete localInputs.fallback_upstream_enabled;
+    delete localInputs.fallback_upstream_base_url;
+    delete localInputs.fallback_upstream_key;
+    delete localInputs.fallback_upstream_models;
     delete localInputs.volc_asset_ak;
     delete localInputs.volc_asset_sk;
     delete localInputs.volc_project_name;
@@ -2802,6 +2874,73 @@ const EditChannelModal = (props) => {
                       '开启后该渠道正常不参与选择，仅当同分组+模型下所有非兜底渠道不可用或重试失败后才启用',
                     )}
                   />
+
+                  <Form.Switch
+                    field='fallback_upstream_enabled'
+                    label={t('兜底转发')}
+                    checkedText={t('开')}
+                    uncheckedText={t('关')}
+                    onChange={(value) =>
+                      handleChannelSettingsChange(
+                        'fallback_upstream_enabled',
+                        value,
+                      )
+                    }
+                    extraText={t(
+                      '开启后，本渠道请求失败（可重试错误）时立即用下方备用地址与密钥重试一次，计费口径不变',
+                    )}
+                  />
+                  {inputs.fallback_upstream_enabled && (
+                    <>
+                      <Form.Input
+                        field='fallback_upstream_base_url'
+                        label={t('备用 Base URL')}
+                        placeholder={t('例如: https://backup.example.com')}
+                        onChange={(value) =>
+                          handleChannelSettingsChange(
+                            'fallback_upstream_base_url',
+                            value,
+                          )
+                        }
+                        showClear
+                      />
+                      <Form.Input
+                        field='fallback_upstream_key'
+                        label={t('备用密钥')}
+                        placeholder={t('留空则复用本渠道密钥')}
+                        type='password'
+                        onChange={(value) =>
+                          handleChannelSettingsChange(
+                            'fallback_upstream_key',
+                            value,
+                          )
+                        }
+                        showClear
+                      />
+                      <Form.TextArea
+                        field='fallback_upstream_models'
+                        label={t('备用可用模型')}
+                        placeholder={t(
+                          '逗号分隔，点击下方按钮可从备用地址获取',
+                        )}
+                        onChange={(value) =>
+                          handleChannelSettingsChange(
+                            'fallback_upstream_models',
+                            value,
+                          )
+                        }
+                        autosize
+                        showClear
+                      />
+                      <Button
+                        size='small'
+                        loading={loading}
+                        onClick={fetchFallbackUpstreamModels}
+                      >
+                        {t('从备用地址获取模型')}
+                      </Button>
+                    </>
+                  )}
 
                   {inputs.type === 54 && (
                     <>
@@ -4044,140 +4183,27 @@ const EditChannelModal = (props) => {
                       />
                     </Card>
 
-                    {/* Advanced Settings Toggle / Collapse */}
-                    {isMobile ? (
-                      <Collapse
-                        activeKey={advancedSettingsOpen ? ['advanced'] : []}
-                        onChange={(keys) =>
-                          toggleAdvancedSettings(keys.includes('advanced'))
+                    {/* Advanced Settings - 桌面端与移动端统一使用内联折叠展开 */}
+                    <Collapse
+                      activeKey={advancedSettingsOpen ? ['advanced'] : []}
+                      onChange={(keys) =>
+                        toggleAdvancedSettings(keys.includes('advanced'))
+                      }
+                    >
+                      <Collapse.Panel
+                        header={
+                          <div className='flex items-center gap-2'>
+                            <IconSetting size={16} />
+                            <Text className='font-medium'>{t('高级设置')}</Text>
+                          </div>
                         }
+                        itemKey='advanced'
                       >
-                        <Collapse.Panel
-                          header={
-                            <div className='flex items-center gap-2'>
-                              <IconSetting size={16} />
-                              <Text className='font-medium'>
-                                {t('高级设置')}
-                              </Text>
-                            </div>
-                          }
-                          itemKey='advanced'
-                        >
-                          {advancedSettingsContent}
-                        </Collapse.Panel>
-                      </Collapse>
-                    ) : (
-                      /* Desktop: toggle button to open side panel */
-                      <div
-                        className='flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors hover:bg-gray-50'
-                        style={{
-                          backgroundColor: advancedSettingsOpen
-                            ? 'var(--semi-color-primary-light-default)'
-                            : 'var(--semi-color-fill-0)',
-                          border: '1px solid var(--semi-color-fill-2)',
-                        }}
-                        onClick={() =>
-                          toggleAdvancedSettings(!advancedSettingsOpen)
-                        }
-                      >
-                        <div className='flex items-center gap-2'>
-                          <IconSetting size={16} />
-                          <Text className='font-medium'>{t('高级设置')}</Text>
-                        </div>
-                        <div
-                          className='flex items-center gap-1 text-sm'
-                          style={{ color: 'var(--semi-color-primary)' }}
-                        >
-                          <Text
-                            size='small'
-                            style={{ color: 'var(--semi-color-primary)' }}
-                          >
-                            {advancedSettingsOpen
-                              ? t('收起')
-                              : isEdit
-                                ? t('向左展开')
-                                : t('向右展开')}
-                          </Text>
-                          <IconChevronDown
-                            size={14}
-                            style={{
-                              transform: advancedSettingsOpen
-                                ? 'rotate(180deg)'
-                                : isEdit
-                                  ? 'rotate(90deg)'
-                                  : 'rotate(-90deg)',
-                              transition: 'transform 0.2s',
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
+                        {advancedSettingsContent}
+                      </Collapse.Panel>
+                    </Collapse>
                   </div>
                 </Spin>
-
-                {/* Desktop: Advanced Settings Side Panel - rendered inside Form tree */}
-                {!isMobile && advancedSettingsOpen && (
-                  <div
-                    className='fixed top-0 h-full overflow-y-auto z-[999] semi-sidesheet-inner'
-                    style={{
-                      width: 600,
-                      [isEdit ? 'right' : 'left']: 600,
-                      backgroundColor: 'var(--semi-color-bg-0)',
-                      borderLeft: isEdit
-                        ? 'none'
-                        : '1px solid var(--semi-color-border)',
-                      borderRight: isEdit
-                        ? '1px solid var(--semi-color-border)'
-                        : 'none',
-                      animation: `slideIn${isEdit ? 'Left' : 'Right'} 0.3s ease-out`,
-                    }}
-                  >
-                    <div className='semi-sidesheet-header'>
-                      <div className='semi-sidesheet-title'>
-                        <Space>
-                          <Tag color='cyan' shape='circle'>
-                            {t('高级')}
-                          </Tag>
-                          <Title heading={4} className='m-0'>
-                            {t('高级设置')}
-                          </Title>
-                        </Space>
-                      </div>
-                      <Button
-                        className='semi-sidesheet-close'
-                        type='tertiary'
-                        theme='borderless'
-                        icon={<IconClose />}
-                        size='small'
-                        onClick={() => setAdvancedSettingsOpen(false)}
-                      />
-                    </div>
-                    <div className='semi-sidesheet-body' style={{ padding: 0 }}>
-                      <div className='p-2 space-y-3'>
-                        <Card className='!rounded-2xl shadow-sm border-0'>
-                          <div className='flex items-center mb-4'>
-                            <Avatar
-                              size='small'
-                              color='orange'
-                              className='mr-2 shadow-md'
-                            >
-                              <IconSetting size={16} />
-                            </Avatar>
-                            <div>
-                              <Text className='text-lg font-medium'>
-                                {t('高级设置')}
-                              </Text>
-                              <div className='text-xs text-gray-600'>
-                                {t('渠道的高级配置选项')}
-                              </div>
-                            </div>
-                          </div>
-                          {advancedSettingsContent}
-                        </Card>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             );
           }}

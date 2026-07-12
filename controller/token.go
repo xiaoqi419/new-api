@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
@@ -112,6 +113,41 @@ func GetTokenStatus(c *gin.Context) {
 		"total_used":      0, // not supported currently
 		"total_available": token.RemainQuota,
 		"expires_at":      expiredAt * 1000,
+	})
+}
+
+// GetTokensConcurrency 返回当前用户所有令牌的实时并发使用情况。
+// supported=false 表示当前部署为内存模式，无法读取实时并发（仅显示上限）。
+func GetTokensConcurrency(c *gin.Context) {
+	userId := c.GetInt("id")
+	var rows []struct {
+		Id             int `gorm:"column:id"`
+		MaxConcurrency int `gorm:"column:max_concurrency"`
+	}
+	if err := model.DB.Model(&model.Token{}).
+		Select("id, max_concurrency").
+		Where("user_id = ?", userId).
+		Find(&rows).Error; err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	ids := make([]int, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.Id)
+	}
+	inUseMap, supported := service.GetTokenConcurrencyInUse(ids)
+
+	items := make(map[string]gin.H, len(rows))
+	for _, r := range rows {
+		items[strconv.Itoa(r.Id)] = gin.H{
+			"in_use": inUseMap[r.Id],
+			"max":    r.MaxConcurrency,
+		}
+	}
+	common.ApiSuccess(c, gin.H{
+		"supported": supported,
+		"items":     items,
 	})
 }
 

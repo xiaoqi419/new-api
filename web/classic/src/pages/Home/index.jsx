@@ -27,6 +27,7 @@ import {
 } from '@douyinfe/semi-ui';
 import { API, showError, copy, showSuccess } from '../../helpers';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
+import { useFullpage } from '../../hooks/common/useFullpage';
 import { API_ENDPOINTS } from '../../constants/common.constant';
 import { StatusContext } from '../../context/Status';
 import { useActualTheme, useAppearance } from '../../context/Theme';
@@ -64,6 +65,21 @@ import {
   AzureAI,
   Hunyuan,
   Xinference,
+  ByteDance,
+  ChatGLM,
+  Kimi,
+  Yi,
+  Stability,
+  Cursor,
+  ClaudeCode,
+  Codex,
+  Cline,
+  RooCode,
+  KiloCode,
+  OpenCode,
+  LobeHub,
+  OpenWebUI,
+  Dify,
 } from '@lobehub/icons';
 
 const { Text } = Typography;
@@ -167,7 +183,7 @@ const TypewriterText = ({
   );
 };
 
-const renderApimartIcon = (icon, size = 18) => {
+const renderApimartIcon = (icon, size = 18, name = '') => {
   if (React.isValidElement(icon)) {
     return icon;
   }
@@ -186,25 +202,153 @@ const renderApimartIcon = (icon, size = 18) => {
     case 'qwen':
       return <Qwen.Color size={size} />;
     case 'volcengine':
-    case 'bytedance':
       return <Volcengine.Color size={size} />;
+    case 'bytedance':
+      return <ByteDance.Color size={size} />;
     case 'azure':
     case 'azureai':
       return <AzureAI.Color size={size} />;
     case 'midjourney':
       return <Midjourney size={size} />;
     case 'grok':
+    case 'xai':
       return <Grok size={size} />;
     case 'minimax':
       return <Minimax.Color size={size} />;
     case 'wenxin':
+    case 'baidu':
       return <Wenxin.Color size={size} />;
     case 'spark':
       return <Spark.Color size={size} />;
-    default:
-      return <span className='app-home-icon-fallback'>AI</span>;
+    case 'zhipu':
+      return <Zhipu.Color size={size} />;
+    case 'chatglm':
+      return <ChatGLM.Color size={size} />;
+    case 'moonshot':
+    case 'kimi':
+      return <Kimi.Color size={size} />;
+    case 'yi':
+      return <Yi.Color size={size} />;
+    case 'suno':
+      return <Suno.Color size={size} />;
+    case 'stability':
+      return <Stability.Color size={size} />;
+    case 'cursor':
+      return <Cursor size={size} />;
+    case 'claudecode':
+      return <ClaudeCode size={size} />;
+    case 'codex':
+      return <Codex size={size} />;
+    case 'cline':
+      return <Cline size={size} />;
+    case 'roocode':
+      return <RooCode size={size} />;
+    case 'kilocode':
+      return <KiloCode size={size} />;
+    case 'opencode':
+      return <OpenCode size={size} />;
+    case 'lobechat':
+      return <LobeHub.Color size={size} />;
+    case 'openwebui':
+      return <OpenWebUI size={size} />;
+    case 'dify':
+      return <Dify.Color size={size} />;
+    default: {
+      const initial = String(name || 'AI')
+        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')
+        .charAt(0)
+        .toUpperCase();
+      return (
+        <span className='app-home-icon-fallback' style={{ fontSize: size / 2 }}>
+          {initial || 'AI'}
+        </span>
+      );
+    }
   }
 };
+
+const CODE_KEYWORDS =
+  /\b(from|import|as|const|let|var|await|async|new|function|return|print|def|class|if|else|for|in|method|headers|json|true|false|null|None|True|False)\b/;
+
+// 轻量代码高亮：逐行按注释 / 字符串 / 关键字 / 数字着色，无第三方依赖。
+const CodeHighlight = ({ code }) => {
+  const lines = String(code || '').split('\n');
+  return (
+    <code className='app-home-code-hl'>
+      {lines.map((line, li) => {
+        const tokens = [];
+        let rest = line;
+        let guard = 0;
+        const commentIdx = (() => {
+          const hash = rest.indexOf('#');
+          return hash;
+        })();
+        if (commentIdx >= 0) {
+          const before = rest.slice(0, commentIdx);
+          const comment = rest.slice(commentIdx);
+          pushTokens(before, tokens);
+          tokens.push(
+            <span className='tok-comment' key='c'>
+              {comment}
+            </span>,
+          );
+        } else {
+          while (rest.length > 0 && guard < 400) {
+            guard += 1;
+            const strMatch = rest.match(/^(["'`])(?:\\.|(?!\1).)*\1?/);
+            if (strMatch) {
+              tokens.push(
+                <span className='tok-str' key={tokens.length}>
+                  {strMatch[0]}
+                </span>,
+              );
+              rest = rest.slice(strMatch[0].length);
+              continue;
+            }
+            const numMatch = rest.match(/^\b\d+(?:\.\d+)?\b/);
+            if (numMatch) {
+              tokens.push(
+                <span className='tok-num' key={tokens.length}>
+                  {numMatch[0]}
+                </span>,
+              );
+              rest = rest.slice(numMatch[0].length);
+              continue;
+            }
+            const wordMatch = rest.match(/^[A-Za-z_][A-Za-z0-9_]*/);
+            if (wordMatch) {
+              const w = wordMatch[0];
+              tokens.push(
+                CODE_KEYWORDS.test(w) ? (
+                  <span className='tok-kw' key={tokens.length}>
+                    {w}
+                  </span>
+                ) : (
+                  w
+                ),
+              );
+              rest = rest.slice(w.length);
+              continue;
+            }
+            tokens.push(rest[0]);
+            rest = rest.slice(1);
+          }
+        }
+        return (
+          <span className='app-home-code-line' key={li}>
+            {tokens}
+            {'\n'}
+          </span>
+        );
+      })}
+    </code>
+  );
+};
+
+// 把不含高亮的普通片段按字符串着色（用于注释前的部分）。
+function pushTokens(text, tokens) {
+  if (text) tokens.push(text);
+}
 
 const ApimartHome = ({
   t,
@@ -223,24 +367,47 @@ const ApimartHome = ({
   const [activeApiName, setActiveApiName] = useState(
     homeConfig.api_use_cases[0]?.name || '',
   );
+  const [activeCodeLang, setActiveCodeLang] = useState('Python');
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
   const {
     hero,
     section_titles: sectionTitles,
     stats,
     featured_models: configuredModels,
-    steps,
     api_use_cases: configuredApiUseCases,
     value_props: configuredValueProps,
     providers,
+    clients,
     faq,
   } = homeConfig;
   const activeApi =
     configuredApiUseCases.find((item) => item.name === activeApiName) ||
     configuredApiUseCases[0];
+  const SECTION_COUNT = 6;
+  const { activeIndex, goTo, setSectionRef } = useFullpage(SECTION_COUNT, true);
   const titlePrefix = systemName === 'New API' ? 'AI API' : systemName;
   const formatHomeText = (text) =>
     t(text || '').replaceAll('{site}', titlePrefix);
+  // 标题内空格分隔的中间段用紫粉渐变高亮（参考图关键词高亮效果）。
+  const renderHighlightTitle = (text) => {
+    const parts = formatHomeText(text).split(' ');
+    if (parts.length < 3) return formatHomeText(text);
+    return parts.map((part, i) => (
+      <React.Fragment key={i}>
+        {i % 2 === 1 ? <em className='app-home-hl'>{part}</em> : part}
+        {i < parts.length - 1 ? ' ' : ''}
+      </React.Fragment>
+    ));
+  };
+  const codeSamples = activeApi?.code_samples || {};
+  const codeLangs = Object.keys(codeSamples);
+  const activeLang = codeSamples[activeCodeLang]
+    ? activeCodeLang
+    : codeLangs[0];
+  const activeCode = (codeSamples[activeLang] || '').replaceAll(
+    '{base}',
+    serverAddress,
+  );
 
   useEffect(() => {
     if (!configuredApiUseCases.some((item) => item.name === activeApiName)) {
@@ -249,260 +416,328 @@ const ApimartHome = ({
   }, [activeApiName, configuredApiUseCases]);
 
   return (
-    <div className='app-home-market'>
-      <section className='app-home-hero'>
-        <div className='app-home-stars' aria-hidden='true'>
-          {starDots.map((dot) => (
-            <span key={dot} />
-          ))}
-        </div>
+    <div
+      className='app-home-market app-home-fullpage'
+      data-active={activeIndex}
+    >
+      <nav className='app-home-fullpage-nav' aria-label='sections'>
+        {Array.from({ length: SECTION_COUNT }).map((_, i) => (
+          <button
+            key={i}
+            type='button'
+            className={activeIndex === i ? 'active' : ''}
+            aria-label={`section ${i + 1}`}
+            onClick={() => goTo(i)}
+          />
+        ))}
+      </nav>
+      <div
+        className='app-home-fullpage-track'
+        style={{ transform: `translateY(${-activeIndex * 100}vh)` }}
+      >
+        <section
+          className='app-home-hero app-home-page'
+          ref={setSectionRef(0)}
+          data-active={activeIndex === 0}
+        >
+          <div className='app-home-stars' aria-hidden='true'>
+            {starDots.map((dot) => (
+              <span key={dot} />
+            ))}
+          </div>
 
-        <div className='app-home-hero-center'>
-          <Typography.Title heading={1} className='app-home-title'>
-            <TypewriterText
-              text={t(hero.title)}
-              delay={220}
-              speed={58}
-              loop
-              loopPause={1600}
-            />
-          </Typography.Title>
-          <Text className='app-home-subtitle'>{t(hero.subtitle)}</Text>
-          <Text className='app-home-subnote'>{t(hero.subnote)}</Text>
+          <div className='app-home-hero-center'>
+            <Typography.Title heading={1} className='app-home-title'>
+              <TypewriterText
+                text={t(hero.title)}
+                delay={220}
+                speed={58}
+                loop
+                loopPause={1600}
+              />
+            </Typography.Title>
+            <Text className='app-home-subtitle'>{t(hero.subtitle)}</Text>
+            <Text className='app-home-subnote'>{t(hero.subnote)}</Text>
 
-          <div className='app-home-actions'>
-            <Link to='/console/token'>
-              <Button
-                theme='solid'
-                type='primary'
-                size={isMobile ? 'default' : 'large'}
-                icon={<IconPlay />}
-              >
-                {t(hero.primary_button_text)}
-              </Button>
-            </Link>
-            {docsLink ? (
-              <Button
-                size={isMobile ? 'default' : 'large'}
-                icon={<IconFile />}
-                onClick={() => window.open(docsLink, '_blank')}
-              >
-                {t(hero.secondary_button_text)}
-              </Button>
-            ) : (
-              <Link to='/pricing'>
-                <Button size={isMobile ? 'default' : 'large'}>
-                  {t('API 市场')}
+            <div className='app-home-actions'>
+              <Link to='/console/token'>
+                <Button
+                  theme='solid'
+                  type='primary'
+                  size={isMobile ? 'default' : 'large'}
+                  icon={<IconPlay />}
+                >
+                  {t(hero.primary_button_text)}
                 </Button>
               </Link>
-            )}
-            {isDemoSiteMode && statusState?.status?.version && (
-              <Button
-                size={isMobile ? 'default' : 'large'}
-                icon={<IconGithubLogo />}
-                onClick={() =>
-                  window.open(
-                    'https://github.com/QuantumNous/new-api',
-                    '_blank',
-                  )
+              {docsLink ? (
+                <Button
+                  size={isMobile ? 'default' : 'large'}
+                  icon={<IconFile />}
+                  onClick={() => window.open(docsLink, '_blank')}
+                >
+                  {t(hero.secondary_button_text)}
+                </Button>
+              ) : (
+                <Link to='/pricing'>
+                  <Button size={isMobile ? 'default' : 'large'}>
+                    {t('API 市场')}
+                  </Button>
+                </Link>
+              )}
+              {isDemoSiteMode && statusState?.status?.version && (
+                <Button
+                  size={isMobile ? 'default' : 'large'}
+                  icon={<IconGithubLogo />}
+                  onClick={() =>
+                    window.open(
+                      'https://github.com/QuantumNous/new-api',
+                      '_blank',
+                    )
+                  }
+                >
+                  {statusState.status.version}
+                </Button>
+              )}
+            </div>
+
+            <div className='app-home-stats'>
+              {stats.map(({ value, label }, index) => (
+                <div className={`tone-${index}`} key={label}>
+                  <strong>{value}</strong>
+                  <span>{t(label)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          className='app-home-section app-home-hot-section app-home-page'
+          ref={setSectionRef(1)}
+          data-active={activeIndex === 1}
+        >
+          <div className='app-home-section-heading center'>
+            <Typography.Title heading={2}>
+              {formatHomeText(sectionTitles.hot_models)}
+            </Typography.Title>
+          </div>
+          <div className='app-home-model-mosaic'>
+            {configuredModels.map((model) => (
+              <Link
+                to={`/console/playground?model=${encodeURIComponent(model.name.replace(' API', ''))}`}
+                className={`app-home-model-card ${model.size} tone-${model.tone}`}
+                key={model.name}
+                style={
+                  model.image
+                    ? {
+                        backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0.88) 100%), url(${model.image})`,
+                      }
+                    : undefined
                 }
               >
-                {statusState.status.version}
-              </Button>
-            )}
-          </div>
-
-          <div className='app-home-stats'>
-            {stats.map(({ value, label }, index) => (
-              <div className={`tone-${index}`} key={label}>
-                <strong>{value}</strong>
-                <span>{t(label)}</span>
-              </div>
+                <span className='app-home-model-price'>{model.price}</span>
+                <div className='app-home-model-brand'>
+                  {renderApimartIcon(model.icon, 18)}
+                  <small>{model.vendor}</small>
+                </div>
+                <strong>{model.name}</strong>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className='app-home-section app-home-hot-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.hot_models)}
-          </Typography.Title>
-        </div>
-        <div className='app-home-model-mosaic'>
-          {configuredModels.map((model) => (
-            <Link
-              to={`/console/playground?model=${encodeURIComponent(model.name.replace(' API', ''))}`}
-              className={`app-home-model-card ${model.size} tone-${model.tone}`}
-              key={model.name}
-              style={
-                model.image
-                  ? {
-                      backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0.88) 100%), url(${model.image})`,
-                    }
-                  : undefined
-              }
-            >
-              <span className='app-home-model-price'>{model.price}</span>
-              <div className='app-home-model-brand'>
-                {renderApimartIcon(model.icon, 18)}
-                <small>{model.vendor}</small>
-              </div>
-              <strong>{model.name}</strong>
-            </Link>
-          ))}
-        </div>
-        <Link to='/pricing' className='app-home-center-link'>
-          <Button theme='solid' type='primary' icon={<IconArrowRight />}>
-            {t('查看所有模型')}
-          </Button>
-        </Link>
-      </section>
-
-      <section className='app-home-section app-home-steps-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.steps)}
-          </Typography.Title>
-          <Text>{formatHomeText(sectionTitles.steps_subtitle)}</Text>
-        </div>
-        <div className='app-home-step-track'>
-          {steps.map((item) => (
-            <div className='app-home-step' key={item.step}>
-              <span>{item.step}</span>
-              <strong>{t(item.title)}</strong>
-              <p>{t(item.description)}</p>
-            </div>
-          ))}
-        </div>
-        <div className='app-home-actions app-home-section-actions'>
-          <Link to='/console/token'>
+          <Link to='/pricing' className='app-home-center-link'>
             <Button theme='solid' type='primary' icon={<IconArrowRight />}>
-              {t('获取 API 密钥')}
+              {t('查看所有模型')}
             </Button>
           </Link>
-          {docsLink && (
-            <Button icon={<IconFile />} onClick={() => window.open(docsLink)}>
-              {t('查看文档')}
-            </Button>
-          )}
-        </div>
-      </section>
+        </section>
 
-      <section className='app-home-section app-home-api-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.api_use_cases)}
-          </Typography.Title>
-        </div>
-        <div className='app-home-api-tabs'>
-          {configuredApiUseCases.map((item) => (
-            <button
-              className={item.name === activeApiName ? 'active' : ''}
-              key={item.name}
-              onClick={() => setActiveApiName(item.name)}
-              type='button'
-            >
-              {item.name}
-            </button>
-          ))}
-        </div>
-        <div className='app-home-api-showcase'>
-          <div className='app-home-api-copy'>
-            <span>{activeApi.name}</span>
-            <strong>{t(activeApi.title)}</strong>
-            <p>{t(activeApi.description)}</p>
-            <ul>
-              {(activeApi?.bullets || []).map((bullet) => (
-                <li key={bullet}>{t(bullet)}</li>
+        <section
+          className='app-home-section app-home-ecosystem-section app-home-page'
+          ref={setSectionRef(2)}
+          data-active={activeIndex === 2}
+        >
+          <div className='app-home-eco-block'>
+            <div className='app-home-eco-badge'>PROVIDERS</div>
+            <div className='app-home-section-heading center'>
+              <Typography.Title heading={2}>
+                {renderHighlightTitle(sectionTitles.providers)}
+              </Typography.Title>
+              <Text>{formatHomeText(sectionTitles.providers_subtitle)}</Text>
+            </div>
+            <div className='app-home-eco-grid'>
+              {providers.map(({ name, icon, desc }) => (
+                <div className='app-home-eco-card' key={name}>
+                  <span className='app-home-eco-icon'>
+                    {renderApimartIcon(icon, 30, name)}
+                  </span>
+                  <div className='app-home-eco-meta'>
+                    <strong>{name}</strong>
+                    {desc && <small>{desc}</small>}
+                  </div>
+                </div>
               ))}
-            </ul>
-            <Link to='/pricing'>
-              <Button type='primary' theme='solid' icon={<IconArrowRight />}>
-                {t(activeApi?.button || '探索 API')}
-              </Button>
-            </Link>
-          </div>
-          <div className='app-home-api-visual'>
-            <img src={activeApi?.image || '/cover-4.webp'} alt='' />
-            <div className='app-home-chat-card'>
-              <div>
-                <span>ChatAI</span>
-                <strong>How can I help you?</strong>
-              </div>
-              <p>{`base_url: ${serverAddress}`}</p>
-              <button onClick={handleCopyBaseURL} type='button'>
-                <IconCopy /> {t('复制 Base URL')}
-              </button>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section className='app-home-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.value_props)}
-          </Typography.Title>
-        </div>
-        <div className='app-home-value-list'>
-          {configuredValueProps.map(({ index, title, description }) => (
-            <div className='app-home-value-item' key={title}>
-              <span>{index}</span>
-              <div>
-                <strong>{t(title)}</strong>
-                <p>{t(description)}</p>
+          <div className='app-home-eco-block'>
+            <div className='app-home-eco-badge'>CLIENTS</div>
+            <div className='app-home-section-heading center'>
+              <Typography.Title heading={2}>
+                {renderHighlightTitle(sectionTitles.clients)}
+              </Typography.Title>
+              <Text>{formatHomeText(sectionTitles.clients_subtitle)}</Text>
+            </div>
+            <div className='app-home-eco-grid'>
+              {clients.map(({ name, icon, desc }) => (
+                <div className='app-home-eco-card' key={name}>
+                  <span className='app-home-eco-icon'>
+                    {renderApimartIcon(icon, 30, name)}
+                  </span>
+                  <div className='app-home-eco-meta'>
+                    <strong>{name}</strong>
+                    {desc && <small>{desc}</small>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          className='app-home-section app-home-api-section app-home-page'
+          ref={setSectionRef(3)}
+          data-active={activeIndex === 3}
+        >
+          <div className='app-home-api-showcase'>
+            <div className='app-home-api-copy'>
+              <div className='app-home-api-tabs'>
+                {configuredApiUseCases.map((item) => (
+                  <button
+                    className={item.name === activeApiName ? 'active' : ''}
+                    key={item.name}
+                    onClick={() => setActiveApiName(item.name)}
+                    type='button'
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+              <strong>{t(activeApi.title)}</strong>
+              <p>{t(activeApi.description)}</p>
+              <ul>
+                {(activeApi?.bullets || []).map((bullet) => (
+                  <li key={bullet}>{t(bullet)}</li>
+                ))}
+              </ul>
+              <div className='app-home-api-baseurl'>
+                <span className='app-home-api-baseurl-label'>API Base</span>
+                <code>{serverAddress}</code>
+                <button onClick={handleCopyBaseURL} type='button'>
+                  <IconCopy />
+                </button>
+              </div>
+              <Link to='/pricing'>
+                <Button type='primary' theme='solid' icon={<IconArrowRight />}>
+                  {t(activeApi?.button || '探索 API')}
+                </Button>
+              </Link>
+            </div>
+            <div className='app-home-api-visual'>
+              <div className='app-home-code-window'>
+                <div className='app-home-code-bar'>
+                  <span className='app-home-code-dots'>
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <div className='app-home-code-langs'>
+                    {codeLangs.map((lang) => (
+                      <button
+                        key={lang}
+                        className={lang === activeLang ? 'active' : ''}
+                        onClick={() => setActiveCodeLang(lang)}
+                        type='button'
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className='app-home-code-copy'
+                    onClick={() =>
+                      copy(activeCode).then(
+                        (ok) => ok && showSuccess(t('已复制到剪切板')),
+                      )
+                    }
+                    type='button'
+                  >
+                    <IconCopy /> {t('复制')}
+                  </button>
+                </div>
+                <pre className='app-home-code-body'>
+                  <CodeHighlight code={activeCode} />
+                </pre>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <section className='app-home-section app-home-provider-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.providers)}
-          </Typography.Title>
-        </div>
-        <div className='app-home-provider-marquee'>
-          <div className='app-home-provider-track'>
-            {[...providers, ...providers].map(({ name, icon }, index) => (
-              <div className='app-home-provider-logo' key={`${name}-${index}`}>
-                {renderApimartIcon(icon, 34)}
-                <span>{name}</span>
+        <section
+          className='app-home-section app-home-page'
+          ref={setSectionRef(4)}
+          data-active={activeIndex === 4}
+        >
+          <div className='app-home-section-heading center'>
+            <Typography.Title heading={2}>
+              {formatHomeText(sectionTitles.value_props)}
+            </Typography.Title>
+          </div>
+          <div className='app-home-value-list'>
+            {configuredValueProps.map(({ index, title, description }) => (
+              <div className='app-home-value-item' key={title}>
+                <span>{index}</span>
+                <div>
+                  <strong>{t(title)}</strong>
+                  <p>{t(description)}</p>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className='app-home-section'>
-        <div className='app-home-section-heading center'>
-          <Typography.Title heading={2}>
-            {formatHomeText(sectionTitles.faq)}
-          </Typography.Title>
-        </div>
-        <div className='app-home-faq'>
-          {faq.map(({ question, answer }, index) => (
-            <div
-              className={`app-home-faq-item ${openFaqIndex === index ? 'open' : ''}`}
-              key={question}
-            >
-              <button
-                onClick={() =>
-                  setOpenFaqIndex(openFaqIndex === index ? -1 : index)
-                }
-                type='button'
+        <section
+          className='app-home-section app-home-page'
+          ref={setSectionRef(5)}
+          data-active={activeIndex === 5}
+        >
+          <div className='app-home-section-heading center'>
+            <Typography.Title heading={2}>
+              {formatHomeText(sectionTitles.faq)}
+            </Typography.Title>
+          </div>
+          <div className='app-home-faq'>
+            {faq.map(({ question, answer }, index) => (
+              <div
+                className={`app-home-faq-item ${openFaqIndex === index ? 'open' : ''}`}
+                key={question}
               >
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{t(question)}</strong>
-                <IconChevronDown />
-              </button>
-              {openFaqIndex === index && <p>{t(answer)}</p>}
-            </div>
-          ))}
-        </div>
-      </section>
+                <button
+                  onClick={() =>
+                    setOpenFaqIndex(openFaqIndex === index ? -1 : index)
+                  }
+                  type='button'
+                >
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <strong>{t(question)}</strong>
+                  <IconChevronDown />
+                </button>
+                {openFaqIndex === index && <p>{t(answer)}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 };

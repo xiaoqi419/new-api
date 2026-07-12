@@ -51,6 +51,7 @@ export const DEFAULT_ADMIN_CONFIG = {
     models: true,
     deployment: true,
     redemption: true,
+    invoice: true,
     rebate: true,
     groupbuy: true,
     invite_ranking: true,
