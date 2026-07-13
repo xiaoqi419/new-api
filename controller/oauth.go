@@ -170,9 +170,12 @@ func handleOAuthBind(c *gin.Context, provider oauth.Provider) {
 	}
 
 	// Get current user from session
-	session := sessions.Default(c)
-	id := session.Get("id")
-	user := model.User{Id: id.(int)}
+	id, ok := getSessionUserID(c)
+	if !ok {
+		common.ApiErrorMsg(c, "无效的会话信息")
+		return
+	}
+	user := model.User{Id: id}
 	err = user.FillUserById()
 	if err != nil {
 		common.ApiError(c, err)

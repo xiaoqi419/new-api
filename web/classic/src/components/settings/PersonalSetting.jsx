@@ -210,7 +210,7 @@ const PersonalSetting = () => {
   };
 
   const generateAccessToken = async () => {
-    const res = await API.get('/api/user/token');
+    const res = await API.post('/api/user/token');
     const { success, message, data } = res.data;
     if (success) {
       setSystemToken(data);

@@ -19,7 +19,6 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -335,13 +334,12 @@ func WeChatMpBindCheck(c *gin.Context) {
 		common.ApiErrorMsg(c, "该微信账号已被绑定")
 		return
 	}
-	session := sessions.Default(c)
-	id := session.Get("id")
-	if id == nil {
+	id, ok := getSessionUserID(c)
+	if !ok {
 		common.ApiErrorMsg(c, "未登录")
 		return
 	}
-	user := model.User{Id: id.(int)}
+	user := model.User{Id: id}
 	if err := user.FillUserById(); err != nil {
 		common.ApiError(c, err)
 		return

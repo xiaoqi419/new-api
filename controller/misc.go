@@ -346,7 +346,8 @@ func ResetPassword(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	if !common.VerifyCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
+	// 原子校验并消费重置令牌，避免并发请求同时通过校验后重复重置密码。
+	if !common.VerifyAndConsumeCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
 		return
 	}
@@ -357,10 +358,11 @@ func ResetPassword(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
 			return
 		}
+		// 数据库写入等瞬时失败：释放令牌，允许用户在有效期内重试。
+		common.RegisterVerificationCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose)
 		common.ApiError(c, err)
 		return
 	}
-	common.DeleteKey(req.Email, common.PasswordResetPurpose)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

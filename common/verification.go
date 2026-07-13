@@ -61,6 +61,22 @@ func DeleteKey(key string, purpose string) {
 	delete(verificationMap, purpose+key)
 }
 
+// VerifyAndConsumeCodeWithKey 在同一把锁内校验并删除验证码，保证一次性消费。
+// 用于密码重置等一次性凭证场景，避免"先校验后删除"的并发窗口被复用。
+func VerifyAndConsumeCodeWithKey(key string, code string, purpose string) bool {
+	verificationMutex.Lock()
+	defer verificationMutex.Unlock()
+	value, okay := verificationMap[purpose+key]
+	if !okay || int(time.Now().Sub(value.time).Seconds()) >= VerificationValidMinutes*60 {
+		return false
+	}
+	if code != value.code {
+		return false
+	}
+	delete(verificationMap, purpose+key)
+	return true
+}
+
 // no lock inside, so the caller must lock the verificationMap before calling!
 func removeExpiredPairs() {
 	now := time.Now()

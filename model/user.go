@@ -426,6 +426,11 @@ func HardDeleteUserById(id int) error {
 	if id == 0 {
 		return errors.New("id 为空！")
 	}
+	if isRoot, err := isRootUserById(id); err != nil {
+		return err
+	} else if isRoot {
+		return ErrCannotDeleteRootUser
+	}
 	return DB.Transaction(func(tx *gorm.DB) error {
 		if err := deleteUserOAuthBindingsByUserId(tx, id); err != nil {
 			return err
@@ -742,9 +747,25 @@ func (user *User) ClearBinding(bindingType string) error {
 	return updateUserCache(*user)
 }
 
+// isRootUserById 读取数据库中该用户的当前角色，判断是否为 root。
+// 调用方常只传 user.Id，user.Role 未必已加载，因此需回查数据库。
+func isRootUserById(id int) (bool, error) {
+	var role int
+	err := DB.Model(&User{}).Where("id = ?", id).Select("role").Scan(&role).Error
+	if err != nil {
+		return false, err
+	}
+	return role == common.RoleRootUser, nil
+}
+
 func (user *User) Delete() error {
 	if user.Id == 0 {
 		return errors.New("id 为空！")
+	}
+	if isRoot, err := isRootUserById(user.Id); err != nil {
+		return err
+	} else if isRoot {
+		return ErrCannotDeleteRootUser
 	}
 	if err := DB.Delete(user).Error; err != nil {
 		return err
@@ -757,6 +778,11 @@ func (user *User) Delete() error {
 func (user *User) HardDelete() error {
 	if user.Id == 0 {
 		return errors.New("id 为空！")
+	}
+	if isRoot, err := isRootUserById(user.Id); err != nil {
+		return err
+	} else if isRoot {
+		return ErrCannotDeleteRootUser
 	}
 	return DB.Transaction(func(tx *gorm.DB) error {
 		if err := deleteUserOAuthBindingsByUserId(tx, user.Id); err != nil {

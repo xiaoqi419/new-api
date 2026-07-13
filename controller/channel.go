@@ -1290,8 +1290,14 @@ func FetchModels(c *gin.Context) {
 		return
 	}
 
-	client := &http.Client{}
-	url := fmt.Sprintf("%s/v1/models", baseURL)
+	url := fmt.Sprintf("%s/v1/models", strings.TrimRight(baseURL, "/"))
+	if err := service.ValidateSSRFProtectedFetchURL(url); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": fmt.Sprintf("request reject: %s", err.Error()),
+		})
+		return
+	}
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -1304,7 +1310,7 @@ func FetchModels(c *gin.Context) {
 
 	request.Header.Set("Authorization", "Bearer "+key)
 
-	response, err := client.Do(request)
+	response, err := service.GetSSRFProtectedHTTPClient().Do(request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -1312,6 +1318,7 @@ func FetchModels(c *gin.Context) {
 		})
 		return
 	}
+	defer response.Body.Close()
 	//check status code
 	if response.StatusCode != http.StatusOK {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -1320,7 +1327,6 @@ func FetchModels(c *gin.Context) {
 		})
 		return
 	}
-	defer response.Body.Close()
 
 	var result struct {
 		Data []struct {
@@ -1328,7 +1334,7 @@ func FetchModels(c *gin.Context) {
 		} `json:"data"`
 	}
 
-	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+	if err := common.DecodeJson(response.Body, &result); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),

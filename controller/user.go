@@ -258,6 +258,11 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 注册成功后消费邮箱验证码，避免同一验证码在有效期内被重复提交。
+	if common.EmailVerificationEnabled {
+		common.DeleteKey(user.Email, common.EmailVerificationPurpose)
+	}
+
 	// 获取插入后的用户ID
 	var insertedUser model.User
 	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
@@ -428,6 +433,9 @@ func GenerateAccessToken(c *gin.Context) {
 		return
 	}
 
+	// access token 属敏感凭证，禁止缓存/预取以免被中间层缓存或误重放。
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -1252,10 +1260,13 @@ func EmailBind(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
 		return
 	}
-	session := sessions.Default(c)
-	id := session.Get("id")
+	id, ok := getSessionUserID(c)
+	if !ok {
+		common.ApiErrorMsg(c, "无效的会话信息")
+		return
+	}
 	user := model.User{
-		Id: id.(int),
+		Id: id,
 	}
 	err := user.FillUserById()
 	if err != nil {
@@ -1270,6 +1281,8 @@ func EmailBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	// 绑定成功后消费邮箱验证码，避免重复提交。
+	common.DeleteKey(email, common.EmailVerificationPurpose)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -1404,8 +1417,9 @@ func UpdateUserSetting(c *gin.Context) {
 
 	// 如果是邮件类型，验证邮箱地址
 	if req.QuotaWarningType == dto.NotifyTypeEmail && req.NotificationEmail != "" {
+		req.NotificationEmail = strings.TrimSpace(req.NotificationEmail)
 		// 验证邮箱格式
-		if !strings.Contains(req.NotificationEmail, "@") {
+		if !common.IsValidEmail(req.NotificationEmail) {
 			common.ApiErrorI18n(c, i18n.MsgSettingEmailInvalid)
 			return
 		}
