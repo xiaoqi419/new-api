@@ -911,7 +911,7 @@ export const useChannelsData = () => {
         return Promise.resolve();
       }
 
-      const { success, message, time, error_code } = res.data;
+      const { success, message, time, error_code, via_fallback } = res.data;
 
       // 更新测试结果
       setModelTestResults((prev) => ({
@@ -922,6 +922,7 @@ export const useChannelsData = () => {
           time: time || 0,
           timestamp: Date.now(),
           errorCode: error_code || null,
+          viaFallback: via_fallback || false,
         },
       }));
 
@@ -932,11 +933,12 @@ export const useChannelsData = () => {
           channel.test_time = Date.now() / 1000;
         });
 
+        const fallbackNote = via_fallback ? t('（经兜底渠道）') : '';
         if (!model || model === '') {
           showInfo(
             t('通道 ${name} 测试成功，耗时 ${time.toFixed(2)} 秒。')
               .replace('${name}', record.name)
-              .replace('${time.toFixed(2)}', time.toFixed(2)),
+              .replace('${time.toFixed(2)}', time.toFixed(2)) + fallbackNote,
           );
         } else {
           showInfo(
@@ -945,7 +947,7 @@ export const useChannelsData = () => {
             )
               .replace('${name}', record.name)
               .replace('${model}', model)
-              .replace('${time.toFixed(2)}', time.toFixed(2)),
+              .replace('${time.toFixed(2)}', time.toFixed(2)) + fallbackNote,
           );
         }
       } else {

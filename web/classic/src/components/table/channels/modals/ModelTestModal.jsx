@@ -174,6 +174,11 @@ const ModelTestModal = ({
               <Tag color={testResult.success ? 'green' : 'red'} shape='circle'>
                 {testResult.success ? t('成功') : t('失败')}
               </Tag>
+              {testResult.success && testResult.viaFallback && (
+                <Tag color='orange' shape='circle'>
+                  {t('经兜底渠道')}
+                </Tag>
+              )}
               {testResult.success && (
                 <Typography.Text type='tertiary'>
                   {t('请求时长: ${time}s').replace(

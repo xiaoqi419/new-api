@@ -21,6 +21,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	"github.com/QuantumNous/new-api/relay"
+	"github.com/QuantumNous/new-api/relay/channel"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
@@ -39,6 +40,7 @@ type testResult struct {
 	context     *gin.Context
 	localErr    error
 	newAPIError *types.NewAPIError
+	viaFallback bool
 }
 
 func normalizeChannelTestEndpoint(channel *model.Channel, modelName, endpointType string) string {
@@ -428,68 +430,21 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		}
 	}
 
-	requestBody := bytes.NewBuffer(jsonData)
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(jsonData))
-	resp, err := adaptor.DoRequest(c, info, requestBody)
-	if err != nil {
-		return testResult{
-			context:     c,
-			localErr:    err,
-			newAPIError: types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError),
-		}
-	}
-	var httpResp *http.Response
-	if resp != nil {
-		httpResp = resp.(*http.Response)
-		if httpResp.StatusCode != http.StatusOK {
-			err := service.RelayErrorHandler(c.Request.Context(), httpResp, true)
-			common.SysError(fmt.Sprintf(
-				"channel test bad response: channel_id=%d name=%s type=%d model=%s endpoint_type=%s status=%d err=%v",
-				channel.Id,
-				channel.Name,
-				channel.Type,
-				testModel,
-				endpointType,
-				httpResp.StatusCode,
-				err,
-			))
-			return testResult{
-				context:     c,
-				localErr:    err,
-				newAPIError: types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError),
+	usage, respBody, attempt := performTestUpstreamRequest(c, channel, info, adaptor, jsonData, testModel, endpointType, isStream, w)
+	viaFallback := false
+	if attempt.failed() {
+		if fbErr := applyTestFallbackUpstream(c, channel, info, adaptor); fbErr == nil {
+			usage, respBody, attempt = performTestUpstreamRequest(c, channel, info, adaptor, jsonData, testModel, endpointType, isStream, w)
+			if !attempt.failed() {
+				viaFallback = true
 			}
 		}
 	}
-	usageA, respErr := adaptor.DoResponse(c, httpResp, info)
-	if respErr != nil {
+	if attempt.failed() {
 		return testResult{
 			context:     c,
-			localErr:    respErr,
-			newAPIError: respErr,
-		}
-	}
-	usage, usageErr := coerceTestUsage(usageA, isStream, info.GetEstimatePromptTokens())
-	if usageErr != nil {
-		return testResult{
-			context:     c,
-			localErr:    usageErr,
-			newAPIError: types.NewOpenAIError(usageErr, types.ErrorCodeBadResponseBody, http.StatusInternalServerError),
-		}
-	}
-	result := w.Result()
-	respBody, err := readTestResponseBody(result.Body, isStream)
-	if err != nil {
-		return testResult{
-			context:     c,
-			localErr:    err,
-			newAPIError: types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError),
-		}
-	}
-	if bodyErr := validateTestResponseBody(respBody, isStream); bodyErr != nil {
-		return testResult{
-			context:     c,
-			localErr:    bodyErr,
-			newAPIError: types.NewOpenAIError(bodyErr, types.ErrorCodeBadResponseBody, http.StatusInternalServerError),
+			localErr:    attempt.localErr,
+			newAPIError: attempt.newAPIError,
 		}
 	}
 	info.SetEstimatePromptTokens(usage.PromptTokens)
@@ -519,7 +474,89 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		context:     c,
 		localErr:    nil,
 		newAPIError: nil,
+		viaFallback: viaFallback,
 	}
+}
+
+// testUpstreamAttempt 记录一次上游测试请求的结果，failed 表示本次尝试失败。
+type testUpstreamAttempt struct {
+	localErr    error
+	newAPIError *types.NewAPIError
+}
+
+func (a testUpstreamAttempt) failed() bool {
+	return a.localErr != nil || a.newAPIError != nil
+}
+
+// performTestUpstreamRequest 执行一次上游测试请求并校验响应，供主测试与兜底重试复用。
+func performTestUpstreamRequest(c *gin.Context, ch *model.Channel, info *relaycommon.RelayInfo, adaptor channel.Adaptor, jsonData []byte, testModel string, endpointType string, isStream bool, w *httptest.ResponseRecorder) (*dto.Usage, []byte, testUpstreamAttempt) {
+	requestBody := bytes.NewBuffer(jsonData)
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(jsonData))
+	resp, err := adaptor.DoRequest(c, info, requestBody)
+	if err != nil {
+		return nil, nil, testUpstreamAttempt{localErr: err, newAPIError: types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)}
+	}
+	var httpResp *http.Response
+	if resp != nil {
+		httpResp = resp.(*http.Response)
+		if httpResp.StatusCode != http.StatusOK {
+			respErr := service.RelayErrorHandler(c.Request.Context(), httpResp, true)
+			common.SysError(fmt.Sprintf(
+				"channel test bad response: channel_id=%d name=%s type=%d model=%s endpoint_type=%s status=%d err=%v",
+				ch.Id,
+				ch.Name,
+				ch.Type,
+				testModel,
+				endpointType,
+				httpResp.StatusCode,
+				respErr,
+			))
+			return nil, nil, testUpstreamAttempt{localErr: respErr, newAPIError: types.NewOpenAIError(respErr, types.ErrorCodeBadResponse, http.StatusInternalServerError)}
+		}
+	}
+	usageA, respErr := adaptor.DoResponse(c, httpResp, info)
+	if respErr != nil {
+		return nil, nil, testUpstreamAttempt{localErr: respErr, newAPIError: respErr}
+	}
+	usage, usageErr := coerceTestUsage(usageA, isStream, info.GetEstimatePromptTokens())
+	if usageErr != nil {
+		return nil, nil, testUpstreamAttempt{localErr: usageErr, newAPIError: types.NewOpenAIError(usageErr, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)}
+	}
+	respBody, err := readTestResponseBody(w.Result().Body, isStream)
+	if err != nil {
+		return nil, nil, testUpstreamAttempt{localErr: err, newAPIError: types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError)}
+	}
+	if bodyErr := validateTestResponseBody(respBody, isStream); bodyErr != nil {
+		return nil, nil, testUpstreamAttempt{localErr: bodyErr, newAPIError: types.NewOpenAIError(bodyErr, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)}
+	}
+	return usage, respBody, testUpstreamAttempt{}
+}
+
+// applyTestFallbackUpstream 将测试上下文的转发目标切换到渠道配置的兜底 URL+Key，
+// 返回 nil 表示已成功切换、可重试；否则表示未配置兜底或条件不满足。
+// 计费口径不变（渠道 Id/Type/分组均不变，仅替换转发目标与凭证）。
+func applyTestFallbackUpstream(c *gin.Context, ch *model.Channel, info *relaycommon.RelayInfo, adaptor channel.Adaptor) error {
+	settingChannel := ch
+	if settingChannel.Setting == nil && settingChannel.Id > 0 {
+		if full, err := model.CacheGetChannel(ch.Id); err == nil && full != nil {
+			settingChannel = full
+		}
+	}
+	fb := settingChannel.GetSetting().FallbackUpstream
+	if fb == nil || !fb.Enabled || strings.TrimSpace(fb.BaseURL) == "" {
+		return fmt.Errorf("no fallback upstream configured")
+	}
+	fallbackKey := fb.Key
+	if strings.TrimSpace(fallbackKey) == "" {
+		fallbackKey = info.ApiKey
+	}
+	info.ChannelBaseUrl = strings.TrimSpace(fb.BaseURL)
+	info.ApiKey = fallbackKey
+	common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, info.ChannelBaseUrl)
+	common.SetContextKey(c, constant.ContextKeyChannelKey, fallbackKey)
+	adaptor.Init(info)
+	common.SysLog(fmt.Sprintf("渠道 #%d 测试失败，尝试兜底转发至 %s", ch.Id, info.ChannelBaseUrl))
+	return nil
 }
 
 func attachTestBillingRequestInput(info *relaycommon.RelayInfo, request dto.Request) error {
@@ -888,9 +925,10 @@ func TestChannel(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"time":    consumedTime,
+		"success":      true,
+		"message":      "",
+		"time":         consumedTime,
+		"via_fallback": result.viaFallback,
 	})
 }
 
