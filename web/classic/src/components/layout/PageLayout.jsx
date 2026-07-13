@@ -260,8 +260,8 @@ const PageLayout = () => {
                   ? undefined
                   : shouldInnerPadding
                     ? isMobile
-                      ? 'calc(5px + var(--app-floating-header-height))'
-                      : 'calc(24px + var(--app-floating-header-height))'
+                      ? 'calc(5px + var(--app-floating-header-height) - 60px)'
+                      : 'calc(24px + var(--app-floating-header-height) - 60px)'
                     : 'var(--app-floating-header-height)',
               position: 'relative',
               minHeight: 0,

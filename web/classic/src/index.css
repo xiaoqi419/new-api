@@ -2497,6 +2497,17 @@ html[data-ui-preset='apimart'] .app-wordmark-footer-inner {
   padding: 3rem 0.75rem 2rem;
 }
 
+.app-wordmark-footer-inner--minimal {
+  max-width: var(--app-content-width);
+  margin: 0 auto;
+  padding: 1.25rem 0.75rem;
+}
+
+html[data-ui-preset='apimart']
+  .app-wordmark-footer-inner.app-wordmark-footer-inner--minimal {
+  padding: 1.25rem 0.75rem;
+}
+
 html[data-ui-preset='apimart'] .app-wordmark {
   display: none;
 }
@@ -4638,6 +4649,37 @@ html[data-ui-preset='apimart']:not(.dark) .app-home-model-card strong {
 
 .app-docs-baseurl button:hover {
   color: var(--app-primary);
+}
+
+.app-docs-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-docs-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius, 8px);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.app-docs-download:hover {
+  color: var(--app-primary);
+  border-color: var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 8%, transparent);
 }
 
 .app-docs-section {

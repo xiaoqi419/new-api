@@ -23,10 +23,11 @@ import {
   IconCopy,
   IconTickCircle,
   IconChevronDown,
+  IconDownload,
 } from '@douyinfe/semi-icons';
 import { StatusContext } from '../../context/Status';
-import { copy, showSuccess } from '../../helpers';
-import { buildDocGroups } from './docData';
+import { copy, showSuccess, downloadTextAsFile } from '../../helpers';
+import { buildDocGroups, buildCategoryMarkdown } from './docData';
 
 // Lightweight inline markup: `code` -> <code>, **bold** -> <b>
 const renderInline = (text) => {
@@ -246,10 +247,54 @@ const Docs = () => {
     return map;
   }, [sections]);
 
-  const [activeId, setActiveId] = useState(sections[0]?.id);
-  const [openGroups, setOpenGroups] = useState(() => groups.map((g) => g.id));
-  const [openCats, setOpenCats] = useState([]);
+  // Each category (chat / completions / audio / an image or video format, ...)
+  // is one navigable "page"; only the active one renders in the main column.
+  const pages = useMemo(() => {
+    const arr = [];
+    groups.forEach((g) =>
+      g.categories.forEach((c) =>
+        arr.push({ key: `${g.id}/${c.id}`, group: g, cat: c }),
+      ),
+    );
+    return arr;
+  }, [groups]);
 
+  const firstIdOf = (cat) => (cat.items ? cat.items[0].id : cat.id);
+
+  const initialSel = useMemo(() => {
+    const raw = decodeURIComponent(
+      (typeof window !== 'undefined' ? window.location.hash : '').replace(
+        /^#/,
+        '',
+      ),
+    );
+    if (raw && sectionMeta[raw]) {
+      const m = sectionMeta[raw];
+      return { catKey: `${m.groupId}/${m.catId ?? raw}`, id: raw };
+    }
+    const byCat = pages.find((p) => p.cat.id === raw);
+    if (byCat) return { catKey: byCat.key, id: firstIdOf(byCat.cat) };
+    const first = pages[0];
+    return { catKey: first?.key, id: first ? firstIdOf(first.cat) : undefined };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages, sectionMeta]);
+
+  const [activeCatKey, setActiveCatKey] = useState(initialSel.catKey);
+  const [activeId, setActiveId] = useState(initialSel.id);
+  const [openGroups, setOpenGroups] = useState(() => groups.map((g) => g.id));
+  const [openCats, setOpenCats] = useState(() => {
+    const m = sectionMeta[initialSel.id];
+    return m?.catId ? [m.catId] : [];
+  });
+
+  const activePage = useMemo(
+    () => pages.find((p) => p.key === activeCatKey) || pages[0],
+    [pages, activeCatKey],
+  );
+
+  const pendingScroll = useRef(null);
+
+  // Scroll-spy limited to the currently rendered category's sections.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -266,9 +311,22 @@ const Docs = () => {
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, [sections]);
+  }, [sections, activeCatKey]);
 
-  // Auto-expand the category of the active section as the user scrolls.
+  // After switching category/item, scroll to the requested target.
+  useEffect(() => {
+    const p = pendingScroll.current;
+    pendingScroll.current = null;
+    if (!p) return;
+    if (p.top) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (p.id) {
+      const el = sectionRefs.current[p.id];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeCatKey, activeId]);
+
+  // Keep the active item's category expanded in the TOC while scrolling.
   useEffect(() => {
     const meta = sectionMeta[activeId];
     if (meta?.catId) {
@@ -278,16 +336,28 @@ const Docs = () => {
     }
   }, [activeId, sectionMeta]);
 
-  const scrollTo = (id) => {
-    const el = sectionRefs.current[id];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setActiveId(id);
+  const setRef = (id) => (el) => {
+    sectionRefs.current[id] = el;
+  };
+
+  const updateHash = (id) => {
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState(null, '', `#${id}`);
     }
   };
 
-  const setRef = (id) => (el) => {
-    sectionRefs.current[id] = el;
+  const selectCategory = (group, cat) => {
+    setActiveCatKey(`${group.id}/${cat.id}`);
+    setActiveId(firstIdOf(cat));
+    pendingScroll.current = { top: true };
+    updateHash(cat.id);
+  };
+
+  const selectItem = (group, cat, item) => {
+    setActiveCatKey(`${group.id}/${cat.id}`);
+    setActiveId(item.id);
+    pendingScroll.current = { id: item.id };
+    updateHash(item.id);
   };
 
   const toggleGroup = (id) =>
@@ -322,13 +392,14 @@ const Docs = () => {
                   </button>
                   {groupOpen &&
                     group.categories.map((cat) => {
+                      const catKey = `${group.id}/${cat.id}`;
                       if (!cat.items) {
                         return (
                           <button
                             type='button'
                             key={cat.id}
-                            className={`app-docs-toc-link${activeId === cat.id ? ' active' : ''}`}
-                            onClick={() => scrollTo(cat.id)}
+                            className={`app-docs-toc-link${activeCatKey === catKey ? ' active' : ''}`}
+                            onClick={() => selectCategory(group, cat)}
                           >
                             <span className='app-docs-toc-link-text'>
                               {cat.label}
@@ -341,8 +412,11 @@ const Docs = () => {
                         <div key={cat.id}>
                           <button
                             type='button'
-                            className={`app-docs-toc-cat${catOpen ? ' open' : ''}`}
-                            onClick={() => toggleCat(cat.id)}
+                            className={`app-docs-toc-cat${catOpen ? ' open' : ''}${activeCatKey === catKey ? ' active' : ''}`}
+                            onClick={() => {
+                              toggleCat(cat.id);
+                              selectCategory(group, cat);
+                            }}
                           >
                             <IconChevronDown
                               size='small'
@@ -356,7 +430,7 @@ const Docs = () => {
                                 type='button'
                                 key={item.id}
                                 className={`app-docs-toc-link is-sub${activeId === item.id ? ' active' : ''}`}
-                                onClick={() => scrollTo(item.id)}
+                                onClick={() => selectItem(group, cat, item)}
                               >
                                 <span className='app-docs-toc-link-text'>
                                   {item.label}
@@ -382,46 +456,62 @@ const Docs = () => {
                 '通过统一 API 接入聊天、补全、嵌入、重排序、审查、音频、图像、视频等多模态能力,兼容 OpenAI / Claude / Gemini 格式。下游仅需一个 API 密钥即可调用,无需分别对接各上游厂商。',
               )}
             </p>
-            <div className='app-docs-baseurl'>
-              <span>base_url</span>
-              <code>{serverAddress}</code>
+            <div className='app-docs-hero-actions'>
+              <div className='app-docs-baseurl'>
+                <span>base_url</span>
+                <code>{serverAddress}</code>
+                <button
+                  type='button'
+                  onClick={async () => {
+                    const ok = await copy(serverAddress);
+                    if (ok) showSuccess(t('已复制到剪切板'));
+                  }}
+                >
+                  <IconCopy />
+                </button>
+              </div>
               <button
                 type='button'
-                onClick={async () => {
-                  const ok = await copy(serverAddress);
-                  if (ok) showSuccess(t('已复制到剪切板'));
+                className='app-docs-download'
+                onClick={() => {
+                  if (!activePage) return;
+                  const { group, cat } = activePage;
+                  const safeName = cat.label.replace(/[\\/:*?"<>|]/g, '_');
+                  downloadTextAsFile(
+                    buildCategoryMarkdown(serverAddress, group.id, cat.id),
+                    `${safeName}.md`,
+                  );
+                  showSuccess(t('文档已下载'));
                 }}
               >
-                <IconCopy />
+                <IconDownload />
+                <span>{t('下载 Markdown')}</span>
               </button>
             </div>
           </header>
 
-          {groups.map((group) =>
-            group.categories.map((cat) =>
-              cat.items ? (
-                cat.items.map((item) => (
-                  <Section
-                    key={item.id}
-                    id={item.id}
-                    eyebrow={cat.label}
-                    title={item.label}
-                    method={item.method}
-                    blocks={item.blocks}
-                    setRef={setRef}
-                  />
-                ))
-              ) : (
+          {activePage &&
+            (activePage.cat.items ? (
+              activePage.cat.items.map((item) => (
                 <Section
-                  key={cat.id}
-                  id={cat.id}
-                  title={cat.label}
-                  blocks={cat.blocks}
+                  key={item.id}
+                  id={item.id}
+                  eyebrow={activePage.cat.label}
+                  title={item.label}
+                  method={item.method}
+                  blocks={item.blocks}
                   setRef={setRef}
                 />
-              ),
-            ),
-          )}
+              ))
+            ) : (
+              <Section
+                key={activePage.cat.id}
+                id={activePage.cat.id}
+                title={activePage.cat.label}
+                blocks={activePage.cat.blocks}
+                setRef={setRef}
+              />
+            ))}
         </main>
       </div>
     </div>

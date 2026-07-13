@@ -2193,3 +2193,94 @@ export const buildDocGroups = (baseUrl) => [
   videoGroup(baseUrl),
   referenceGroup(baseUrl),
 ];
+
+const codeFenceLang = (label) => {
+  const l = (label || '').toLowerCase();
+  if (
+    l.includes('json') ||
+    l.includes('响应') ||
+    l.includes('成功') ||
+    l.includes('失败')
+  )
+    return 'json';
+  if (l.includes('curl')) return 'bash';
+  if (l.includes('python')) return 'python';
+  if (l.includes('node')) return 'javascript';
+  if (l.includes('header')) return 'http';
+  return '';
+};
+
+const mdCell = (text) =>
+  typeof text === 'string' ? text.replace(/\|/g, '\\|').replace(/\n/g, ' ') : text;
+
+const blocksToMarkdown = (blocks, lines) => {
+  (blocks || []).forEach((b) => {
+    switch (b.kind) {
+      case 'p':
+        lines.push(b.text, '');
+        break;
+      case 'note':
+        lines.push(`> ${b.text}`, '');
+        break;
+      case 'h3':
+        lines.push(`#### ${b.text}`, '');
+        break;
+      case 'endpoint':
+        lines.push('```http', `${b.method} ${b.path}`, '```', '');
+        break;
+      case 'code':
+        if (b.label) lines.push(`**${b.label}**`, '');
+        lines.push('```' + codeFenceLang(b.label), b.code, '```', '');
+        break;
+      case 'params':
+        lines.push('| 参数 | 类型 | 必填 | 默认 | 说明 |');
+        lines.push('| --- | --- | --- | --- | --- |');
+        b.rows.forEach((r) =>
+          lines.push(
+            `| \`${r.name}\` | ${r.type} | ${r.required ? '是' : '否'} | ${r.default || '-'} | ${mdCell(r.desc)} |`,
+          ),
+        );
+        lines.push('');
+        break;
+      case 'table':
+        lines.push(`| ${b.head.join(' | ')} |`);
+        lines.push(`| ${b.head.map(() => '---').join(' | ')} |`);
+        b.rows.forEach((row) =>
+          lines.push(`| ${row.map((c) => mdCell(c)).join(' | ')} |`),
+        );
+        lines.push('');
+        break;
+      case 'list':
+        b.items.forEach((it) => lines.push(`- ${it}`));
+        lines.push('');
+        break;
+      case 'cards':
+        b.cards.forEach((c) => lines.push(`- **${c.title}**：${c.desc}`));
+        lines.push('');
+        break;
+      default:
+        break;
+    }
+  });
+};
+
+// Serialize a single category (the currently viewed doc "route") to Markdown.
+export const buildCategoryMarkdown = (baseUrl, groupId, catId) => {
+  const groups = buildDocGroups(baseUrl);
+  const group = groups.find((g) => g.id === groupId);
+  const cat = group?.categories.find((c) => c.id === catId);
+  if (!cat) return '';
+  const lines = [`# ${cat.label}`, '', `base_url: \`${baseUrl}\``, ''];
+  if (cat.items) {
+    cat.items.forEach((item) => {
+      lines.push(
+        `## ${item.label}${item.method ? ` \`${item.method}\`` : ''}`,
+        '',
+      );
+      blocksToMarkdown(item.blocks, lines);
+    });
+  } else {
+    blocksToMarkdown(cat.blocks, lines);
+  }
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+};

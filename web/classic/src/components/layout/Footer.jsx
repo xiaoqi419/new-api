@@ -219,69 +219,8 @@ const FooterBar = () => {
   const wordmarkFooter = useMemo(
     () => (
       <footer className='app-wordmark-footer'>
-        <div className='app-wordmark-footer-inner'>
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mb-14'>
-            <div>
-              <Typography.Text strong className='!text-semi-color-text-0'>
-                {t('市场')}
-              </Typography.Text>
-              <div className='flex flex-col gap-2 mt-3 text-sm'>
-                <a href='/pricing' className='app-footer-link'>
-                  {t('模型广场')}
-                </a>
-                <a href='/console/playground' className='app-footer-link'>
-                  {t('操练场')}
-                </a>
-                <a href='/console/token' className='app-footer-link'>
-                  {t('API 密钥')}
-                </a>
-              </div>
-            </div>
-            <div>
-              <Typography.Text strong className='!text-semi-color-text-0'>
-                {t('资源')}
-              </Typography.Text>
-              <div className='flex flex-col gap-2 mt-3 text-sm'>
-                <a href='/docs' className='app-footer-link'>
-                  {t('接入文档')}
-                </a>
-                <a
-                  href={statusState?.status?.docs_link || '#'}
-                  className='app-footer-link'
-                  target='_blank'
-                  rel='noopener noreferrer'
-                >
-                  {t('API 文档')}
-                </a>
-                <a href='/about' className='app-footer-link'>
-                  {t('关于')}
-                </a>
-                <a href='/privacy-policy' className='app-footer-link'>
-                  {t('隐私政策')}
-                </a>
-              </div>
-            </div>
-            <div>
-              <Typography.Text strong className='!text-semi-color-text-0'>
-                {t('账户')}
-              </Typography.Text>
-              <div className='flex flex-col gap-2 mt-3 text-sm'>
-                <a href='/console' className='app-footer-link'>
-                  {t('控制台')}
-                </a>
-                <a href='/console/topup' className='app-footer-link'>
-                  {t('账单')}
-                </a>
-                <a href='/console/personal' className='app-footer-link'>
-                  {t('个人设置')}
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className='app-wordmark'>{systemName}</div>
-
-          <div className='flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-semi-color-border'>
+        <div className='app-wordmark-footer-inner app-wordmark-footer-inner--minimal'>
+          <div className='flex flex-col md:flex-row items-center justify-between gap-4'>
             <Typography.Text className='text-sm !text-semi-color-text-1'>
               © {currentYear} {systemName}. {t('版权所有')}
             </Typography.Text>
@@ -302,7 +241,7 @@ const FooterBar = () => {
         </div>
       </footer>
     ),
-    [systemName, currentYear, t, statusState?.status?.docs_link],
+    [systemName, currentYear, t],
   );
 
   useEffect(() => {
