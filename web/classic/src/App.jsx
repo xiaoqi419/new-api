@@ -41,6 +41,7 @@ import UserRanking from './pages/UserRanking';
 import Invitation from './pages/Invitation';
 import TopUp from './pages/TopUp';
 import GroupBuy from './pages/GroupBuy';
+import GroupBuyHall from './pages/GroupBuyHall';
 import GroupBuyAdmin from './pages/GroupBuyAdmin';
 import Log from './pages/Log';
 import Chat from './pages/Chat';
@@ -222,6 +223,14 @@ function App() {
           element={
             <PrivateRoute>
               <GroupBuy />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/groupbuy-hall'
+          element={
+            <PrivateRoute>
+              <GroupBuyHall />
             </PrivateRoute>
           }
         />

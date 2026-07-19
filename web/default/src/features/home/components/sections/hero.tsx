@@ -24,11 +24,46 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
 
+import type { HeroAppItem, HeroContent } from '../../types'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
 
 interface HeroProps {
   className?: string
   isAuthenticated?: boolean
+  content?: Partial<HeroContent>
+}
+
+// Generic app chip used when the apps list is admin-configured. Falls back to a
+// letter avatar when no logo URL is set or the remote image fails to load.
+function AppChip({ app }: { app: HeroAppItem }) {
+  return (
+    <a
+      href={app.url}
+      target='_blank'
+      rel='noopener noreferrer'
+      className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
+    >
+      {app.iconUrl ? (
+        <img
+          src={app.iconUrl}
+          alt={app.name}
+          className='size-6 shrink-0 rounded-md object-contain'
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+            const fallback = e.currentTarget.nextSibling as HTMLElement | null
+            if (fallback) fallback.style.display = 'flex'
+          }}
+        />
+      ) : null}
+      <span
+        style={{ display: app.iconUrl ? 'none' : 'flex' }}
+        className='size-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-[10px] font-bold text-blue-600 uppercase dark:bg-blue-400/10 dark:text-blue-400'
+      >
+        {app.name.slice(0, 2)}
+      </span>
+      <span>{app.name}</span>
+    </a>
+  )
 }
 
 // Stylized three-dots indicator representing "More"
@@ -48,6 +83,7 @@ const MoreIcon = () => (
 export function Hero(props: HeroProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
+  const content = props.content
   const docsUrl =
     (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
 
@@ -111,26 +147,29 @@ export function Hero(props: HeroProps) {
               <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75' />
               <span className='relative inline-flex size-1.5 rounded-full bg-blue-500 dark:bg-blue-400' />
             </span>
-            <span>{t('AI Application Infrastructure Foundation')}</span>
+            <span>
+              {content?.badge ?? t('AI Application Infrastructure Foundation')}
+            </span>
           </div>
 
           <h1
             className='landing-animate-fade-up text-[clamp(2.25rem,4.5vw,3.25rem)] leading-[1.15] font-bold tracking-tight'
             style={{ animationDelay: '60ms' }}
           >
-            {t('Unified API Gateway for')}
+            {content?.title ?? t('Unified API Gateway for')}
             <br />
             <span className='bg-gradient-to-r from-blue-400 via-violet-400 to-purple-500 bg-clip-text text-transparent'>
-              {t('Vast Range of AI Models')}
+              {content?.highlight ?? t('Vast Range of AI Models')}
             </span>
           </h1>
           <p
             className='landing-animate-fade-up text-muted-foreground/80 mt-5 max-w-xl text-base leading-relaxed opacity-0 md:text-[15px]'
             style={{ animationDelay: '120ms' }}
           >
-            {t(
-              'Access a vast selection of models via a standard, unified API protocol. Power AI applications, manage digital assets, and connect the Future.'
-            )}
+            {content?.subtitle ??
+              t(
+                'Access a vast selection of models via a standard, unified API protocol. Power AI applications, manage digital assets, and connect the Future.'
+              )}
           </p>
 
           <div
@@ -143,7 +182,7 @@ export function Hero(props: HeroProps) {
                   className='group h-11 rounded-lg px-5 text-sm font-medium'
                   render={<Link to='/dashboard' />}
                 >
-                  {t('Go to Dashboard')}
+                  {content?.goToDashboardLabel ?? t('Go to Dashboard')}
                   <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
                 </Button>
                 {renderDocsButton()}
@@ -154,7 +193,7 @@ export function Hero(props: HeroProps) {
                   className='group h-11 rounded-lg px-5 text-sm font-medium'
                   render={<Link to='/sign-up' />}
                 >
-                  {t('Get Started')}
+                  {content?.getStartedLabel ?? t('Get Started')}
                   <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
                 </Button>
                 <Button
@@ -162,7 +201,7 @@ export function Hero(props: HeroProps) {
                   className='border-border/50 hover:border-border hover:bg-muted/50 h-11 rounded-lg px-5 text-sm font-medium'
                   render={<Link to='/pricing' />}
                 >
-                  {t('View Pricing')}
+                  {content?.viewPricingLabel ?? t('View Pricing')}
                 </Button>
                 {renderDocsButton()}
               </>
@@ -176,57 +215,65 @@ export function Hero(props: HeroProps) {
           >
             <div className='mb-4 flex flex-col gap-1'>
               <span className='text-muted-foreground/50 text-[10px] font-bold tracking-[0.15em] uppercase'>
-                {t('Supported Applications')}
+                {content?.appsHeading ?? t('Supported Applications')}
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
-                {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
-                )}
+                {content?.appsSubheading ??
+                  t(
+                    'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
+                  )}
               </p>
             </div>
             <div className='flex flex-wrap items-center gap-3'>
-              {/* Cherry Studio */}
-              <a
-                href='https://cherry-ai.com'
-                target='_blank'
-                rel='noopener noreferrer'
-                className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
-              >
-                <CherryStudio.Color size={24} className='shrink-0' />
-                <span>Cherry Studio</span>
-              </a>
+              {content?.apps ? (
+                content.apps.map((app) => <AppChip key={app.name} app={app} />)
+              ) : (
+                <>
+                  {/* Cherry Studio */}
+                  <a
+                    href='https://cherry-ai.com'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
+                  >
+                    <CherryStudio.Color size={24} className='shrink-0' />
+                    <span>Cherry Studio</span>
+                  </a>
 
-              {/* CC Switch */}
-              <a
-                href='https://ccswitch.io'
-                target='_blank'
-                rel='noopener noreferrer'
-                className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
-              >
-                <img
-                  src='https://ccswitch.io/favicon.png'
-                  alt='CC Switch'
-                  className='size-6 shrink-0 rounded-md object-contain'
-                  onError={(e) => {
-                    // Fallback to a styled text avatar if the remote favicon fails to load in sandbox or local environments
-                    e.currentTarget.style.display = 'none'
-                    const fallback = e.currentTarget.nextSibling as HTMLElement
-                    if (fallback) fallback.style.display = 'flex'
-                  }}
-                />
-                <span
-                  style={{ display: 'none' }}
-                  className='size-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:bg-blue-400/10 dark:text-blue-400'
-                >
-                  CC
-                </span>
-                <span>CC Switch</span>
-              </a>
+                  {/* CC Switch */}
+                  <a
+                    href='https://ccswitch.io'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
+                  >
+                    <img
+                      src='https://ccswitch.io/favicon.png'
+                      alt='CC Switch'
+                      className='size-6 shrink-0 rounded-md object-contain'
+                      onError={(e) => {
+                        // Fallback to a styled text avatar if the remote favicon fails to load in sandbox or local environments
+                        e.currentTarget.style.display = 'none'
+                        const fallback = e.currentTarget
+                          .nextSibling as HTMLElement
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                    <span
+                      style={{ display: 'none' }}
+                      className='size-6 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-[10px] font-bold text-blue-600 dark:bg-blue-400/10 dark:text-blue-400'
+                    >
+                      CC
+                    </span>
+                    <span>CC Switch</span>
+                  </a>
+                </>
+              )}
 
               {/* "更多" */}
               <div className='group border-border/40 bg-muted/15 text-foreground/55 hover:border-border hover:bg-muted/30 hover:text-foreground flex cursor-default items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'>
                 <MoreIcon />
-                <span>{t('More Apps')}</span>
+                <span>{content?.moreAppsLabel ?? t('More Apps')}</span>
               </div>
             </div>
           </div>

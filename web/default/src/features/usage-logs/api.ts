@@ -27,6 +27,7 @@ import type {
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
   UserInfo,
+  UserRankingResponse,
 } from './types'
 
 // ============================================================================
@@ -88,6 +89,21 @@ export async function getUserInfo(
   userId: number
 ): Promise<{ success: boolean; message?: string; data?: UserInfo }> {
   const res = await api.get(`/api/user/${userId}`)
+  return res.data
+}
+
+// ============================================================================
+// User Token Ranking API (admin)
+// ============================================================================
+
+export async function getUserTokenRanking(
+  start: number,
+  end: number,
+  limit = 20
+): Promise<UserRankingResponse> {
+  const res = await api.get(
+    `/api/user_ranking/?dimension=tokens&start=${start}&end=${end}&limit=${limit}`
+  )
   return res.data
 }
 

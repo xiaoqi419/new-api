@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
@@ -145,6 +146,147 @@ func TestGroupBuyOversell(t *testing.T) {
 	// 同一用户重复参团应被拒绝
 	_, err = JoinGroupBuyOrder(2, "b", gb.GroupNo, "TNB2", PaymentProviderWechatPay, PaymentMethodWechatPay)
 	require.Error(t, err)
+}
+
+// seedPaidTieredGroupBuy 直接落库一个阶梯拼团及 paidCount 个已支付成员（含用户）。
+func seedPaidTieredGroupBuy(t *testing.T, groupNo string, tiers []GroupBuyTier, paidCount int, expireOffset int64) (*GroupBuy, []int) {
+	now := common.GetTimestamp()
+	gb := &GroupBuy{
+		GroupNo:        groupNo,
+		Status:         GroupBuyStatusPending,
+		RequiredCount:  tiers[0].Count,
+		TargetCount:    tiers[len(tiers)-1].Count,
+		PerShareAmount: tiers[0].PerShareAmount,
+		PerSharePrice:  5,
+		TiersJson:      marshalGroupBuyTiers(tiers),
+		Tiers:          tiers,
+		ExpireTime:     now + expireOffset,
+		CreateTime:     now - 100,
+	}
+	require.NoError(t, DB.Create(gb).Error)
+	userIds := make([]int, 0, paidCount)
+	for i := 0; i < paidCount; i++ {
+		u := &User{Username: fmt.Sprintf("%s_u%d", groupNo, i), Quota: 0, AffCode: fmt.Sprintf("%s_aff%d", groupNo, i)}
+		require.NoError(t, DB.Create(u).Error)
+		userIds = append(userIds, u.Id)
+		require.NoError(t, DB.Create(&GroupBuyParticipant{
+			GroupBuyId: gb.Id,
+			UserId:     u.Id,
+			Username:   u.Username,
+			TradeNo:    fmt.Sprintf("%s_T%d", groupNo, i),
+			PayStatus:  GroupBuyParticipantPaid,
+			PayMoney:   5,
+			PayTime:    now,
+			JoinTime:   now,
+		}).Error)
+	}
+	return gb, userIds
+}
+
+// TestGroupBuyTieredExpirySettleHighestTier 校验到期时按"已解锁的最高档"结算：
+// 档位 [{2,10},{4,30}]、3 人已支付，应按 2 人档（每人 10）结算，而非最高档 30。
+func TestGroupBuyTieredExpirySettleHighestTier(t *testing.T) {
+	setupGroupBuyTest(t)
+	tiers := []GroupBuyTier{{Count: 2, PerShareAmount: 10}, {Count: 4, PerShareAmount: 30}}
+	gb, userIds := seedPaidTieredGroupBuy(t, "GBTIER1", tiers, 3, -10)
+
+	settled, err := SettleExpiredGroupBuyIfEligible(gb.Id)
+	require.NoError(t, err)
+	assert.True(t, settled)
+
+	var g GroupBuy
+	require.NoError(t, DB.First(&g, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusSuccess, g.Status)
+	assert.Equal(t, int64(10), g.PerShareAmount)
+
+	expectedAdd := 10 * 500000
+	for _, id := range userIds {
+		var u User
+		require.NoError(t, DB.First(&u, id).Error)
+		assert.Equal(t, expectedAdd, u.Quota)
+	}
+
+	// 幂等：已结算的拼团再次到期处理不应重复入账
+	settled, err = SettleExpiredGroupBuyIfEligible(gb.Id)
+	require.NoError(t, err)
+	assert.False(t, settled)
+	var u0 User
+	require.NoError(t, DB.First(&u0, userIds[0]).Error)
+	assert.Equal(t, expectedAdd, u0.Quota)
+}
+
+// TestGroupBuyExpiryBelowMinTierFails 校验到期时未达最低成团档则不结算，交由失败退款流程处理。
+func TestGroupBuyExpiryBelowMinTierFails(t *testing.T) {
+	setupGroupBuyTest(t)
+	tiers := []GroupBuyTier{{Count: 3, PerShareAmount: 10}, {Count: 5, PerShareAmount: 20}}
+	gb, userIds := seedPaidTieredGroupBuy(t, "GBTIER2", tiers, 2, -10)
+
+	settled, err := SettleExpiredGroupBuyIfEligible(gb.Id)
+	require.NoError(t, err)
+	assert.False(t, settled)
+
+	var g GroupBuy
+	require.NoError(t, DB.First(&g, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusPending, g.Status)
+	for _, id := range userIds {
+		var u User
+		require.NoError(t, DB.First(&u, id).Error)
+		assert.Equal(t, 0, u.Quota)
+	}
+
+	paid, err := MarkGroupBuyFailed(gb.Id)
+	require.NoError(t, err)
+	assert.Len(t, paid, 2)
+}
+
+// TestGroupBuyEarlySettleAtMaxTier 校验支付回调路径：达到最大档时立即成团，按最高档入账。
+func TestGroupBuyEarlySettleAtMaxTier(t *testing.T) {
+	setupGroupBuyTest(t)
+	tiers := []GroupBuyTier{{Count: 2, PerShareAmount: 10}, {Count: 3, PerShareAmount: 30}}
+	now := common.GetTimestamp()
+	gb := &GroupBuy{
+		GroupNo:        "GBTIER3",
+		Status:         GroupBuyStatusPending,
+		RequiredCount:  2,
+		TargetCount:    3,
+		PerShareAmount: 10,
+		PerSharePrice:  5,
+		TiersJson:      marshalGroupBuyTiers(tiers),
+		Tiers:          tiers,
+		ExpireTime:     now + 3600,
+		CreateTime:     now,
+	}
+	require.NoError(t, DB.Create(gb).Error)
+
+	userIds := make([]int, 0, 3)
+	for i := 0; i < 3; i++ {
+		u := &User{Username: fmt.Sprintf("gbtier3_u%d", i), Quota: 0, AffCode: fmt.Sprintf("gbtier3_aff%d", i)}
+		require.NoError(t, DB.Create(u).Error)
+		userIds = append(userIds, u.Id)
+		seedGroupBuyMember(t, gb.Id, u.Id, fmt.Sprintf("GBTIER3_T%d", i))
+	}
+
+	// 前两人支付：未达最大档（3），不结算
+	_, err := TrySettleGroupBuyOrder("GBTIER3_T0", PaymentProviderWechatPay, "ip")
+	require.NoError(t, err)
+	_, err = TrySettleGroupBuyOrder("GBTIER3_T1", PaymentProviderWechatPay, "ip")
+	require.NoError(t, err)
+	var g GroupBuy
+	require.NoError(t, DB.First(&g, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusPending, g.Status)
+
+	// 第三人支付：满最大档，立即成团并按最高档（30）入账
+	_, err = TrySettleGroupBuyOrder("GBTIER3_T2", PaymentProviderWechatPay, "ip")
+	require.NoError(t, err)
+	require.NoError(t, DB.First(&g, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusSuccess, g.Status)
+	assert.Equal(t, int64(30), g.PerShareAmount)
+	expectedAdd := 30 * 500000
+	for _, id := range userIds {
+		var u User
+		require.NoError(t, DB.First(&u, id).Error)
+		assert.Equal(t, expectedAdd, u.Quota)
+	}
 }
 
 // TestGroupBuyMarkFailed 校验失败拼团返回待退款的已支付成员。

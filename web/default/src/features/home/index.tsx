@@ -20,14 +20,13 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
-import { Footer } from '@/components/layout/components/footer'
 import { RichContent } from '@/components/rich-content'
 import { useTheme } from '@/context/theme-provider'
 import { isLikelyHtml } from '@/lib/content-format'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { CTA, Features, Hero, HowItWorks, Stats } from './components'
-import { useHomePageContent } from './hooks'
+import { useHomePageConfig, useHomePageContent } from './hooks'
+import { getHomeTemplate } from './templates/registry'
 
 export function Home() {
   const { i18n, t } = useTranslation()
@@ -36,6 +35,7 @@ export function Home() {
   const { auth } = useAuthStore()
   const isAuthenticated = !!auth.user
   const { content, isLoaded, isUrl } = useHomePageContent()
+  const { config, isLoaded: configLoaded } = useHomePageConfig()
 
   const syncIframePreferences = useCallback(() => {
     try {
@@ -58,7 +58,7 @@ export function Home() {
     }
   }, [isUrl, syncIframePreferences])
 
-  if (!isLoaded) {
+  if (!isLoaded || !configLoaded) {
     return (
       <PublicLayout showMainContainer={false}>
         <main className='flex min-h-screen items-center justify-center'>
@@ -120,14 +120,15 @@ export function Home() {
     )
   }
 
+  const template = getHomeTemplate(config.active_template)
+  const TemplateComponent = template.Component
+
   return (
     <PublicLayout showMainContainer={false}>
-      <Hero isAuthenticated={isAuthenticated} />
-      <Stats />
-      <Features />
-      <HowItWorks />
-      <CTA isAuthenticated={isAuthenticated} />
-      <Footer />
+      <TemplateComponent
+        content={config.templates?.[template.id]}
+        isAuthenticated={isAuthenticated}
+      />
     </PublicLayout>
   )
 }

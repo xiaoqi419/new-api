@@ -19,24 +19,35 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   Activity,
   Box,
+  Clapperboard,
   CreditCard,
   FileText,
   FlaskConical,
+  Gauge,
+  Gift,
+  HandCoins,
+  Handshake,
+  Images,
   Key,
   LayoutDashboard,
   ListTodo,
   MessageSquare,
   Radio,
+  Receipt,
+  ReceiptText,
   ServerCog,
   Settings,
   Ticket,
+  TriangleAlert,
+  Trophy,
   User,
+  UserPlus,
   Users,
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { type SidebarData } from '@/components/layout/types'
+import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -97,6 +108,28 @@ export function useSidebarData(): SidebarData {
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
+          {
+            title: t('Channel Monitor'),
+            url: '/channel-monitor',
+            activeUrls: ['/channel-monitor/detail'],
+            icon: Gauge,
+          },
+        ],
+      },
+      {
+        id: 'media',
+        title: t('AI Media'),
+        items: [
+          {
+            title: t('Video Generation'),
+            url: '/video-generation',
+            icon: Clapperboard,
+          },
+          {
+            title: t('Asset Library'),
+            url: '/asset-library',
+            icon: Images,
+          },
         ],
       },
       {
@@ -107,6 +140,22 @@ export function useSidebarData(): SidebarData {
             title: t('Wallet'),
             url: '/wallet',
             icon: Wallet,
+          },
+          {
+            title: t('Group Buy Hall'),
+            url: '/groupbuy',
+            activeUrls: ['/groupbuy/detail'],
+            icon: Handshake,
+          },
+          {
+            title: t('Invitation'),
+            url: '/invitation',
+            icon: UserPlus,
+          },
+          {
+            title: t('Invoices'),
+            url: '/invoices',
+            icon: Receipt,
           },
           {
             title: t('Profile'),
@@ -135,6 +184,16 @@ export function useSidebarData(): SidebarData {
             icon: Users,
           },
           {
+            title: t('User Ranking'),
+            url: '/user-ranking',
+            icon: Trophy,
+          },
+          {
+            title: t('Error Reports'),
+            url: '/error-reports',
+            icon: TriangleAlert,
+          },
+          {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
@@ -143,6 +202,21 @@ export function useSidebarData(): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Group Buy'),
+            url: '/groupbuy/admin',
+            icon: HandCoins,
+          },
+          {
+            title: t('Rebate'),
+            url: '/rebate',
+            icon: Gift,
+          },
+          {
+            title: t('Invoice Management'),
+            url: '/invoices/admin',
+            icon: ReceiptText,
           },
           {
             title: t('System Info'),

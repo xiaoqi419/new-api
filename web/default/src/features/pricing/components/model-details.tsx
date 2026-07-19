@@ -70,6 +70,7 @@ import { parseTags } from '../lib/filters'
 import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
 import { formatFixedPrice, formatGroupPrice } from '../lib/price'
 import type {
+  AutoGroupRoute,
   ModelCapability,
   PriceType,
   PricingModel,
@@ -784,7 +785,28 @@ function PriceSection(props: {
 // Auto group chain (used inside group pricing section)
 // ----------------------------------------------------------------------------
 
-function AutoGroupChain(props: { model: PricingModel; autoGroups: string[] }) {
+function GroupChainRow(props: { label: string; chain: string[] }) {
+  return (
+    <div className='text-muted-foreground flex flex-wrap items-center gap-1 text-xs'>
+      <span className='font-medium'>{props.label}</span>
+      <span className='text-muted-foreground/40'>→</span>
+      {props.chain.map((g, idx) => (
+        <span key={g} className='flex items-center gap-1'>
+          <GroupBadge group={g} size='sm' />
+          {idx < props.chain.length - 1 && (
+            <span className='text-muted-foreground/40'>→</span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function AutoGroupChain(props: {
+  model: PricingModel
+  autoGroups: string[]
+  autoGroupRoutes: AutoGroupRoute[]
+}) {
   const { t } = useTranslation()
   const modelEnableGroups = Array.isArray(props.model.enable_groups)
     ? props.model.enable_groups
@@ -792,20 +814,26 @@ function AutoGroupChain(props: { model: PricingModel; autoGroups: string[] }) {
   const autoChain = props.autoGroups.filter((g) =>
     modelEnableGroups.includes(g)
   )
+  const routeChains = props.autoGroupRoutes
+    .map((route) => ({
+      route,
+      chain: route.groups.filter((g) => modelEnableGroups.includes(g)),
+    }))
+    .filter((entry) => entry.chain.length > 0)
 
-  if (autoChain.length === 0) return null
+  if (autoChain.length === 0 && routeChains.length === 0) return null
 
   return (
-    <div className='text-muted-foreground mb-3 flex flex-wrap items-center gap-1 text-xs'>
-      <span className='font-medium'>{t('Auto Group Chain')}</span>
-      <span className='text-muted-foreground/40'>→</span>
-      {autoChain.map((g, idx) => (
-        <span key={g} className='flex items-center gap-1'>
-          <GroupBadge group={g} size='sm' />
-          {idx < autoChain.length - 1 && (
-            <span className='text-muted-foreground/40'>→</span>
-          )}
-        </span>
+    <div className='mb-3 flex flex-col gap-1'>
+      {autoChain.length > 0 && (
+        <GroupChainRow label={t('Auto Group Chain')} chain={autoChain} />
+      )}
+      {routeChains.map(({ route, chain }) => (
+        <GroupChainRow
+          key={route.key}
+          label={route.name || route.key}
+          chain={chain}
+        />
       ))}
     </div>
   )
@@ -854,6 +882,7 @@ function GroupPricingSection(props: {
   groupRatio: Record<string, number>
   usableGroup: Record<string, { desc: string; ratio: number }>
   autoGroups: string[]
+  autoGroupRoutes: AutoGroupRoute[]
   priceRate: number
   usdExchangeRate: number
   tokenUnit: TokenUnit
@@ -897,7 +926,11 @@ function GroupPricingSection(props: {
     return (
       <section>
         <SectionTitle>{t('Pricing by Group')}</SectionTitle>
-        <AutoGroupChain model={props.model} autoGroups={props.autoGroups} />
+        <AutoGroupChain
+          model={props.model}
+          autoGroups={props.autoGroups}
+          autoGroupRoutes={props.autoGroupRoutes}
+        />
         <p className='text-muted-foreground text-sm'>
           {t(
             'This model is not available in any group, or no group pricing information is configured.'
@@ -917,7 +950,11 @@ function GroupPricingSection(props: {
       return (
         <section>
           <SectionTitle>{t('Pricing by Group')}</SectionTitle>
-          <AutoGroupChain model={props.model} autoGroups={props.autoGroups} />
+          <AutoGroupChain
+            model={props.model}
+            autoGroups={props.autoGroups}
+            autoGroupRoutes={props.autoGroupRoutes}
+          />
           <div className='rounded-lg border border-amber-200/70 bg-amber-50/70 p-3 dark:border-amber-500/20 dark:bg-amber-500/10'>
             <div className='text-sm font-medium text-amber-800 dark:text-amber-200'>
               {t('Special billing expression')}
@@ -966,7 +1003,11 @@ function GroupPricingSection(props: {
     return (
       <section>
         <SectionTitle>{t('Pricing by Group')}</SectionTitle>
-        <AutoGroupChain model={props.model} autoGroups={props.autoGroups} />
+        <AutoGroupChain
+          model={props.model}
+          autoGroups={props.autoGroups}
+          autoGroupRoutes={props.autoGroupRoutes}
+        />
         <div className='space-y-3'>
           {availableGroups.map((group) => {
             const ratio = props.groupRatio[group] || 1
@@ -1045,7 +1086,11 @@ function GroupPricingSection(props: {
   return (
     <section>
       <SectionTitle>{t('Pricing by Group')}</SectionTitle>
-      <AutoGroupChain model={props.model} autoGroups={props.autoGroups} />
+      <AutoGroupChain
+        model={props.model}
+        autoGroups={props.autoGroups}
+        autoGroupRoutes={props.autoGroupRoutes}
+      />
       <StaticDataTable
         className='-mx-4 rounded-none border-0 sm:mx-0'
         tableClassName='text-sm'
@@ -1131,6 +1176,7 @@ export interface ModelDetailsContentProps {
   usableGroup: Record<string, { desc: string; ratio: number }>
   endpointMap: Record<string, { path?: string; method?: string }>
   autoGroups: string[]
+  autoGroupRoutes: AutoGroupRoute[]
   priceRate: number
   usdExchangeRate: number
   tokenUnit: TokenUnit
@@ -1186,6 +1232,7 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
               groupRatio={props.groupRatio}
               usableGroup={props.usableGroup}
               autoGroups={props.autoGroups}
+              autoGroupRoutes={props.autoGroupRoutes}
               priceRate={props.priceRate}
               usdExchangeRate={props.usdExchangeRate}
               tokenUnit={props.tokenUnit}
@@ -1256,6 +1303,7 @@ export function ModelDetails() {
     usableGroup,
     endpointMap,
     autoGroups,
+    autoGroupRoutes,
     isLoading,
     priceRate,
     usdExchangeRate,
@@ -1334,6 +1382,7 @@ export function ModelDetails() {
           groupRatio={groupRatio || {}}
           usableGroup={usableGroup || {}}
           autoGroups={autoGroups || []}
+          autoGroupRoutes={autoGroupRoutes || []}
           priceRate={priceRate ?? 1}
           usdExchangeRate={usdExchangeRate ?? 1}
           tokenUnit={tokenUnit}

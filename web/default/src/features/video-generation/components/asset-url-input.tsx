@@ -1,0 +1,73 @@
+/*
+Copyright (C) 2025 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import { useTranslation } from 'react-i18next'
+
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+import type { SelectOption } from '../types'
+
+interface AssetUrlInputProps {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  assetOptions: SelectOption[]
+}
+
+export function AssetUrlInput(props: AssetUrlInputProps) {
+  const { t } = useTranslation()
+
+  return (
+    <div className='flex gap-2'>
+      <Input
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        placeholder={props.placeholder}
+        className='flex-1'
+      />
+      {props.assetOptions.length > 0 && (
+        <Select
+          items={props.assetOptions}
+          value={null}
+          onValueChange={(v) => v && props.onChange(v)}
+        >
+          <SelectTrigger className='w-36 shrink-0'>
+            <SelectValue placeholder={t('Asset Library')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {props.assetOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  )
+}

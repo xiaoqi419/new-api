@@ -39,6 +39,30 @@ function isSafeHttpUrl(value) {
   }
 }
 
+const renderShare = (amount) => renderQuota(amount * getQuotaPerUnit());
+
+// packageInfo 归一化套餐的价格与档位区间（兼容阶梯团与旧版均分套餐）。
+const packageInfo = (pkg) => {
+  const tiers = pkg.tiers || [];
+  if (tiers.length > 0) {
+    return {
+      price: Number(pkg.per_share_price) || 0,
+      minCount: tiers[0].count,
+      maxCount: tiers[tiers.length - 1].count,
+      floor: tiers[0].per_share_amount,
+      best: tiers[tiers.length - 1].per_share_amount,
+    };
+  }
+  const rc = pkg.required_count || 1;
+  return {
+    price: Number(pkg.total_price) / rc,
+    minCount: rc,
+    maxCount: rc,
+    floor: Math.floor(pkg.total_amount / rc),
+    best: Math.floor(pkg.total_amount / rc),
+  };
+};
+
 const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
   const navigate = useNavigate();
   const [enabled, setEnabled] = useState(false);
@@ -166,53 +190,52 @@ const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
         </Space>
       </div>
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-        {packages.map((pkg) => (
-          <div
-            key={pkg.id}
-            className='border border-semi-color-border rounded-xl p-4 flex flex-col gap-2'
-          >
-            <div className='flex items-center justify-between'>
-              <Typography.Text strong>{pkg.name}</Typography.Text>
-              <Tag color='blue'>
-                {pkg.required_count} {t('人成团')}
-              </Tag>
-            </div>
-            {pkg.description && (
-              <Typography.Text type='tertiary' size='small'>
-                {pkg.description}
-              </Typography.Text>
-            )}
-            <div className='flex items-baseline gap-2'>
-              <Typography.Text className='!text-blue-600 !text-2xl !font-bold'>
-                ¥{(Number(pkg.total_price) / pkg.required_count).toFixed(2)}
-              </Typography.Text>
-              <Typography.Text type='tertiary' size='small'>
-                / {t('每人')}
-              </Typography.Text>
-            </div>
-            <Typography.Text type='tertiary' size='small'>
-              {t('每人到账')}：
-              {renderQuota(
-                Math.floor(pkg.total_amount / pkg.required_count) *
-                  getQuotaPerUnit(),
-              )}
-            </Typography.Text>
-            <Typography.Text type='tertiary' size='small'>
-              {t('总价')} ¥{Number(pkg.total_price).toFixed(2)} · {t('总额度')}{' '}
-              {renderQuota(pkg.total_amount * getQuotaPerUnit())}
-            </Typography.Text>
-            <Button
-              theme='solid'
-              type='primary'
-              loading={submittingId === pkg.id}
-              disabled={payOptions.length === 0}
-              onClick={() => create(pkg)}
-              className='mt-1'
+        {packages.map((pkg) => {
+          const info = packageInfo(pkg);
+          return (
+            <div
+              key={pkg.id}
+              className='border border-semi-color-border rounded-xl p-4 flex flex-col gap-2'
             >
-              {t('发起拼团')}
-            </Button>
-          </div>
-        ))}
+              <div className='flex items-center justify-between'>
+                <Typography.Text strong>{pkg.name}</Typography.Text>
+                <Tag color='blue'>
+                  {info.minCount === info.maxCount
+                    ? `${info.maxCount} ${t('人成团')}`
+                    : `${info.minCount}-${info.maxCount} ${t('人阶梯')}`}
+                </Tag>
+              </div>
+              {pkg.description && (
+                <Typography.Text type='tertiary' size='small'>
+                  {pkg.description}
+                </Typography.Text>
+              )}
+              <div className='flex items-baseline gap-2'>
+                <Typography.Text className='!text-[var(--semi-color-primary)] !text-2xl !font-bold'>
+                  ¥{info.price.toFixed(2)}
+                </Typography.Text>
+                <Typography.Text type='tertiary' size='small'>
+                  / {t('每人')}
+                </Typography.Text>
+              </div>
+              <Typography.Text type='tertiary' size='small'>
+                {info.minCount === info.maxCount
+                  ? `${t('每人到账')} ${renderShare(info.best)}`
+                  : `${info.minCount}${t('人得')} ${renderShare(info.floor)} → ${info.maxCount}${t('人得')} ${renderShare(info.best)}`}
+              </Typography.Text>
+              <Button
+                theme='solid'
+                type='primary'
+                loading={submittingId === pkg.id}
+                disabled={payOptions.length === 0}
+                onClick={() => create(pkg)}
+                className='mt-1'
+              >
+                {t('发起拼团')}
+              </Button>
+            </div>
+          );
+        })}
       </div>
 
       <WechatPayModal

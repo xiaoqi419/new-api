@@ -35,6 +35,7 @@ import {
   USER_STATUS,
   getUserStatusOptions,
   getUserRoleOptions,
+  getUserBalanceOptions,
   isUserDeleted,
 } from '../constants'
 import type { User } from '../types'
@@ -71,6 +72,7 @@ export function UsersTable() {
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'role', searchKey: 'role', type: 'array' },
       { columnId: 'group', searchKey: 'group', type: 'string' },
+      { columnId: 'quota', searchKey: 'balance', type: 'array' },
     ],
   })
   const statusFilter =
@@ -84,6 +86,10 @@ export function UsersTable() {
   const groupFilter =
     (columnFilters.find((filter) => filter.id === 'group')?.value as string) ??
     ''
+  const balanceFilter =
+    (columnFilters.find((filter) => filter.id === 'quota')?.value as
+      | string[]
+      | undefined) ?? []
 
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
@@ -95,12 +101,16 @@ export function UsersTable() {
       statusFilter,
       roleFilter,
       groupFilter,
+      balanceFilter,
       refreshTrigger,
     ],
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
       const hasColumnFilter =
-        statusFilter.length > 0 || roleFilter.length > 0 || Boolean(groupFilter)
+        statusFilter.length > 0 ||
+        roleFilter.length > 0 ||
+        Boolean(groupFilter) ||
+        balanceFilter.length > 0
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -114,6 +124,7 @@ export function UsersTable() {
               status: statusFilter[0] ?? '',
               role: roleFilter[0] ?? '',
               group: groupFilter,
+              balance: balanceFilter[0] ?? '',
             })
           : await getUsers(params)
 
@@ -188,6 +199,12 @@ export function UsersTable() {
             columnId: 'role',
             title: t('Role'),
             options: getUserRoleOptions(t),
+            singleSelect: true,
+          },
+          {
+            columnId: 'quota',
+            title: t('Balance'),
+            options: getUserBalanceOptions(t),
             singleSelect: true,
           },
         ],

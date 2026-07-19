@@ -31,6 +31,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/about", controller.GetAbout)
 		//apiRouter.GET("/midjourney", controller.GetMidjourney)
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
+		apiRouter.GET("/home_page_config", controller.GetHomePageConfig)
 		apiRouter.GET("/pricing", middleware.HeaderNavModuleAuth("pricing"), controller.GetPricing)
 		perfMetricsRoute := apiRouter.Group("/perf-metrics")
 		perfMetricsRoute.Use(middleware.HeaderNavModulePublicOrUserAuth("pricing"))
@@ -139,6 +140,7 @@ func SetApiRouter(router *gin.Engine) {
 
 				// 拼团充值
 				selfRoute.GET("/groupbuy/info", controller.GetGroupBuyInfo)
+				selfRoute.GET("/groupbuy/hall", controller.GetGroupBuyHall)
 				selfRoute.GET("/groupbuy/self", controller.GetSelfGroupBuys)
 				selfRoute.GET("/groupbuy/detail", controller.GetGroupBuyDetail)
 				selfRoute.POST("/groupbuy/create", middleware.CriticalRateLimit(), controller.CreateGroupBuy)
@@ -356,6 +358,8 @@ func SetApiRouter(router *gin.Engine) {
 		// TODO: remove once the classic frontend is removed; the default frontend uses /system-task/log-cleanup.
 		logRoute.DELETE("/", middleware.RootAuth(), controller.DeleteHistoryLogs)
 		logRoute.GET("/stat", middleware.AdminAuth(), controller.GetLogsStat)
+		logRoute.GET("/error_stat", middleware.AdminAuth(), controller.GetErrorStat)
+		logRoute.POST("/error_alert_test", middleware.AdminAuth(), controller.TestErrorAlert)
 		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
 		logRoute.GET("/channel_affinity_usage_cache", middleware.AdminAuth(), controller.GetChannelAffinityUsageCacheStats)
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
@@ -395,12 +399,18 @@ func SetApiRouter(router *gin.Engine) {
 			groupRoute.GET("/", controller.GetGroups)
 		}
 
-		// 渠道监控（按用户分组聚合健康度），普通用户亦可查看
+		// 渠道监控（按用户分组聚合健康度），普通用户亦可查看（classic 主题使用）
 		groupMonitorRoute := apiRouter.Group("/group/monitor")
 		groupMonitorRoute.Use(middleware.UserAuth())
 		{
 			groupMonitorRoute.GET("", controller.GetGroupMonitor)
 			groupMonitorRoute.GET("/detail", controller.GetGroupMonitorDetail)
+		}
+		// 渠道监控（按渠道聚合健康度，渠道下细分到各模型），普通用户亦可查看（default 主题使用）
+		channelMonitorRoute := apiRouter.Group("/channel/monitor")
+		channelMonitorRoute.Use(middleware.UserAuth())
+		{
+			channelMonitorRoute.GET("", controller.GetChannelMonitor)
 		}
 
 		prefillGroupRoute := apiRouter.Group("/prefill_group")

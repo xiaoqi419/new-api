@@ -3,10 +3,12 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -26,18 +28,95 @@ const (
 // groupBuyReserveTTLSeconds 参团下单后未支付的名额预占时长，超时释放名额。
 const groupBuyReserveTTLSeconds int64 = 15 * 60
 
+// GroupBuyTier 阶梯档位：有效人数达到 Count 时，每位已支付成员到账 PerShareAmount
+// （展示单位与普通充值一致）。人数越多档位越高、每人到账越多。
+type GroupBuyTier struct {
+	Count          int   `json:"count"`
+	PerShareAmount int64 `json:"per_share_amount"`
+}
+
+func marshalGroupBuyTiers(tiers []GroupBuyTier) string {
+	if len(tiers) == 0 {
+		return ""
+	}
+	b, err := common.Marshal(tiers)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func unmarshalGroupBuyTiers(s string) []GroupBuyTier {
+	if s == "" {
+		return nil
+	}
+	var tiers []GroupBuyTier
+	if err := common.Unmarshal([]byte(s), &tiers); err != nil {
+		return nil
+	}
+	return tiers
+}
+
+// highestUnlockedGroupBuyTier 返回已解锁的最高档（paidCount >= tier.Count 的最大档）。
+// 依赖档位按人数升序排列（ValidateForSave 强制校验）。
+func highestUnlockedGroupBuyTier(tiers []GroupBuyTier, paidCount int) (GroupBuyTier, bool) {
+	var best GroupBuyTier
+	found := false
+	for _, tier := range tiers {
+		if paidCount >= tier.Count {
+			best = tier
+			found = true
+		}
+	}
+	return best, found
+}
+
 // GroupBuyPackage 管理员预设的拼团套餐模板。
 type GroupBuyPackage struct {
 	Id            int     `json:"id"`
 	Name          string  `json:"name" gorm:"type:varchar(191)"`
 	Description   string  `json:"description" gorm:"type:varchar(500)"`
-	RequiredCount int     `json:"required_count"`                        // 成团人数
-	TotalAmount   int64   `json:"total_amount"`                          // 总到账额度（成员均分，展示单位与普通充值一致）
-	TotalPrice    float64 `json:"total_price"`                           // 总价（CNY，成员均分）
-	DurationUnit  string  `json:"duration_unit" gorm:"type:varchar(16)"` // 成团时限单位：year/month/day/hour
-	DurationValue int     `json:"duration_value"`                        // 成团时限数值
-	Enabled       bool    `json:"enabled"`
-	CreateTime    int64   `json:"create_time"`
+	RequiredCount int     `json:"required_count"`                       // 旧版：固定成团人数（阶梯团忽略，仅作兼容兜底）
+	TotalAmount   int64   `json:"total_amount"`                         // 旧版：总到账额度（成员均分）
+	TotalPrice    float64 `json:"total_price"`                          // 旧版：总价（CNY，成员均分）
+	PerSharePrice float64 `json:"per_share_price"`                      // 每人固定价（CNY）；>0 时启用阶梯团
+	TiersJson     string  `json:"-" gorm:"column:tiers_json;type:text"` // 阶梯档位快照（JSON）
+	// Tiers 为传输/内存字段，落库走 TiersJson。
+	Tiers         []GroupBuyTier `json:"tiers" gorm:"-"`
+	DurationUnit  string         `json:"duration_unit" gorm:"type:varchar(16)"` // 成团时限单位：year/month/day/hour
+	DurationValue int            `json:"duration_value"`                        // 成团时限数值
+	Enabled       bool           `json:"enabled"`
+	// RewardSubscriptionPlanId >0 时，成团奖励发放绑定分组的订阅额度（额度=解锁档到账额度）而非钱包额度。
+	RewardSubscriptionPlanId int   `json:"reward_subscription_plan_id" gorm:"type:int;default:0"`
+	CreateTime               int64 `json:"create_time"`
+}
+
+// AfterFind 从 TiersJson 反序列化出阶梯档位。
+func (pkg *GroupBuyPackage) AfterFind(_ *gorm.DB) error {
+	pkg.Tiers = unmarshalGroupBuyTiers(pkg.TiersJson)
+	return nil
+}
+
+// resolvedTiers 返回有效档位：优先阶梯档位，否则按旧版单档兜底。
+func (pkg *GroupBuyPackage) resolvedTiers() []GroupBuyTier {
+	if len(pkg.Tiers) > 0 {
+		return pkg.Tiers
+	}
+	if pkg.RequiredCount >= 2 && pkg.TotalAmount > 0 {
+		return []GroupBuyTier{{Count: pkg.RequiredCount, PerShareAmount: pkg.TotalAmount / int64(pkg.RequiredCount)}}
+	}
+	return nil
+}
+
+// resolvedPerSharePrice 返回每人价格：优先固定价，否则按旧版总价均分。
+func (pkg *GroupBuyPackage) resolvedPerSharePrice() float64 {
+	if pkg.PerSharePrice > 0 {
+		return pkg.PerSharePrice
+	}
+	if pkg.RequiredCount > 0 {
+		return decimal.NewFromFloat(pkg.TotalPrice).Div(decimal.NewFromInt(int64(pkg.RequiredCount))).Round(2).InexactFloat64()
+	}
+	return 0
 }
 
 // GroupBuy 拼团实例。套餐字段做快照，避免后续改套餐影响进行中的拼团。
@@ -48,15 +127,46 @@ type GroupBuy struct {
 	PackageName    string  `json:"package_name" gorm:"type:varchar(191)"`
 	InitiatorId    int     `json:"initiator_id" gorm:"index"`
 	Status         string  `json:"status" gorm:"type:varchar(20);index"`
-	RequiredCount  int     `json:"required_count"`
+	RequiredCount  int     `json:"required_count"` // 最低成团人数（最小档）
+	TargetCount    int     `json:"target_count"`   // 招募目标人数（最大档）
 	PaidCount      int     `json:"paid_count"`
 	TotalAmount    int64   `json:"total_amount"`
 	TotalPrice     float64 `json:"total_price"`
-	PerShareAmount int64   `json:"per_share_amount"`
+	PerShareAmount int64   `json:"per_share_amount"` // 已结算的每人到账额度；未结算时为最低档保底
 	PerSharePrice  float64 `json:"per_share_price"`
-	ExpireTime     int64   `json:"expire_time"`
-	CreateTime     int64   `json:"create_time"`
-	CompleteTime   int64   `json:"complete_time"`
+	TiersJson      string  `json:"-" gorm:"column:tiers_json;type:text"`
+	// Tiers 为传输/内存字段，落库走 TiersJson。
+	Tiers []GroupBuyTier `json:"tiers" gorm:"-"`
+	// RewardSubscriptionPlanId 为套餐快照：>0 时成团发放绑定分组的订阅额度而非钱包额度。
+	RewardSubscriptionPlanId int   `json:"reward_subscription_plan_id" gorm:"type:int;default:0"`
+	ExpireTime               int64 `json:"expire_time"`
+	CreateTime               int64 `json:"create_time"`
+	CompleteTime             int64 `json:"complete_time"`
+}
+
+// AfterFind 从 TiersJson 反序列化出档位快照。
+func (gb *GroupBuy) AfterFind(_ *gorm.DB) error {
+	gb.Tiers = unmarshalGroupBuyTiers(gb.TiersJson)
+	return nil
+}
+
+// resolvedTiers 返回档位快照：优先阶梯快照，否则按旧版单档兜底。
+func (gb *GroupBuy) resolvedTiers() []GroupBuyTier {
+	if len(gb.Tiers) > 0 {
+		return gb.Tiers
+	}
+	if gb.RequiredCount >= 1 && gb.PerShareAmount > 0 {
+		return []GroupBuyTier{{Count: gb.RequiredCount, PerShareAmount: gb.PerShareAmount}}
+	}
+	return nil
+}
+
+// capacity 返回可参团上限（最大档人数），兼容迁移前无 TargetCount 的旧数据。
+func (gb *GroupBuy) capacity() int {
+	if gb.TargetCount > 0 {
+		return gb.TargetCount
+	}
+	return gb.RequiredCount
 }
 
 // GroupBuyParticipant 参团记录。
@@ -95,19 +205,24 @@ func GetGroupBuyPackageById(id int) (*GroupBuyPackage, error) {
 
 func (pkg *GroupBuyPackage) Insert() error {
 	pkg.CreateTime = common.GetTimestamp()
+	pkg.TiersJson = marshalGroupBuyTiers(pkg.Tiers)
 	return DB.Create(pkg).Error
 }
 
 func (pkg *GroupBuyPackage) Update() error {
+	pkg.TiersJson = marshalGroupBuyTiers(pkg.Tiers)
 	return DB.Model(&GroupBuyPackage{}).Where("id = ?", pkg.Id).Updates(map[string]interface{}{
-		"name":           pkg.Name,
-		"description":    pkg.Description,
-		"required_count": pkg.RequiredCount,
-		"total_amount":   pkg.TotalAmount,
-		"total_price":    pkg.TotalPrice,
-		"duration_unit":  pkg.DurationUnit,
-		"duration_value": pkg.DurationValue,
-		"enabled":        pkg.Enabled,
+		"name":                        pkg.Name,
+		"description":                 pkg.Description,
+		"required_count":              pkg.RequiredCount,
+		"total_amount":                pkg.TotalAmount,
+		"total_price":                 pkg.TotalPrice,
+		"per_share_price":             pkg.PerSharePrice,
+		"tiers_json":                  pkg.TiersJson,
+		"duration_unit":               pkg.DurationUnit,
+		"duration_value":              pkg.DurationValue,
+		"enabled":                     pkg.Enabled,
+		"reward_subscription_plan_id": pkg.RewardSubscriptionPlanId,
 	}).Error
 }
 
@@ -115,11 +230,64 @@ func DeleteGroupBuyPackage(id int) error {
 	return DB.Where("id = ?", id).Delete(&GroupBuyPackage{}).Error
 }
 
-// ValidateForSave 校验套餐字段。
+// maxGroupBuyPerShareAmount 返回单档每人到账额度上限，避免结算时超出 int32 额度列而被饱和截断。
+func maxGroupBuyPerShareAmount() int64 {
+	if common.QuotaPerUnit <= 0 {
+		return math.MaxInt64
+	}
+	return int64(math.MaxInt32 / common.QuotaPerUnit)
+}
+
+// ValidateForSave 校验套餐字段。启用阶梯团（配置了 Tiers）时校验档位，否则回退旧版均分校验。
 func (pkg *GroupBuyPackage) ValidateForSave() error {
 	if pkg.Name == "" {
 		return errors.New("套餐名称不能为空")
 	}
+	if pkg.DurationValue <= 0 {
+		return errors.New("成团时限需大于 0")
+	}
+	switch pkg.DurationUnit {
+	case SubscriptionDurationYear, SubscriptionDurationMonth, SubscriptionDurationDay, SubscriptionDurationHour:
+	default:
+		return errors.New("成团时限单位无效")
+	}
+
+	if pkg.RewardSubscriptionPlanId > 0 {
+		if _, err := GetSubscriptionPlanById(pkg.RewardSubscriptionPlanId); err != nil {
+			return errors.New("绑定的订阅套餐不存在")
+		}
+	}
+
+	if len(pkg.Tiers) > 0 {
+		if pkg.PerSharePrice <= 0 {
+			return errors.New("每人价格需大于 0")
+		}
+		maxAmount := maxGroupBuyPerShareAmount()
+		prevCount := 0
+		var prevAmount int64
+		for _, tier := range pkg.Tiers {
+			if tier.Count < 2 {
+				return errors.New("每档成团人数至少为 2")
+			}
+			if tier.Count <= prevCount {
+				return errors.New("档位人数需从小到大严格递增")
+			}
+			if tier.PerShareAmount <= 0 {
+				return errors.New("每档到账额度需大于 0")
+			}
+			if tier.PerShareAmount < prevAmount {
+				return errors.New("人数越多每人到账不应更少")
+			}
+			if tier.PerShareAmount > maxAmount {
+				return fmt.Errorf("每档到账额度过大（上限约 %d）", maxAmount)
+			}
+			prevCount = tier.Count
+			prevAmount = tier.PerShareAmount
+		}
+		return nil
+	}
+
+	// 旧版均分校验（兼容存量套餐）。
 	if pkg.RequiredCount < 2 {
 		return errors.New("成团人数至少为 2")
 	}
@@ -131,14 +299,6 @@ func (pkg *GroupBuyPackage) ValidateForSave() error {
 	}
 	if pkg.TotalPrice <= 0 {
 		return errors.New("总价需大于 0")
-	}
-	if pkg.DurationValue <= 0 {
-		return errors.New("成团时限需大于 0")
-	}
-	switch pkg.DurationUnit {
-	case SubscriptionDurationYear, SubscriptionDurationMonth, SubscriptionDurationDay, SubscriptionDurationHour:
-	default:
-		return errors.New("成团时限单位无效")
 	}
 	return nil
 }
@@ -173,24 +333,45 @@ func countActiveParticipantsTx(tx *gorm.DB, groupBuyId int, now int64) (int64, e
 // CreateGroupBuyOrder 发起拼团：原子创建拼团实例 + 发起人参团记录 + 充值订单（待支付）。
 func CreateGroupBuyOrder(initiatorId int, username string, pkg *GroupBuyPackage, tradeNo, provider, paymentMethod string) (*GroupBuy, error) {
 	now := common.GetTimestamp()
-	perShareAmount := pkg.TotalAmount / int64(pkg.RequiredCount)
-	perSharePrice := decimal.NewFromFloat(pkg.TotalPrice).
-		Div(decimal.NewFromInt(int64(pkg.RequiredCount))).
-		Round(2).InexactFloat64()
+	tiers := pkg.resolvedTiers()
+	if len(tiers) == 0 {
+		return nil, errors.New("拼团套餐配置无效")
+	}
+	perSharePrice := pkg.resolvedPerSharePrice()
+	if perSharePrice <= 0 {
+		return nil, errors.New("拼团套餐价格无效")
+	}
+	minCount := tiers[0].Count
+	maxCount := tiers[len(tiers)-1].Count
+	floorAmount := tiers[0].PerShareAmount
+	bestAmount := tiers[len(tiers)-1].PerShareAmount
+
+	// 阶梯团展示"满团价/最高可得"，旧版均分沿用套餐原始总价/总额度快照。
+	totalAmountSnapshot := pkg.TotalAmount
+	totalPriceSnapshot := pkg.TotalPrice
+	if len(pkg.Tiers) > 0 || pkg.PerSharePrice > 0 {
+		totalAmountSnapshot = bestAmount
+		totalPriceSnapshot = decimal.NewFromFloat(perSharePrice).Mul(decimal.NewFromInt(int64(maxCount))).Round(2).InexactFloat64()
+	}
+
 	groupBuy := &GroupBuy{
-		GroupNo:        "GB" + common.GetRandomString(16),
-		PackageId:      pkg.Id,
-		PackageName:    pkg.Name,
-		InitiatorId:    initiatorId,
-		Status:         GroupBuyStatusPending,
-		RequiredCount:  pkg.RequiredCount,
-		PaidCount:      0,
-		TotalAmount:    pkg.TotalAmount,
-		TotalPrice:     pkg.TotalPrice,
-		PerShareAmount: perShareAmount,
-		PerSharePrice:  perSharePrice,
-		ExpireTime:     groupBuyExpireTime(now, pkg.DurationUnit, pkg.DurationValue),
-		CreateTime:     now,
+		GroupNo:                  "GB" + common.GetRandomString(16),
+		PackageId:                pkg.Id,
+		PackageName:              pkg.Name,
+		InitiatorId:              initiatorId,
+		Status:                   GroupBuyStatusPending,
+		RequiredCount:            minCount,
+		TargetCount:              maxCount,
+		PaidCount:                0,
+		TotalAmount:              totalAmountSnapshot,
+		TotalPrice:               totalPriceSnapshot,
+		PerShareAmount:           floorAmount,
+		PerSharePrice:            perSharePrice,
+		TiersJson:                marshalGroupBuyTiers(tiers),
+		Tiers:                    tiers,
+		RewardSubscriptionPlanId: pkg.RewardSubscriptionPlanId,
+		ExpireTime:               groupBuyExpireTime(now, pkg.DurationUnit, pkg.DurationValue),
+		CreateTime:               now,
 	}
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(groupBuy).Error; err != nil {
@@ -211,7 +392,7 @@ func CreateGroupBuyOrder(initiatorId int, username string, pkg *GroupBuyPackage,
 		}
 		topUp := &TopUp{
 			UserId:          initiatorId,
-			Amount:          perShareAmount,
+			Amount:          floorAmount,
 			Money:           perSharePrice,
 			TradeNo:         tradeNo,
 			PaymentMethod:   paymentMethod,
@@ -233,7 +414,7 @@ func JoinGroupBuyOrder(userId int, username, groupNo, tradeNo, provider, payment
 	now := common.GetTimestamp()
 	groupBuy := &GroupBuy{}
 	err := DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("group_no = ?", groupNo).First(groupBuy).Error; err != nil {
+		if err := lockForUpdate(tx).Where("group_no = ?", groupNo).First(groupBuy).Error; err != nil {
 			return errors.New("拼团不存在")
 		}
 		if groupBuy.Status != GroupBuyStatusPending {
@@ -257,7 +438,7 @@ func JoinGroupBuyOrder(userId int, username, groupNo, tradeNo, provider, payment
 		if err != nil {
 			return err
 		}
-		if active >= int64(groupBuy.RequiredCount) {
+		if active >= int64(groupBuy.capacity()) {
 			return errors.New("拼团人数已满")
 		}
 		participant := &GroupBuyParticipant{
@@ -294,12 +475,17 @@ func JoinGroupBuyOrder(userId int, username, groupNo, tradeNo, provider, payment
 
 // ===== 结算（支付成功回调路由到此处） =====
 
+// GroupBuySubscriptionSource 标记来源于拼团发放的订阅额度。
+const GroupBuySubscriptionSource = "groupbuy"
+
 // completedMember 成团后需要在事务外补充日志/返现的成员。
 type completedMember struct {
-	UserId  int
-	TradeNo string
-	TopUpId int
-	Quota   int
+	UserId             int
+	TradeNo            string
+	TopUpId            int
+	Quota              int
+	SubscriptionPlanId int    // >0 表示奖励为订阅额度（不计入钱包缓存）
+	PlanTitle          string // 订阅套餐名称（日志用）
 }
 
 // TrySettleGroupBuyOrder 若该订单属于拼团订单，则在此完成"标记参团已支付 + 满员则均分入账"，
@@ -315,7 +501,7 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		locked := &TopUp{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("trade_no = ?", tradeNo).First(locked).Error; err != nil {
+		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(locked).Error; err != nil {
 			return errors.New("充值订单不存在")
 		}
 		if expectedProvider != "" && locked.PaymentProvider != expectedProvider {
@@ -335,7 +521,7 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		}
 
 		participant := &GroupBuyParticipant{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("trade_no = ?", tradeNo).First(participant).Error; err != nil {
+		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(participant).Error; err != nil {
 			return errors.New("参团记录不存在")
 		}
 		if participant.PayStatus != GroupBuyParticipantPaid {
@@ -347,7 +533,7 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		}
 
 		groupBuy := &GroupBuy{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", participant.GroupBuyId).First(groupBuy).Error; err != nil {
+		if err := lockForUpdate(tx).Where("id = ?", participant.GroupBuyId).First(groupBuy).Error; err != nil {
 			return errors.New("拼团不存在")
 		}
 		if groupBuy.Status != GroupBuyStatusPending {
@@ -362,31 +548,22 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		}
 		groupBuy.PaidCount = int(paidCount)
 
-		if paidCount < int64(groupBuy.RequiredCount) {
+		// 阶梯团：人数越多每人到账越多，故默认等到期按最高解锁档结算；
+		// 仅当开启"满档提前成团"且已到达最大档（无法再增员）时立即结算。
+		tiers := groupBuy.resolvedTiers()
+		maxCount := 0
+		if n := len(tiers); n > 0 {
+			maxCount = tiers[n-1].Count
+		}
+		if !operation_setting.GetGroupBuySetting().EarlySettleWhenFull || maxCount <= 0 || int(paidCount) < maxCount {
 			return tx.Save(groupBuy).Error
 		}
 
-		// 满员：成团并均分入账
-		groupBuy.Status = GroupBuyStatusSuccess
-		groupBuy.CompleteTime = common.GetTimestamp()
-		if err := tx.Save(groupBuy).Error; err != nil {
-			return err
+		members, gErr := grantGroupBuySuccessTx(tx, groupBuy, tiers[len(tiers)-1].PerShareAmount)
+		if gErr != nil {
+			return gErr
 		}
-
-		var members []GroupBuyParticipant
-		if err := tx.Where("group_buy_id = ? AND pay_status = ?", groupBuy.Id, GroupBuyParticipantPaid).Find(&members).Error; err != nil {
-			return err
-		}
-		quotaPerShare := int(decimal.NewFromInt(groupBuy.PerShareAmount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
-		if quotaPerShare <= 0 {
-			return errors.New("无效的拼团额度")
-		}
-		for _, m := range members {
-			if err := tx.Model(&User{}).Where("id = ?", m.UserId).Update("quota", gorm.Expr("quota + ?", quotaPerShare)).Error; err != nil {
-				return err
-			}
-			completed = append(completed, completedMember{UserId: m.UserId, TradeNo: m.TradeNo, Quota: quotaPerShare})
-		}
+		completed = members
 		groupCompleted = true
 		return nil
 	})
@@ -394,19 +571,120 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		return true, err
 	}
 
-	// 事务外：同步缓存额度、记录日志、生成邀请返现
 	if groupCompleted {
-		for _, m := range completed {
+		applyGroupBuyCompletion(completed, callerIp)
+	}
+	return true, nil
+}
+
+// grantGroupBuySuccessTx 在事务内将拼团置为成功，并按 tierAmount 给全部已支付成员发放额度。
+// 返回需在事务外补充缓存/日志/返现的成员列表。
+func grantGroupBuySuccessTx(tx *gorm.DB, groupBuy *GroupBuy, tierAmount int64) ([]completedMember, error) {
+	quotaPerShare := common.QuotaFromDecimal(decimal.NewFromInt(tierAmount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+	if quotaPerShare <= 0 {
+		return nil, errors.New("无效的拼团额度")
+	}
+	groupBuy.Status = GroupBuyStatusSuccess
+	groupBuy.PerShareAmount = tierAmount
+	groupBuy.CompleteTime = common.GetTimestamp()
+	if err := tx.Save(groupBuy).Error; err != nil {
+		return nil, err
+	}
+
+	// 订阅奖励：发放绑定分组的订阅额度（额度=解锁档到账额度）而非钱包额度。
+	// 若绑定套餐已被删除/不可用，退回钱包发放以保证成员仍能拿到额度。
+	var rewardPlan *SubscriptionPlan
+	if groupBuy.RewardSubscriptionPlanId > 0 {
+		if plan, err := getSubscriptionPlanByIdTx(tx, groupBuy.RewardSubscriptionPlanId); err == nil && plan != nil {
+			rewardPlan = plan
+		} else {
+			common.SysLog(fmt.Sprintf("group-buy %s reward plan %d unavailable, falling back to wallet grant: %v",
+				groupBuy.GroupNo, groupBuy.RewardSubscriptionPlanId, err))
+		}
+	}
+
+	var members []GroupBuyParticipant
+	if err := tx.Where("group_buy_id = ? AND pay_status = ?", groupBuy.Id, GroupBuyParticipantPaid).Find(&members).Error; err != nil {
+		return nil, err
+	}
+	completed := make([]completedMember, 0, len(members))
+	for _, m := range members {
+		if rewardPlan != nil {
+			if _, err := GrantGroupBuySubscriptionTx(tx, m.UserId, rewardPlan, int64(quotaPerShare), GroupBuySubscriptionSource); err != nil {
+				return nil, err
+			}
+			completed = append(completed, completedMember{
+				UserId: m.UserId, TradeNo: m.TradeNo, Quota: quotaPerShare,
+				SubscriptionPlanId: rewardPlan.Id, PlanTitle: rewardPlan.Title,
+			})
+			continue
+		}
+		if err := tx.Model(&User{}).Where("id = ?", m.UserId).Update("quota", gorm.Expr("quota + ?", quotaPerShare)).Error; err != nil {
+			return nil, err
+		}
+		completed = append(completed, completedMember{UserId: m.UserId, TradeNo: m.TradeNo, Quota: quotaPerShare})
+	}
+	return completed, nil
+}
+
+// applyGroupBuyCompletion 在事务外同步缓存额度、记录充值日志并生成邀请返现。
+func applyGroupBuyCompletion(completed []completedMember, callerIp string) {
+	for _, m := range completed {
+		if m.SubscriptionPlanId > 0 {
+			// 订阅额度独立计费、不进钱包，故不同步钱包缓存。
+			RecordTopupLog(m.UserId, fmt.Sprintf("拼团成功，获得订阅额度: %v（%s）", logger.LogQuota(m.Quota), m.PlanTitle), callerIp, "groupbuy", "groupbuy")
+		} else {
 			if cacheErr := cacheIncrUserQuota(m.UserId, int64(m.Quota)); cacheErr != nil {
 				common.SysLog("failed to sync group-buy quota cache: " + cacheErr.Error())
 			}
 			RecordTopupLog(m.UserId, fmt.Sprintf("拼团成功，到账额度: %v", logger.LogQuota(m.Quota)), callerIp, "groupbuy", "groupbuy")
-			if topUpRec := GetTopUpByTradeNo(m.TradeNo); topUpRec != nil {
-				CreateInviterRebate(m.UserId, topUpRec.Id, m.TradeNo, m.Quota)
-			}
+		}
+		if topUpRec := GetTopUpByTradeNo(m.TradeNo); topUpRec != nil {
+			CreateInviterRebate(m.UserId, topUpRec.Id, m.TradeNo, m.Quota)
 		}
 	}
-	return true, nil
+}
+
+// SettleExpiredGroupBuyIfEligible 处理到期拼团：若已达最低成团档，则按最高解锁档结算成团并入账，
+// 返回 settled=true；未达最低档返回 settled=false，交由调用方走失败退款流程。
+func SettleExpiredGroupBuyIfEligible(groupBuyId int) (settled bool, err error) {
+	var completed []completedMember
+	var granted bool
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		groupBuy := &GroupBuy{}
+		if err := lockForUpdate(tx).Where("id = ?", groupBuyId).First(groupBuy).Error; err != nil {
+			return err
+		}
+		if groupBuy.Status != GroupBuyStatusPending {
+			return nil // 已被其它路径结算/失败
+		}
+		var paidCount int64
+		if err := tx.Model(&GroupBuyParticipant{}).
+			Where("group_buy_id = ? AND pay_status = ?", groupBuy.Id, GroupBuyParticipantPaid).
+			Count(&paidCount).Error; err != nil {
+			return err
+		}
+		groupBuy.PaidCount = int(paidCount)
+		tier, ok := highestUnlockedGroupBuyTier(groupBuy.resolvedTiers(), int(paidCount))
+		if !ok {
+			// 未达最低成团档：保存进度，交由调用方失败退款
+			return tx.Save(groupBuy).Error
+		}
+		members, gErr := grantGroupBuySuccessTx(tx, groupBuy, tier.PerShareAmount)
+		if gErr != nil {
+			return gErr
+		}
+		completed = members
+		granted = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	if granted {
+		applyGroupBuyCompletion(completed, "groupbuy")
+	}
+	return granted, nil
 }
 
 // ===== 失败 / 过期 =====
@@ -425,7 +703,7 @@ func MarkGroupBuyFailed(groupBuyId int) ([]GroupBuyParticipant, error) {
 	var paidParticipants []GroupBuyParticipant
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		groupBuy := &GroupBuy{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", groupBuyId).First(groupBuy).Error; err != nil {
+		if err := lockForUpdate(tx).Where("id = ?", groupBuyId).First(groupBuy).Error; err != nil {
 			return err
 		}
 		if groupBuy.Status != GroupBuyStatusPending {
@@ -461,6 +739,18 @@ func GetGroupBuyByNo(groupNo string) (*GroupBuy, []GroupBuyParticipant, error) {
 		return nil, nil, err
 	}
 	return groupBuy, participants, nil
+}
+
+// GetActiveGroupBuysForHall 返回拼团大厅可参与的拼团（进行中且未过期），按创建时间倒序分页。
+func GetActiveGroupBuysForHall(now int64, pageInfo *common.PageInfo) ([]*GroupBuy, int64, error) {
+	query := DB.Model(&GroupBuy{}).Where("status = ? AND expire_time > ?", GroupBuyStatusPending, now)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var groupBuys []*GroupBuy
+	err := query.Order("create_time desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&groupBuys).Error
+	return groupBuys, total, err
 }
 
 // GetUserGroupBuys 返回某用户参与过的拼团（按参团记录倒序）。

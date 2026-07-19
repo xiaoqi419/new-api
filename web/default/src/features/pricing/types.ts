@@ -88,6 +88,14 @@ export type ModelCapability =
   | 'caching'
   | 'embeddings'
 
+export type AutoGroupRoute = {
+  key: string
+  name: string
+  description: string
+  groups: string[]
+  user_selectable: boolean
+}
+
 export type PricingData = {
   success: boolean
   message?: string
@@ -97,6 +105,7 @@ export type PricingData = {
   usable_group: Record<string, { desc: string; ratio: number }>
   supported_endpoint: Record<string, string>
   auto_groups: string[]
+  auto_group_routes: AutoGroupRoute[]
 }
 
 export type TokenUnit = 'M' | 'K'

@@ -59,6 +59,7 @@ export const userSchema = z.object({
   last_login_at: z.number().optional(),
   DeletedAt: z.any().nullable().optional(),
   remark: z.string().optional(),
+  max_concurrency: z.number().optional(),
   admin_permissions: z
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),
@@ -99,6 +100,7 @@ export interface SearchUsersParams {
   group?: string
   role?: string
   status?: string
+  balance?: string
   p?: number
   page_size?: number
 }
@@ -111,6 +113,7 @@ export interface UserFormData {
   quota?: number // Only used when updating user
   group?: string // Only used when updating user
   remark?: string // Only used when updating user
+  max_concurrency?: number // Only used when updating user
   admin_permissions?: AdminPermissionMatrix
 }
 

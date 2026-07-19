@@ -529,6 +529,8 @@ export async function fetchModels(data: {
   base_url: string
   type: number
   key: string
+  channel_id?: number
+  use_fallback?: boolean
 }): Promise<FetchModelsResponse> {
   const res = await api.post(
     '/api/channel/fetch_models',

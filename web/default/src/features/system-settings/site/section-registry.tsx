@@ -28,6 +28,7 @@ import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { HomeTemplatesSection } from './home-templates-section'
 
 const SITE_SECTIONS = [
   {
@@ -51,6 +52,13 @@ const SITE_SECTIONS = [
           },
         }}
       />
+    ),
+  },
+  {
+    id: 'home-templates',
+    titleKey: 'Home Page Management',
+    build: (settings: SiteSettings) => (
+      <HomeTemplatesSection defaultValue={settings.HomePageConfig ?? ''} />
     ),
   },
   {

@@ -116,6 +116,14 @@ func runGroupBuyExpiryOnce() {
 		return
 	}
 	for _, id := range ids {
-		failGroupBuyAndRefund(id)
+		settled, err := model.SettleExpiredGroupBuyIfEligible(id)
+		if err != nil {
+			common.SysLog(fmt.Sprintf("group-buy expiry settle error group_buy_id=%d error=%s", id, err.Error()))
+			continue
+		}
+		if !settled {
+			// 未达最低成团档：置为失败并退款
+			failGroupBuyAndRefund(id)
+		}
 	}
 }

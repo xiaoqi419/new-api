@@ -58,6 +58,9 @@ export function buildSearchParams(
         ...(commonFilters.upstreamRequestId && {
           upstreamRequestId: commonFilters.upstreamRequestId,
         }),
+        ...(commonFilters.quotaStatus && {
+          quotaStatus: commonFilters.quotaStatus,
+        }),
       }
     }
     case 'drawing': {

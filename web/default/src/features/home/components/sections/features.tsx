@@ -30,12 +30,17 @@ import { useTranslation } from 'react-i18next'
 
 import { AnimateInView } from '@/components/animate-in-view'
 
+import { getFeatureIcon } from '../../lib/icon-mapper'
+import type { FeaturesContent } from '../../types'
+
 interface FeaturesProps {
   className?: string
+  content?: Partial<FeaturesContent>
 }
 
-export function Features(_props: FeaturesProps) {
+export function Features(props: FeaturesProps) {
   const { t } = useTranslation()
+  const content = props.content
 
   const features = [
     {
@@ -156,46 +161,59 @@ export function Features(_props: FeaturesProps) {
     },
   ]
 
-  const additionalFeatures = [
-    {
-      icon: <Gauge className='size-5' strokeWidth={1.5} />,
-      title: t('High Performance'),
-      desc: t('Support for high concurrency with automatic load balancing'),
-    },
-    {
-      icon: <DollarSign className='size-5' strokeWidth={1.5} />,
-      title: t('Transparent Billing'),
-      desc: t('Pay-as-you-go with real-time usage monitoring'),
-    },
-    {
-      icon: <Users className='size-5' strokeWidth={1.5} />,
-      title: t('Team Collaboration'),
-      desc: t('Multi-user management with flexible permission allocation'),
-    },
-    {
-      icon: <HeartHandshake className='size-5' strokeWidth={1.5} />,
-      title: t('Open Source'),
-      desc: t('Community driven, self-hosted, and extensible'),
-    },
-  ]
+  const bentoOverrides = content?.bento
+  const bentoCards = features.map((f, i) => ({
+    ...f,
+    title: bentoOverrides?.[i]?.title ?? f.title,
+    desc: bentoOverrides?.[i]?.desc ?? f.desc,
+  }))
+
+  const additionalFeatures = content?.additional
+    ? content.additional.map((f) => ({
+        icon: getFeatureIcon(f.icon, 'size-5'),
+        title: f.title,
+        desc: f.desc,
+      }))
+    : [
+        {
+          icon: <Gauge className='size-5' strokeWidth={1.5} />,
+          title: t('High Performance'),
+          desc: t('Support for high concurrency with automatic load balancing'),
+        },
+        {
+          icon: <DollarSign className='size-5' strokeWidth={1.5} />,
+          title: t('Transparent Billing'),
+          desc: t('Pay-as-you-go with real-time usage monitoring'),
+        },
+        {
+          icon: <Users className='size-5' strokeWidth={1.5} />,
+          title: t('Team Collaboration'),
+          desc: t('Multi-user management with flexible permission allocation'),
+        },
+        {
+          icon: <HeartHandshake className='size-5' strokeWidth={1.5} />,
+          title: t('Open Source'),
+          desc: t('Community driven, self-hosted, and extensible'),
+        },
+      ]
 
   return (
     <section className='relative z-10 px-6 py-24 md:py-32'>
       <div className='mx-auto max-w-6xl'>
         <AnimateInView className='mb-16 max-w-lg'>
           <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('Core Features')}
+            {content?.eyebrow ?? t('Core Features')}
           </p>
           <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-3xl'>
-            {t('Built for developers,')}
+            {content?.headingLine1 ?? t('Built for developers,')}
             <br />
-            {t('designed for scale')}
+            {content?.headingLine2 ?? t('designed for scale')}
           </h2>
         </AnimateInView>
 
         {/* Bento grid */}
         <div className='border-border/40 bg-border/40 grid gap-px overflow-hidden rounded-xl border md:grid-cols-3'>
-          {features.map((f, i) => (
+          {bentoCards.map((f, i) => (
             <AnimateInView
               key={f.id}
               delay={i * 100}

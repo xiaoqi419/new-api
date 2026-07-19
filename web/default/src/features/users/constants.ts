@@ -97,6 +97,16 @@ export const getUserRoleOptions = (t: (key: string) => string) => [
 ]
 
 // ============================================================================
+// User Balance Status Configuration
+// ============================================================================
+
+export const getUserBalanceOptions = (t: (key: string) => string) => [
+  { label: t('Negative Balance'), value: 'negative' },
+  { label: t('Zero Balance'), value: 'zero' },
+  { label: t('Normal Balance'), value: 'positive' },
+]
+
+// ============================================================================
 // Default Values
 // ============================================================================
 

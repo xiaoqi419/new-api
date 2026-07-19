@@ -215,6 +215,9 @@ export function buildApiParams(config: {
     ...(searchParams.upstreamRequestId
       ? { upstream_request_id: String(searchParams.upstreamRequestId) }
       : {}),
+    ...(searchParams.quotaStatus
+      ? { quota_status: String(searchParams.quotaStatus) }
+      : {}),
     ...buildTimeRangeParams(searchParams, false),
   }
 

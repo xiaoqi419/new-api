@@ -39,6 +39,7 @@ export function getApiKeyFormSchema(t: TFunction) {
       allow_ips: z.string().optional(),
       group: z.string().optional(),
       cross_group_retry: z.boolean().optional(),
+      max_concurrency: z.number().min(0).optional(),
       tokenCount: z.number().min(1).optional(),
     })
     .superRefine((data, ctx) => {
@@ -74,6 +75,7 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   allow_ips: '',
   group: DEFAULT_GROUP,
   cross_group_retry: true,
+  max_concurrency: 0,
   tokenCount: 1,
 }
 
@@ -85,6 +87,14 @@ export function getApiKeyFormDefaultValues(
     group: defaultUseAutoGroup ? 'auto' : DEFAULT_GROUP,
     cross_group_retry: defaultUseAutoGroup,
   }
+}
+
+/**
+ * Whether a token group is an auto route: the legacy "auto" group or a named
+ * "auto:<key>" route. Cross-group retry applies to both.
+ */
+export function isAutoGroupValue(group?: string): boolean {
+  return group === 'auto' || (group?.startsWith('auto:') ?? false)
 }
 
 // ============================================================================
@@ -110,7 +120,10 @@ export function transformFormDataToPayload(
     model_limits: data.model_limits.join(','),
     allow_ips: data.allow_ips || '',
     group: data.group || '',
-    cross_group_retry: data.group === 'auto' ? !!data.cross_group_retry : false,
+    cross_group_retry: isAutoGroupValue(data.group)
+      ? !!data.cross_group_retry
+      : false,
+    max_concurrency: data.max_concurrency ?? 0,
   }
 }
 
@@ -136,6 +149,7 @@ export function transformApiKeyToFormDefaults(
     allow_ips: apiKey.allow_ips || '',
     group: apiKey.group || DEFAULT_GROUP,
     cross_group_retry: !!apiKey.cross_group_retry,
+    max_concurrency: apiKey.max_concurrency ?? 0,
     tokenCount: 1,
   }
 }

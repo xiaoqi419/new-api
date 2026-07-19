@@ -53,6 +53,7 @@ export interface CommonLogFilters extends CommonFilters {
   username?: string
   requestId?: string
   upstreamRequestId?: string
+  quotaStatus?: string
 }
 
 /**
@@ -276,6 +277,12 @@ export interface MidjourneyLog {
 // Task Logs Types
 // ============================================================================
 
+export interface TaskProperties {
+  input?: string
+  origin_model_name?: string
+  upstream_model_name?: string
+}
+
 export interface TaskLog {
   id: number
   user_id: number
@@ -284,11 +291,14 @@ export interface TaskLog {
   task_id: string
   action: string // MUSIC, LYRICS, GENERATE, TEXT_GENERATE, etc.
   channel_id: number
+  quota?: number // consumed quota (settled), present on success
   submit_time: number // seconds
   finish_time?: number // seconds
   progress?: string
   progress_message_en?: string
-  data?: string // JSON string
+  properties?: TaskProperties // origin/upstream model name
+  data?: unknown // JSON object (video params/usage) or array (suno clips)
+  result_url?: string // task result URL (video address, etc.), present on success
   fail_reason?: string
   status: string // NOT_START, SUBMITTED, IN_PROGRESS, SUCCESS, FAILURE, QUEUED, UNKNOWN
   other?: string
@@ -313,6 +323,7 @@ export interface GetLogsParams {
   group?: string
   request_id?: string
   upstream_request_id?: string
+  quota_status?: string
 }
 
 export interface GetLogsResponse {
@@ -323,6 +334,25 @@ export interface GetLogsResponse {
     total: number
     page: number
     page_size: number
+  }
+}
+
+export interface UserRankingRow {
+  user_id: number
+  username: string
+  value: number
+  last_time?: number
+  ip?: string
+}
+
+export interface UserRankingResponse {
+  success: boolean
+  message?: string
+  data?: {
+    dimension: string
+    start: number
+    end: number
+    items: UserRankingRow[]
   }
 }
 

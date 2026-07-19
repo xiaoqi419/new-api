@@ -301,6 +301,19 @@ export function formatDuration(
 }
 
 /**
+ * Format an elapsed number of seconds as `m:ss` (or `h:mm:ss` past an hour),
+ * used for the realtime running clock on in-progress task logs.
+ */
+export function formatElapsedSeconds(totalSeconds: number): string {
+  const sec = totalSeconds > 0 ? Math.floor(totalSeconds) : 0
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const s = sec % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
+}
+
+/**
  * Maps a language-independent audit/login operation `action` to an i18n
  * template string (the template itself is the i18n key, with {{placeholders}}).
  *

@@ -65,6 +65,38 @@ export function CacheTooltip({
   )
 }
 
+const durationBgMap: Record<string, string> = {
+  success:
+    'border border-emerald-200/40 bg-emerald-50/35 !text-emerald-600 dark:border-emerald-900/40 dark:bg-emerald-950/15 dark:!text-emerald-400',
+  warning:
+    'border border-amber-200/45 bg-amber-50/35 !text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/15 dark:!text-amber-400',
+  danger:
+    'border border-rose-200/50 bg-rose-50/35 !text-red-600 dark:border-rose-900/40 dark:bg-rose-950/15 dark:!text-red-400',
+}
+
+/**
+ * Completed-duration pill shared by the generic duration column and the task
+ * logs realtime cell so finished rows render identically.
+ */
+export function DurationBadge({
+  durationSec,
+  warningThresholdSec = 60,
+}: {
+  durationSec: number
+  warningThresholdSec?: number
+}) {
+  const variant = durationSec > warningThresholdSec ? 'danger' : 'success'
+  return (
+    <StatusBadge
+      label={`${durationSec.toFixed(1)}s`}
+      variant={variant}
+      size='sm'
+      copyable={false}
+      className={cn('rounded-md font-mono', durationBgMap[variant])}
+    />
+  )
+}
+
 // ============================================================================
 // Column Definition Factories
 // ============================================================================
@@ -134,25 +166,10 @@ export function createDurationColumn<T>(config: {
         return <span className='text-muted-foreground/60 text-xs'>-</span>
       }
 
-      const variant =
-        duration.durationSec > warningThresholdSec ? 'danger' : 'success'
-
-      const durationBgMap: Record<string, string> = {
-        success:
-          'border border-emerald-200/40 bg-emerald-50/35 !text-emerald-600 dark:border-emerald-900/40 dark:bg-emerald-950/15 dark:!text-emerald-400',
-        warning:
-          'border border-amber-200/45 bg-amber-50/35 !text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/15 dark:!text-amber-400',
-        danger:
-          'border border-rose-200/50 bg-rose-50/35 !text-red-600 dark:border-rose-900/40 dark:bg-rose-950/15 dark:!text-red-400',
-      }
-
       return (
-        <StatusBadge
-          label={`${duration.durationSec.toFixed(1)}s`}
-          variant={variant}
-          size='sm'
-          copyable={false}
-          className={cn('rounded-md font-mono', durationBgMap[variant])}
+        <DurationBadge
+          durationSec={duration.durationSec}
+          warningThresholdSec={warningThresholdSec}
         />
       )
     },

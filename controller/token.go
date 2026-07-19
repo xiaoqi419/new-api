@@ -10,10 +10,30 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
 )
+
+// validateTokenAutoGroup rejects tokens whose group references an unknown or
+// disabled named auto route, and prevents non-admin users from selecting a
+// route that is not user_selectable. The legacy "auto" group and ordinary
+// groups pass through unchanged.
+func validateTokenAutoGroup(group string, role int) error {
+	if !strings.HasPrefix(group, setting.AutoGroupPrefix) {
+		return nil
+	}
+	key := strings.TrimPrefix(group, setting.AutoGroupPrefix)
+	route, ok := setting.GetAutoGroupRoute(key)
+	if !ok || !route.Enabled {
+		return fmt.Errorf("auto route not found or disabled: %s", group)
+	}
+	if role < common.RoleAdminUser && !route.UserSelectable {
+		return fmt.Errorf("auto route not selectable: %s", group)
+	}
+	return nil
+}
 
 func buildMaskedTokenResponse(token *model.Token) *model.Token {
 	if token == nil {
@@ -211,6 +231,10 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
 	}
+	if err := validateTokenAutoGroup(token.Group, c.GetInt("role")); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	// 非无限额度时，检查额度值是否超出有效范围
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
@@ -329,6 +353,10 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
+		if err := validateTokenAutoGroup(token.Group, c.GetInt("role")); err != nil {
+			common.ApiError(c, err)
+			return
+		}
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime

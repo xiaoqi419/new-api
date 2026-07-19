@@ -186,22 +186,64 @@ func GetGroupBuyDetail(c *gin.Context) {
 			"join_time":  p.JoinTime,
 		})
 	}
+	gbSetting := operation_setting.GetGroupBuySetting()
 	common.ApiSuccess(c, gin.H{
 		"group_no":         groupBuy.GroupNo,
 		"package_name":     groupBuy.PackageName,
 		"status":           groupBuy.Status,
 		"required_count":   groupBuy.RequiredCount,
+		"target_count":     groupBuy.TargetCount,
 		"paid_count":       groupBuy.PaidCount,
 		"total_amount":     groupBuy.TotalAmount,
 		"total_price":      groupBuy.TotalPrice,
 		"per_share_amount": groupBuy.PerShareAmount,
 		"per_share_price":  groupBuy.PerSharePrice,
+		"tiers":            groupBuy.Tiers,
+		"current_amount":   groupBuyCurrentAmount(groupBuy),
 		"expire_time":      groupBuy.ExpireTime,
 		"create_time":      groupBuy.CreateTime,
 		"complete_time":    groupBuy.CompleteTime,
 		"joined":           joined,
 		"participants":     memberViews,
+		"notes":            gbSetting.Notes,
+		"models_hint":      gbSetting.ModelsHint,
 	})
+}
+
+// groupBuyCurrentAmount 返回当前已支付人数下已解锁的每人到账额度；未解锁任何档时返回最低档保底额度。
+func groupBuyCurrentAmount(groupBuy *model.GroupBuy) int64 {
+	tiers := groupBuy.Tiers
+	if len(tiers) == 0 {
+		return groupBuy.PerShareAmount
+	}
+	current := int64(0)
+	for _, tier := range tiers {
+		if groupBuy.PaidCount >= tier.Count {
+			current = tier.PerShareAmount
+		}
+	}
+	if current == 0 {
+		current = tiers[0].PerShareAmount
+	}
+	return current
+}
+
+// GetGroupBuyHall 返回拼团大厅可参与的拼团列表（登录用户）。
+func GetGroupBuyHall(c *gin.Context) {
+	if !common.GroupBuyEnabled {
+		common.ApiSuccess(c, gin.H{"enabled": false, "items": []interface{}{}, "total": 0})
+		return
+	}
+	now := common.GetTimestamp()
+	pageInfo := common.GetPageQuery(c)
+	groupBuys, total, err := model.GetActiveGroupBuysForHall(now, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(groupBuys)
+	common.ApiSuccess(c, gin.H{"enabled": true, "page_info": pageInfo})
 }
 
 // GetSelfGroupBuys 返回当前用户参与过的拼团列表。

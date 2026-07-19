@@ -75,6 +75,7 @@ import {
   getApiKeyFormDefaultValues,
   transformFormDataToPayload,
   transformApiKeyToFormDefaults,
+  isAutoGroupValue,
 } from '../lib'
 import type { ApiKey } from '../types'
 import {
@@ -161,7 +162,7 @@ export function ApiKeysMutateDrawer({
         groups[0]?.value ??
         ''
       form.setValue('group', fallback)
-      if (currentGroup === 'auto') {
+      if (isAutoGroupValue(currentGroup)) {
         form.setValue('cross_group_retry', false)
       }
     }
@@ -319,7 +320,7 @@ export function ApiKeysMutateDrawer({
                 )}
               />
 
-              {selectedGroup === 'auto' && (
+              {isAutoGroupValue(selectedGroup) && (
                 <FormField
                   control={form.control}
                   name='cross_group_retry'
@@ -574,6 +575,35 @@ export function ApiKeysMutateDrawer({
                           <FormDescription>
                             {t(
                               'Do not over-trust this feature. IP may be spoofed. Please use with nginx, CDN and other gateways.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='max_concurrency'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Max Concurrency')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type='number'
+                              step={1}
+                              placeholder='0'
+                              onChange={(e) =>
+                                field.onChange(
+                                  Number.parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Maximum simultaneous requests for this key (0 = unlimited)'
                             )}
                           </FormDescription>
                           <FormMessage />

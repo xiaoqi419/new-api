@@ -116,3 +116,17 @@ export async function fetchTokenKeysBatch(ids: number[]): Promise<{
   const res = await api.post('/api/token/batch/keys', { ids })
   return res.data
 }
+
+// Realtime concurrency usage for the current user's tokens.
+// supported=false means the deployment runs in memory mode (only the limit is shown).
+export interface TokensConcurrencyData {
+  supported: boolean
+  items: Record<string, { in_use: number; max: number }>
+}
+
+export async function getTokensConcurrency(): Promise<
+  ApiResponse<TokensConcurrencyData>
+> {
+  const res = await api.get('/api/token/concurrency')
+  return res.data
+}

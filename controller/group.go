@@ -44,6 +44,22 @@ func GetUserGroups(c *gin.Context) {
 			"desc":  setting.GetUsableGroupDescription("auto"),
 		}
 	}
+	for _, route := range service.GetUserAutoGroupRoutes(userGroup) {
+		if !route.UserSelectable || len(route.Groups) == 0 {
+			continue
+		}
+		desc := route.Name
+		if desc == "" {
+			desc = route.Description
+		}
+		if desc == "" {
+			desc = route.Key
+		}
+		usableGroups[setting.AutoGroupPrefix+route.Key] = map[string]interface{}{
+			"ratio": "自动",
+			"desc":  desc,
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

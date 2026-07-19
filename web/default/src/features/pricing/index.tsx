@@ -49,6 +49,7 @@ export function Pricing() {
     usableGroup,
     endpointMap,
     autoGroups,
+    autoGroupRoutes,
     isLoading,
     priceRate,
     usdExchangeRate,
@@ -276,6 +277,7 @@ export function Pricing() {
                 >) || {}
               }
               autoGroups={autoGroups || []}
+              autoGroupRoutes={autoGroupRoutes || []}
               priceRate={priceRate ?? 1}
               usdExchangeRate={usdExchangeRate ?? 1}
               tokenUnit={tokenUnit}

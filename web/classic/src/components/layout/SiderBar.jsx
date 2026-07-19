@@ -38,6 +38,7 @@ const routerMap = {
   invoice: '/console/invoice',
   rebate: '/console/rebate',
   groupbuy: '/console/groupbuy-admin',
+  groupbuy_hall: '/console/groupbuy-hall',
   invite_ranking: '/console/invite-ranking',
   user_ranking: '/console/user-ranking',
   topup: '/console/topup',
@@ -156,6 +157,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
+      },
+      {
+        text: t('拼团大厅'),
+        itemKey: 'groupbuy_hall',
+        to: '/groupbuy-hall',
       },
       {
         text: t('邀请中心'),

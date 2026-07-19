@@ -1,0 +1,422 @@
+/*
+Copyright (C) 2025 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+
+/* Editorial "paper + clay" look for the CLI Quickstart home template.
+ * Scopes the project's built-in `anthropic` preset palette to `.literary`, so
+ * the template always renders this warm editorial theme regardless of the
+ * site's active preset, while still following the site's light/dark mode
+ * (`.dark` on an ancestor swaps the token block). */
+
+.literary {
+  /* Light: warm cream canvas, ink text, clay/coral accent. */
+  --background: oklch(0.984 0.004 95);
+  --foreground: oklch(0.205 0.005 60);
+  --card: oklch(0.945 0.008 92);
+  --card-foreground: oklch(0.205 0.005 60);
+  --primary: oklch(0.685 0.142 38);
+  --primary-foreground: oklch(0.99 0.005 95);
+  --muted: oklch(0.94 0.007 92);
+  --muted-foreground: oklch(0.51 0.006 75);
+  --accent: oklch(0.92 0.009 92);
+  --accent-foreground: oklch(0.205 0.005 60);
+  --border: oklch(0.895 0.008 92);
+  --ring: oklch(0.685 0.142 38);
+  --radius: 0.625rem;
+
+  --literary-grid-line: oklch(0.205 0.005 60 / 3%);
+  --literary-hairline: oklch(0.205 0.005 60 / 10%);
+
+  position: relative;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.dark .literary {
+  /* Dark: warm near-black surfaces, coral lifts slightly for legibility. */
+  --background: oklch(0.215 0.004 60);
+  --foreground: oklch(0.965 0.005 92);
+  --card: oklch(0.255 0.004 60);
+  --card-foreground: oklch(0.965 0.005 92);
+  --primary: oklch(0.72 0.135 40);
+  --primary-foreground: oklch(0.18 0.005 60);
+  --muted: oklch(0.285 0.004 60);
+  --muted-foreground: oklch(0.76 0.006 75);
+  --accent: oklch(0.33 0.006 60);
+  --accent-foreground: oklch(0.985 0.005 92);
+  --border: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.135 40);
+
+  --literary-grid-line: oklch(0.965 0.005 92 / 3%);
+  --literary-hairline: oklch(1 0 0 / 10%);
+}
+
+/* Uniform 24px hairline grid, fixed behind the snapping sections (niffler 1:1). */
+.literary-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--literary-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--literary-grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Full-screen scroll-snap container ("翻页翻屏"). */
+.literary-scroll {
+  position: relative;
+  z-index: 1;
+  height: calc(100svh - var(--app-header-height, 3rem));
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.literary-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - var(--app-header-height, 3rem));
+  padding: 4rem 1.5rem;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Editorial serif type (backed by the project's Lora `--font-serif`). */
+.literary-title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.literary-subtitle {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+.literary-prose {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+.literary-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* Translucent paper card that warms to the clay accent on hover. */
+.literary-card {
+  position: relative;
+  border: 1px solid var(--literary-hairline);
+  border-radius: 0.75rem;
+  background: color-mix(in oklch, var(--card) 70%, transparent);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.literary-card:hover {
+  border-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  box-shadow: 0 10px 40px -20px color-mix(in oklch, var(--primary) 40%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Gradient hairline divider. */
+.literary-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--literary-hairline) 20%,
+    var(--literary-hairline) 80%,
+    transparent
+  );
+}
+
+/* Blinking terminal cursor after the hero title. */
+.literary-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 0.82em;
+  margin-left: 0.14em;
+  transform: translateY(0.08em);
+  background: var(--primary);
+  animation: literary-blink 1.1s steps(1) infinite;
+}
+
+@keyframes literary-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Bobbing scroll hint in the hero. */
+.literary-scrollhint {
+  animation: literary-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes literary-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}
+
+/* ── Animated tool marks (niffler: draw → fill → ripples → breathe) ───── */
+.lit-logo {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.lit-logo-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Expanding ripple rings behind the logo. */
+.lit-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58%;
+  height: 58%;
+  margin: -29% 0 0 -29%;
+  border: 1px solid currentColor;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Line-by-line stroke draw of the outline (uses pathLength=1). */
+.lit-outline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.3;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+/* Fill stays hidden until the outline finishes drawing. */
+.lit-fill {
+  opacity: 0;
+}
+
+.lit-rotate {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Twinkling Gemini sparkles. */
+.tool-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tool-twinkle 3.2s ease-in-out infinite;
+}
+
+/* Animations fire when the wrapper scrolls into view (and reset when it
+ * leaves), so the draw re-plays every time you snap to a tool section. */
+.literary .landing-animate-scale-in .lit-outline {
+  animation: lit-draw 1.2s ease-in forwards;
+}
+.literary .landing-animate-scale-in .lit-fill {
+  animation: lit-fill 0.6s ease-out 1s both;
+}
+.literary .landing-animate-scale-in .lit-breathe {
+  animation: lit-breathe 3.6s ease-in-out 1.4s infinite;
+}
+.literary .landing-animate-scale-in .lit-rotate {
+  animation: lit-rotate 26s linear infinite;
+}
+.literary .landing-animate-scale-in .lit-ripple-1 {
+  animation: lit-ripple 4s cubic-bezier(0, 0, 0.2, 1) 0s infinite;
+}
+.literary .landing-animate-scale-in .lit-ripple-2 {
+  animation: lit-ripple 4s cubic-bezier(0, 0, 0.2, 1) 1.3s infinite;
+}
+.literary .landing-animate-scale-in .lit-ripple-3 {
+  animation: lit-ripple 4s cubic-bezier(0, 0, 0.2, 1) 2.6s infinite;
+}
+
+@keyframes lit-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0.4;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes lit-fill {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lit-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+@keyframes lit-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes lit-ripple {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+@keyframes tool-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Uppercase monospace clay badge (niffler .literary-badge). */
+.literary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+/* ── Transparent code step: near-transparent ink wash, grid shows through
+ * (niffler .literary-data). ─────────────────────────────────────────── */
+.literary-code {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--foreground) 8%, transparent);
+  border-radius: 0.375rem;
+  background: color-mix(in oklch, var(--foreground) 3%, transparent);
+}
+
+.literary-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+  border-bottom: 1px solid var(--literary-hairline);
+}
+
+.literary-code-name {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pronounced scroll-in zoom for the tool marks: small when the section snaps
+ * in, then enlarges to full size (re-fires on every scroll-in). */
+.literary .landing-animate-scale-in {
+  animation: literary-zoom 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes literary-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .literary-scroll {
+    scroll-behavior: auto;
+  }
+  .literary-cursor,
+  .literary-scrollhint,
+  .tool-twinkle,
+  .literary .landing-animate-scale-in,
+  .literary .landing-animate-scale-in .lit-outline,
+  .literary .landing-animate-scale-in .lit-fill,
+  .literary .landing-animate-scale-in .lit-breathe,
+  .literary .landing-animate-scale-in .lit-rotate,
+  .literary .landing-animate-scale-in .lit-ripple-1,
+  .literary .landing-animate-scale-in .lit-ripple-2,
+  .literary .landing-animate-scale-in .lit-ripple-3 {
+    animation: none;
+  }
+  .lit-outline {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  .lit-fill {
+    opacity: 1;
+  }
+}

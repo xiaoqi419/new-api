@@ -42,6 +42,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   HeartHandshake,
 }
 
+/** Names of icons available for admin-configurable feature cards. */
+export const FEATURE_ICON_NAMES = Object.keys(ICON_MAP)
+
 /**
  * Get a Lucide icon component by name
  */

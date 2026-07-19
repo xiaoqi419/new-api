@@ -87,11 +87,11 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	selectGroup := param.TokenGroup
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
 
-	if param.TokenGroup == "auto" {
-		if len(setting.GetAutoGroups()) == 0 {
+	if setting.IsAutoGroup(param.TokenGroup) {
+		if len(setting.ResolveAutoGroupChain(param.TokenGroup)) == 0 {
 			return nil, selectGroup, errors.New("auto groups is not enabled")
 		}
-		autoGroups := GetUserAutoGroup(userGroup)
+		autoGroups := GetUserAutoGroupChain(userGroup, param.TokenGroup)
 
 		// startGroupIndex: the group index to start searching from
 		// startGroupIndex: 开始搜索的分组索引

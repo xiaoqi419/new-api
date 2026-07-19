@@ -3,9 +3,13 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/error_alert_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +26,8 @@ func GetAllLogs(c *gin.Context) {
 	group := c.Query("group")
 	requestId := c.Query("request_id")
 	upstreamRequestId := c.Query("upstream_request_id")
-	logs, total, err := model.GetAllLogs(logType, startTimestamp, endTimestamp, modelName, username, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), channel, group, requestId, upstreamRequestId)
+	quotaStatus := c.Query("quota_status")
+	logs, total, err := model.GetAllLogs(logType, startTimestamp, endTimestamp, modelName, username, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), channel, group, requestId, upstreamRequestId, quotaStatus)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -44,7 +49,8 @@ func GetUserLogs(c *gin.Context) {
 	group := c.Query("group")
 	requestId := c.Query("request_id")
 	upstreamRequestId := c.Query("upstream_request_id")
-	logs, total, err := model.GetUserLogs(userId, logType, startTimestamp, endTimestamp, modelName, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), group, requestId, upstreamRequestId)
+	quotaStatus := c.Query("quota_status")
+	logs, total, err := model.GetUserLogs(userId, logType, startTimestamp, endTimestamp, modelName, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), group, requestId, upstreamRequestId, quotaStatus)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -104,7 +110,8 @@ func GetLogsStat(c *gin.Context) {
 	modelName := c.Query("model_name")
 	channel, _ := strconv.Atoi(c.Query("channel"))
 	group := c.Query("group")
-	stat, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	quotaStatus := c.Query("quota_status")
+	stat, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group, quotaStatus)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -131,7 +138,8 @@ func GetLogsSelfStat(c *gin.Context) {
 	modelName := c.Query("model_name")
 	channel, _ := strconv.Atoi(c.Query("channel"))
 	group := c.Query("group")
-	quotaNum, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	quotaStatus := c.Query("quota_status")
+	quotaNum, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group, quotaStatus)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -174,4 +182,124 @@ func DeleteHistoryLogs(c *gin.Context) {
 		"data":    count,
 	})
 	return
+}
+
+// GetErrorStat 错误报告聚合统计：按模型/渠道/错误内容分组的 Top-N 以及数量时间序列。
+func GetErrorStat(c *gin.Context) {
+	start, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	end, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	now := common.GetTimestamp()
+	if end <= 0 {
+		end = now
+	}
+	if start <= 0 {
+		start = end - 24*3600
+	}
+	if start > end {
+		start, end = end, start
+	}
+
+	const limit = 20
+	span := end - start
+	var bucket int64 = 3600
+	switch {
+	case span <= 6*3600:
+		bucket = 300
+	case span <= 3*24*3600:
+		bucket = 3600
+	default:
+		bucket = 24 * 3600
+	}
+
+	total, err := model.GetErrorTotal(start, end)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	byModel, err := model.GetErrorStatByModel(start, end, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	byChannel, err := model.GetErrorStatByChannel(start, end, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	byContent, err := model.GetErrorStatByContent(start, end, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	trend, err := model.GetErrorTrend(start, end, bucket)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	type channelStat struct {
+		Channel int    `json:"channel"`
+		Name    string `json:"name"`
+		Count   int64  `json:"count"`
+	}
+	ids := make([]int, 0, len(byChannel))
+	for _, r := range byChannel {
+		ids = append(ids, r.Channel)
+	}
+	nameMap := make(map[int]string)
+	if len(ids) > 0 {
+		var channels []struct {
+			Id   int
+			Name string
+		}
+		if err := model.DB.Table("channels").Select("id, name").Where("id IN ?", ids).Find(&channels).Error; err == nil {
+			for _, ch := range channels {
+				nameMap[ch.Id] = ch.Name
+			}
+		}
+	}
+	channelRows := make([]channelStat, 0, len(byChannel))
+	for _, r := range byChannel {
+		channelRows = append(channelRows, channelStat{Channel: r.Channel, Name: nameMap[r.Channel], Count: r.Count})
+	}
+
+	common.ApiSuccess(c, gin.H{
+		"total":           total,
+		"start_timestamp": start,
+		"end_timestamp":   end,
+		"bucket_seconds":  bucket,
+		"by_model":        byModel,
+		"by_channel":      channelRows,
+		"by_content":      byContent,
+		"trend":           trend,
+	})
+}
+
+// TestErrorAlert 向企业微信群机器人发送一条测试消息，用于验证 Webhook 配置。
+// 优先使用请求体中的 webhook_url（便于保存前测试），为空时回退到已保存的设置。
+func TestErrorAlert(c *gin.Context) {
+	var req struct {
+		WebhookUrl string `json:"webhook_url"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	webhookURL := strings.TrimSpace(req.WebhookUrl)
+	if webhookURL == "" {
+		webhookURL = strings.TrimSpace(error_alert_setting.GetSetting().WecomWebhookUrl)
+	}
+	if webhookURL == "" {
+		common.ApiErrorMsg(c, "请先填写企业微信机器人 Webhook 地址")
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString("**✅ new-api 错误告警测试**\n")
+	b.WriteString("时间：" + time.Now().Format("2006-01-02 15:04:05") + "\n\n")
+	b.WriteString("这是一条测试消息，若你能收到，说明企业微信机器人配置正确。")
+
+	if err := service.SendWecomBotMarkdown(webhookURL, b.String()); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"message": "sent"})
 }

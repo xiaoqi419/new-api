@@ -34,6 +34,7 @@ import {
   useUsageLogsContext,
 } from './components/usage-logs-provider'
 import { UsageLogsTable } from './components/usage-logs-table'
+import { UserTokenRankingPanel } from './components/user-token-ranking-panel'
 import {
   isUsageLogsSectionId,
   USAGE_LOGS_DEFAULT_SECTION,
@@ -71,7 +72,8 @@ function UsageLogsContent() {
     affinityDialogOpen,
     setAffinityDialogOpen,
   } = useUsageLogsContext()
-  const { canManageScope, viewScope, setViewScope } = useLogsViewScope()
+  const { canManageScope, viewScope, setViewScope, isAdminView } =
+    useLogsViewScope()
   const tabNavGroups = useMemo<NavGroup[]>(
     () => [
       {
@@ -150,6 +152,9 @@ function UsageLogsContent() {
                   ))}
                 </TabsList>
               </Tabs>
+            )}
+            {isAdminView && activeCategory === 'common' && (
+              <UserTokenRankingPanel />
             )}
             <div className='min-h-0 flex-1'>
               <UsageLogsTable logCategory={activeCategory} />

@@ -36,6 +36,7 @@ import dayjs from '@/lib/dayjs'
 import { formatQuota } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
+import { getTokensConcurrency, type TokensConcurrencyData } from '../api'
 import { API_KEY_STATUSES } from '../constants'
 import type { ApiKey } from '../types'
 import { ApiKeyTimestampCell } from './api-key-timestamp-cell'
@@ -72,9 +73,23 @@ function useGroupRatios(): Record<string, number> {
   return data ?? {}
 }
 
+const EMPTY_CONCURRENCY: TokensConcurrencyData = { supported: true, items: {} }
+
+function useTokensConcurrency(): TokensConcurrencyData {
+  const { data } = useQuery({
+    queryKey: ['tokens-concurrency'],
+    queryFn: getTokensConcurrency,
+    refetchInterval: 15000,
+    select: (res) => (res.success && res.data ? res.data : EMPTY_CONCURRENCY),
+  })
+
+  return data ?? EMPTY_CONCURRENCY
+}
+
 export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
   const { t, i18n } = useTranslation()
   const groupRatios = useGroupRatios()
+  const concurrency = useTokensConcurrency()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const justNowLabel = t('Just now')
   const staleAccessThreshold = dayjs(now).subtract(3, 'month').valueOf()
@@ -257,6 +272,78 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
       cell: ({ row }) => <IpRestrictionsCell apiKey={row.original} />,
       enableSorting: false,
       size: 160,
+      meta: { mobileHidden: true },
+    },
+    {
+      id: 'concurrency',
+      header: t('Concurrency'),
+      cell: ({ row }) => {
+        const info = concurrency.items[String(row.original.id)]
+        const max = info?.max ?? row.original.max_concurrency ?? 0
+        const inUse = info?.in_use ?? 0
+
+        if (max <= 0) {
+          return (
+            <StatusBadge
+              label={t('Unlimited')}
+              variant='neutral'
+              copyable={false}
+              className='-ml-1.5'
+            />
+          )
+        }
+
+        if (!concurrency.supported) {
+          return (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <StatusBadge
+                    label={`— / ${max}`}
+                    variant='neutral'
+                    copyable={false}
+                    className='-ml-1.5'
+                  />
+                }
+              />
+              <TooltipContent>
+                <span className='text-xs'>
+                  {t(
+                    'Redis is not enabled for this deployment, so realtime concurrency is unavailable and only the limit is shown'
+                  )}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+
+        const pct = Math.min((inUse / max) * 100, 100)
+        let variant: 'success' | 'warning' | 'danger' = 'success'
+        if (pct >= 100) variant = 'danger'
+        else if (pct >= 70) variant = 'warning'
+
+        return (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <StatusBadge
+                  label={`${inUse} / ${max}`}
+                  variant={variant}
+                  copyable={false}
+                  className='-ml-1.5'
+                />
+              }
+            />
+            <TooltipContent>
+              <span className='text-xs'>
+                {t('Realtime concurrency')}: {inUse} / {max}
+              </span>
+            </TooltipContent>
+          </Tooltip>
+        )
+      },
+      enableSorting: false,
+      size: 130,
       meta: { mobileHidden: true },
     },
     {

@@ -32,3 +32,12 @@ export async function getHomePageContent(): Promise<HomePageContentResponse> {
   const res = await api.get('/api/home_page_content')
   return res.data
 }
+
+/**
+ * Get the structured home page config (active template + per-template content).
+ * `data` is a JSON string (or empty when unset).
+ */
+export async function getHomePageConfig(): Promise<HomePageContentResponse> {
+  const res = await api.get('/api/home_page_config')
+  return res.data
+}

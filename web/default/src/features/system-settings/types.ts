@@ -114,6 +114,7 @@ export type SiteSettings = {
   Footer: string
   About: string
   HomePageContent: string
+  HomePageConfig: string
   ServerAddress: string
   'legal.user_agreement': string
   'legal.privacy_policy': string
@@ -277,6 +278,7 @@ export type BillingSettings = {
   UserUsableGroups: string
   GroupGroupRatio: string
   AutoGroups: string
+  AutoGroupRoutes: string
   DefaultUseAutoGroup: boolean
   'group_ratio_setting.group_special_usable_group': string
   PayAddress: string
@@ -303,6 +305,25 @@ export type BillingSettings = {
   CreemWebhookSecret: string
   CreemTestMode: boolean
   CreemProducts: string
+  AlipayEnabled: boolean
+  AlipayAppId: string
+  AlipayPrivateKey: string
+  AlipayPublicKey: string
+  AlipayProduction: boolean
+  AlipayMinTopUp: number
+  WechatPayEnabled: boolean
+  WechatPayAppId: string
+  WechatPayAppSecret: string
+  WechatPayMchId: string
+  WechatPayApiV3Key: string
+  WechatPayCert: string
+  WechatPayCertSerialNo: string
+  WechatPayPrivateKey: string
+  WechatPayNotifyUrl: string
+  WechatPayNative: boolean
+  WechatPayH5: boolean
+  WechatPayJSAPI: boolean
+  WechatPayMinTopUp: number
   WaffoEnabled: boolean
   WaffoApiKey: string
   WaffoPrivateKey: string
@@ -360,6 +381,13 @@ export type OperationsSettings = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'hour' | 'minute' | '5min'
   'perf_metrics_setting.retention_days': number
+  'error_alert_setting.enabled': boolean
+  'error_alert_setting.wecom_webhook_url': string
+  'error_alert_setting.interval_seconds': number
+  'error_alert_setting.min_count': number
+  'error_alert_setting.top_n': number
+  'error_alert_setting.model_filter': string
+  'error_alert_setting.channel_filter': string
 }
 
 export type SecuritySettings = {

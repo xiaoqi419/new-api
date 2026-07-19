@@ -56,6 +56,13 @@ const defaultOperationsSettings: OperationsSettings = {
   'perf_metrics_setting.flush_interval': 5,
   'perf_metrics_setting.bucket_time': 'hour',
   'perf_metrics_setting.retention_days': 0,
+  'error_alert_setting.enabled': false,
+  'error_alert_setting.wecom_webhook_url': '',
+  'error_alert_setting.interval_seconds': 120,
+  'error_alert_setting.min_count': 1,
+  'error_alert_setting.top_n': 8,
+  'error_alert_setting.model_filter': '',
+  'error_alert_setting.channel_filter': '',
 }
 
 export function OperationsSettings() {

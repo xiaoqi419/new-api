@@ -23,13 +23,20 @@ import {
   Banner,
   Button,
   Card,
+  Checkbox,
   Progress,
   Select,
-  Space,
   Spin,
   Tag,
   Typography,
 } from '@douyinfe/semi-ui';
+import {
+  IconBolt,
+  IconCalendarClock,
+  IconServer,
+  IconTickCircle,
+  IconUser,
+} from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import {
   API,
@@ -41,12 +48,15 @@ import {
   timestamp2string,
 } from '../../helpers';
 import WechatPayModal from '../../components/topup/modals/WechatPayModal';
+import GroupBuyCountdown from '../../components/groupbuy/GroupBuyCountdown';
 
 const statusMap = (t) => ({
   pending: { text: t('拼团中'), color: 'orange' },
   success: { text: t('已成团'), color: 'green' },
   failed: { text: t('已失败'), color: 'grey' },
 });
+
+const renderShare = (amount) => renderQuota(amount * getQuotaPerUnit());
 
 function isSafeHttpUrl(value) {
   try {
@@ -69,6 +79,7 @@ const GroupBuy = () => {
   const [enableWechat, setEnableWechat] = useState(false);
   const [enableAlipay, setEnableAlipay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const [wechatOpen, setWechatOpen] = useState(false);
   const [wechatQr, setWechatQr] = useState('');
@@ -116,6 +127,7 @@ const GroupBuy = () => {
   useEffect(() => {
     loadDetail();
     loadPayMethods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupNo]);
 
   const handlePayData = (data) => {
@@ -206,8 +218,24 @@ const GroupBuy = () => {
     );
   }
 
-  const remaining = Math.max(0, detail.required_count - detail.paid_count);
+  const tiers =
+    detail.tiers && detail.tiers.length > 0
+      ? detail.tiers
+      : [
+          {
+            count: detail.required_count,
+            per_share_amount: detail.per_share_amount,
+          },
+        ];
+  const minCount = tiers[0].count;
+  const maxCount = tiers[tiers.length - 1].count;
+  const bestAmount = tiers[tiers.length - 1].per_share_amount;
+  const cap = detail.target_count || maxCount;
+  const paid = detail.paid_count || 0;
+  const remaining = Math.max(0, cap - paid);
+  const percent = Math.min(100, Math.round((paid / (cap || 1)) * 100));
   const expired = detail.expire_time * 1000 < Date.now();
+  const currentAmount = detail.current_amount || tiers[0].per_share_amount;
   const canJoin =
     detail.status === 'pending' && !detail.joined && !expired && remaining > 0;
 
@@ -217,123 +245,299 @@ const GroupBuy = () => {
   if (enableAlipay)
     payOptions.push({ label: t('支付宝'), value: 'alipay_direct' });
 
+  const notes =
+    detail.notes && detail.notes.length > 0
+      ? detail.notes
+      : [
+          t('支付成功即锁定名额，拼团成功后额度立即到账。'),
+          t('拼团有效期内人数越多，每人到账额度越高。'),
+          t('未达最低成团人数则拼团失败，已支付款项将自动原路退回。'),
+        ];
+
   return (
-    <div className='mt-[60px] px-2 max-w-2xl mx-auto'>
-      <Card>
-        <div className='flex items-center justify-between mb-3'>
-          <Typography.Title heading={4} style={{ margin: 0 }}>
-            {detail.package_name || t('拼团充值')}
-          </Typography.Title>
-          <Tag color={sm[detail.status]?.color || 'grey'} size='large'>
-            {sm[detail.status]?.text || detail.status}
-          </Tag>
-        </div>
-
-        <Space
-          vertical
-          align='start'
-          style={{ width: '100%' }}
-          spacing='medium'
+    <div className='mt-[60px] px-2 max-w-5xl mx-auto pb-8'>
+      {/* Hero banner */}
+      <div
+        className='rounded-2xl overflow-hidden shadow-sm'
+        style={{
+          '--gb-primary-channel': '37 99 235',
+          backgroundImage:
+            "linear-gradient(120deg, rgba(var(--gb-primary-channel) / 94%) 0%, rgba(var(--gb-primary-channel) / 68%) 100%), url('/cover-4.webp')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div
+          className='p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between'
+          style={{ color: '#ffffff' }}
         >
-          <Typography.Text>
-            {t('每人到账额度')}：
-            <strong>
-              {renderQuota(detail.per_share_amount * getQuotaPerUnit())}
-            </strong>
-          </Typography.Text>
-          <Typography.Text>
-            {t('每人支付')}：
-            <strong>¥{Number(detail.per_share_price).toFixed(2)}</strong>
-          </Typography.Text>
-          <Typography.Text type='tertiary'>
-            {t('总价')} ¥{Number(detail.total_price).toFixed(2)} · {t('总额度')}{' '}
-            {renderQuota(detail.total_amount * getQuotaPerUnit())}
-          </Typography.Text>
-          <div style={{ width: '100%' }}>
-            <Typography.Text>
-              {t('成团进度')}：{detail.paid_count}/{detail.required_count}
-              {detail.status === 'pending' &&
-                `（${t('还差')} ${remaining} ${t('人')}）`}
-            </Typography.Text>
-            <Progress
-              percent={Math.round(
-                (detail.paid_count / detail.required_count) * 100,
-              )}
-              style={{ marginTop: 6 }}
-            />
-          </div>
-          <Typography.Text type='tertiary'>
-            {t('截止时间')}：{timestamp2string(detail.expire_time)}
-          </Typography.Text>
-
-          <div style={{ width: '100%' }}>
-            <Typography.Text strong>{t('已参团成员')}</Typography.Text>
-            <div className='mt-1 flex flex-wrap gap-2'>
-              {(detail.participants || []).map((p, idx) => (
-                <Tag
-                  key={idx}
-                  color={p.pay_status === 'paid' ? 'green' : 'orange'}
-                >
-                  {p.username}（
-                  {p.pay_status === 'paid' ? t('已支付') : t('待支付')}）
-                </Tag>
-              ))}
+          <div className='min-w-0'>
+            <div className='flex items-center gap-3'>
+              <Typography.Title
+                heading={3}
+                style={{ color: '#ffffff', margin: 0 }}
+              >
+                {detail.package_name || t('拼团充值')}
+              </Typography.Title>
+              <span
+                className='shrink-0 rounded-full px-3 py-1 text-xs font-medium'
+                style={{
+                  background: 'rgba(255,255,255,0.95)',
+                  color: 'var(--semi-color-primary)',
+                }}
+              >
+                {sm[detail.status]?.text || detail.status}
+              </span>
+            </div>
+            <div className='mt-3 flex items-end gap-2'>
+              <span className='text-4xl font-extrabold leading-none'>
+                ¥{Number(detail.per_share_price).toFixed(2)}
+              </span>
+              <span className='mb-1' style={{ opacity: 0.85 }}>
+                / {t('每人')}
+              </span>
+            </div>
+            <div
+              className='mt-2 text-base font-medium'
+              style={{ opacity: 0.95 }}
+            >
+              {t('拼满')} {maxCount} {t('人，每人到账')}{' '}
+              <span className='font-bold underline'>
+                {renderShare(bestAmount)}
+              </span>
             </div>
           </div>
+          <div className='flex flex-wrap gap-2 md:justify-end md:max-w-[240px]'>
+            <span
+              className='inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm'
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconBolt size='small' /> {t('成团即时到账')}
+            </span>
+            <span
+              className='inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm'
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconUser size='small' /> {t('人越多越划算')}
+            </span>
+            <span
+              className='inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm'
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconServer size='small' /> {t('全模型可用')}
+            </span>
+          </div>
+        </div>
+      </div>
 
-          {detail.status === 'success' && (
-            <Banner
-              type='success'
-              closeIcon={null}
-              description={t('拼团已成功，额度已到账')}
+      {/* Main grid */}
+      <div className='grid grid-cols-1 lg:grid-cols-5 gap-4 mt-4 items-start'>
+        {/* Progress + tiers */}
+        <div className='lg:col-span-3'>
+          <Card className='!rounded-2xl'>
+            <div className='flex items-center justify-between'>
+              <Typography.Text strong>{t('成团进度')}</Typography.Text>
+              <Typography.Text type='tertiary' size='small'>
+                {paid}/{cap} {t('人')}
+              </Typography.Text>
+            </div>
+            <Progress
+              percent={percent}
+              stroke='var(--semi-color-primary)'
+              style={{ marginTop: 8 }}
+              aria-label='progress'
             />
-          )}
-          {detail.status === 'failed' && (
-            <Banner
-              type='warning'
-              closeIcon={null}
-              description={t('拼团未成功，已支付成员将自动退款')}
-            />
-          )}
+            {detail.status === 'pending' && (
+              <Typography.Text type='tertiary' size='small'>
+                {remaining > 0
+                  ? `${t('还差')} ${remaining} ${t('人满团，人满即得最高额度')}`
+                  : t('已满员，等待结算')}
+              </Typography.Text>
+            )}
 
-          {detail.joined && detail.status === 'pending' && (
-            <Banner
-              type='info'
-              closeIcon={null}
-              description={t('你已参团，分享链接邀请好友一起拼')}
-            />
-          )}
+            <div className='mt-4 flex items-center justify-between'>
+              <span className='inline-flex items-center gap-1 text-semi-color-text-2 text-sm'>
+                <IconCalendarClock size='small' /> {t('距拼团结束')}
+              </span>
+              <GroupBuyCountdown expireTime={detail.expire_time} size='lg' />
+            </div>
 
-          {canJoin && (
-            <Space>
-              <Select
-                style={{ width: 140 }}
-                value={payWay}
-                onChange={setPayWay}
-                optionList={payOptions}
-                placeholder={t('选择支付方式')}
+            {/* Tier ladder */}
+            <div className='mt-4 flex flex-col gap-2'>
+              {tiers.map((tier) => {
+                const unlocked = paid >= tier.count;
+                const isCurrent =
+                  currentAmount === tier.per_share_amount && unlocked;
+                return (
+                  <div
+                    key={tier.count}
+                    className='flex items-center justify-between rounded-xl px-3 py-2 border transition-colors'
+                    style={{
+                      borderColor: isCurrent
+                        ? 'var(--semi-color-primary)'
+                        : 'var(--semi-color-border)',
+                      background: isCurrent
+                        ? 'var(--semi-color-primary-light-default)'
+                        : 'transparent',
+                    }}
+                  >
+                    <span className='inline-flex items-center gap-2'>
+                      {unlocked ? (
+                        <IconTickCircle
+                          size='small'
+                          style={{ color: 'var(--semi-color-primary)' }}
+                        />
+                      ) : (
+                        <span className='inline-block w-3 h-3 rounded-full border border-semi-color-border' />
+                      )}
+                      <Typography.Text strong>
+                        {tier.count} {t('人团')}
+                      </Typography.Text>
+                    </span>
+                    <Typography.Text
+                      strong
+                      style={{
+                        color: unlocked
+                          ? 'var(--semi-color-primary)'
+                          : undefined,
+                      }}
+                    >
+                      {t('每人')} {renderShare(tier.per_share_amount)}
+                    </Typography.Text>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
+        {/* Join panel */}
+        <div className='lg:col-span-2'>
+          <Card className='!rounded-2xl'>
+            <Typography.Text strong>{t('参与拼团')}</Typography.Text>
+
+            {detail.status === 'success' && (
+              <Banner
+                className='mt-3'
+                type='success'
+                closeIcon={null}
+                description={t('拼团已成功，额度已到账')}
               />
-              <Button
-                theme='solid'
-                type='primary'
-                loading={submitting}
-                disabled={payOptions.length === 0}
-                onClick={join}
-              >
-                {t('参团并支付')}
-              </Button>
-            </Space>
-          )}
+            )}
+            {detail.status === 'failed' && (
+              <Banner
+                className='mt-3'
+                type='warning'
+                closeIcon={null}
+                description={t('拼团未成功，已支付成员将自动退款')}
+              />
+            )}
+            {detail.joined && detail.status === 'pending' && (
+              <Banner
+                className='mt-3'
+                type='info'
+                closeIcon={null}
+                description={t('你已参团，分享链接邀请好友一起拼')}
+              />
+            )}
 
-          <Space>
-            <Typography.Text type='tertiary' ellipsis style={{ maxWidth: 360 }}>
-              {shareLink}
+            {canJoin && (
+              <div className='mt-3 flex flex-col gap-3'>
+                <Select
+                  style={{ width: '100%' }}
+                  value={payWay}
+                  onChange={setPayWay}
+                  optionList={payOptions}
+                  placeholder={t('选择支付方式')}
+                />
+                <Checkbox
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                >
+                  <Typography.Text size='small'>
+                    {t('我已阅读并同意《拼团规则》')}
+                  </Typography.Text>
+                </Checkbox>
+                <Button
+                  theme='solid'
+                  type='primary'
+                  size='large'
+                  block
+                  loading={submitting}
+                  disabled={payOptions.length === 0 || !agreed}
+                  onClick={join}
+                >
+                  {t('立即参团')} ¥{Number(detail.per_share_price).toFixed(2)}{' '}
+                  {t('立返')} {renderShare(currentAmount)}
+                </Button>
+              </div>
+            )}
+
+            <div className='mt-4 pt-3 border-t border-semi-color-border flex items-center gap-2'>
+              <Typography.Text
+                type='tertiary'
+                ellipsis
+                style={{ maxWidth: 180 }}
+              >
+                {shareLink}
+              </Typography.Text>
+              <Button size='small' onClick={copyShare}>
+                {t('复制链接')}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Notes + models */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4'>
+        <Card className='!rounded-2xl' title={t('拼团须知')}>
+          <div className='flex flex-col gap-2'>
+            {notes.map((note, idx) => (
+              <div key={idx} className='flex items-start gap-2'>
+                <IconTickCircle
+                  size='small'
+                  style={{ color: 'var(--semi-color-primary)', marginTop: 3 }}
+                />
+                <Typography.Text type='tertiary'>{note}</Typography.Text>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card className='!rounded-2xl' title={t('模型接入')}>
+          <div className='flex items-start gap-2'>
+            <IconServer
+              size='small'
+              style={{ color: 'var(--semi-color-primary)', marginTop: 3 }}
+            />
+            <Typography.Text type='tertiary'>
+              {detail.models_hint ||
+                t('拼团成功后额度即时到账，全系模型均可调用。')}
             </Typography.Text>
-            <Button size='small' onClick={copyShare}>
-              {t('复制拼团链接')}
-            </Button>
-          </Space>
-        </Space>
+          </div>
+          <div className='mt-3'>
+            <Typography.Text type='tertiary' size='small'>
+              {t('截止时间')}：{timestamp2string(detail.expire_time)}
+            </Typography.Text>
+          </div>
+        </Card>
+      </div>
+
+      {/* Members */}
+      <Card className='!rounded-2xl mt-4' title={t('已参团成员')}>
+        <div className='flex flex-wrap gap-2'>
+          {(detail.participants || []).length === 0 && (
+            <Typography.Text type='tertiary'>
+              {t('还没有成员，快来当第一个吧')}
+            </Typography.Text>
+          )}
+          {(detail.participants || []).map((p, idx) => (
+            <Tag key={idx} color={p.pay_status === 'paid' ? 'green' : 'orange'}>
+              {p.username}（
+              {p.pay_status === 'paid' ? t('已支付') : t('待支付')}）
+            </Tag>
+          ))}
+        </div>
       </Card>
 
       <WechatPayModal

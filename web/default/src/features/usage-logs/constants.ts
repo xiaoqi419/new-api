@@ -115,6 +115,15 @@ export const LOG_TYPE_FILTERS = [
   ),
 ] as const
 
+export const LOG_QUOTA_STATUS_ALL_VALUE = 'all' as const
+
+export const LOG_QUOTA_STATUS_FILTERS = [
+  { label: 'All Charges', value: LOG_QUOTA_STATUS_ALL_VALUE },
+  { label: 'Negative Charge', value: 'negative' },
+  { label: 'Zero Charge', value: 'zero' },
+  { label: 'Normal Charge', value: 'positive' },
+] as const
+
 // ============================================================================
 // Drawing Logs (MjProxy) Constants
 // ============================================================================
@@ -199,6 +208,19 @@ export const TASK_STATUS = {
   QUEUED: 'QUEUED', // 排队中
   UNKNOWN: 'UNKNOWN', // 未知
 } as const
+
+/**
+ * Task statuses that count as "still running", used to drive the realtime
+ * elapsed-time clock. Mirrors the classic frontend (includes the empty string
+ * for records that have not reported a status yet).
+ */
+export const ACTIVE_TASK_STATUSES: readonly string[] = [
+  '',
+  TASK_STATUS.NOT_START,
+  TASK_STATUS.SUBMITTED,
+  TASK_STATUS.QUEUED,
+  TASK_STATUS.IN_PROGRESS,
+]
 
 /**
  * Task platforms

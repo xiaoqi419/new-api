@@ -32,6 +32,7 @@ import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { cn } from '@/lib/utils'
 
 import {
+  ACTIVE_TASK_STATUSES,
   DEFAULT_LOGS_DATA,
   LOG_TYPE_ALL_VALUE,
   LOG_TYPE_ENUM,
@@ -39,8 +40,9 @@ import {
 import { useColumnsByCategory } from '../lib/columns'
 import { parseLogOther } from '../lib/format'
 import { fetchLogsByCategory } from '../lib/utils'
-import type { LogCategory } from '../types'
+import type { LogCategory, TaskLog } from '../types'
 import { CommonLogsFilterBar } from './common-logs-filter-bar'
+import { TaskLogCard } from './task-log-card'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 import { useLogsViewScope } from './usage-logs-provider'
@@ -150,6 +152,17 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       }
       return undefined
     },
+    // Poll while a task on the current page is still running so its status,
+    // progress, and finish time update; stops once none are active.
+    refetchInterval: (query) => {
+      if (logCategory !== 'task') return false
+      const items = (query.state.data as { items?: TaskLog[] } | undefined)
+        ?.items
+      const hasActiveTask =
+        Array.isArray(items) &&
+        items.some((item) => ACTIVE_TASK_STATUSES.includes(item.status))
+      return hasActiveTask ? 5000 : false
+    },
   })
 
   const logs = data?.items || []
@@ -175,6 +188,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   })
 
   const isCommon = logCategory === 'common'
+  const isTask = logCategory === 'task'
 
   return (
     <DataTablePage
@@ -191,12 +205,31 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       tableClassName={cn(
         '[&_[data-slot=table]]:text-[13px] [&_[data-slot=table]_td]:text-[13px] [&_[data-slot=table]_td_*]:text-[13px] [&_[data-slot=table]_th]:text-[13px] [&_[data-slot=table]_th_*]:text-[13px]'
       )}
+      enableCardView={isTask}
+      viewModeStorageKey={isTask ? 'usage-logs:task:view-mode' : undefined}
+      cardGridClassName={
+        isTask
+          ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4'
+          : undefined
+      }
+      renderCard={
+        isTask
+          ? (row) => (
+              <TaskLogCard
+                log={row.original as unknown as TaskLog}
+                isAdmin={isAdmin}
+              />
+            )
+          : undefined
+      }
       mobile={
-        <UsageLogsMobileList
-          table={table}
-          isLoading={isLoadingData}
-          logCategory={logCategory}
-        />
+        isTask ? undefined : (
+          <UsageLogsMobileList
+            table={table}
+            isLoading={isLoadingData}
+            logCategory={logCategory}
+          />
+        )
       }
       toolbar={
         isCommon ? (

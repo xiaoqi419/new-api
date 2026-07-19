@@ -178,6 +178,11 @@ type SubscriptionPlan struct {
 	// Downgrade user group on expiry (empty = revert to the group held before purchase)
 	DowngradeGroup string `json:"downgrade_group" gorm:"type:varchar(64);default:''"`
 
+	// ScopeGroup confines the subscription quota to a group WITHOUT changing the user's
+	// base group: when set, this subscription only pays for requests whose using-group
+	// equals ScopeGroup (e.g. codex), and non-matching requests fall through to the wallet.
+	ScopeGroup string `json:"scope_group" gorm:"type:varchar(64);default:''"`
+
 	// Total quota (amount in quota units, 0 = unlimited)
 	TotalAmount int64 `json:"total_amount" gorm:"type:bigint;not null;default:0"`
 
@@ -272,6 +277,10 @@ type UserSubscription struct {
 
 	// Downgrade target group on expiry (snapshot from plan; empty = revert to PrevUserGroup)
 	DowngradeGroup string `json:"downgrade_group" gorm:"type:varchar(64);default:''"`
+
+	// ScopeGroup (snapshot from plan) confines this subscription's quota to a group without
+	// changing the user's base group; empty = applies to any group (legacy behavior).
+	ScopeGroup string `json:"scope_group" gorm:"type:varchar(64);default:''"`
 
 	// Whether wallet fallback is allowed after this subscription's quota is exhausted (snapshot from plan)
 	AllowWalletOverflow bool `json:"allow_wallet_overflow"`
@@ -502,6 +511,23 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 			return nil, errors.New("已达到该套餐购买上限")
 		}
 	}
+	return buildUserSubscriptionFromPlanTx(tx, userId, plan, source, -1)
+}
+
+// buildUserSubscriptionFromPlanTx creates a UserSubscription snapshot from a plan
+// (end time, quota reset, group upgrade, wallet-overflow flag). When amountTotal >= 0
+// it overrides plan.TotalAmount; pass -1 to use the plan's own total. It does not enforce
+// MaxPurchasePerUser, so callers that need that guard must check it beforehand.
+func buildUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *SubscriptionPlan, source string, amountTotal int64) (*UserSubscription, error) {
+	if tx == nil {
+		return nil, errors.New("tx is nil")
+	}
+	if plan == nil || plan.Id == 0 {
+		return nil, errors.New("invalid plan")
+	}
+	if userId <= 0 {
+		return nil, errors.New("invalid user id")
+	}
 	nowUnix := GetDBTimestamp()
 	now := time.Unix(nowUnix, 0)
 	endUnix, err := calcPlanEndTime(now, plan)
@@ -533,10 +559,14 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 	if plan.AllowWalletOverflow != nil {
 		allowWalletOverflow = *plan.AllowWalletOverflow
 	}
+	total := plan.TotalAmount
+	if amountTotal >= 0 {
+		total = amountTotal
+	}
 	sub := &UserSubscription{
 		UserId:              userId,
 		PlanId:              plan.Id,
-		AmountTotal:         plan.TotalAmount,
+		AmountTotal:         total,
 		AmountUsed:          0,
 		StartTime:           now.Unix(),
 		EndTime:             endUnix,
@@ -547,6 +577,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		UpgradeGroup:        upgradeGroup,
 		PrevUserGroup:       prevGroup,
 		DowngradeGroup:      strings.TrimSpace(plan.DowngradeGroup),
+		ScopeGroup:          strings.TrimSpace(plan.ScopeGroup),
 		AllowWalletOverflow: allowWalletOverflow,
 		CreatedAt:           common.GetTimestamp(),
 		UpdatedAt:           common.GetTimestamp(),
@@ -555,6 +586,16 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		return nil, err
 	}
 	return sub, nil
+}
+
+// GrantGroupBuySubscriptionTx grants a plan-based subscription to a group-buy winner,
+// with the balance set to the unlocked tier amount (in quota units). Group-buy rewards
+// intentionally bypass MaxPurchasePerUser so a member is never blocked from a won group.
+func GrantGroupBuySubscriptionTx(tx *gorm.DB, userId int, plan *SubscriptionPlan, amountTotal int64, source string) (*UserSubscription, error) {
+	if amountTotal <= 0 {
+		return nil, errors.New("invalid subscription amount")
+	}
+	return buildUserSubscriptionFromPlanTx(tx, userId, plan, source, amountTotal)
 }
 
 // Complete a subscription order (idempotent). Creates a UserSubscription snapshot from the plan.
@@ -863,6 +904,43 @@ func UserActiveSubscriptionsAllowWalletOverflow(userId int) (bool, error) {
 	if err := DB.Model(&UserSubscription{}).
 		Where("user_id = ? AND status = ? AND end_time > ? AND allow_wallet_overflow = ?",
 			userId, "active", now, false).
+		Count(&strictCount).Error; err != nil {
+		return false, err
+	}
+	return strictCount == 0, nil
+}
+
+// HasActiveUserSubscriptionForGroup reports whether the user has an active subscription
+// applicable to the given using-group: an unscoped subscription applies to any group,
+// while a scoped subscription applies only when its ScopeGroup matches usingGroup.
+func HasActiveUserSubscriptionForGroup(userId int, usingGroup string) (bool, error) {
+	if userId <= 0 {
+		return false, errors.New("invalid userId")
+	}
+	now := common.GetTimestamp()
+	var count int64
+	if err := DB.Model(&UserSubscription{}).
+		Where("user_id = ? AND status = ? AND end_time > ? AND (scope_group = ? OR scope_group = ?)",
+			userId, "active", now, "", usingGroup).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// UserActiveSubscriptionsAllowWalletOverflowForGroup mirrors
+// UserActiveSubscriptionsAllowWalletOverflow but only considers subscriptions applicable to
+// the given using-group. A single applicable subscription that disallows wallet overflow
+// blocks the fallback for that group.
+func UserActiveSubscriptionsAllowWalletOverflowForGroup(userId int, usingGroup string) (bool, error) {
+	if userId <= 0 {
+		return false, errors.New("invalid userId")
+	}
+	now := common.GetTimestamp()
+	var strictCount int64
+	if err := DB.Model(&UserSubscription{}).
+		Where("user_id = ? AND status = ? AND end_time > ? AND allow_wallet_overflow = ? AND (scope_group = ? OR scope_group = ?)",
+			userId, "active", now, false, "", usingGroup).
 		Count(&strictCount).Error; err != nil {
 		return false, err
 	}
@@ -1270,7 +1348,7 @@ func maybeResetUserSubscriptionWithPlanTx(tx *gorm.DB, sub *UserSubscription, pl
 }
 
 // PreConsumeUserSubscription pre-consumes from any active subscription total quota.
-func PreConsumeUserSubscription(requestId string, userId int, modelName string, quotaType int, amount int64) (*SubscriptionPreConsumeResult, error) {
+func PreConsumeUserSubscription(requestId string, userId int, modelName string, usingGroup string, quotaType int, amount int64) (*SubscriptionPreConsumeResult, error) {
 	if userId <= 0 {
 		return nil, errors.New("invalid userId")
 	}
@@ -1318,6 +1396,10 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		}
 		for _, candidate := range subs {
 			sub := candidate
+			// Scoped subscriptions only pay for requests whose using-group matches ScopeGroup.
+			if sub.ScopeGroup != "" && sub.ScopeGroup != usingGroup {
+				continue
+			}
 			plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
 			if err != nil {
 				return err

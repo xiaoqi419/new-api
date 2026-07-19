@@ -129,6 +129,9 @@ func main() {
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
 
+	// 站点级错误告警：定时聚合请求错误(type=5)并推送企业微信机器人
+	go service.StartErrorAlertTask()
+
 	// 拼团过期 sweeper：定期将未成团的拼团置为失败并退款
 	controller.StartGroupBuyExpiryTask()
 
