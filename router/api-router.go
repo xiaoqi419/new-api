@@ -26,6 +26,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
+		apiRouter.GET("/announcements", controller.GetAnnouncements)
+		apiRouter.GET("/announcements/detail/:id", controller.GetAnnouncement)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
 		apiRouter.GET("/about", controller.GetAbout)
@@ -339,6 +341,42 @@ func SetApiRouter(router *gin.Engine) {
 				lotteryAdminRoute.GET("/config", controller.GetLotteryConfig)
 				lotteryAdminRoute.PUT("/config", controller.SaveLotteryConfig)
 			}
+		}
+
+		// 工单系统（用户提交/回复 + 管理端处理）
+		ticketRoute := apiRouter.Group("/ticket")
+		ticketRoute.Use(middleware.UserAuth())
+		{
+			ticketRoute.GET("/meta", controller.GetTicketMeta)
+			ticketRoute.GET("/self", controller.GetSelfTickets)
+			ticketRoute.POST("/", middleware.CriticalRateLimit(), controller.CreateTicket)
+			ticketRoute.GET("/detail/:id", controller.GetTicketDetail)
+			ticketRoute.POST("/reply/:id", middleware.CriticalRateLimit(), controller.ReplyTicket)
+			ticketRoute.POST("/close/:id", controller.CloseTicket)
+			ticketRoute.POST("/attachment", middleware.CriticalRateLimit(), controller.UploadTicketAttachment)
+			ticketRoute.GET("/attachment/:id/:file", controller.DownloadTicketAttachment)
+
+			ticketAdminRoute := ticketRoute.Group("/admin")
+			ticketAdminRoute.Use(middleware.AdminAuth())
+			{
+				ticketAdminRoute.GET("/", controller.GetAllTickets)
+				ticketAdminRoute.GET("/stats", controller.GetTicketStats)
+				ticketAdminRoute.GET("/detail/:id", controller.AdminGetTicketDetail)
+				ticketAdminRoute.POST("/reply/:id", controller.AdminReplyTicket)
+				ticketAdminRoute.PUT("/status/:id", controller.AdminUpdateTicketStatus)
+				ticketAdminRoute.PUT("/priority/:id", controller.AdminUpdateTicketPriority)
+			}
+		}
+
+		// 公告 / 更新公告（后台可编辑）
+		announcementAdminRoute := apiRouter.Group("/announcement")
+		announcementAdminRoute.Use(middleware.AdminAuth())
+		{
+			announcementAdminRoute.GET("/", controller.AdminListAnnouncements)
+			announcementAdminRoute.GET("/detail/:id", controller.AdminGetAnnouncement)
+			announcementAdminRoute.POST("/", controller.AdminCreateAnnouncement)
+			announcementAdminRoute.PUT("/", controller.AdminUpdateAnnouncement)
+			announcementAdminRoute.DELETE("/:id", controller.AdminDeleteAnnouncement)
 		}
 
 		usageRoute := apiRouter.Group("/usage")

@@ -31,6 +31,8 @@ import {
   Images,
   Key,
   LayoutDashboard,
+  LifeBuoy,
+  Megaphone,
   Radio,
   ReceiptText,
   Rocket,
@@ -111,6 +113,11 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/channel-monitor/detail'],
             icon: Gauge,
           },
+          {
+            title: t('Announcements'),
+            url: '/announcements',
+            icon: Megaphone,
+          },
         ],
       },
       {
@@ -163,6 +170,12 @@ export function useSidebarData(): SidebarData {
               '/account/identity-verification',
             ],
             icon: User,
+          },
+          {
+            title: t('Tickets'),
+            url: '/tickets',
+            activeUrls: ['/tickets/detail'],
+            icon: LifeBuoy,
           },
         ],
       },
@@ -229,6 +242,17 @@ export function useSidebarData(): SidebarData {
             title: t('Lottery Management'),
             url: '/lottery/admin',
             icon: Dices,
+          },
+          {
+            title: t('Ticket Management'),
+            url: '/tickets/admin',
+            activeUrls: ['/tickets/admin-detail'],
+            icon: LifeBuoy,
+          },
+          {
+            title: t('Announcement Management'),
+            url: '/announcements/admin',
+            icon: Megaphone,
           },
           {
             title: t('Changelog'),
