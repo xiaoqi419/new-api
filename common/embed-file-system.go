@@ -43,8 +43,8 @@ func EmbedFolder(fsEmbed embed.FS, targetPath string) static.ServeFileSystem {
 }
 
 // themeAwareFileSystem delegates to the appropriate embedded FS based on
-// the current theme (via GetTheme). This enables runtime theme switching
-// without restarting the server.
+// the current theme (via GetTheme). This enables serving either the default
+// or the classic frontend without restarting the server.
 type themeAwareFileSystem struct {
 	defaultFS static.ServeFileSystem
 	classicFS static.ServeFileSystem

@@ -334,8 +334,8 @@ func WeChatMpBindCheck(c *gin.Context) {
 		common.ApiErrorMsg(c, "该微信账号已被绑定")
 		return
 	}
-	id, ok := getSessionUserID(c)
-	if !ok {
+	id := c.GetInt("id")
+	if id == 0 {
 		common.ApiErrorMsg(c, "未登录")
 		return
 	}

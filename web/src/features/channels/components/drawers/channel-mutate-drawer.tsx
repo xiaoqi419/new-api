@@ -63,6 +63,7 @@ import {
   sideDrawerSectionClassName,
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
+import { JsonCodeEditor } from '@/components/json-code-editor'
 import { JsonEditor } from '@/components/json-editor'
 import { MultiSelect } from '@/components/multi-select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -1368,43 +1369,48 @@ export function ChannelMutateDrawer({
     }
   }
 
-  const fetchChannelKey = useCallback(async () => {
-    if (!channelId) {
-      throw new Error('Channel is not selected')
-    }
-
-    setIsChannelKeyLoading(true)
-    try {
-      const res = await getChannelKey(channelId)
-      if (!res.success) {
-        throw new Error(res.message || t('Failed to fetch channel key'))
+  const fetchChannelKey = useCallback(
+    async (proofToken?: string) => {
+      if (!channelId) {
+        throw new Error('Channel is not selected')
       }
 
-      const keyValue = res.data?.key ?? ''
-      setChannelKey(keyValue)
-      toast.success(t('Channel key unlocked'))
-      return res
-    } finally {
-      setIsChannelKeyLoading(false)
-    }
-  }, [channelId, t])
+      setIsChannelKeyLoading(true)
+      try {
+        const res = await getChannelKey(channelId, proofToken)
+        if (!res.success) {
+          throw new Error(res.message || t('Failed to fetch channel key'))
+        }
+
+        const keyValue = res.data?.key ?? ''
+        setChannelKey(keyValue)
+        toast.success(t('Channel key unlocked'))
+        return res
+      } finally {
+        setIsChannelKeyLoading(false)
+      }
+    },
+    [channelId, t]
+  )
 
   const handleRevealKey = useCallback(async () => {
     if (!channelId) return
 
     try {
       await withVerification(fetchChannelKey, {
+        scope: 'channel.key.read',
         preferredMethod: 'passkey',
-        title: 'Verify to view channel key',
-        description:
-          'Use Passkey or 2FA to confirm your identity before revealing this channel key.',
+        title: t('Verify to view channel key'),
+        description: t(
+          'Use Passkey or 2FA to confirm your identity before revealing this channel key.'
+        ),
       })
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message)
       }
     }
-  }, [channelId, withVerification, fetchChannelKey])
+  }, [channelId, withVerification, fetchChannelKey, t])
 
   const handleRefreshCodexCredential = useCallback(async () => {
     if (!channelId) return
@@ -3979,17 +3985,18 @@ export function ChannelMutateDrawer({
                                       </div>
                                     </div>
                                     <FormControl>
-                                      <Textarea
+                                      <JsonCodeEditor
                                         value={field.value || ''}
                                         onChange={field.onChange}
+                                        name={field.name}
+                                        onBlur={field.onBlur}
+                                        textareaRef={field.ref}
                                         disabled={
                                           sensitiveLocked || isSubmitting
                                         }
-                                        rows={8}
                                         placeholder={t(
                                           'Override request parameters. Cannot override stream parameter.'
                                         )}
-                                        className='max-h-72 min-h-40 resize-y overflow-auto font-mono text-xs'
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -4053,25 +4060,6 @@ export function ChannelMutateDrawer({
                                         </Button>
                                         <Button
                                           type='button'
-                                          variant='outline'
-                                          size='sm'
-                                          onClick={() => {
-                                            try {
-                                              const parsed = JSON.parse(
-                                                field.value || '{}'
-                                              )
-                                              field.onChange(
-                                                JSON.stringify(parsed, null, 2)
-                                              )
-                                            } catch {
-                                              /* ignore invalid JSON */
-                                            }
-                                          }}
-                                        >
-                                          {t('Format')}
-                                        </Button>
-                                        <Button
-                                          type='button'
                                           variant='ghost'
                                           size='sm'
                                           onClick={() => field.onChange('')}
@@ -4081,17 +4069,19 @@ export function ChannelMutateDrawer({
                                       </div>
                                     </div>
                                     <FormControl>
-                                      <Textarea
-                                        className='font-mono text-sm'
-                                        rows={6}
+                                      <JsonCodeEditor
                                         value={field.value || ''}
                                         onChange={field.onChange}
+                                        name={field.name}
+                                        onBlur={field.onBlur}
+                                        textareaRef={field.ref}
                                         disabled={
                                           sensitiveLocked || isSubmitting
                                         }
                                         placeholder={t(
                                           'Enter JSON to override request headers'
                                         )}
+                                        heightClassName='h-40 min-h-40 max-h-40'
                                       />
                                     </FormControl>
                                     <FormDescription className='text-xs'>
@@ -4259,7 +4249,7 @@ export function ChannelMutateDrawer({
                                   </FormControl>
                                   <FormDescription>
                                     {t(
-                                      'Network proxy for this channel (supports socks5 protocol)'
+                                      'Network proxy for this channel (supports HTTP, HTTPS, SOCKS5, and SOCKS5H)'
                                     )}
                                   </FormDescription>
                                   <FormMessage />

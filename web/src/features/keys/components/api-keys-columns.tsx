@@ -43,8 +43,9 @@ import type { ApiKey } from '../types'
 import { ApiKeyTimestampCell } from './api-key-timestamp-cell'
 import {
   ApiKeyCell,
-  ModelLimitsCell,
   IpRestrictionsCell,
+  ModelLimitsCell,
+  UnlimitedQuotaBadge,
 } from './api-keys-cells'
 import { DataTableRowActions } from './data-table-row-actions'
 
@@ -161,14 +162,7 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
       cell: ({ row }) => {
         const apiKey = row.original
         if (apiKey.unlimited_quota) {
-          return (
-            <StatusBadge
-              label={t('Unlimited')}
-              variant='neutral'
-              copyable={false}
-              className='-ml-1.5'
-            />
-          )
+          return <UnlimitedQuotaBadge used={apiKey.used_quota} />
         }
 
         const used = apiKey.used_quota
