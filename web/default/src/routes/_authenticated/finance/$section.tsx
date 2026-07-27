@@ -16,10 +16,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
 
-import { GroupBuyHall } from '@/features/groupbuy/hall'
+import { FinanceCenter } from '@/features/finance'
+import {
+  FINANCE_DEFAULT_SECTION,
+  isFinanceSectionId,
+} from '@/features/finance/section-registry'
 
-export const Route = createFileRoute('/_authenticated/groupbuy/')({
-  component: GroupBuyHall,
+const financeSearchSchema = z.object({
+  show_history: z.boolean().optional(),
+})
+
+export const Route = createFileRoute('/_authenticated/finance/$section')({
+  beforeLoad: ({ params }) => {
+    if (!isFinanceSectionId(params.section)) {
+      throw redirect({
+        to: '/finance/$section',
+        params: { section: FINANCE_DEFAULT_SECTION },
+      })
+    }
+  },
+  validateSearch: financeSearchSchema,
+  component: FinanceCenter,
 })

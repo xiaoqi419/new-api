@@ -12,24 +12,41 @@ import (
 )
 
 type Token struct {
-	Id                 int            `json:"id"`
-	UserId             int            `json:"user_id" gorm:"index"`
-	Key                string         `json:"key" gorm:"type:varchar(128);uniqueIndex"`
-	Status             int            `json:"status" gorm:"default:1"`
-	Name               string         `json:"name" gorm:"index" `
-	CreatedTime        int64          `json:"created_time" gorm:"bigint"`
-	AccessedTime       int64          `json:"accessed_time" gorm:"bigint"`
-	ExpiredTime        int64          `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
-	RemainQuota        int            `json:"remain_quota" gorm:"default:0"`
-	UnlimitedQuota     bool           `json:"unlimited_quota"`
-	ModelLimitsEnabled bool           `json:"model_limits_enabled"`
-	ModelLimits        string         `json:"model_limits" gorm:"type:text"`
-	AllowIps           *string        `json:"allow_ips" gorm:"default:''"`
-	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
-	Group              string         `json:"group" gorm:"default:''"`
-	CrossGroupRetry    bool           `json:"cross_group_retry"`                          // 跨分组重试，仅auto分组有效
-	MaxConcurrency     int            `json:"max_concurrency" gorm:"type:int;default:0"`  // 令牌级最大并发，0=不限
-	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	Id                   int            `json:"id"`
+	UserId               int            `json:"user_id" gorm:"index"`
+	Key                  string         `json:"key" gorm:"type:varchar(128);uniqueIndex"`
+	Status               int            `json:"status" gorm:"default:1"`
+	Name                 string         `json:"name" gorm:"index" `
+	CreatedTime          int64          `json:"created_time" gorm:"bigint"`
+	AccessedTime         int64          `json:"accessed_time" gorm:"bigint"`
+	ExpiredTime          int64          `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
+	RemainQuota          int            `json:"remain_quota" gorm:"default:0"`
+	UnlimitedQuota       bool           `json:"unlimited_quota"`
+	ModelLimitsEnabled   bool           `json:"model_limits_enabled"`
+	ModelLimits          string         `json:"model_limits" gorm:"type:text"`
+	AllowIps             *string        `json:"allow_ips" gorm:"default:''"`
+	UsedQuota            int            `json:"used_quota" gorm:"default:0"` // used quota
+	Group                string         `json:"group" gorm:"default:''"`
+	CrossGroupRetry      bool           `json:"cross_group_retry"`                         // Deprecated: 旧版 auto 路由跨分组重试，保留列以兼容历史数据
+	GroupSwitchEnabled   bool           `json:"group_switch_enabled"`                      // 分组自动切换模式（令牌级候选分组）
+	GroupSwitchGroups    string         `json:"group_switch_groups" gorm:"type:text"`      // 候选分组 JSON 数组，如 ["grp1","grp2"]
+	GroupSwitchThreshold int            `json:"group_switch_threshold" gorm:"default:2"`   // 每组可重试上游失败阈值 1-5
+	GroupSwitchCooldown  int            `json:"group_switch_cooldown" gorm:"default:10"`   // 升档冷却分钟 5/10/30
+	MaxConcurrency       int            `json:"max_concurrency" gorm:"type:int;default:0"` // 令牌级最大并发，0=不限
+	DeletedAt            gorm.DeletedAt `gorm:"index"`
+}
+
+// GetGroupSwitchGroups parses the token's candidate group list. Returns an
+// empty slice when unset or malformed.
+func (token *Token) GetGroupSwitchGroups() []string {
+	groups := make([]string, 0)
+	if strings.TrimSpace(token.GroupSwitchGroups) == "" {
+		return groups
+	}
+	if err := common.Unmarshal([]byte(token.GroupSwitchGroups), &groups); err != nil {
+		return make([]string, 0)
+	}
+	return groups
 }
 
 func (token *Token) Clean() {
@@ -303,7 +320,8 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "max_concurrency").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "max_concurrency",
+		"group_switch_enabled", "group_switch_groups", "group_switch_threshold", "group_switch_cooldown").Updates(token).Error
 	return err
 }
 

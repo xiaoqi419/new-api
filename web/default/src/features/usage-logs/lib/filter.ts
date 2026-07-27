@@ -67,7 +67,7 @@ export function buildSearchParams(
       const drawingFilters = filters as DrawingLogFilters
       return {
         ...baseParams,
-        ...(drawingFilters.mjId && { filter: drawingFilters.mjId }),
+        ...(drawingFilters.model && { model: drawingFilters.model }),
       }
     }
     case 'task': {

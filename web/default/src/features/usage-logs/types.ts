@@ -57,10 +57,10 @@ export interface CommonLogFilters extends CommonFilters {
 }
 
 /**
- * Drawing logs specific filters
+ * Drawing logs specific filters (unified view)
  */
 export interface DrawingLogFilters extends CommonFilters {
-  mjId?: string
+  model?: string
 }
 
 /**
@@ -274,6 +274,37 @@ export interface MidjourneyLog {
 }
 
 // ============================================================================
+// Drawing Logs (unified materialized view) Types
+// ============================================================================
+
+/**
+ * Unified drawing-log row from /api/drawing_logs. Merges synchronous image
+ * generations (source "image": /v1/images/generations + edits, chat/responses
+ * image output) with Midjourney tasks (source "mj").
+ */
+export interface DrawingLog {
+  id: number
+  user_id: number
+  username?: string
+  created_at: number // seconds
+  source: string // image | mj
+  source_id: string
+  log_mode: string // images_generation | images_edit | chat_image | image_generation_call | mj_*
+  model_name: string
+  channel_id: number
+  channel_name?: string
+  quota: number
+  status: string // success | failed | (mj statuses)
+  prompt?: string
+  result_urls?: string // JSON array of stored thumbnail keys
+  progress?: string
+  group?: string
+  token_name?: string
+  content?: string
+  other?: string
+}
+
+// ============================================================================
 // Task Logs Types
 // ============================================================================
 
@@ -330,7 +361,7 @@ export interface GetLogsResponse {
   success: boolean
   message?: string
   data?: {
-    items: UsageLog[] | MidjourneyLog[] | TaskLog[]
+    items: UsageLog[] | MidjourneyLog[] | TaskLog[] | DrawingLog[]
     total: number
     page: number
     page_size: number

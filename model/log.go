@@ -79,6 +79,8 @@ type Log struct {
 	RequestId         string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
 	UpstreamRequestId string `json:"upstream_request_id,omitempty" gorm:"type:varchar(128);index:idx_logs_upstream_request_id;default:''"`
 	Other             string `json:"other"`
+	IsImage           bool   `json:"is_image" gorm:"index"`
+	LogMode           string `json:"log_mode" gorm:"type:varchar(32);index;default:''"`
 }
 
 // don't use iota, avoid change log type value
@@ -391,6 +393,8 @@ type RecordConsumeLogParams struct {
 	IsStream         bool                   `json:"is_stream"`
 	Group            string                 `json:"group"`
 	Other            map[string]interface{} `json:"other"`
+	IsImage          bool                   `json:"is_image"`
+	LogMode          string                 `json:"log_mode"`
 }
 
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
@@ -437,10 +441,15 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		RequestId:         requestId,
 		UpstreamRequestId: upstreamRequestId,
 		Other:             otherStr,
+		IsImage:           params.IsImage,
+		LogMode:           params.LogMode,
 	}
 	err := createLog(log)
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
+	}
+	if params.IsImage {
+		recordImageDrawingLog(c, log)
 	}
 	if common.DataExportEnabled {
 		LogQuotaData(QuotaDataLogParams{

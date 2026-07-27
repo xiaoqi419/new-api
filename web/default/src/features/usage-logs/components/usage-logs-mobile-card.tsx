@@ -420,39 +420,30 @@ function DrawingLogsCard<TData>({
 }) {
   const { t } = useTranslation()
 
-  const actionCell = cells.get('action')
-  const codeCell = cells.get('code')
-  const submitTimeCell = cells.get('submit_time')
+  const modelCell = cells.get('model_name')
+  const sourceCell = cells.get('source')
 
   return (
     <div className='space-y-2.5'>
       <div className='flex min-w-0 items-start justify-between gap-3'>
-        <CompactCell cell={actionCell} className='flex-1' />
-        <CompactCell cell={codeCell} className='shrink-0 text-right' />
+        <CompactCell cell={modelCell} className='flex-1' />
+        <CompactCell cell={sourceCell} className='shrink-0 text-right' />
       </div>
 
       <div className='grid grid-cols-2 gap-1.5'>
-        <SummaryField label={t('Submit Time')} cell={submitTimeCell} />
+        <SummaryField label={t('Time')} cell={cells.get('created_at')} />
         <SummaryField
           label={t('Channel')}
           cell={cells.get('channel')}
           primaryOnly
         />
-        <SummaryField label={t('Task ID')} cell={cells.get('mj_id')} />
-        <SummaryField
-          label={t('Duration')}
-          cell={cells.get('duration')}
-          primaryOnly
-        />
-        <SummaryField label={t('Image')} cell={cells.get('image_url')} />
+        <SummaryField label={t('User')} cell={cells.get('username')} />
+        <SummaryField label={t('Type')} cell={cells.get('log_mode')} />
+        <SummaryField label={t('Quota')} cell={cells.get('quota')} />
+        <SummaryField label={t('Image')} cell={cells.get('result_urls')} />
         <SummaryField
           label={t('Prompt')}
           cell={cells.get('prompt')}
-          primaryOnly
-        />
-        <SummaryField
-          label={t('Fail Reason')}
-          cell={cells.get('fail_reason')}
           className='col-span-2 bg-transparent px-0 py-0'
         />
       </div>

@@ -134,6 +134,7 @@ Do NOT directly import or call `encoding/json` in business code. `json.RawMessag
 - Frontend UI text must support i18n with `i18next`/`react-i18next`. Use flat JSON locale files in `web/default/src/i18n/locales/{lang}.json`, with English source strings as keys.
 - In React components, use `useTranslation()` and call `t('English key')` for user-facing text.
 - Follow `web/default/AGENTS.md` for detailed frontend conventions, including TypeScript, component structure, styling, accessibility, testing, and build checks.
+- Whenever you ship a user-facing change (new feature, enhancement, or fix), you MUST add a corresponding entry to the changelog at `web/default/src/features/changelog/data.ts` (newest first, with `version` matching the image tag baked by `build-push.sh`, e.g. `YYYYMMDD-<sha>`).
 
 ### Project Governance
 

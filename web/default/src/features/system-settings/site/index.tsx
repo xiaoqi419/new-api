@@ -33,6 +33,7 @@ const defaultSiteSettings: SiteSettings = {
   About: '',
   HomePageContent: '',
   HomePageConfig: '',
+  LoginPageConfig: '',
   ServerAddress: '',
   'legal.user_agreement': '',
   'legal.privacy_policy': '',

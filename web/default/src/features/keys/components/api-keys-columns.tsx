@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 
 import { getTokensConcurrency, type TokensConcurrencyData } from '../api'
 import { API_KEY_STATUSES } from '../constants'
+import { parseGroupSwitchGroups } from '../lib'
 import type { ApiKey } from '../types'
 import { ApiKeyTimestampCell } from './api-key-timestamp-cell'
 import {
@@ -216,27 +217,26 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
       cell: ({ row }) => {
         const apiKey = row.original
         const group = row.getValue('group') as string
-        const ratio = group && group !== 'auto' ? groupRatios[group] : undefined
+        const ratio = group ? groupRatios[group] : undefined
 
-        if (group === 'auto') {
+        if (apiKey.group_switch_enabled) {
+          const candidates = parseGroupSwitchGroups(apiKey.group_switch_groups)
           return (
             <Tooltip>
               <TooltipTrigger
                 render={<BadgeCell className='gap-1.5 text-xs' />}
               >
-                <GroupBadge group='auto' />
-                {apiKey.cross_group_retry && (
-                  <StatusBadge
-                    label={t('Cross-group')}
-                    variant='info'
-                    copyable={false}
-                  />
-                )}
+                <StatusBadge
+                  label={t('Auto-switch')}
+                  variant='info'
+                  copyable={false}
+                />
               </TooltipTrigger>
               <TooltipContent>
                 <span className='text-xs'>
                   {t(
-                    'Automatically selects the best available group with circuit breaker mechanism'
+                    'Automatically switches among candidate groups ordered by ratio (low to high): {{groups}}',
+                    { groups: candidates.join(', ') || '-' }
                   )}
                 </span>
               </TooltipContent>

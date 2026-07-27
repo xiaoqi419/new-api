@@ -22,8 +22,8 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   getAllLogs,
   getUserLogs,
-  getAllMidjourneyLogs,
-  getUserMidjourneyLogs,
+  getAllDrawingLogs,
+  getUserDrawingLogs,
   getAllTaskLogs,
   getUserTaskLogs,
 } from '../api'
@@ -36,7 +36,6 @@ import type {
   GetLogsParams,
   GetLogsResponse,
   FetchLogsConfig,
-  GetMidjourneyLogsParams,
   GetTaskLogsParams,
 } from '../types'
 
@@ -265,7 +264,9 @@ export async function fetchLogsByCategory(
   const { logCategory, isAdmin, page, pageSize, searchParams, columnFilters } =
     config
 
-  if (logCategory === 'common') {
+  // Common logs and the unified drawing view share the same query shape
+  // (model/channel/username/time in seconds).
+  if (logCategory === 'common' || logCategory === 'drawing') {
     const params = buildApiParams({
       page,
       pageSize,
@@ -273,34 +274,27 @@ export async function fetchLogsByCategory(
       columnFilters,
       isAdmin,
     })
+    if (logCategory === 'drawing') {
+      return isAdmin
+        ? await getAllDrawingLogs(params)
+        : await getUserDrawingLogs(params)
+    }
     return isAdmin ? await getAllLogs(params) : await getUserLogs(params)
   }
 
-  // For drawing and task logs
+  // Task logs (async task table)
   const baseParams = buildBaseParams({
     page,
     pageSize,
     searchParams,
-    useMilliseconds: logCategory === 'drawing',
+    useMilliseconds: false,
   })
 
   const paramsWithFilter = {
     ...baseParams,
-    ...(logCategory === 'drawing'
-      ? { mj_id: searchParams.filter as string | undefined }
-      : {}),
-    ...(logCategory === 'task'
-      ? { task_id: searchParams.filter as string | undefined }
-      : {}),
+    task_id: searchParams.filter as string | undefined,
   }
 
-  if (logCategory === 'drawing') {
-    return isAdmin
-      ? await getAllMidjourneyLogs(paramsWithFilter as GetMidjourneyLogsParams)
-      : await getUserMidjourneyLogs(paramsWithFilter as GetMidjourneyLogsParams)
-  }
-
-  // task logs
   return isAdmin
     ? await getAllTaskLogs(paramsWithFilter as GetTaskLogsParams)
     : await getUserTaskLogs(paramsWithFilter as GetTaskLogsParams)

@@ -118,6 +118,16 @@ export const getUserMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, false)
 
 // ============================================================================
+// Drawing Logs (unified materialized view) API
+// ============================================================================
+
+export const getAllDrawingLogs = (params: GetLogsParams = {}) =>
+  fetchLogs('/api/drawing_logs', params, true)
+
+export const getUserDrawingLogs = (params: GetLogsParams = {}) =>
+  fetchLogs('/api/drawing_logs', params, false)
+
+// ============================================================================
 // Task Logs API
 // ============================================================================
 

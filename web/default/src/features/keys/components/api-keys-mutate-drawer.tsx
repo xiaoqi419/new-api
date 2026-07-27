@@ -52,6 +52,14 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -62,7 +70,6 @@ import {
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { cn } from '@/lib/utils'
@@ -75,7 +82,6 @@ import {
   getApiKeyFormDefaultValues,
   transformFormDataToPayload,
   transformApiKeyToFormDefaults,
-  isAutoGroupValue,
 } from '../lib'
 import type { ApiKey } from '../types'
 import {
@@ -83,6 +89,15 @@ import {
   type ApiKeyGroupOption,
 } from './api-key-group-combobox'
 import { useApiKeys } from './api-keys-provider'
+
+const THRESHOLD_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: String(n),
+}))
+const COOLDOWN_OPTIONS = [5, 10, 30].map((n) => ({
+  value: String(n),
+  label: String(n),
+}))
 
 type ApiKeyMutateDrawerProps = {
   open: boolean
@@ -98,10 +113,8 @@ export function ApiKeysMutateDrawer({
   const { t } = useTranslation()
   const isUpdate = !!currentRow
   const { triggerRefresh } = useApiKeys()
-  const { status } = useStatus()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const defaultUseAutoGroup = status?.default_use_auto_group === true
 
   // Fetch models
   const { data: modelsData } = useQuery({
@@ -129,12 +142,18 @@ export function ApiKeysMutateDrawer({
       ratio: info.ratio,
     })
   )
-  const backendHasAuto = groups.some((g) => g.value === 'auto')
+  // Candidate options for auto-switch, ordered by ratio (cheapest first).
+  const candidateGroupOptions = [...groups]
+    .sort((a, b) => (Number(a.ratio) || 0) - (Number(b.ratio) || 0))
+    .map((g) => ({
+      value: g.value,
+      label: typeof g.ratio === 'number' ? `${g.value} (×${g.ratio})` : g.value,
+    }))
   const schema = getApiKeyFormSchema(t)
 
   const form = useForm<ApiKeyFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: getApiKeyFormDefaultValues(defaultUseAutoGroup),
+    defaultValues: getApiKeyFormDefaultValues(),
   })
 
   // Load existing data when updating
@@ -146,13 +165,12 @@ export function ApiKeysMutateDrawer({
         }
       })
     } else if (open && !isUpdate) {
-      form.reset(
-        getApiKeyFormDefaultValues(defaultUseAutoGroup && backendHasAuto)
-      )
+      form.reset(getApiKeyFormDefaultValues())
     }
-  }, [open, isUpdate, currentRow, form, defaultUseAutoGroup, backendHasAuto])
+  }, [open, isUpdate, currentRow, form])
 
-  // Correct group after groups load: if the form value is not in available groups, fall back
+  // Correct fixed group after groups load: if the form value is not in
+  // available groups, fall back to a valid one.
   useEffect(() => {
     if (groups.length === 0) return
     const currentGroup = form.getValues('group')
@@ -162,9 +180,6 @@ export function ApiKeysMutateDrawer({
         groups[0]?.value ??
         ''
       form.setValue('group', fallback)
-      if (isAutoGroupValue(currentGroup)) {
-        form.setValue('cross_group_retry', false)
-      }
     }
   }, [groups, form])
 
@@ -248,7 +263,7 @@ export function ApiKeysMutateDrawer({
   const quotaPlaceholder = tokensOnly
     ? t('Enter quota in tokens')
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
-  const selectedGroup = form.watch('group')
+  const groupSwitchEnabled = form.watch('group_switch_enabled')
   const unlimitedQuota = form.watch('unlimited_quota')
 
   return (
@@ -303,48 +318,162 @@ export function ApiKeysMutateDrawer({
 
               <FormField
                 control={form.control}
-                name='group'
+                name='group_switch_enabled'
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('Group')}</FormLabel>
+                  <FormItem className={sideDrawerSwitchItemClassName()}>
+                    <div className='flex flex-col gap-0.5'>
+                      <FormLabel className='text-sm'>
+                        {t('Auto-switch groups')}
+                      </FormLabel>
+                      <FormDescription className='line-clamp-2 text-xs sm:line-clamp-none'>
+                        {t(
+                          'Pick multiple candidate groups; requests start from the cheapest and escalate to the next group on repeated failures.'
+                        )}
+                      </FormDescription>
+                    </div>
                     <FormControl>
-                      <ApiKeyGroupCombobox
-                        options={groups}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder={t('Select a group')}
+                      <Switch
+                        checked={!!field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {isAutoGroupValue(selectedGroup) && (
+              {!groupSwitchEnabled && (
                 <FormField
                   control={form.control}
-                  name='cross_group_retry'
+                  name='group'
                   render={({ field }) => (
-                    <FormItem className={sideDrawerSwitchItemClassName()}>
-                      <div className='flex flex-col gap-0.5'>
-                        <FormLabel className='text-sm'>
-                          {t('Cross-group retry')}
-                        </FormLabel>
-                        <FormDescription className='line-clamp-2 text-xs sm:line-clamp-none'>
-                          {t(
-                            'When enabled, if channels in the current group fail, it will try channels in the next group in order.'
-                          )}
-                        </FormDescription>
-                      </div>
+                    <FormItem>
+                      <FormLabel>{t('Group')}</FormLabel>
                       <FormControl>
-                        <Switch
-                          checked={!!field.value}
-                          onCheckedChange={field.onChange}
+                        <ApiKeyGroupCombobox
+                          options={groups}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder={t('Select a group')}
                         />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+              )}
+
+              {groupSwitchEnabled && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name='group_switch_groups'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Candidate groups')}</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={candidateGroupOptions}
+                            selected={field.value ?? []}
+                            onChange={field.onChange}
+                            placeholder={t('Select at least 2 groups')}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'Ordered automatically by ratio (low to high). Prefer groups on the same platform.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='group_switch_threshold'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {t('Failure threshold per group')}
+                          </FormLabel>
+                          <FormControl>
+                            <Select
+                              items={THRESHOLD_OPTIONS}
+                              value={String(field.value ?? 2)}
+                              onValueChange={(v) =>
+                                v !== null && field.onChange(Number(v))
+                              }
+                            >
+                              <SelectTrigger className='w-full'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent alignItemWithTrigger={false}>
+                                <SelectGroup>
+                                  {THRESHOLD_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Retryable upstream failures allowed in a group before escalating to the next.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='group_switch_cooldown'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Cooldown (minutes)')}</FormLabel>
+                          <FormControl>
+                            <Select
+                              items={COOLDOWN_OPTIONS}
+                              value={String(field.value ?? 10)}
+                              onValueChange={(v) =>
+                                v !== null && field.onChange(Number(v))
+                              }
+                            >
+                              <SelectTrigger className='w-full'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent alignItemWithTrigger={false}>
+                                <SelectGroup>
+                                  {COOLDOWN_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'After escalating, later requests keep using the higher group for this long before rechecking the cheapest.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <p className='text-muted-foreground text-xs'>
+                    {t(
+                      'Note: higher-ratio groups cost more. Escalated requests are billed at the group actually used.'
+                    )}
+                  </p>
+                </>
               )}
 
               <FormField

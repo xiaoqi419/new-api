@@ -135,6 +135,10 @@ func main() {
 	// 拼团过期 sweeper：定期将未成团的拼团置为失败并退款
 	controller.StartGroupBuyExpiryTask()
 
+	// 绘图日志：历史一次性回填 + 定期清理过期缩略图
+	go model.BackfillDrawingLogsOnce()
+	service.StartDrawingImageCleanupTask()
+
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
 	service.StartSystemInstanceReporter()

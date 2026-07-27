@@ -53,6 +53,7 @@ func OpenaiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 
 	// 写入新的 response body
 	service.IOCopyBytesGracefully(c, resp, responseBody)
+	service.CaptureImageResults(c, responseBody)
 
 	normalizeOpenAIUsage(&usageResp.Usage)
 	applyUsagePostProcessing(info, &usageResp.Usage, responseBody)
@@ -254,6 +255,7 @@ func openaiImageJSONAsStreamHandler(c *gin.Context, info *relaycommon.RelayInfo,
 
 	imageCount := gjson.GetBytes(responseBody, "data.#").Int()
 	updateOpenAIImageCount(info, imageCount)
+	service.CaptureImageResults(c, responseBody)
 
 	helper.SetEventStreamHeaders(c)
 	c.Status(http.StatusOK)

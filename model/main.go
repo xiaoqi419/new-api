@@ -278,6 +278,7 @@ func migrateDB() error {
 		&Ability{},
 		&Log{},
 		&Midjourney{},
+		&DrawingLog{},
 		&TopUp{},
 		&RebateRecord{},
 		&GroupBuyPackage{},
@@ -306,6 +307,12 @@ func migrateDB() error {
 		&CasbinRule{},
 		&AuthzRole{},
 		&InvoiceRequest{},
+		&IdentityVerification{},
+		&LotteryCard{},
+		&LotteryDrawRecord{},
+		&LotteryConsumeGrant{},
+		&LotteryTopupGrant{},
+		&LotteryTopupTotal{},
 	)
 	if err != nil {
 		return err
@@ -414,6 +421,15 @@ func migrateClickHouseLogDB() error {
 	if err := LOG_DB.Exec(clickHouseLogCreateTableSQL(ttlDays)).Error; err != nil {
 		return err
 	}
+	// Additive columns for the drawing-log feature on pre-existing ClickHouse tables.
+	for _, ddl := range []string{
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS is_image UInt8 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS log_mode String DEFAULT ''",
+	} {
+		if err := LOG_DB.Exec(ddl).Error; err != nil {
+			return err
+		}
+	}
 	return syncClickHouseLogTTL(ttlDays)
 }
 
@@ -462,7 +478,9 @@ CREATE TABLE IF NOT EXISTS logs (
 	ip String DEFAULT '',
 	request_id String DEFAULT '',
 	upstream_request_id String DEFAULT '',
-	other String DEFAULT ''
+	other String DEFAULT '',
+	is_image UInt8 DEFAULT 0,
+	log_mode String DEFAULT ''
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(toDateTime(created_at))

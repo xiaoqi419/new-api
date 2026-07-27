@@ -17,31 +17,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import {
-  Activity,
+  BadgeCheck,
   Box,
   Clapperboard,
   CreditCard,
+  Dices,
   FileText,
   FlaskConical,
   Gauge,
   Gift,
   HandCoins,
-  Handshake,
+  History,
   Images,
   Key,
   LayoutDashboard,
-  ListTodo,
-  MessageSquare,
   Radio,
-  Receipt,
   ReceiptText,
+  Rocket,
   ServerCog,
   Settings,
   Ticket,
   TriangleAlert,
   Trophy,
   User,
-  UserPlus,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -66,14 +64,14 @@ export function useSidebarData(): SidebarData {
         title: t('Chat'),
         items: [
           {
+            title: t('Workbench'),
+            url: '/workbench',
+            icon: Rocket,
+          },
+          {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
-          },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
           },
         ],
       },
@@ -82,13 +80,13 @@ export function useSidebarData(): SidebarData {
         title: t('General'),
         items: [
           {
-            title: t('Overview'),
+            title: t('Analytics'),
             url: '/dashboard/overview',
-            icon: Activity,
-          },
-          {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
+            activeUrls: [
+              '/dashboard/models',
+              '/dashboard/flow',
+              '/dashboard/users',
+            ],
             icon: LayoutDashboard,
           },
           {
@@ -97,16 +95,15 @@ export function useSidebarData(): SidebarData {
             icon: Key,
           },
           {
-            title: t('Usage Logs'),
+            title: t('Consumption Logs'),
             url: '/usage-logs/common',
+            activeUrls: ['/usage-logs/drawing', '/usage-logs/task'],
+            configUrls: [
+              '/usage-logs/common',
+              '/usage-logs/drawing',
+              '/usage-logs/task',
+            ],
             icon: FileText,
-          },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
           },
           {
             title: t('Channel Monitor'),
@@ -137,29 +134,34 @@ export function useSidebarData(): SidebarData {
         title: t('Personal'),
         items: [
           {
-            title: t('Wallet'),
-            url: '/wallet',
+            title: t('Finance Center'),
+            url: '/finance/wallet',
+            activeUrls: [
+              '/finance/groupbuy',
+              '/finance/invoices',
+              '/finance/lottery',
+              '/groupbuy/detail',
+            ],
+            configUrls: [
+              '/finance/wallet',
+              '/finance/groupbuy',
+              '/finance/invoices',
+              '/finance/lottery',
+            ],
             icon: Wallet,
           },
           {
-            title: t('Group Buy Hall'),
-            url: '/groupbuy',
-            activeUrls: ['/groupbuy/detail'],
-            icon: Handshake,
-          },
-          {
-            title: t('Invitation'),
-            url: '/invitation',
-            icon: UserPlus,
-          },
-          {
-            title: t('Invoices'),
-            url: '/invoices',
-            icon: Receipt,
-          },
-          {
-            title: t('Profile'),
-            url: '/profile',
+            title: t('Personal Center'),
+            url: '/account/profile',
+            activeUrls: [
+              '/account/invitation',
+              '/account/identity-verification',
+            ],
+            configUrls: [
+              '/account/profile',
+              '/account/invitation',
+              '/account/identity-verification',
+            ],
             icon: User,
           },
         ],
@@ -217,6 +219,21 @@ export function useSidebarData(): SidebarData {
             title: t('Invoice Management'),
             url: '/invoices/admin',
             icon: ReceiptText,
+          },
+          {
+            title: t('Identity Verification Management'),
+            url: '/identity-verification/admin',
+            icon: BadgeCheck,
+          },
+          {
+            title: t('Lottery Management'),
+            url: '/lottery/admin',
+            icon: Dices,
+          },
+          {
+            title: t('Changelog'),
+            url: '/changelog',
+            icon: History,
           },
           {
             title: t('System Info'),

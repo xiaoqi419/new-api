@@ -213,7 +213,7 @@ export function CliQuickstart({
               <Button
                 className='group mt-9 h-11 rounded-lg px-6 text-sm font-medium'
                 render={
-                  <Link to={isAuthenticated ? '/dashboard' : '/sign-up'} />
+                  <Link to={isAuthenticated ? '/workbench' : '/sign-up'} />
                 }
               >
                 {c.hero.ctaLabel}

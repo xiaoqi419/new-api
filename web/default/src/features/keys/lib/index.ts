@@ -26,5 +26,5 @@ export {
   getApiKeyFormDefaultValues,
   transformFormDataToPayload,
   transformApiKeyToFormDefaults,
-  isAutoGroupValue,
+  parseGroupSwitchGroups,
 } from './api-key-form'

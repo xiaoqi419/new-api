@@ -29,6 +29,7 @@ import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
 import { HomeTemplatesSection } from './home-templates-section'
+import { LoginPageSection } from './login-page-section'
 
 const SITE_SECTIONS = [
   {
@@ -59,6 +60,13 @@ const SITE_SECTIONS = [
     titleKey: 'Home Page Management',
     build: (settings: SiteSettings) => (
       <HomeTemplatesSection defaultValue={settings.HomePageConfig ?? ''} />
+    ),
+  },
+  {
+    id: 'login-page',
+    titleKey: 'Login Page',
+    build: (settings: SiteSettings) => (
+      <LoginPageSection defaultValue={settings.LoginPageConfig ?? ''} />
     ),
   },
   {

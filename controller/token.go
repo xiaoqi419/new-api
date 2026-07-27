@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,27 +11,52 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
 )
 
-// validateTokenAutoGroup rejects tokens whose group references an unknown or
-// disabled named auto route, and prevents non-admin users from selecting a
-// route that is not user_selectable. The legacy "auto" group and ordinary
-// groups pass through unchanged.
-func validateTokenAutoGroup(group string, role int) error {
-	if !strings.HasPrefix(group, setting.AutoGroupPrefix) {
+var allowedGroupSwitchCooldowns = map[int]bool{5: true, 10: true, 30: true}
+
+// normalizeGroupSwitch validates and normalizes the token's group auto-switch
+// fields against the requesting user's usable groups. It mutates the token in
+// place: deduping candidates, clamping the failure threshold to [1,5], and
+// snapping the cooldown to an allowed value. When switch mode is off it clears
+// the candidate list.
+func normalizeGroupSwitch(token *model.Token, userId int) error {
+	if !token.GroupSwitchEnabled {
+		token.GroupSwitchGroups = ""
 		return nil
 	}
-	key := strings.TrimPrefix(group, setting.AutoGroupPrefix)
-	route, ok := setting.GetAutoGroupRoute(key)
-	if !ok || !route.Enabled {
-		return fmt.Errorf("auto route not found or disabled: %s", group)
+	userGroup, _ := model.GetUserGroup(userId, false)
+	usable := service.GetUserUsableGroups(userGroup)
+	seen := make(map[string]bool)
+	groups := make([]string, 0)
+	for _, group := range token.GetGroupSwitchGroups() {
+		if group == "" || seen[group] {
+			continue
+		}
+		if _, ok := usable[group]; !ok {
+			return fmt.Errorf("分组不可用: %s", group)
+		}
+		seen[group] = true
+		groups = append(groups, group)
 	}
-	if role < common.RoleAdminUser && !route.UserSelectable {
-		return fmt.Errorf("auto route not selectable: %s", group)
+	if len(groups) < 2 {
+		return errors.New("自动切换至少需要选择 2 个候选分组")
+	}
+	encoded, err := common.Marshal(groups)
+	if err != nil {
+		return err
+	}
+	token.GroupSwitchGroups = string(encoded)
+	if token.GroupSwitchThreshold < 1 {
+		token.GroupSwitchThreshold = 1
+	} else if token.GroupSwitchThreshold > 5 {
+		token.GroupSwitchThreshold = 5
+	}
+	if !allowedGroupSwitchCooldowns[token.GroupSwitchCooldown] {
+		token.GroupSwitchCooldown = 10
 	}
 	return nil
 }
@@ -231,7 +257,7 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
 	}
-	if err := validateTokenAutoGroup(token.Group, c.GetInt("role")); err != nil {
+	if err := normalizeGroupSwitch(&token, c.GetInt("id")); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -268,20 +294,24 @@ func AddToken(c *gin.Context) {
 		return
 	}
 	cleanToken := model.Token{
-		UserId:             c.GetInt("id"),
-		Name:               token.Name,
-		Key:                key,
-		CreatedTime:        common.GetTimestamp(),
-		AccessedTime:       common.GetTimestamp(),
-		ExpiredTime:        token.ExpiredTime,
-		RemainQuota:        token.RemainQuota,
-		UnlimitedQuota:     token.UnlimitedQuota,
-		ModelLimitsEnabled: token.ModelLimitsEnabled,
-		ModelLimits:        token.ModelLimits,
-		AllowIps:           token.AllowIps,
-		Group:              token.Group,
-		CrossGroupRetry:    token.CrossGroupRetry,
-		MaxConcurrency:     token.MaxConcurrency,
+		UserId:               c.GetInt("id"),
+		Name:                 token.Name,
+		Key:                  key,
+		CreatedTime:          common.GetTimestamp(),
+		AccessedTime:         common.GetTimestamp(),
+		ExpiredTime:          token.ExpiredTime,
+		RemainQuota:          token.RemainQuota,
+		UnlimitedQuota:       token.UnlimitedQuota,
+		ModelLimitsEnabled:   token.ModelLimitsEnabled,
+		ModelLimits:          token.ModelLimits,
+		AllowIps:             token.AllowIps,
+		Group:                token.Group,
+		CrossGroupRetry:      token.CrossGroupRetry,
+		GroupSwitchEnabled:   token.GroupSwitchEnabled,
+		GroupSwitchGroups:    token.GroupSwitchGroups,
+		GroupSwitchThreshold: token.GroupSwitchThreshold,
+		GroupSwitchCooldown:  token.GroupSwitchCooldown,
+		MaxConcurrency:       token.MaxConcurrency,
 	}
 	if cleanToken.MaxConcurrency < 0 {
 		cleanToken.MaxConcurrency = 0
@@ -353,7 +383,7 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
-		if err := validateTokenAutoGroup(token.Group, c.GetInt("role")); err != nil {
+		if err := normalizeGroupSwitch(&token, c.GetInt("id")); err != nil {
 			common.ApiError(c, err)
 			return
 		}
@@ -367,6 +397,10 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		cleanToken.GroupSwitchEnabled = token.GroupSwitchEnabled
+		cleanToken.GroupSwitchGroups = token.GroupSwitchGroups
+		cleanToken.GroupSwitchThreshold = token.GroupSwitchThreshold
+		cleanToken.GroupSwitchCooldown = token.GroupSwitchCooldown
 		cleanToken.MaxConcurrency = token.MaxConcurrency
 		if cleanToken.MaxConcurrency < 0 {
 			cleanToken.MaxConcurrency = 0

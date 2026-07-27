@@ -24,7 +24,6 @@ import { QuotaSettingsSection } from '../general/quota-settings-section'
 import { AlipaySettingsSection } from '../integrations/alipay-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
 import { WechatPaySettingsSection } from '../integrations/wechat-pay-settings-section'
-import { AutoRoutesSection } from '../models/auto-routes-section'
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -127,16 +126,6 @@ const BILLING_SECTIONS = [
         groupDefaults={getGroupDefaults(settings)}
         toolPricesDefault={settings['tool_price_setting.prices']}
         visibleTabs={['groups']}
-      />
-    ),
-  },
-  {
-    id: 'auto-routes',
-    titleKey: 'Auto Routes',
-    build: (settings: BillingSettings) => (
-      <AutoRoutesSection
-        autoGroupRoutes={settings.AutoGroupRoutes}
-        groupRatio={settings.GroupRatio}
       />
     ),
   },

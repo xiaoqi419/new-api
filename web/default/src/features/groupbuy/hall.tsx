@@ -20,7 +20,6 @@ import { useNavigate } from '@tanstack/react-router'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { SectionPageLayout } from '@/components/layout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,92 +45,87 @@ export function GroupBuyHall() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <SectionPageLayout>
-      <SectionPageLayout.Title>{t('Group Buy Hall')}</SectionPageLayout.Title>
-      <SectionPageLayout.Content>
-        <div className='mx-auto flex w-full max-w-6xl flex-col gap-4'>
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-muted-foreground text-sm'>
-              {t(
-                'The more people who join, the more quota everyone receives. Invite friends to team up!'
-              )}
-            </p>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => load(page)}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`mr-2 size-3.5 ${loading ? 'animate-spin' : ''}`}
-              />
-              {t('Refresh')}
-            </Button>
-          </div>
-
-          <GroupBuyLaunchCard />
-
-          {!enabled && (
-            <Alert>
-              <AlertDescription>
-                {t('Group buy top-up is not enabled by the administrator')}
-              </AlertDescription>
-            </Alert>
+    <div className='mx-auto flex w-full max-w-6xl flex-col gap-4'>
+      <div className='flex items-center justify-between gap-3'>
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            'The more people who join, the more quota everyone receives. Invite friends to team up!'
           )}
+        </p>
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={() => load(page)}
+          disabled={loading}
+        >
+          <RefreshCw
+            className={`mr-2 size-3.5 ${loading ? 'animate-spin' : ''}`}
+          />
+          {t('Refresh')}
+        </Button>
+      </div>
 
-          {enabled && loading && (
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-              {['a', 'b', 'c'].map((key) => (
-                <Skeleton key={key} className='h-64 w-full rounded-xl' />
-              ))}
+      <GroupBuyLaunchCard />
+
+      {!enabled && (
+        <Alert>
+          <AlertDescription>
+            {t('Group buy top-up is not enabled by the administrator')}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {enabled && loading && (
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+          {['a', 'b', 'c'].map((key) => (
+            <Skeleton key={key} className='h-64 w-full rounded-xl' />
+          ))}
+        </div>
+      )}
+
+      {enabled && !loading && items.length === 0 && (
+        <Empty className='min-h-64 border'>
+          <EmptyHeader>
+            <EmptyTitle>{t('No active group buys')}</EmptyTitle>
+            <EmptyDescription>
+              {t('Start a new group buy above')}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+
+      {enabled && !loading && items.length > 0 && (
+        <>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            {items.map((item) => (
+              <HallCard key={item.group_no} item={item} onOpen={goDetail} />
+            ))}
+          </div>
+          {total > pageSize && (
+            <div className='flex items-center justify-center gap-3'>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={page <= 1 || loading}
+                onClick={() => load(page - 1)}
+              >
+                {t('Previous')}
+              </Button>
+              <span className='text-muted-foreground text-sm'>
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={page >= totalPages || loading}
+                onClick={() => load(page + 1)}
+              >
+                {t('Next')}
+              </Button>
             </div>
           )}
-
-          {enabled && !loading && items.length === 0 && (
-            <Empty className='min-h-64 border'>
-              <EmptyHeader>
-                <EmptyTitle>{t('No active group buys')}</EmptyTitle>
-                <EmptyDescription>
-                  {t('Start a new group buy above')}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-
-          {enabled && !loading && items.length > 0 && (
-            <>
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                {items.map((item) => (
-                  <HallCard key={item.group_no} item={item} onOpen={goDetail} />
-                ))}
-              </div>
-              {total > pageSize && (
-                <div className='flex items-center justify-center gap-3'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={page <= 1 || loading}
-                    onClick={() => load(page - 1)}
-                  >
-                    {t('Previous')}
-                  </Button>
-                  <span className='text-muted-foreground text-sm'>
-                    {page} / {totalPages}
-                  </span>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={page >= totalPages || loading}
-                    onClick={() => load(page + 1)}
-                  >
-                    {t('Next')}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </SectionPageLayout.Content>
-    </SectionPageLayout>
+        </>
+      )}
+    </div>
   )
 }

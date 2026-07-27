@@ -488,6 +488,15 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 
 	attachQuotaSaturation(ctx, relayInfo, other)
 
+	drawingLogMode := common.GetContextKeyString(ctx, constant.ContextKeyDrawingLogMode)
+	if drawingLogMode == "" {
+		if v, ok := other["image"].(bool); ok && v {
+			drawingLogMode = "chat_image"
+		} else if v, ok := other["image_generation_call"].(bool); ok && v {
+			drawingLogMode = "image_generation_call"
+		}
+	}
+
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
 		ChannelId:        relayInfo.ChannelId,
 		PromptTokens:     summary.PromptTokens,
@@ -501,6 +510,8 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		IsStream:         relayInfo.IsStream,
 		Group:            relayInfo.UsingGroup,
 		Other:            other,
+		IsImage:          drawingLogMode != "",
+		LogMode:          drawingLogMode,
 	})
 	gopool.Go(func() {
 		perfmetrics.RecordRelaySample(relayInfo, true, int64(summary.CompletionTokens))

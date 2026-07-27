@@ -17,45 +17,130 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { cn } from '@/lib/utils'
+
+import { parseLoginPageConfig } from './lib/login-page-config'
 
 type AuthLayoutProps = {
   children: React.ReactNode
 }
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+function BrandMark({ className }: { className?: string }) {
   const { t } = useTranslation()
   const { systemName, logo, loading } = useSystemConfig()
 
   return (
-    <div className='relative grid h-svh max-w-none'>
-      <Link
-        to='/'
-        className='absolute top-4 left-4 z-10 flex items-center gap-2 transition-opacity hover:opacity-80 sm:top-8 sm:left-8'
-      >
-        <div className='relative h-8 w-8'>
-          {loading ? (
-            <Skeleton className='absolute inset-0 rounded-full' />
-          ) : (
-            <img
-              src={logo}
-              alt={t('Logo')}
-              className='h-8 w-8 rounded-full object-cover'
-            />
+    <Link
+      to='/'
+      className={cn(
+        'flex items-center gap-2 transition-opacity hover:opacity-80',
+        className
+      )}
+    >
+      <div className='relative h-8 w-8'>
+        {loading ? (
+          <Skeleton className='absolute inset-0 rounded-full' />
+        ) : (
+          <img
+            src={logo}
+            alt={t('Logo')}
+            className='h-8 w-8 rounded-full object-cover'
+          />
+        )}
+      </div>
+      {loading ? (
+        <Skeleton className='h-6 w-24' />
+      ) : (
+        <span className='text-lg font-semibold'>{systemName}</span>
+      )}
+    </Link>
+  )
+}
+
+export function AuthLayout({ children }: AuthLayoutProps) {
+  const { systemName } = useSystemConfig()
+  const { status } = useStatus()
+
+  const config = useMemo(
+    () => parseLoginPageConfig(status?.login_page_config),
+    [status?.login_page_config]
+  )
+
+  const heroTitle = config.title || systemName
+  const stats = config.stats ?? []
+  const hasBackground = Boolean(config.background_image)
+
+  return (
+    <div className='grid h-svh lg:grid-cols-2'>
+      {/* Brand panel (desktop only) */}
+      <div className='relative hidden overflow-hidden bg-neutral-900 text-white lg:flex lg:flex-col lg:justify-between lg:p-12'>
+        {hasBackground && (
+          <img
+            src={config.background_image}
+            alt=''
+            aria-hidden='true'
+            className='absolute inset-0 h-full w-full object-cover'
+          />
+        )}
+        <div
+          aria-hidden='true'
+          className={cn(
+            'absolute inset-0',
+            hasBackground
+              ? 'bg-gradient-to-t from-black/80 via-black/40 to-black/20'
+              : 'bg-gradient-to-br from-neutral-800 via-neutral-900 to-black'
+          )}
+        />
+
+        <BrandMark className='relative z-10 w-fit' />
+
+        <div className='relative z-10 space-y-6'>
+          <div className='space-y-3'>
+            <h2 className='text-3xl font-semibold tracking-tight'>
+              {heroTitle}
+            </h2>
+            {config.description && (
+              <p className='max-w-md text-sm leading-relaxed text-white/70'>
+                {config.description}
+              </p>
+            )}
+          </div>
+
+          {stats.length > 0 && (
+            <div className='flex flex-wrap gap-x-10 gap-y-4'>
+              {stats.map((stat) => (
+                <div
+                  key={`${stat.value}|${stat.label}`}
+                  className='flex flex-col'
+                >
+                  <span className='text-2xl font-bold tracking-tight'>
+                    {stat.value}
+                  </span>
+                  {stat.label && (
+                    <span className='mt-0.5 text-xs text-white/60'>
+                      {stat.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
-        {loading ? (
-          <Skeleton className='h-6 w-24' />
-        ) : (
-          <h1 className='text-xl font-medium'>{systemName}</h1>
-        )}
-      </Link>
-      <div className='container flex items-center pt-16 sm:pt-0'>
-        <div className='mx-auto flex w-full flex-col justify-center space-y-2 px-4 py-8 sm:w-[480px] sm:p-8'>
-          {children}
+      </div>
+
+      {/* Form panel */}
+      <div className='relative flex flex-col'>
+        <div className='p-4 sm:p-6 lg:hidden'>
+          <BrandMark className='w-fit' />
+        </div>
+        <div className='flex flex-1 items-center justify-center px-4 pb-12 sm:px-8'>
+          <div className='w-full max-w-[400px]'>{children}</div>
         </div>
       </div>
     </div>

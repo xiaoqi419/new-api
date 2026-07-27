@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2023-2026 QuantumNous
+Copyright (C) 2025 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -16,21 +16,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { Wallet } from '@/features/wallet'
+import { ChangelogPage } from '@/features/changelog'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
-const walletSearchSchema = z.object({
-  show_history: z.boolean().optional(),
+export const Route = createFileRoute('/_authenticated/changelog/')({
+  beforeLoad: () => {
+    const { auth } = useAuthStore.getState()
+
+    if (!auth.user || auth.user.role < ROLE.ADMIN) {
+      throw redirect({
+        to: '/403',
+      })
+    }
+  },
+  component: ChangelogPage,
 })
-
-export const Route = createFileRoute('/_authenticated/wallet/')({
-  component: RouteComponent,
-  validateSearch: walletSearchSchema,
-})
-
-function RouteComponent() {
-  const { show_history } = Route.useSearch()
-  return <Wallet initialShowHistory={show_history} />
-}

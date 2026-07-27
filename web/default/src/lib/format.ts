@@ -116,6 +116,15 @@ export function quotaUnitsToDollars(units: number): number {
   return usdAmount * exchangeRate
 }
 
+/**
+ * Seed a display-currency input field from raw quota units.
+ * Returns an empty string for non-positive values so the placeholder shows.
+ */
+export function quotaUnitsToInput(units: number): string {
+  if (!Number.isFinite(units) || units <= 0) return ''
+  return String(quotaUnitsToDollars(units))
+}
+
 // ============================================================================
 // Timestamp Formatting
 // ============================================================================

@@ -253,7 +253,21 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	// Group auto-switch needs enough retry budget to traverse each candidate
+	// group up to its per-group failure threshold before escalating.
+	maxRetry := common.RetryTimes
+	if common.GetContextKeyBool(c, constant.ContextKeyTokenGroupSwitch) {
+		candidates := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroupSwitchCandidates)
+		threshold := common.GetContextKeyInt(c, constant.ContextKeyTokenGroupSwitchThreshold)
+		if threshold < 1 {
+			threshold = 1
+		}
+		if budget := len(candidates) * threshold; budget > maxRetry {
+			maxRetry = budget
+		}
+	}
+
+	for ; retryParam.GetRetry() <= maxRetry; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
@@ -299,9 +313,12 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 
-		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
+		if !shouldRetry(c, newAPIError, maxRetry-retryParam.GetRetry()) {
 			break
 		}
+		// Count this failed group attempt; escalate to the next candidate group
+		// once the per-group threshold is reached (no-op unless group switch is on).
+		service.RecordGroupSwitchFailure(c)
 	}
 
 	useChannel := c.GetStringSlice("use_channel")
@@ -575,62 +592,73 @@ func RelayTask(c *gin.Context) {
 		}
 	}()
 
-	retryParam := &service.RetryParam{
-		Ctx:         c,
-		TokenGroup:  relayInfo.TokenGroup,
-		ModelName:   relayInfo.OriginModelName,
-		RequestPath: c.Request.URL.Path,
-		Retry:       common.GetPointer(0),
-	}
+	for assetRetry := 0; ; assetRetry++ {
+		result = nil
+		taskErr = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
-		var channel *model.Channel
+		retryParam := &service.RetryParam{
+			Ctx:         c,
+			TokenGroup:  relayInfo.TokenGroup,
+			ModelName:   relayInfo.OriginModelName,
+			RequestPath: c.Request.URL.Path,
+			Retry:       common.GetPointer(0),
+		}
 
-		if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
-			channel = lockedCh
-			if retryParam.GetRetry() > 0 {
-				if setupErr := middleware.SetupContextForSelectedChannel(c, channel, relayInfo.OriginModelName); setupErr != nil {
-					taskErr = service.TaskErrorWrapperLocal(setupErr.Err, "setup_locked_channel_failed", http.StatusInternalServerError)
+		for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+			var channel *model.Channel
+
+			if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
+				channel = lockedCh
+				if retryParam.GetRetry() > 0 {
+					if setupErr := middleware.SetupContextForSelectedChannel(c, channel, relayInfo.OriginModelName); setupErr != nil {
+						taskErr = service.TaskErrorWrapperLocal(setupErr.Err, "setup_locked_channel_failed", http.StatusInternalServerError)
+						break
+					}
+				}
+			} else {
+				var channelErr *types.NewAPIError
+				channel, channelErr = getChannel(c, relayInfo, retryParam)
+				if channelErr != nil {
+					logger.LogError(c, channelErr.Error())
+					taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
 					break
 				}
 			}
-		} else {
-			var channelErr *types.NewAPIError
-			channel, channelErr = getChannel(c, relayInfo, retryParam)
-			if channelErr != nil {
-				logger.LogError(c, channelErr.Error())
-				taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
+
+			addUsedChannel(c, channel.Id)
+			bodyStorage, bodyErr := common.GetBodyStorage(c)
+			if bodyErr != nil {
+				if common.IsRequestBodyTooLargeError(bodyErr) || errors.Is(bodyErr, common.ErrRequestBodyTooLarge) {
+					taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusRequestEntityTooLarge)
+				} else {
+					taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusBadRequest)
+				}
+				break
+			}
+			c.Request.Body = io.NopCloser(bodyStorage)
+
+			result, taskErr = relay.RelayTaskSubmit(c, relayInfo)
+			if taskErr == nil {
+				break
+			}
+
+			if !taskErr.LocalError {
+				processChannelError(c,
+					*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey,
+						common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()),
+					types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
+			}
+
+			if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {
 				break
 			}
 		}
 
-		addUsedChannel(c, channel.Id)
-		bodyStorage, bodyErr := common.GetBodyStorage(c)
-		if bodyErr != nil {
-			if common.IsRequestBodyTooLargeError(bodyErr) || errors.Is(bodyErr, common.ErrRequestBodyTooLarge) {
-				taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusRequestEntityTooLarge)
-			} else {
-				taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusBadRequest)
-			}
-			break
+		if taskErr != nil && assetRetry == 0 && isArkPrivacyBlocked(taskErr) &&
+			autoConvertArkAssetsOnPrivacyBlock(c, relayInfo) {
+			continue
 		}
-		c.Request.Body = io.NopCloser(bodyStorage)
-
-		result, taskErr = relay.RelayTaskSubmit(c, relayInfo)
-		if taskErr == nil {
-			break
-		}
-
-		if !taskErr.LocalError {
-			processChannelError(c,
-				*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey,
-					common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()),
-				types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
-		}
-
-		if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {
-			break
-		}
+		break
 	}
 
 	useChannel := c.GetStringSlice("use_channel")

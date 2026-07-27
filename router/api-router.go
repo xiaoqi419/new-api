@@ -300,6 +300,43 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		identityVerifyRoute := apiRouter.Group("/identity_verification")
+		identityVerifyRoute.Use(middleware.UserAuth())
+		{
+			identityVerifyRoute.GET("/types", controller.GetIdentityVerifyTypes)
+			identityVerifyRoute.POST("/", controller.SubmitIdentityVerification)
+			identityVerifyRoute.GET("/self", controller.GetSelfIdentityVerifications)
+			identityVerifyRoute.GET("/proof/:id", controller.DownloadIdentityProof)
+
+			identityVerifyAdminRoute := identityVerifyRoute.Group("/admin")
+			identityVerifyAdminRoute.Use(middleware.AdminAuth())
+			{
+				identityVerifyAdminRoute.GET("/", controller.GetAllIdentityVerifications)
+				identityVerifyAdminRoute.POST("/:id/approve", controller.ApproveIdentityVerification)
+				identityVerifyAdminRoute.POST("/:id/reject", controller.RejectIdentityVerification)
+				identityVerifyAdminRoute.GET("/config", controller.GetIdentityVerifyConfig)
+				identityVerifyAdminRoute.PUT("/config", controller.SaveIdentityVerifyConfig)
+			}
+		}
+
+		lotteryRoute := apiRouter.Group("/lottery")
+		lotteryRoute.Use(middleware.UserAuth())
+		{
+			lotteryRoute.GET("/status", controller.GetLotteryStatus)
+			lotteryRoute.POST("/draw", controller.DrawLottery)
+			lotteryRoute.GET("/cards", controller.GetSelfLotteryCards)
+			lotteryRoute.GET("/records", controller.GetSelfLotteryRecords)
+
+			lotteryAdminRoute := lotteryRoute.Group("/admin")
+			lotteryAdminRoute.Use(middleware.AdminAuth())
+			{
+				lotteryAdminRoute.GET("/records", controller.GetAllLotteryRecords)
+				lotteryAdminRoute.POST("/grant", controller.GrantLotteryCards)
+				lotteryAdminRoute.GET("/config", controller.GetLotteryConfig)
+				lotteryAdminRoute.PUT("/config", controller.SaveLotteryConfig)
+			}
+		}
+
 		usageRoute := apiRouter.Group("/usage")
 		usageRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{
@@ -430,6 +467,14 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			taskRoute.GET("/self", middleware.UserAuth(), controller.GetUserTask)
 			taskRoute.GET("/", middleware.AdminAuth(), controller.GetAllTask)
+		}
+
+		drawingLogRoute := apiRouter.Group("/drawing_logs")
+		{
+			// Public: thumbnails are served by their unguessable 32-char key.
+			drawingLogRoute.GET("/image/:key", controller.ServeDrawingImage)
+			drawingLogRoute.GET("/self", middleware.UserAuth(), controller.GetUserDrawingLogs)
+			drawingLogRoute.GET("/", middleware.AdminAuth(), controller.GetAllDrawingLogs)
 		}
 
 		vendorRoute := apiRouter.Group("/vendors")

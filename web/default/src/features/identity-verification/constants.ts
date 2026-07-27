@@ -16,10 +16,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+// ============================================================================
+// Identity Verification Constants
+// ============================================================================
 
-import { UserInvoices } from '@/features/invoices'
+export const IDENTITY_PAGE_SIZE = 10
 
-export const Route = createFileRoute('/_authenticated/invoices/')({
-  component: UserInvoices,
-})
+export const IDENTITY_STATUS_PENDING = 0
+export const IDENTITY_STATUS_APPROVED = 1
+export const IDENTITY_STATUS_REJECTED = 2
+
+/** Max proof upload size (bytes), matches backend limit. */
+export const MAX_IDENTITY_PROOF_BYTES = 10 * 1024 * 1024
+
+/** Accepted proof file extensions, matches backend allowlist. */
+export const IDENTITY_PROOF_ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf'

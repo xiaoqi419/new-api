@@ -22,7 +22,7 @@ import { z } from 'zod'
 import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 
 import { DEFAULT_GROUP } from '../constants'
-import { type ApiKeyFormData, type ApiKey } from '../types'
+import type { ApiKeyFormData, ApiKey } from '../types'
 
 // ============================================================================
 // Form Schema
@@ -38,11 +38,25 @@ export function getApiKeyFormSchema(t: TFunction) {
       model_limits: z.array(z.string()),
       allow_ips: z.string().optional(),
       group: z.string().optional(),
-      cross_group_retry: z.boolean().optional(),
+      group_switch_enabled: z.boolean().optional(),
+      group_switch_groups: z.array(z.string()).optional(),
+      group_switch_threshold: z.number().min(1).max(5).optional(),
+      group_switch_cooldown: z.number().optional(),
       max_concurrency: z.number().min(0).optional(),
       tokenCount: z.number().min(1).optional(),
     })
     .superRefine((data, ctx) => {
+      if (
+        data.group_switch_enabled &&
+        (data.group_switch_groups?.length ?? 0) < 2
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['group_switch_groups'],
+          message: t('Please select at least 2 candidate groups'),
+        })
+      }
+
       if (data.unlimited_quota) {
         return
       }
@@ -74,27 +88,31 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   model_limits: [],
   allow_ips: '',
   group: DEFAULT_GROUP,
-  cross_group_retry: true,
+  group_switch_enabled: false,
+  group_switch_groups: [],
+  group_switch_threshold: 2,
+  group_switch_cooldown: 10,
   max_concurrency: 0,
   tokenCount: 1,
 }
 
-export function getApiKeyFormDefaultValues(
-  defaultUseAutoGroup: boolean
-): ApiKeyFormValues {
-  return {
-    ...API_KEY_FORM_DEFAULT_VALUES,
-    group: defaultUseAutoGroup ? 'auto' : DEFAULT_GROUP,
-    cross_group_retry: defaultUseAutoGroup,
-  }
+export function getApiKeyFormDefaultValues(): ApiKeyFormValues {
+  return { ...API_KEY_FORM_DEFAULT_VALUES }
 }
 
 /**
- * Whether a token group is an auto route: the legacy "auto" group or a named
- * "auto:<key>" route. Cross-group retry applies to both.
+ * Parse the token's stored candidate group list (JSON array string).
  */
-export function isAutoGroupValue(group?: string): boolean {
-  return group === 'auto' || (group?.startsWith('auto:') ?? false)
+export function parseGroupSwitchGroups(value?: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter((v) => typeof v === 'string')
+      : []
+  } catch {
+    return []
+  }
 }
 
 // ============================================================================
@@ -120,9 +138,10 @@ export function transformFormDataToPayload(
     model_limits: data.model_limits.join(','),
     allow_ips: data.allow_ips || '',
     group: data.group || '',
-    cross_group_retry: isAutoGroupValue(data.group)
-      ? !!data.cross_group_retry
-      : false,
+    group_switch_enabled: !!data.group_switch_enabled,
+    group_switch_groups: JSON.stringify(data.group_switch_groups ?? []),
+    group_switch_threshold: data.group_switch_threshold ?? 2,
+    group_switch_cooldown: data.group_switch_cooldown ?? 10,
     max_concurrency: data.max_concurrency ?? 0,
   }
 }
@@ -148,7 +167,10 @@ export function transformApiKeyToFormDefaults(
       : [],
     allow_ips: apiKey.allow_ips || '',
     group: apiKey.group || DEFAULT_GROUP,
-    cross_group_retry: !!apiKey.cross_group_retry,
+    group_switch_enabled: !!apiKey.group_switch_enabled,
+    group_switch_groups: parseGroupSwitchGroups(apiKey.group_switch_groups),
+    group_switch_threshold: apiKey.group_switch_threshold || 2,
+    group_switch_cooldown: apiKey.group_switch_cooldown || 10,
     max_concurrency: apiKey.max_concurrency ?? 0,
     tokenCount: 1,
   }

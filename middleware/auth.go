@@ -474,8 +474,23 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	} else {
 		c.Set("token_model_limit_enabled", false)
 	}
-	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
+	// Legacy "auto"/"auto:<key>" token groups are retired; fall back to the
+	// user's group so existing keys keep working until reconfigured.
+	tokenGroup := token.Group
+	if tokenGroup == "auto" || strings.HasPrefix(tokenGroup, "auto:") {
+		tokenGroup = ""
+	}
+	common.SetContextKey(c, constant.ContextKeyTokenGroup, tokenGroup)
 	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
+	if token.GroupSwitchEnabled {
+		candidates := token.GetGroupSwitchGroups()
+		if len(candidates) >= 2 {
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitch, true)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchCandidates, candidates)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchThreshold, token.GroupSwitchThreshold)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchCooldown, token.GroupSwitchCooldown)
+		}
+	}
 	if len(parts) > 1 {
 		if model.IsAdmin(token.UserId) {
 			c.Set("specific_channel_id", parts[1])

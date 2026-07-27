@@ -57,6 +57,15 @@ func GetUserVolcAssetByAssetId(userId int, assetId string) (*VolcAsset, error) {
 	return &a, nil
 }
 
+// GetUserVolcAssetByUrl 按原始图片 URL 查用户最近一条素材，用于自动入库去重。
+func GetUserVolcAssetByUrl(userId int, url string) (*VolcAsset, error) {
+	var a VolcAsset
+	if err := DB.Where("user_id = ? AND url = ?", userId, url).Order("id desc").First(&a).Error; err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
 func (a *VolcAsset) Insert() error {
 	now := time.Now().Unix()
 	a.CreatedTime = now

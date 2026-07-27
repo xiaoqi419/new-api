@@ -173,6 +173,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
+	GrantTopupLotteryCards(topUp.UserId, int(quota))
 
 	return nil
 }
@@ -412,6 +413,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	// 事务外记录日志，避免阻塞
 	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
 	CreateInviterRebate(userId, topUpId, tradeNo, quotaToAdd)
+	GrantTopupLotteryCards(userId, quotaToAdd)
 	return nil
 }
 func RechargeCreem(referenceId string, customerEmail string, customerName string, callerIp string) (err error) {
@@ -490,6 +492,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
+	GrantTopupLotteryCards(topUp.UserId, int(quota))
 
 	return nil
 }
@@ -557,6 +560,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 	if quotaToAdd > 0 {
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
+		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 	}
 
 	return nil
@@ -628,6 +632,7 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 	if quotaToAdd > 0 {
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("%s充值成功，充值额度: %v，支付金额: %.2f", logSource, logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, paymentMethod, logSource)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
+		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 	}
 
 	return nil
@@ -694,6 +699,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 	if quotaToAdd > 0 {
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
+		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 	}
 
 	return nil
