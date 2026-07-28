@@ -34,6 +34,7 @@ import {
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
 import { JsonEditor } from '@/components/json-editor'
+import { MultiSelect } from '@/components/multi-select'
 import { TagInput } from '@/components/tag-input'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,6 +99,16 @@ const extendedModelFormSchema = z.object({
   name_rule: z.number(),
   status: z.boolean(),
   sync_official: z.boolean(),
+  // Catalog display metadata (Model Square only). Numeric fields are kept as
+  // strings in the form and coerced on submit, mirroring the ratio fields.
+  context_length: z.string().optional(),
+  max_output_tokens: z.string().optional(),
+  knowledge_cutoff: z.string().optional(),
+  release_date: z.string().optional(),
+  parameter_count: z.string().optional(),
+  input_modalities: z.array(z.string()).optional(),
+  output_modalities: z.array(z.string()).optional(),
+  capabilities: z.array(z.string()).optional(),
   price: z.string().optional(),
   ratio: z.string().optional(),
   cacheRatio: z.string().optional(),
@@ -108,6 +119,48 @@ const extendedModelFormSchema = z.object({
 })
 
 type ExtendedModelFormValues = z.infer<typeof extendedModelFormSchema>
+
+// Canonical catalog vocabularies, kept in sync with the Model Square renderer
+// (features/pricing/components/model-details.tsx).
+const MODALITY_OPTIONS = [
+  { value: 'text', labelKey: 'Text' },
+  { value: 'image', labelKey: 'Image' },
+  { value: 'audio', labelKey: 'Audio' },
+  { value: 'video', labelKey: 'Video' },
+  { value: 'file', labelKey: 'File' },
+] as const
+
+const CAPABILITY_OPTIONS = [
+  { value: 'function_calling', labelKey: 'Function calling' },
+  { value: 'reasoning', labelKey: 'Reasoning' },
+  { value: 'vision', labelKey: 'Vision' },
+  { value: 'streaming', labelKey: 'Streaming' },
+  { value: 'json_mode', labelKey: 'JSON mode' },
+  { value: 'structured_output', labelKey: 'Structured output' },
+  { value: 'tools', labelKey: 'Tools' },
+  { value: 'system_prompt', labelKey: 'System prompt' },
+  { value: 'web_search', labelKey: 'Web search' },
+  { value: 'code_interpreter', labelKey: 'Code interpreter' },
+  { value: 'caching', labelKey: 'Prompt caching' },
+  { value: 'embeddings', labelKey: 'Embeddings' },
+] as const
+
+function splitCatalogCsv(value?: string): string[] {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function joinCatalogCsv(values?: string[]): string {
+  return (values ?? []).map((item) => item.trim()).filter(Boolean).join(',')
+}
+
+function toCatalogInt(value?: string): number {
+  const parsed = Number.parseInt(value ?? '', 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
 
 type PricingMode = 'per-token' | 'per-request'
 type PricingSubMode = 'ratio' | 'price'
@@ -368,6 +421,14 @@ export function ModelMutateDrawer({
       name_rule: 0,
       status: true,
       sync_official: true,
+      context_length: '',
+      max_output_tokens: '',
+      knowledge_cutoff: '',
+      release_date: '',
+      parameter_count: '',
+      input_modalities: [],
+      output_modalities: [],
+      capabilities: [],
       price: '',
       ratio: '',
       cacheRatio: '',
@@ -377,6 +438,23 @@ export function ModelMutateDrawer({
       audioCompletionRatio: '',
     },
   })
+
+  const modalityOptions = useMemo(
+    () =>
+      MODALITY_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(option.labelKey),
+      })),
+    [t]
+  )
+  const capabilityOptions = useMemo(
+    () =>
+      CAPABILITY_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(option.labelKey),
+      })),
+    [t]
+  )
 
   const validateNumber = (value: string) => {
     if (value === '') return true
@@ -436,6 +514,18 @@ export function ModelMutateDrawer({
         name_rule: model.name_rule || 0,
         status: model.status === 1,
         sync_official: model.sync_official === 1,
+        context_length: model.context_length
+          ? String(model.context_length)
+          : '',
+        max_output_tokens: model.max_output_tokens
+          ? String(model.max_output_tokens)
+          : '',
+        knowledge_cutoff: model.knowledge_cutoff || '',
+        release_date: model.release_date || '',
+        parameter_count: model.parameter_count || '',
+        input_modalities: splitCatalogCsv(model.input_modalities),
+        output_modalities: splitCatalogCsv(model.output_modalities),
+        capabilities: splitCatalogCsv(model.capabilities),
         ...pricing.fields,
       })
     } else if (open && !isEditing) {
@@ -461,6 +551,14 @@ export function ModelMutateDrawer({
         name_rule: 0,
         status: true,
         sync_official: true,
+        context_length: '',
+        max_output_tokens: '',
+        knowledge_cutoff: '',
+        release_date: '',
+        parameter_count: '',
+        input_modalities: [],
+        output_modalities: [],
+        capabilities: [],
         ...pricing.fields,
       })
     }
@@ -478,7 +576,9 @@ export function ModelMutateDrawer({
           sync_official: values.sync_official ? 1 : 0,
         }
 
-        // Remove ratio fields from model data (they're stored in system settings)
+        // Ratio fields live in system settings, and catalog metadata must be
+        // coerced (arrays -> CSV, numeric strings -> numbers) before being sent
+        // to the model row.
         const {
           price,
           ratio,
@@ -487,8 +587,22 @@ export function ModelMutateDrawer({
           imageRatio,
           audioRatio,
           audioCompletionRatio,
-          ...modelData
+          context_length,
+          max_output_tokens,
+          input_modalities,
+          output_modalities,
+          capabilities,
+          ...restModelData
         } = submitData
+
+        const modelData = {
+          ...restModelData,
+          context_length: toCatalogInt(context_length),
+          max_output_tokens: toCatalogInt(max_output_tokens),
+          input_modalities: joinCatalogCsv(input_modalities),
+          output_modalities: joinCatalogCsv(output_modalities),
+          capabilities: joinCatalogCsv(capabilities),
+        }
 
         const response =
           isEditing && currentModelId
@@ -1319,6 +1433,171 @@ export function ModelMutateDrawer({
                   </Collapsible>
                 </>
               )}
+            </SideDrawerSection>
+
+            {/* Catalog Metadata (Model Square) */}
+            <SideDrawerSection>
+              <div className='flex flex-col gap-1'>
+                <h3 className='text-sm font-semibold'>
+                  {t('Catalog Metadata')}
+                </h3>
+                <p className='text-muted-foreground text-xs'>
+                  {t(
+                    'Shown on the Model Square only; does not affect requests.'
+                  )}
+                </p>
+              </div>
+
+              <div className='grid grid-cols-2 gap-4'>
+                <FormField
+                  control={form.control}
+                  name='context_length'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Context length')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type='text'
+                          inputMode='numeric'
+                          placeholder='128000'
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            if (value === '' || /^\d+$/.test(value)) {
+                              field.onChange(value)
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='max_output_tokens'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Max output tokens')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type='text'
+                          inputMode='numeric'
+                          placeholder='8192'
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            if (value === '' || /^\d+$/.test(value)) {
+                              field.onChange(value)
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='release_date'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Release date')}</FormLabel>
+                      <FormControl>
+                        <Input placeholder='2026-07-23' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='knowledge_cutoff'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Knowledge cutoff')}</FormLabel>
+                      <FormControl>
+                        <Input placeholder='2025-11-30' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name='parameter_count'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Parameter count')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('e.g. 671B')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='input_modalities'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Input modalities')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={modalityOptions}
+                        selected={field.value ?? []}
+                        onChange={field.onChange}
+                        placeholder={t('Select modalities...')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='output_modalities'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Output modalities')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={modalityOptions}
+                        selected={field.value ?? []}
+                        onChange={field.onChange}
+                        placeholder={t('Select modalities...')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='capabilities'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Capabilities')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={capabilityOptions}
+                        selected={field.value ?? []}
+                        onChange={field.onChange}
+                        placeholder={t('Select capabilities...')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </SideDrawerSection>
 
             {/* Status & Sync */}

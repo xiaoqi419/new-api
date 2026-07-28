@@ -23,6 +23,7 @@ import {
   serializeHeaderNavModules,
   serializeSidebarModulesAdmin,
 } from '../maintenance/config'
+import { CommunityLinksSection } from '../maintenance/community-links-section'
 import { HeaderNavigationSection } from '../maintenance/header-navigation-section'
 import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
@@ -86,6 +87,13 @@ const SITE_SECTIONS = [
         />
       )
     },
+  },
+  {
+    id: 'community-links',
+    titleKey: 'Official Community',
+    build: (settings: SiteSettings) => (
+      <CommunityLinksSection defaultValue={settings.CommunityLinks ?? ''} />
+    ),
   },
   {
     id: 'sidebar-modules',

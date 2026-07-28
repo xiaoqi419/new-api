@@ -16,27 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { api } from '@/lib/api'
-
-import type { LegalDocumentResponse } from './types'
-
-export async function getUserAgreement() {
-  const res = await api.get<LegalDocumentResponse>('/api/user-agreement')
-  return res.data
-}
-
-export async function getPrivacyPolicy() {
-  const res = await api.get<LegalDocumentResponse>('/api/privacy-policy')
-  return res.data
-}
-
-export type AgreeLegalResponse = {
-  success: boolean
-  message: string
-  data?: { agreed_legal_version?: string }
-}
-
-export async function agreeLegal() {
-  const res = await api.post<AgreeLegalResponse>('/api/user/agree_legal')
-  return res.data
-}
+export { CommunityMenu } from './community-menu'
+export { useCommunityLinks } from './use-community-links'
+export {
+  parseCommunityLinks,
+  communityLinkHasQr,
+  type CommunityLink,
+  type CommunityLinkType,
+  type CommunityLinkAction,
+} from './types'

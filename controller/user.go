@@ -20,6 +20,7 @@ import (
 	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/QuantumNous/new-api/constant"
 
@@ -521,6 +522,34 @@ func GetAffCode(c *gin.Context) {
 		"data":    user.AffCode,
 	})
 	return
+}
+
+// AgreeLegal 记录当前用户已同意的协议版本（协议内容哈希）。
+// 用于登录后协议更新的重新同意弹窗：同意后写入用户设置，避免再次弹出。
+func AgreeLegal(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "用户未登录")
+		return
+	}
+	user, err := model.GetUserById(userId, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	setting := user.GetSetting()
+	setting.AgreedLegalVersion = system_setting.GetLegalSettings().Version()
+	if err := model.UpdateUserSetting(userId, setting); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"agreed_legal_version": setting.AgreedLegalVersion,
+		},
+	})
 }
 
 func GetSelf(c *gin.Context) {

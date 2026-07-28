@@ -364,6 +364,17 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 		option.Value = normalized
+	case "CommunityLinks":
+		if strings.TrimSpace(option.Value.(string)) != "" {
+			var probe []map[string]any
+			if jsonErr := common.Unmarshal([]byte(option.Value.(string)), &probe); jsonErr != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "官方社群配置必须是合法的 JSON 数组",
+				})
+				return
+			}
+		}
 	}
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {

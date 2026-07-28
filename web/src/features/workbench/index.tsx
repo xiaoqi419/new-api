@@ -41,28 +41,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getSelf, getUserModels } from '@/lib/api'
+import { normalizeApiBaseUrl } from '@/lib/api-base-url'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 const CODE_KEY_PLACEHOLDER = 'YOUR_API_KEY'
-
-function getCurrentOrigin(): string {
-  if (typeof window === 'undefined') return ''
-  return window.location.origin
-}
-
-function normalizeBaseUrl(sourceUrl?: string): string {
-  const fallback = `${getCurrentOrigin()}/v1`
-  const trimmed = sourceUrl?.trim()
-  if (!trimmed) return fallback
-
-  const noSlash = trimmed.replace(/\/+$/, '')
-  if (noSlash.endsWith('/v1/chat/completions')) {
-    return noSlash.replace(/\/chat\/completions$/, '')
-  }
-  if (noSlash.endsWith('/v1')) return noSlash
-  return `${noSlash}/v1`
-}
 
 function buildCurl(baseUrl: string, model: string): string {
   return [
@@ -186,7 +169,7 @@ export function Workbench() {
   )
   const hasFirstCall = currentCount > 0
 
-  const baseUrl = normalizeBaseUrl(apiInfoItems[0]?.url)
+  const baseUrl = normalizeApiBaseUrl(apiInfoItems[0]?.url)
   const model = modelsQuery.data?.[0] ?? 'gpt-4o-mini'
   const displayName = user?.display_name || user?.username || ''
   const isBaseUrlCopied = copiedText === baseUrl

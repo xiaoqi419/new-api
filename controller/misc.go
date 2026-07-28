@@ -125,6 +125,8 @@ func GetStatus(c *gin.Context) {
 		"setup":                       constant.Setup,
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
+		"legal_version":               legalSetting.Version(),
+		"community_links":             common.OptionMap["CommunityLinks"],
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
 	}
 

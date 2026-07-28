@@ -55,6 +55,7 @@ import {
   formatUptimePct,
   getSuccessRateTextClass,
 } from '@/features/performance-metrics/lib/format'
+import type { PerformanceGroup } from '@/features/performance-metrics/types'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
 
@@ -1158,7 +1159,294 @@ function GroupPricingSection(props: {
   )
 }
 
-const TAB_VALUES = ['overview', 'performance', 'api'] as const
+// ----------------------------------------------------------------------------
+// ephone-style per-group channel cards (pricing + real 24h metrics)
+// ----------------------------------------------------------------------------
+
+function GroupMetricCell(props: {
+  label: string
+  value: React.ReactNode
+  valueClassName?: string
+}) {
+  return (
+    <div className='bg-muted/20 flex min-w-0 flex-col gap-0.5 rounded-md px-2.5 py-1.5'>
+      <span className='text-muted-foreground text-[10px] font-medium tracking-wider uppercase'>
+        {props.label}
+      </span>
+      <span
+        className={cn(
+          'text-foreground font-mono text-sm font-semibold tabular-nums',
+          props.valueClassName
+        )}
+      >
+        {props.value}
+      </span>
+    </div>
+  )
+}
+
+function GroupPriceRow(props: {
+  label: string
+  value: React.ReactNode
+  unit?: string
+}) {
+  return (
+    <div className='flex items-baseline justify-between gap-4'>
+      <span className='text-muted-foreground/80 text-xs'>{props.label}</span>
+      <span className='text-foreground font-mono text-sm tabular-nums'>
+        {props.value}
+        {props.unit && (
+          <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
+            / {props.unit}
+          </span>
+        )}
+      </span>
+    </div>
+  )
+}
+
+function GroupChannelCards(props: {
+  model: PricingModel
+  groupRatio: Record<string, number>
+  usableGroup: Record<string, { desc: string; ratio: number }>
+  autoGroups: string[]
+  autoGroupRoutes: AutoGroupRoute[]
+  priceRate: number
+  usdExchangeRate: number
+  tokenUnit: TokenUnit
+  showRechargePrice?: boolean
+  perfByGroup: Map<string, PerformanceGroup>
+}) {
+  const { t } = useTranslation()
+  const showRechargePrice = props.showRechargePrice ?? false
+  const availableGroups = useMemo(
+    () => getAvailableGroups(props.model, props.usableGroup || {}),
+    [props.model, props.usableGroup]
+  )
+  const isTokenBased = isTokenBasedModel(props.model)
+  const tokenUnitLabel = props.tokenUnit === 'K' ? '1K' : '1M'
+
+  const extraPriceTypes = useMemo(() => {
+    const types: { label: string; type: PriceType }[] = []
+    if (props.model.cache_ratio != null) {
+      types.push({ label: t('Cache'), type: 'cache' })
+    }
+    if (props.model.create_cache_ratio != null) {
+      types.push({ label: t('Cache Write'), type: 'create_cache' })
+    }
+    if (props.model.image_ratio != null) {
+      types.push({ label: t('Image'), type: 'image' })
+    }
+    if (props.model.audio_ratio != null) {
+      types.push({ label: t('Audio In'), type: 'audio_input' })
+    }
+    if (
+      props.model.audio_ratio != null &&
+      props.model.audio_completion_ratio != null
+    ) {
+      types.push({ label: t('Audio Out'), type: 'audio_output' })
+    }
+    return types
+  }, [props.model, t])
+
+  if (availableGroups.length === 0) {
+    return (
+      <section>
+        <SectionTitle>{t('Pricing by Group')}</SectionTitle>
+        <AutoGroupChain
+          model={props.model}
+          autoGroups={props.autoGroups}
+          autoGroupRoutes={props.autoGroupRoutes}
+        />
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            'This model is not available in any group, or no group pricing information is configured.'
+          )}
+        </p>
+      </section>
+    )
+  }
+
+  const renderGroupPrice = (group: string, type: PriceType) =>
+    formatGroupPrice(
+      props.model,
+      group,
+      type,
+      props.tokenUnit,
+      showRechargePrice,
+      props.priceRate,
+      props.usdExchangeRate,
+      props.groupRatio
+    )
+
+  return (
+    <section>
+      <SectionTitle>{t('Pricing by Group')}</SectionTitle>
+      <AutoGroupChain
+        model={props.model}
+        autoGroups={props.autoGroups}
+        autoGroupRoutes={props.autoGroupRoutes}
+      />
+      <div className='grid gap-3 @2xl/details:grid-cols-2'>
+        {availableGroups.map((group) => {
+          const ratio = props.groupRatio[group] || 1
+          const perf = props.perfByGroup.get(group)
+          const hasPerf = perf != null && perf.success_rate >= 0
+          return (
+            <div
+              key={group}
+              className='bg-card/60 flex flex-col rounded-xl border p-3 shadow-sm'
+            >
+              <div className='flex items-center justify-between gap-2'>
+                <GroupBadge group={group} size='sm' />
+                <span className='text-muted-foreground font-mono text-xs'>
+                  {ratio}x
+                </span>
+              </div>
+
+              <div className='mt-3 grid grid-cols-3 gap-1.5'>
+                <GroupMetricCell
+                  label={t('Availability')}
+                  value={hasPerf ? formatUptimePct(perf.success_rate) : '—'}
+                  valueClassName={
+                    hasPerf
+                      ? getSuccessRateTextClass(perf.success_rate)
+                      : undefined
+                  }
+                />
+                <GroupMetricCell
+                  label={t('Latency')}
+                  value={
+                    perf && perf.avg_latency_ms > 0
+                      ? formatLatency(perf.avg_latency_ms)
+                      : '—'
+                  }
+                />
+                <GroupMetricCell
+                  label={t('Throughput')}
+                  value={
+                    perf && perf.avg_tps > 0
+                      ? formatThroughput(perf.avg_tps)
+                      : '—'
+                  }
+                />
+              </div>
+
+              <div className='mt-3 space-y-1.5 border-t pt-3'>
+                {isTokenBased ? (
+                  <>
+                    <GroupPriceRow
+                      label={t('Input')}
+                      value={renderGroupPrice(group, 'input')}
+                      unit={tokenUnitLabel}
+                    />
+                    <GroupPriceRow
+                      label={t('Output')}
+                      value={renderGroupPrice(group, 'output')}
+                      unit={tokenUnitLabel}
+                    />
+                    {extraPriceTypes.map((ep) => (
+                      <GroupPriceRow
+                        key={ep.type}
+                        label={ep.label}
+                        value={renderGroupPrice(group, ep.type)}
+                        unit={tokenUnitLabel}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <GroupPriceRow
+                    label={t('Per request')}
+                    value={formatFixedPrice(
+                      props.model,
+                      group,
+                      showRechargePrice,
+                      props.priceRate,
+                      props.usdExchangeRate,
+                      props.groupRatio
+                    )}
+                  />
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {isTokenBased && (
+        <p className='text-muted-foreground/40 mt-2 text-[10px]'>
+          {t('Prices shown per')} {tokenUnitLabel} tokens
+        </p>
+      )}
+    </section>
+  )
+}
+
+// ----------------------------------------------------------------------------
+// FAQ (generated from catalog metadata)
+// ----------------------------------------------------------------------------
+
+function ModelFaqSection(props: { model: PricingModel }) {
+  const { t } = useTranslation()
+  const model = props.model
+  const name = model.model_name
+  const capabilities = new Set(
+    (model.capabilities ?? []).map((c) => c.trim()).filter(Boolean)
+  )
+
+  const faqs: { q: string; a: string }[] = []
+  if ((model.context_length ?? 0) > 0) {
+    faqs.push({
+      q: t('What is the context window of {{model}}?', { model: name }),
+      a: t('{{model}} supports a context window of up to {{count}} tokens.', {
+        model: name,
+        count: model.context_length as number,
+      }),
+    })
+  }
+  if (capabilities.has('function_calling') || capabilities.has('tools')) {
+    faqs.push({
+      q: t('Does {{model}} support function calling?', { model: name }),
+      a: t('Yes. {{model}} supports tool / function calling.', {
+        model: name,
+      }),
+    })
+  }
+  if (capabilities.has('reasoning')) {
+    faqs.push({
+      q: t('Does {{model}} support reasoning?', { model: name }),
+      a: t('Yes. {{model}} is a reasoning-capable model.', { model: name }),
+    })
+  }
+  if (model.knowledge_cutoff) {
+    faqs.push({
+      q: t('What is the knowledge cutoff of {{model}}?', { model: name }),
+      a: t('The knowledge cutoff of {{model}} is {{date}}.', {
+        model: name,
+        date: model.knowledge_cutoff,
+      }),
+    })
+  }
+
+  if (faqs.length === 0) return null
+
+  return (
+    <section className='bg-card/60 space-y-4 rounded-xl border p-4 shadow-sm'>
+      <SectionTitle>{t('FAQ')}</SectionTitle>
+      <div className='space-y-3'>
+        {faqs.map((faq) => (
+          <div key={faq.q}>
+            <div className='text-foreground text-sm font-medium'>{faq.q}</div>
+            <p className='text-muted-foreground mt-1 text-sm leading-relaxed'>
+              {faq.a}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const TAB_VALUES = ['overview', 'api'] as const
 type TabValue = (typeof TAB_VALUES)[number]
 
 const TAB_META: Record<
@@ -1166,7 +1454,6 @@ const TAB_META: Record<
   { icon: React.ComponentType<{ className?: string }>; labelKey: string }
 > = {
   overview: { icon: Info, labelKey: 'Overview' },
-  performance: { icon: HeartPulse, labelKey: 'Performance' },
   api: { icon: Code2, labelKey: 'API' },
 }
 
@@ -1191,12 +1478,25 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
     props.model.billing_mode === 'tiered_expr' &&
     Boolean(props.model.billing_expr)
 
+  const perfQuery = useQuery({
+    queryKey: ['perf-metrics', props.model.model_name],
+    queryFn: () => getPerfMetrics(props.model.model_name, 24),
+    staleTime: 60 * 1000,
+  })
+  const perfByGroup = useMemo(() => {
+    const map = new Map<string, PerformanceGroup>()
+    for (const group of perfQuery.data?.data.groups ?? []) {
+      map.set(group.group, group)
+    }
+    return map
+  }, [perfQuery.data])
+
   return (
     <div className='@container/details space-y-4'>
       <ModelHeader model={props.model} />
 
       <Tabs defaultValue='overview' className='gap-4'>
-        <TabsList className='bg-muted/60 grid w-full grid-cols-3 gap-1 rounded-lg p-1 group-data-horizontal/tabs:h-auto'>
+        <TabsList className='bg-muted/60 grid w-full grid-cols-2 gap-1 rounded-lg p-1 group-data-horizontal/tabs:h-auto'>
           {TAB_VALUES.map((value) => {
             const Icon = TAB_META[value].icon
             return (
@@ -1227,24 +1527,42 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
             {isDynamic && (
               <DynamicPricingBreakdown billingExpr={props.model.billing_expr} />
             )}
-            <GroupPricingSection
-              model={props.model}
-              groupRatio={props.groupRatio}
-              usableGroup={props.usableGroup}
-              autoGroups={props.autoGroups}
-              autoGroupRoutes={props.autoGroupRoutes}
-              priceRate={props.priceRate}
-              usdExchangeRate={props.usdExchangeRate}
-              tokenUnit={props.tokenUnit}
-              showRechargePrice={showRechargePrice}
-            />
+            {isDynamic ? (
+              <GroupPricingSection
+                model={props.model}
+                groupRatio={props.groupRatio}
+                usableGroup={props.usableGroup}
+                autoGroups={props.autoGroups}
+                autoGroupRoutes={props.autoGroupRoutes}
+                priceRate={props.priceRate}
+                usdExchangeRate={props.usdExchangeRate}
+                tokenUnit={props.tokenUnit}
+                showRechargePrice={showRechargePrice}
+              />
+            ) : (
+              <GroupChannelCards
+                model={props.model}
+                groupRatio={props.groupRatio}
+                usableGroup={props.usableGroup}
+                autoGroups={props.autoGroups}
+                autoGroupRoutes={props.autoGroupRoutes}
+                priceRate={props.priceRate}
+                usdExchangeRate={props.usdExchangeRate}
+                tokenUnit={props.tokenUnit}
+                showRechargePrice={showRechargePrice}
+                perfByGroup={perfByGroup}
+              />
+            )}
           </section>
 
-          <ModelBackendDetailsSection model={props.model} />
-        </TabsContent>
+          <section className='bg-card/60 space-y-4 rounded-xl border p-4 shadow-sm'>
+            <SectionTitle>{t('Performance Metrics (Last 24h)')}</SectionTitle>
+            <ModelDetailsPerformance model={props.model} hideGroupTable />
+          </section>
 
-        <TabsContent value='performance' className='outline-none'>
-          <ModelDetailsPerformance model={props.model} />
+          <ModelFaqSection model={props.model} />
+
+          <ModelBackendDetailsSection model={props.model} />
         </TabsContent>
 
         <TabsContent value='api' className='outline-none'>

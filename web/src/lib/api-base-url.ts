@@ -16,27 +16,25 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { api } from '@/lib/api'
-
-import type { LegalDocumentResponse } from './types'
-
-export async function getUserAgreement() {
-  const res = await api.get<LegalDocumentResponse>('/api/user-agreement')
-  return res.data
+function getCurrentOrigin(): string {
+  if (typeof window === 'undefined') return ''
+  return window.location.origin
 }
 
-export async function getPrivacyPolicy() {
-  const res = await api.get<LegalDocumentResponse>('/api/privacy-policy')
-  return res.data
-}
+/**
+ * Normalize a configured API endpoint into the OpenAI-compatible Base URL that
+ * clients should point at (i.e. ending with `/v1`). Falls back to the current
+ * origin when no endpoint is configured.
+ */
+export function normalizeApiBaseUrl(sourceUrl?: string): string {
+  const fallback = `${getCurrentOrigin()}/v1`
+  const trimmed = sourceUrl?.trim()
+  if (!trimmed) return fallback
 
-export type AgreeLegalResponse = {
-  success: boolean
-  message: string
-  data?: { agreed_legal_version?: string }
-}
-
-export async function agreeLegal() {
-  const res = await api.post<AgreeLegalResponse>('/api/user/agree_legal')
-  return res.data
+  const noSlash = trimmed.replace(/\/+$/, '')
+  if (noSlash.endsWith('/v1/chat/completions')) {
+    return noSlash.replace(/\/chat\/completions$/, '')
+  }
+  if (noSlash.endsWith('/v1')) return noSlash
+  return `${noSlash}/v1`
 }

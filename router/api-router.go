@@ -144,6 +144,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
+				selfRoute.POST("/agree_legal", controller.AgreeLegal)
 
 				// 拼团充值
 				selfRoute.GET("/groupbuy/info", controller.GetGroupBuyInfo)
