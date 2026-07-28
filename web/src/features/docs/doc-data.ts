@@ -23,6 +23,14 @@ For commercial licensing, please contact support@quantumnous.com
 //   - A category with `blocks` (no items) is itself a leaf (used by 开始 / 参考).
 // Inline markup inside text: `code` for inline code, **bold** for emphasis.
 
+import {
+  buildFaqGroup,
+  buildGuidesGroup,
+  buildToolsGroup,
+} from './doc-data-guides'
+
+export type DocLang = 'zh' | 'en'
+
 export type DocParamRow = {
   name: string
   type: string
@@ -2225,12 +2233,18 @@ const referenceGroup = (baseUrl: string): DocGroup => ({
   ],
 })
 
-export const buildDocGroups = (baseUrl: string): DocGroup[] => [
+export const buildDocGroups = (
+  baseUrl: string,
+  lang: DocLang = 'zh'
+): DocGroup[] => [
   startGroup(baseUrl),
+  buildGuidesGroup(baseUrl, lang),
+  buildToolsGroup(baseUrl, lang),
   aiGroup(baseUrl),
   imageGroup(baseUrl),
   videoGroup(baseUrl),
   referenceGroup(baseUrl),
+  buildFaqGroup(baseUrl, lang),
 ]
 
 const codeFenceLang = (label?: string): string => {
@@ -2313,9 +2327,10 @@ const blocksToMarkdown = (
 export const buildCategoryMarkdown = (
   baseUrl: string,
   groupId: string,
-  catId: string
+  catId: string,
+  lang: DocLang = 'zh'
 ): string => {
-  const groups = buildDocGroups(baseUrl)
+  const groups = buildDocGroups(baseUrl, lang)
   const group = groups.find((g) => g.id === groupId)
   const cat = group?.categories.find((c) => c.id === catId)
   if (!cat) return ''

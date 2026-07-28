@@ -33,6 +33,7 @@ import {
   buildDocGroups,
   type DocCategory,
   type DocGroup,
+  type DocLang,
 } from './doc-data'
 
 type SectionMeta = { id: string; groupId: string; catId: string | null }
@@ -41,8 +42,12 @@ const firstIdOf = (cat: DocCategory): string =>
   cat.items ? cat.items[0].id : cat.id
 
 export function Docs() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { status } = useStatus()
+
+  const lang: DocLang = i18n.language?.toLowerCase().startsWith('zh')
+    ? 'zh'
+    : 'en'
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const pendingScroll = useRef<{ top?: boolean; id?: string } | null>(null)
 
@@ -55,7 +60,10 @@ export function Docs() {
     return typeof window !== 'undefined' ? window.location.origin : ''
   }, [status])
 
-  const groups = useMemo(() => buildDocGroups(serverAddress), [serverAddress])
+  const groups = useMemo(
+    () => buildDocGroups(serverAddress, lang),
+    [serverAddress, lang]
+  )
 
   const sections = useMemo<SectionMeta[]>(() => {
     const arr: SectionMeta[] = []
@@ -206,7 +214,7 @@ export function Docs() {
     if (!activePage) return
     const { group, cat } = activePage
     const safeName = cat.label.replaceAll(/[\\/:*?"<>|]/g, '_')
-    const markdown = buildCategoryMarkdown(serverAddress, group.id, cat.id)
+    const markdown = buildCategoryMarkdown(serverAddress, group.id, cat.id, lang)
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
