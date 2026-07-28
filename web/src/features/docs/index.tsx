@@ -41,6 +41,38 @@ type SectionMeta = { id: string; groupId: string; catId: string | null }
 const firstIdOf = (cat: DocCategory): string =>
   cat.items ? cat.items[0].id : cat.id
 
+type DocTabDef = {
+  id: string
+  labelZh: string
+  labelEn: string
+  groupIds: string[]
+}
+
+const DOC_TABS: DocTabDef[] = [
+  {
+    id: 'guide',
+    labelZh: '用户指南',
+    labelEn: 'User Guides',
+    groupIds: ['start', 'guides'],
+  },
+  {
+    id: 'usecase',
+    labelZh: '场景示例',
+    labelEn: 'Use Cases',
+    groupIds: ['tools'],
+  },
+  {
+    id: 'apiref',
+    labelZh: 'API 参考',
+    labelEn: 'API Reference',
+    groupIds: ['ai', 'images', 'video', 'reference'],
+  },
+  { id: 'faq', labelZh: '常见问题', labelEn: 'FAQ', groupIds: ['faq'] },
+]
+
+const groupTabId = (groupId: string): string =>
+  DOC_TABS.find((tab) => tab.groupIds.includes(groupId))?.id ?? DOC_TABS[0].id
+
 export function Docs() {
   const { t, i18n } = useTranslation()
   const { status } = useStatus()
@@ -135,6 +167,11 @@ export function Docs() {
     [pages, activeCatKey]
   )
 
+  const activeTab = useMemo(
+    () => (activePage ? groupTabId(activePage.group.id) : DOC_TABS[0].id),
+    [activePage]
+  )
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -189,6 +226,18 @@ export function Docs() {
     updateHash(cat.id)
   }
 
+  const selectTab = (tabId: string) => {
+    const tab = DOC_TABS.find((tabDef) => tabDef.id === tabId)
+    if (!tab) return
+    const group = groups.find((g) => tab.groupIds.includes(g.id))
+    const cat = group?.categories[0]
+    if (!group || !cat) return
+    if (cat.items) {
+      setOpenCats((prev) => (prev.includes(cat.id) ? prev : [...prev, cat.id]))
+    }
+    selectCategory(group, cat)
+  }
+
   const selectItem = (
     group: DocGroup,
     cat: DocCategory,
@@ -214,7 +263,12 @@ export function Docs() {
     if (!activePage) return
     const { group, cat } = activePage
     const safeName = cat.label.replaceAll(/[\\/:*?"<>|]/g, '_')
-    const markdown = buildCategoryMarkdown(serverAddress, group.id, cat.id, lang)
+    const markdown = buildCategoryMarkdown(
+      serverAddress,
+      group.id,
+      cat.id,
+      lang
+    )
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
@@ -230,94 +284,118 @@ export function Docs() {
   return (
     <PublicLayout showMainContainer={false}>
       <div className='mx-auto w-full max-w-7xl px-4 pt-20 pb-16'>
+        <div className='border-border mb-8 flex items-center gap-6 overflow-x-auto border-b'>
+          {DOC_TABS.map((tab) => {
+            const isActive = tab.id === activeTab
+            return (
+              <button
+                key={tab.id}
+                type='button'
+                onClick={() => selectTab(tab.id)}
+                className={cn(
+                  '-mb-px shrink-0 border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-primary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground border-transparent'
+                )}
+              >
+                {lang === 'zh' ? tab.labelZh : tab.labelEn}
+              </button>
+            )
+          })}
+        </div>
         <div className='flex flex-col gap-8 lg:flex-row'>
           <aside className='lg:w-72 lg:shrink-0'>
             <div className='lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-2'>
-              {groups.map((group) => {
-                const groupOpen = openGroups.includes(group.id)
-                return (
-                  <div key={group.id} className='mb-2'>
-                    <button
-                      type='button'
-                      onClick={() => toggleGroup(group.id)}
-                      className='hover:text-foreground flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-semibold'
-                    >
-                      <ChevronDown
-                        className={cn(
-                          'size-4 transition-transform',
-                          groupOpen ? '' : '-rotate-90'
-                        )}
-                      />
-                      <span>{group.superLabel}</span>
-                    </button>
-                    {groupOpen &&
-                      group.categories.map((cat) => {
-                        const catKey = `${group.id}/${cat.id}`
-                        const isActiveCat = activeCatKey === catKey
-                        if (!cat.items) {
-                          return (
-                            <button
-                              type='button'
-                              key={cat.id}
-                              onClick={() => selectCategory(group, cat)}
-                              className={cn(
-                                'ml-6 flex w-[calc(100%-1.5rem)] items-center rounded-md px-2 py-1.5 text-left text-sm',
-                                isActiveCat
-                                  ? 'bg-accent text-accent-foreground font-medium'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              {cat.label}
-                            </button>
-                          )
-                        }
-                        const catOpen = openCats.includes(cat.id)
-                        return (
-                          <div key={cat.id}>
-                            <button
-                              type='button'
-                              onClick={() => {
-                                toggleCat(cat.id)
-                                selectCategory(group, cat)
-                              }}
-                              className={cn(
-                                'ml-6 flex w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm',
-                                isActiveCat
-                                  ? 'text-foreground font-medium'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              <ChevronDown
+              {groups
+                .filter((group) => groupTabId(group.id) === activeTab)
+                .map((group) => {
+                  const groupOpen = openGroups.includes(group.id)
+                  return (
+                    <div key={group.id} className='mb-2'>
+                      <button
+                        type='button'
+                        onClick={() => toggleGroup(group.id)}
+                        className='hover:text-foreground flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-semibold'
+                      >
+                        <ChevronDown
+                          className={cn(
+                            'size-4 transition-transform',
+                            groupOpen ? '' : '-rotate-90'
+                          )}
+                        />
+                        <span>{group.superLabel}</span>
+                      </button>
+                      {groupOpen &&
+                        group.categories.map((cat) => {
+                          const catKey = `${group.id}/${cat.id}`
+                          const isActiveCat = activeCatKey === catKey
+                          if (!cat.items) {
+                            return (
+                              <button
+                                type='button'
+                                key={cat.id}
+                                onClick={() => selectCategory(group, cat)}
                                 className={cn(
-                                  'size-3.5 shrink-0 transition-transform',
-                                  catOpen ? '' : '-rotate-90'
+                                  'ml-6 flex w-[calc(100%-1.5rem)] items-center rounded-md px-2 py-1.5 text-left text-sm',
+                                  isActiveCat
+                                    ? 'bg-accent text-accent-foreground font-medium'
+                                    : 'text-muted-foreground hover:text-foreground'
                                 )}
-                              />
-                              <span>{cat.label}</span>
-                            </button>
-                            {catOpen &&
-                              cat.items.map((item) => (
-                                <button
-                                  type='button'
-                                  key={item.id}
-                                  onClick={() => selectItem(group, cat, item)}
+                              >
+                                {cat.label}
+                              </button>
+                            )
+                          }
+                          const catOpen = openCats.includes(cat.id)
+                          return (
+                            <div key={cat.id}>
+                              <button
+                                type='button'
+                                onClick={() => {
+                                  toggleCat(cat.id)
+                                  selectCategory(group, cat)
+                                }}
+                                className={cn(
+                                  'ml-6 flex w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm',
+                                  isActiveCat
+                                    ? 'text-foreground font-medium'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                )}
+                              >
+                                <ChevronDown
                                   className={cn(
-                                    'ml-12 flex w-[calc(100%-3rem)] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
-                                    activeId === item.id
-                                      ? 'bg-accent text-accent-foreground font-medium'
-                                      : 'text-muted-foreground hover:text-foreground'
+                                    'size-3.5 shrink-0 transition-transform',
+                                    catOpen ? '' : '-rotate-90'
                                   )}
-                                >
-                                  <span className='truncate'>{item.label}</span>
-                                  <TocMethodTag method={item.method} />
-                                </button>
-                              ))}
-                          </div>
-                        )
-                      })}
-                  </div>
-                )
-              })}
+                                />
+                                <span>{cat.label}</span>
+                              </button>
+                              {catOpen &&
+                                cat.items.map((item) => (
+                                  <button
+                                    type='button'
+                                    key={item.id}
+                                    onClick={() => selectItem(group, cat, item)}
+                                    className={cn(
+                                      'ml-12 flex w-[calc(100%-3rem)] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
+                                      activeId === item.id
+                                        ? 'bg-accent text-accent-foreground font-medium'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                    )}
+                                  >
+                                    <span className='truncate'>
+                                      {item.label}
+                                    </span>
+                                    <TocMethodTag method={item.method} />
+                                  </button>
+                                ))}
+                            </div>
+                          )
+                        })}
+                    </div>
+                  )
+                })}
             </div>
           </aside>
 

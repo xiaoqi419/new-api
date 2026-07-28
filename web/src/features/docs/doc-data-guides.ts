@@ -81,12 +81,19 @@ export const buildGuidesGroup = (baseUrl: string, lang: DocLang): DocGroup => {
             rows: [
               ['OpenAI', `\`${baseUrl}/v1\``, '`/v1/chat/completions`'],
               ['Anthropic Claude', `\`${baseUrl}\``, '`/v1/messages`'],
-              ['Google Gemini', `\`${baseUrl}\``, '`/v1beta/models/{model}:generateContent`'],
+              [
+                'Google Gemini',
+                `\`${baseUrl}\``,
+                '`/v1beta/models/{model}:generateContent`',
+              ],
             ],
           },
           {
             kind: 'h3',
-            text: p('第三步:发起第一个请求', 'Step 3 — Send your first request'),
+            text: p(
+              '第三步:发起第一个请求',
+              'Step 3 — Send your first request'
+            ),
           },
           {
             kind: 'code',
@@ -224,7 +231,13 @@ console.log(resp.choices[0].message.content);`,
             head: [p('维度', 'Dimension'), p('含义', 'Meaning')],
             rows: [
               ['RPM', p('每分钟请求数', 'Requests per minute')],
-              ['TPM', p('每分钟 token 数(输入 + 输出)', 'Tokens per minute (input + output)')],
+              [
+                'TPM',
+                p(
+                  '每分钟 token 数(输入 + 输出)',
+                  'Tokens per minute (input + output)'
+                ),
+              ],
               ['RPD', p('每日请求数', 'Requests per day')],
             ],
           },
@@ -277,17 +290,29 @@ console.log(resp.choices[0].message.content);`,
               [
                 '`400`',
                 p('参数不合法', 'Invalid parameters'),
-                p('按 message 修正请求体', 'Fix the request body per the message'),
+                p(
+                  '按 message 修正请求体',
+                  'Fix the request body per the message'
+                ),
               ],
               [
                 '`401`',
                 p('密钥缺失或无效', 'Missing or invalid key'),
-                p('检查 Authorization 头与令牌', 'Check the Authorization header and token'),
+                p(
+                  '检查 Authorization 头与令牌',
+                  'Check the Authorization header and token'
+                ),
               ],
               [
                 '`403`',
-                p('无权限 / 余额不足 / 需实名', 'No permission / low balance / needs verification'),
-                p('查看 message,充值或完成实名', 'Read message; top up or complete verification'),
+                p(
+                  '无权限 / 余额不足 / 需实名',
+                  'No permission / low balance / needs verification'
+                ),
+                p(
+                  '查看 message,充值或完成实名',
+                  'Read message; top up or complete verification'
+                ),
               ],
               [
                 '`429`',
@@ -297,12 +322,18 @@ console.log(resp.choices[0].message.content);`,
               [
                 '`500`',
                 p('网关内部错误', 'Internal gateway error'),
-                p('稍后重试,持续出现请联系客服', 'Retry later; contact support if persistent'),
+                p(
+                  '稍后重试,持续出现请联系客服',
+                  'Retry later; contact support if persistent'
+                ),
               ],
               [
                 '`503` / `504`',
                 p('上游负载高 / 超时', 'Upstream overloaded / timeout'),
-                p('稍后重试,或改用流式输出', 'Retry later, or switch to streaming'),
+                p(
+                  '稍后重试,或改用流式输出',
+                  'Retry later, or switch to streaming'
+                ),
               ],
             ],
           },
@@ -361,7 +392,11 @@ export const buildToolsGroup = (baseUrl: string, lang: DocLang): DocGroup => {
                 ),
               },
               { kind: 'h3', text: INSTALL },
-              { kind: 'code', label: 'bash', code: 'npm install -g @anthropic-ai/claude-code' },
+              {
+                kind: 'code',
+                label: 'bash',
+                code: 'npm install -g @anthropic-ai/claude-code',
+              },
               { kind: 'h3', text: CONFIG },
               {
                 kind: 'p',
@@ -387,8 +422,14 @@ source ~/.zshrc`,
               {
                 kind: 'list',
                 items: [
-                  p('日常编程:`claude-3-5-sonnet`', 'Everyday coding: `claude-3-5-sonnet`'),
-                  p('复杂重构:更强的 Claude 推理模型', 'Complex refactoring: a stronger Claude reasoning model'),
+                  p(
+                    '日常编程:`claude-3-5-sonnet`',
+                    'Everyday coding: `claude-3-5-sonnet`'
+                  ),
+                  p(
+                    '复杂重构:更强的 Claude 推理模型',
+                    'Complex refactoring: a stronger Claude reasoning model'
+                  ),
                 ],
               },
               {
@@ -412,7 +453,11 @@ source ~/.zshrc`,
                 ),
               },
               { kind: 'h3', text: INSTALL },
-              { kind: 'code', label: 'bash', code: 'npm install -g @openai/codex' },
+              {
+                kind: 'code',
+                label: 'bash',
+                code: 'npm install -g @openai/codex',
+              },
               { kind: 'h3', text: CONFIG },
               {
                 kind: 'code',
@@ -501,7 +546,11 @@ source ~/.zshrc`,
 echo 'export OPENAI_API_BASE="${baseUrl}/v1"' >> ~/.zshrc
 source ~/.zshrc`,
               },
-              { kind: 'code', label: 'bash', code: 'cd your-project\naider --model gpt-4o' },
+              {
+                kind: 'code',
+                label: 'bash',
+                code: 'cd your-project\naider --model gpt-4o',
+              },
               {
                 kind: 'p',
                 text: p('使用 Claude 模型:', 'To use Claude models:'),
@@ -577,7 +626,10 @@ source ~/.zshrc`,
                     '打开 **Cursor Settings → Models**,展开 **OpenAI API Key**。',
                     'Open **Cursor Settings → Models**, expand **OpenAI API Key**.'
                   ),
-                  p('**OpenAI API Key**:填入 `sk-xxxxxx`。', '**OpenAI API Key**: enter `sk-xxxxxx`.'),
+                  p(
+                    '**OpenAI API Key**:填入 `sk-xxxxxx`。',
+                    '**OpenAI API Key**: enter `sk-xxxxxx`.'
+                  ),
                   p(
                     `**Override OpenAI Base URL**:填 \`${baseUrl}/v1\`,点 **Verify**。`,
                     `**Override OpenAI Base URL**: enter \`${baseUrl}/v1\`, then click **Verify**.`
@@ -612,10 +664,19 @@ source ~/.zshrc`,
               {
                 kind: 'list',
                 items: [
-                  p('**API Provider**:选择 `OpenAI Compatible`。', '**API Provider**: choose `OpenAI Compatible`.'),
-                  p(`**Base URL**:\`${baseUrl}/v1\``, `**Base URL**: \`${baseUrl}/v1\``),
+                  p(
+                    '**API Provider**:选择 `OpenAI Compatible`。',
+                    '**API Provider**: choose `OpenAI Compatible`.'
+                  ),
+                  p(
+                    `**Base URL**:\`${baseUrl}/v1\``,
+                    `**Base URL**: \`${baseUrl}/v1\``
+                  ),
                   p('**API Key**:`sk-xxxxxx`', '**API Key**: `sk-xxxxxx`'),
-                  p('**Model**:如 `gpt-4o` 或 `claude-3-5-sonnet`', '**Model**: e.g. `gpt-4o` or `claude-3-5-sonnet`'),
+                  p(
+                    '**Model**:如 `gpt-4o` 或 `claude-3-5-sonnet`',
+                    '**Model**: e.g. `gpt-4o` or `claude-3-5-sonnet`'
+                  ),
                 ],
               },
               {
@@ -642,8 +703,14 @@ source ~/.zshrc`,
               {
                 kind: 'list',
                 items: [
-                  p('**API Provider**:`OpenAI Compatible`', '**API Provider**: `OpenAI Compatible`'),
-                  p(`**Base URL**:\`${baseUrl}/v1\``, `**Base URL**: \`${baseUrl}/v1\``),
+                  p(
+                    '**API Provider**:`OpenAI Compatible`',
+                    '**API Provider**: `OpenAI Compatible`'
+                  ),
+                  p(
+                    `**Base URL**:\`${baseUrl}/v1\``,
+                    `**Base URL**: \`${baseUrl}/v1\``
+                  ),
                   p('**API Key**:`sk-xxxxxx`', '**API Key**: `sk-xxxxxx`'),
                   p(
                     `如需 Claude:新增 \`Anthropic\` provider,Base URL 填 \`${baseUrl}\`。`,
@@ -765,10 +832,19 @@ source ~/.zshrc`,
               {
                 kind: 'list',
                 items: [
-                  p('API 模式:选择 `OpenAI API 兼容`。', 'API mode: choose `OpenAI API compatible`.'),
-                  p(`API 域名 / Host:\`${baseUrl}/v1\``, `API Host: \`${baseUrl}/v1\``),
+                  p(
+                    'API 模式:选择 `OpenAI API 兼容`。',
+                    'API mode: choose `OpenAI API compatible`.'
+                  ),
+                  p(
+                    `API 域名 / Host:\`${baseUrl}/v1\``,
+                    `API Host: \`${baseUrl}/v1\``
+                  ),
                   p('API Key:`sk-xxxxxx`', 'API Key: `sk-xxxxxx`'),
-                  p('添加需要使用的模型,如 `gpt-4o`。', 'Add the models you need, e.g. `gpt-4o`.'),
+                  p(
+                    '添加需要使用的模型,如 `gpt-4o`。',
+                    'Add the models you need, e.g. `gpt-4o`.'
+                  ),
                 ],
               },
             ],
@@ -793,8 +869,14 @@ source ~/.zshrc`,
                     'Go to **Settings → Language Model → OpenAI**.'
                   ),
                   p('API Key:`sk-xxxxxx`', 'API Key: `sk-xxxxxx`'),
-                  p(`接口代理地址:\`${baseUrl}/v1\``, `API proxy address: \`${baseUrl}/v1\``),
-                  p('开启开关并填入要使用的模型。', 'Enable it and add the models you want.'),
+                  p(
+                    `接口代理地址:\`${baseUrl}/v1\``,
+                    `API proxy address: \`${baseUrl}/v1\``
+                  ),
+                  p(
+                    '开启开关并填入要使用的模型。',
+                    'Enable it and add the models you want.'
+                  ),
                 ],
               },
             ],
@@ -814,10 +896,19 @@ source ~/.zshrc`,
               {
                 kind: 'list',
                 items: [
-                  p('进入 **设置 → 自定义接口**,开启自定义。', 'Go to **Settings → Custom Endpoint** and enable it.'),
-                  p(`接口地址 / Endpoint:\`${baseUrl}\``, `Endpoint: \`${baseUrl}\``),
+                  p(
+                    '进入 **设置 → 自定义接口**,开启自定义。',
+                    'Go to **Settings → Custom Endpoint** and enable it.'
+                  ),
+                  p(
+                    `接口地址 / Endpoint:\`${baseUrl}\``,
+                    `Endpoint: \`${baseUrl}\``
+                  ),
                   p('API Key:`sk-xxxxxx`', 'API Key: `sk-xxxxxx`'),
-                  p('自定义模型名,如 `gpt-4o`。', 'Custom model name, e.g. `gpt-4o`.'),
+                  p(
+                    '自定义模型名,如 `gpt-4o`。',
+                    'Custom model name, e.g. `gpt-4o`.'
+                  ),
                 ],
               },
               {
@@ -859,7 +950,10 @@ source ~/.zshrc`,
                     `Custom API endpoint: \`${baseUrl}/v1/chat/completions\``
                   ),
                   p('API Key:`sk-xxxxxx`', 'API Key: `sk-xxxxxx`'),
-                  p('模型名称:本站支持的文本模型,如 `deepseek-v3`。', 'Model name: any text model available here, e.g. `deepseek-v3`.'),
+                  p(
+                    '模型名称:本站支持的文本模型,如 `deepseek-v3`。',
+                    'Model name: any text model available here, e.g. `deepseek-v3`.'
+                  ),
                 ],
               },
               {
@@ -975,9 +1069,18 @@ export const buildFaqGroup = (_baseUrl: string, lang: DocLang): DocGroup => {
           {
             kind: 'list',
             items: [
-              p('内容合规:确保生成 / 展示的内容符合当地法律。', 'Content compliance: ensure generated/displayed content meets local laws.'),
-              p('用户保护:保护终端用户数据,遵守隐私法规。', 'User protection: protect end-user data and follow privacy regulations.'),
-              p('AIGC 标识:在法规要求时向用户披露内容由 AI 生成。', 'AI disclosure: where required, disclose that content is AI-generated.'),
+              p(
+                '内容合规:确保生成 / 展示的内容符合当地法律。',
+                'Content compliance: ensure generated/displayed content meets local laws.'
+              ),
+              p(
+                '用户保护:保护终端用户数据,遵守隐私法规。',
+                'User protection: protect end-user data and follow privacy regulations.'
+              ),
+              p(
+                'AIGC 标识:在法规要求时向用户披露内容由 AI 生成。',
+                'AI disclosure: where required, disclose that content is AI-generated.'
+              ),
             ],
           },
           {
