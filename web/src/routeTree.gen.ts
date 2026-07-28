@@ -56,12 +56,14 @@ import { Route as AuthenticatedFinanceSectionRouteImport } from './routes/_authe
 import { Route as AuthenticatedGroupbuyAdminRouteImport } from './routes/_authenticated/groupbuy/admin'
 import { Route as AuthenticatedGroupbuyDetailRouteImport } from './routes/_authenticated/groupbuy/detail'
 import { Route as AuthenticatedIdentityVerificationAdminRouteImport } from './routes/_authenticated/identity-verification/admin'
+import { Route as AuthenticatedImageGenerationIndexRouteImport } from './routes/_authenticated/image-generation/index'
 import { Route as AuthenticatedInvoicesAdminRouteImport } from './routes/_authenticated/invoices/admin'
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
 import { Route as AuthenticatedLotteryAdminRouteImport } from './routes/_authenticated/lottery/admin'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
+import { Route as AuthenticatedPlaygroundSectionRouteImport } from './routes/_authenticated/playground/$section'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRebateIndexRouteImport } from './routes/_authenticated/rebate/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
@@ -347,6 +349,12 @@ const AuthenticatedIdentityVerificationAdminRoute =
     path: '/identity-verification/admin',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedImageGenerationIndexRoute =
+  AuthenticatedImageGenerationIndexRouteImport.update({
+    id: '/image-generation/',
+    path: '/image-generation/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInvoicesAdminRoute =
   AuthenticatedInvoicesAdminRouteImport.update({
     id: '/invoices/admin',
@@ -380,6 +388,12 @@ const AuthenticatedPlaygroundIndexRoute =
   AuthenticatedPlaygroundIndexRouteImport.update({
     id: '/playground/',
     path: '/playground/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPlaygroundSectionRoute =
+  AuthenticatedPlaygroundSectionRouteImport.update({
+    id: '/playground/$section',
+    path: '/playground/$section',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProfileIndexRoute =
@@ -613,6 +627,7 @@ export interface FileRoutesByFullPath {
   '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
   '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
@@ -626,6 +641,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/error-reports/': typeof AuthenticatedErrorReportsIndexRoute
   '/finance/': typeof AuthenticatedFinanceIndexRoute
+  '/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
@@ -697,6 +713,7 @@ export interface FileRoutesByTo {
   '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
   '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
@@ -710,6 +727,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/error-reports': typeof AuthenticatedErrorReportsIndexRoute
   '/finance': typeof AuthenticatedFinanceIndexRoute
+  '/image-generation': typeof AuthenticatedImageGenerationIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
@@ -785,6 +803,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/_authenticated/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/_authenticated/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/_authenticated/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/_authenticated/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
   '/_authenticated/tickets/detail': typeof AuthenticatedTicketsDetailRoute
@@ -798,6 +817,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/error-reports/': typeof AuthenticatedErrorReportsIndexRoute
   '/_authenticated/finance/': typeof AuthenticatedFinanceIndexRoute
+  '/_authenticated/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
@@ -872,6 +892,7 @@ export interface FileRouteTypes {
     | '/invoices/admin'
     | '/lottery/admin'
     | '/models/$section'
+    | '/playground/$section'
     | '/tickets/admin'
     | '/tickets/admin-detail'
     | '/tickets/detail'
@@ -885,6 +906,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/error-reports/'
     | '/finance/'
+    | '/image-generation/'
     | '/keys/'
     | '/models/'
     | '/playground/'
@@ -956,6 +978,7 @@ export interface FileRouteTypes {
     | '/invoices/admin'
     | '/lottery/admin'
     | '/models/$section'
+    | '/playground/$section'
     | '/tickets/admin'
     | '/tickets/admin-detail'
     | '/tickets/detail'
@@ -969,6 +992,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/error-reports'
     | '/finance'
+    | '/image-generation'
     | '/keys'
     | '/models'
     | '/playground'
@@ -1043,6 +1067,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/admin'
     | '/_authenticated/lottery/admin'
     | '/_authenticated/models/$section'
+    | '/_authenticated/playground/$section'
     | '/_authenticated/tickets/admin'
     | '/_authenticated/tickets/admin-detail'
     | '/_authenticated/tickets/detail'
@@ -1056,6 +1081,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/'
     | '/_authenticated/error-reports/'
     | '/_authenticated/finance/'
+    | '/_authenticated/image-generation/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
     | '/_authenticated/playground/'
@@ -1442,6 +1468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIdentityVerificationAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/image-generation/': {
+      id: '/_authenticated/image-generation/'
+      path: '/image-generation'
+      fullPath: '/image-generation/'
+      preLoaderRoute: typeof AuthenticatedImageGenerationIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/invoices/admin': {
       id: '/_authenticated/invoices/admin'
       path: '/invoices/admin'
@@ -1482,6 +1515,13 @@ declare module '@tanstack/react-router' {
       path: '/playground'
       fullPath: '/playground/'
       preLoaderRoute: typeof AuthenticatedPlaygroundIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/playground/$section': {
+      id: '/_authenticated/playground/$section'
+      path: '/playground/$section'
+      fullPath: '/playground/$section'
+      preLoaderRoute: typeof AuthenticatedPlaygroundSectionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/profile/': {
@@ -1810,6 +1850,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInvoicesAdminRoute: typeof AuthenticatedInvoicesAdminRoute
   AuthenticatedLotteryAdminRoute: typeof AuthenticatedLotteryAdminRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
+  AuthenticatedPlaygroundSectionRoute: typeof AuthenticatedPlaygroundSectionRoute
   AuthenticatedTicketsAdminRoute: typeof AuthenticatedTicketsAdminRoute
   AuthenticatedTicketsAdminDetailRoute: typeof AuthenticatedTicketsAdminDetailRoute
   AuthenticatedTicketsDetailRoute: typeof AuthenticatedTicketsDetailRoute
@@ -1823,6 +1864,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedErrorReportsIndexRoute: typeof AuthenticatedErrorReportsIndexRoute
   AuthenticatedFinanceIndexRoute: typeof AuthenticatedFinanceIndexRoute
+  AuthenticatedImageGenerationIndexRoute: typeof AuthenticatedImageGenerationIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
@@ -1859,6 +1901,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInvoicesAdminRoute: AuthenticatedInvoicesAdminRoute,
   AuthenticatedLotteryAdminRoute: AuthenticatedLotteryAdminRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
+  AuthenticatedPlaygroundSectionRoute: AuthenticatedPlaygroundSectionRoute,
   AuthenticatedTicketsAdminRoute: AuthenticatedTicketsAdminRoute,
   AuthenticatedTicketsAdminDetailRoute: AuthenticatedTicketsAdminDetailRoute,
   AuthenticatedTicketsDetailRoute: AuthenticatedTicketsDetailRoute,
@@ -1872,6 +1915,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedErrorReportsIndexRoute: AuthenticatedErrorReportsIndexRoute,
   AuthenticatedFinanceIndexRoute: AuthenticatedFinanceIndexRoute,
+  AuthenticatedImageGenerationIndexRoute:
+    AuthenticatedImageGenerationIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,

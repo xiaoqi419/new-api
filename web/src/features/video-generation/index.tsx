@@ -16,12 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -38,6 +37,7 @@ import {
 import { AssetUrlInput } from './components/asset-url-input'
 import { FieldSelect } from './components/field-select'
 import { ReferenceMediaEditor } from './components/reference-media-editor'
+import { VideoRecords } from './components/video-records'
 import { VideoResultCard } from './components/video-result-card'
 import {
   DEFAULT_MODEL,
@@ -53,6 +53,7 @@ import {
   RESOLUTION_OPTIONS,
   VIDEO_MODELS,
   VIDEO_POLL_INTERVAL_MS,
+  VIDEO_RECORDS_QUERY_KEY,
 } from './constants'
 import {
   buildBody,
@@ -63,8 +64,9 @@ import {
 } from './lib'
 import type { VideoMode, VideoResult } from './types'
 
-export function VideoGeneration() {
+export function VideoGenerationContent() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
 
   const { data: tokenOptions = [] } = useQuery({
     queryKey: ['video-token-options'],
@@ -115,6 +117,9 @@ export function VideoGeneration() {
             setPolling(false)
             setResult({ url: data.result_url, quota: data.quota })
             toast.success(t('Video generation complete'))
+            void queryClient.invalidateQueries({
+              queryKey: VIDEO_RECORDS_QUERY_KEY,
+            })
             return
           }
           if (isFailStatus(data.status)) {
@@ -130,7 +135,7 @@ export function VideoGeneration() {
       }
       void tick()
     },
-    [t]
+    [t, queryClient]
   )
 
   const handleSubmit = async () => {
@@ -209,196 +214,198 @@ export function VideoGeneration() {
   ]
 
   return (
-    <SectionPageLayout>
-      <SectionPageLayout.Title>{t('Video Generation')}</SectionPageLayout.Title>
-      <SectionPageLayout.Content>
-        <div className='flex flex-col gap-4'>
-          <p className='text-muted-foreground text-sm'>
-            {t(
-              'Seedance 2.0: text-to-video / image-to-video (first frame) / first & last frame / multimodal reference (image, video, audio). Provide a public URL or pick from the asset library (asset://).'
-            )}
-          </p>
+    <div className='flex flex-col gap-4'>
+      <p className='text-muted-foreground text-sm'>
+        {t(
+          'Seedance 2.0: text-to-video / image-to-video (first frame) / first & last frame / multimodal reference (image, video, audio). Provide a public URL or pick from the asset library (asset://).'
+        )}
+      </p>
 
-          <div className='grid gap-4 lg:grid-cols-2'>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('Parameters')}</CardTitle>
-              </CardHeader>
-              <CardContent className='flex flex-col gap-4'>
-                <div className='flex flex-col gap-1.5'>
-                  <Label>{t('API Key')}</Label>
-                  <FieldSelect
-                    value={apiKey}
-                    items={tokenOptions}
-                    onValueChange={setApiKey}
-                    placeholder={t('Select your token')}
-                  />
-                  <span className='text-muted-foreground text-xs'>
-                    {t('Defaults to your first active token; you can switch.')}
-                  </span>
-                </div>
+      <div className='grid gap-4 lg:grid-cols-2'>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('Parameters')}</CardTitle>
+          </CardHeader>
+          <CardContent className='flex flex-col gap-4'>
+            <div className='flex flex-col gap-1.5'>
+              <Label>{t('API Key')}</Label>
+              <FieldSelect
+                value={apiKey}
+                items={tokenOptions}
+                onValueChange={setApiKey}
+                placeholder={t('Select your token')}
+              />
+              <span className='text-muted-foreground text-xs'>
+                {t('Defaults to your first active token; you can switch.')}
+              </span>
+            </div>
 
-                <div className='flex flex-col gap-1.5'>
-                  <Label>{t('Generation Mode')}</Label>
-                  <FieldSelect
-                    value={mode}
-                    items={modeItems}
-                    onValueChange={(v) => setMode(v as VideoMode)}
-                  />
-                </div>
+            <div className='flex flex-col gap-1.5'>
+              <Label>{t('Generation Mode')}</Label>
+              <FieldSelect
+                value={mode}
+                items={modeItems}
+                onValueChange={(v) => setMode(v as VideoMode)}
+              />
+            </div>
 
-                <div className='flex flex-col gap-1.5'>
-                  <Label>{t('Prompt')}</Label>
-                  <Textarea
-                    rows={3}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={t('Describe the scene content')}
-                  />
-                </div>
+            <div className='flex flex-col gap-1.5'>
+              <Label>{t('Prompt')}</Label>
+              <Textarea
+                rows={3}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t('Describe the scene content')}
+              />
+            </div>
 
-                {(mode === 'first' || mode === 'firstlast') && (
-                  <div className='flex flex-col gap-1.5'>
-                    <Label>{t('First Frame Image')}</Label>
-                    <AssetUrlInput
-                      value={firstFrame}
-                      onChange={setFirstFrame}
-                      placeholder={t('https:// or asset://')}
-                      assetOptions={assetOptions}
-                    />
-                  </div>
-                )}
-
-                {mode === 'firstlast' && (
-                  <div className='flex flex-col gap-1.5'>
-                    <Label>{t('Last Frame Image')}</Label>
-                    <AssetUrlInput
-                      value={lastFrame}
-                      onChange={setLastFrame}
-                      placeholder={t('https:// or asset://')}
-                      assetOptions={assetOptions}
-                    />
-                  </div>
-                )}
-
-                {mode === 'reference' && (
-                  <>
-                    <ReferenceMediaEditor
-                      label={t('Reference Images')}
-                      list={refImages}
-                      onChange={setRefImages}
-                      max={MAX_REF_IMAGES}
-                      type='image'
-                      assetOptions={assetOptions}
-                    />
-                    <ReferenceMediaEditor
-                      label={t('Reference Videos')}
-                      list={refVideos}
-                      onChange={setRefVideos}
-                      max={MAX_REF_VIDEOS}
-                      type='video'
-                      assetOptions={assetOptions}
-                    />
-                    <ReferenceMediaEditor
-                      label={t('Reference Audios')}
-                      list={refAudios}
-                      onChange={setRefAudios}
-                      max={MAX_REF_AUDIOS}
-                      type='audio'
-                      assetOptions={assetOptions}
-                    />
-                  </>
-                )}
-
-                <div className='flex flex-col gap-1.5'>
-                  <Label>{t('Model')}</Label>
-                  <FieldSelect
-                    value={model}
-                    items={VIDEO_MODELS.map((m) => ({ value: m, label: m }))}
-                    onValueChange={setModel}
-                  />
-                </div>
-
-                <div className='grid grid-cols-2 gap-3'>
-                  <div className='flex flex-col gap-1.5'>
-                    <Label>{t('Resolution')}</Label>
-                    <FieldSelect
-                      value={resolution}
-                      items={RESOLUTION_OPTIONS.map((r) => ({
-                        value: r,
-                        label: r,
-                      }))}
-                      onValueChange={setResolution}
-                    />
-                  </div>
-                  <div className='flex flex-col gap-1.5'>
-                    <Label>{t('Aspect Ratio')}</Label>
-                    <FieldSelect
-                      value={ratio}
-                      items={RATIO_OPTIONS.map((r) => ({ value: r, label: r }))}
-                      onValueChange={setRatio}
-                    />
-                  </div>
-                </div>
-
-                <div className='flex flex-col gap-2'>
-                  <Label>
-                    {t('Duration (seconds):')} {duration}
-                  </Label>
-                  <Slider
-                    min={DURATION_MIN}
-                    max={DURATION_MAX}
-                    value={duration}
-                    onValueChange={(v) =>
-                      setDuration(Array.isArray(v) ? v[0] : v)
-                    }
-                  />
-                </div>
-
-                <div className='flex items-center gap-6'>
-                  <label className='flex items-center gap-2 text-sm'>
-                    <Switch
-                      checked={generateAudio}
-                      onCheckedChange={(c) => setGenerateAudio(c)}
-                    />
-                    {t('Generate Audio')}
-                  </label>
-                  <label className='flex items-center gap-2 text-sm'>
-                    <Switch
-                      checked={watermark}
-                      onCheckedChange={(c) => setWatermark(c)}
-                    />
-                    {t('Watermark')}
-                  </label>
-                </div>
-
-                <Button
-                  className='w-full'
-                  disabled={submitting || polling}
-                  onClick={handleSubmit}
-                >
-                  {polling ? t('Generating...') : t('Generate Video')}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('Result')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <VideoResultCard
-                  submitting={submitting}
-                  polling={polling}
-                  progress={progress}
-                  result={result}
-                  errorMsg={errorMsg}
+            {(mode === 'first' || mode === 'firstlast') && (
+              <div className='flex flex-col gap-1.5'>
+                <Label>{t('First Frame Image')}</Label>
+                <AssetUrlInput
+                  value={firstFrame}
+                  onChange={setFirstFrame}
+                  placeholder={t('https:// or asset://')}
+                  assetOptions={assetOptions}
                 />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </SectionPageLayout.Content>
-    </SectionPageLayout>
+              </div>
+            )}
+
+            {mode === 'firstlast' && (
+              <div className='flex flex-col gap-1.5'>
+                <Label>{t('Last Frame Image')}</Label>
+                <AssetUrlInput
+                  value={lastFrame}
+                  onChange={setLastFrame}
+                  placeholder={t('https:// or asset://')}
+                  assetOptions={assetOptions}
+                />
+              </div>
+            )}
+
+            {mode === 'reference' && (
+              <>
+                <ReferenceMediaEditor
+                  label={t('Reference Images')}
+                  list={refImages}
+                  onChange={setRefImages}
+                  max={MAX_REF_IMAGES}
+                  type='image'
+                  assetOptions={assetOptions}
+                />
+                <ReferenceMediaEditor
+                  label={t('Reference Videos')}
+                  list={refVideos}
+                  onChange={setRefVideos}
+                  max={MAX_REF_VIDEOS}
+                  type='video'
+                  assetOptions={assetOptions}
+                />
+                <ReferenceMediaEditor
+                  label={t('Reference Audios')}
+                  list={refAudios}
+                  onChange={setRefAudios}
+                  max={MAX_REF_AUDIOS}
+                  type='audio'
+                  assetOptions={assetOptions}
+                />
+              </>
+            )}
+
+            <div className='flex flex-col gap-1.5'>
+              <Label>{t('Model')}</Label>
+              <FieldSelect
+                value={model}
+                items={VIDEO_MODELS.map((m) => ({ value: m, label: m }))}
+                onValueChange={setModel}
+              />
+            </div>
+
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='flex flex-col gap-1.5'>
+                <Label>{t('Resolution')}</Label>
+                <FieldSelect
+                  value={resolution}
+                  items={RESOLUTION_OPTIONS.map((r) => ({
+                    value: r,
+                    label: r,
+                  }))}
+                  onValueChange={setResolution}
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <Label>{t('Aspect Ratio')}</Label>
+                <FieldSelect
+                  value={ratio}
+                  items={RATIO_OPTIONS.map((r) => ({ value: r, label: r }))}
+                  onValueChange={setRatio}
+                />
+              </div>
+            </div>
+
+            <div className='flex flex-col gap-2'>
+              <Label>
+                {t('Duration (seconds):')} {duration}
+              </Label>
+              <Slider
+                min={DURATION_MIN}
+                max={DURATION_MAX}
+                value={duration}
+                onValueChange={(v) => setDuration(Array.isArray(v) ? v[0] : v)}
+              />
+            </div>
+
+            <div className='flex items-center gap-6'>
+              <label className='flex items-center gap-2 text-sm'>
+                <Switch
+                  checked={generateAudio}
+                  onCheckedChange={(c) => setGenerateAudio(c)}
+                />
+                {t('Generate Audio')}
+              </label>
+              <label className='flex items-center gap-2 text-sm'>
+                <Switch
+                  checked={watermark}
+                  onCheckedChange={(c) => setWatermark(c)}
+                />
+                {t('Watermark')}
+              </label>
+            </div>
+
+            <Button
+              className='w-full'
+              disabled={submitting || polling}
+              onClick={handleSubmit}
+            >
+              {polling ? t('Generating...') : t('Generate Video')}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('Result')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <VideoResultCard
+              submitting={submitting}
+              polling={polling}
+              progress={progress}
+              result={result}
+              errorMsg={errorMsg}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('History')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VideoRecords />
+        </CardContent>
+      </Card>
+    </div>
   )
 }

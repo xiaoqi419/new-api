@@ -498,6 +498,7 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 
 	var completed []completedMember
 	var groupCompleted bool
+	var paidTopUp *TopUp
 
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		locked := &TopUp{}
@@ -519,6 +520,7 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		if err := tx.Save(locked).Error; err != nil {
 			return err
 		}
+		paidTopUp = locked
 
 		participant := &GroupBuyParticipant{}
 		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(participant).Error; err != nil {
@@ -571,6 +573,9 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		return true, err
 	}
 
+	if paidTopUp != nil && OnTopUpSuccess != nil {
+		OnTopUpSuccess(paidTopUp, 0)
+	}
 	if groupCompleted {
 		applyGroupBuyCompletion(completed, callerIp)
 	}

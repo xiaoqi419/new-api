@@ -52,6 +52,25 @@ var (
 	ErrTopUpStatusInvalid    = errors.New("topup status invalid")
 )
 
+// OnTopUpSuccess 充值首次成功时的回调钩子（拼团为成员付款成功时）。
+// 由 service 层在启动时注入 service.NotifyTopUpSuccess，以避免 model -> service 循环依赖。
+// quotaAdded 为本次到账额度；拼团成员付款时额度尚未发放，传 0。
+var OnTopUpSuccess func(topUp *TopUp, quotaAdded int)
+
+// SumSuccessTopUp 统计自 since（含）以来已成功充值的实付金额合计与笔数，
+// 按完成时间过滤，供充值通知展示今日/本月累计。三种数据库通用。
+func SumSuccessTopUp(since int64) (money float64, count int64, err error) {
+	var result struct {
+		Money float64
+		Count int64
+	}
+	err = DB.Model(&TopUp{}).
+		Where("status = ? AND complete_time >= ?", common.TopUpStatusSuccess, since).
+		Select("COALESCE(SUM(money), 0) AS money, COUNT(*) AS count").
+		Scan(&result).Error
+	return result.Money, result.Count, err
+}
+
 func (topUp *TopUp) Insert() error {
 	var err error
 	err = DB.Create(topUp).Error
@@ -174,6 +193,9 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
 	GrantTopupLotteryCards(topUp.UserId, int(quota))
+	if OnTopUpSuccess != nil {
+		OnTopUpSuccess(topUp, int(quota))
+	}
 
 	return nil
 }
@@ -355,6 +377,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	var quotaToAdd int
 	var payMoney float64
 	var paymentMethod string
+	var completedTopUp *TopUp
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
@@ -403,6 +426,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		topUpId = topUp.Id
 		payMoney = topUp.Money
 		paymentMethod = topUp.PaymentMethod
+		completedTopUp = topUp
 		return nil
 	})
 
@@ -414,6 +438,9 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
 	CreateInviterRebate(userId, topUpId, tradeNo, quotaToAdd)
 	GrantTopupLotteryCards(userId, quotaToAdd)
+	if quotaToAdd > 0 && completedTopUp != nil && OnTopUpSuccess != nil {
+		OnTopUpSuccess(completedTopUp, quotaToAdd)
+	}
 	return nil
 }
 func RechargeCreem(referenceId string, customerEmail string, customerName string, callerIp string) (err error) {
@@ -493,6 +520,9 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
 	GrantTopupLotteryCards(topUp.UserId, int(quota))
+	if OnTopUpSuccess != nil {
+		OnTopUpSuccess(topUp, int(quota))
+	}
 
 	return nil
 }
@@ -561,6 +591,9 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
+		if OnTopUpSuccess != nil {
+			OnTopUpSuccess(topUp, quotaToAdd)
+		}
 	}
 
 	return nil
@@ -633,6 +666,9 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("%s充值成功，充值额度: %v，支付金额: %.2f", logSource, logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, paymentMethod, logSource)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
+		if OnTopUpSuccess != nil {
+			OnTopUpSuccess(topUp, quotaToAdd)
+		}
 	}
 
 	return nil
@@ -700,6 +736,9 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
+		if OnTopUpSuccess != nil {
+			OnTopUpSuccess(topUp, quotaToAdd)
+		}
 	}
 
 	return nil

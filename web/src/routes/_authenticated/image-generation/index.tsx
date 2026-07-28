@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2023-2026 QuantumNous
+Copyright (C) 2025 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -18,11 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_authenticated/playground/')({
+export const Route = createFileRoute('/_authenticated/image-generation/')({
   beforeLoad: () => {
     throw redirect({
       to: '/playground/$section',
-      params: { section: 'chat' },
+      params: { section: 'image' },
     })
   },
 })

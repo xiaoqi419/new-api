@@ -18,11 +18,20 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_authenticated/playground/')({
-  beforeLoad: () => {
-    throw redirect({
-      to: '/playground/$section',
-      params: { section: 'chat' },
-    })
+import {
+  isPlaygroundSectionId,
+  PLAYGROUND_DEFAULT_SECTION,
+} from '@/features/playground/section-registry'
+import { PlaygroundStudio } from '@/features/playground/studio'
+
+export const Route = createFileRoute('/_authenticated/playground/$section')({
+  beforeLoad: ({ params }) => {
+    if (!isPlaygroundSectionId(params.section)) {
+      throw redirect({
+        to: '/playground/$section',
+        params: { section: PLAYGROUND_DEFAULT_SECTION },
+      })
+    }
   },
+  component: PlaygroundStudio,
 })

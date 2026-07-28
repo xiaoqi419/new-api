@@ -380,5 +380,8 @@ func InitResources() error {
 
 	service.StartAuthArtifactCleanup()
 
+	// 充值成功后推送企业微信通知（model 通过钩子回调 service，避免 model -> service 循环依赖）
+	model.OnTopUpSuccess = service.NotifyTopUpSuccess
+
 	return nil
 }

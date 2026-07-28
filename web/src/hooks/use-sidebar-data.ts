@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   BadgeCheck,
   Box,
-  Clapperboard,
   CreditCard,
   Dices,
   FileText,
@@ -72,7 +71,9 @@ export function useSidebarData(): SidebarData {
           },
           {
             title: t('Playground'),
-            url: '/playground',
+            url: '/playground/chat',
+            activeUrls: ['/playground/image', '/playground/video'],
+            configUrls: ['/playground'],
             icon: FlaskConical,
           },
         ],
@@ -124,11 +125,6 @@ export function useSidebarData(): SidebarData {
         id: 'media',
         title: t('AI Media'),
         items: [
-          {
-            title: t('Video Generation'),
-            url: '/video-generation',
-            icon: Clapperboard,
-          },
           {
             title: t('Asset Library'),
             url: '/asset-library',

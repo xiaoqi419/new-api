@@ -16,10 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
-
-import { VideoGeneration } from '@/features/video-generation'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/video-generation/')({
-  component: VideoGeneration,
+  beforeLoad: () => {
+    throw redirect({
+      to: '/playground/$section',
+      params: { section: 'video' },
+    })
+  },
 })

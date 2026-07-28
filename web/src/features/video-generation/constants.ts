@@ -44,3 +44,6 @@ export const VIDEO_POLL_INTERVAL_MS = 5000
 export const MAX_REF_IMAGES = 9
 export const MAX_REF_VIDEOS = 3
 export const MAX_REF_AUDIOS = 3
+
+export const VIDEO_RECORDS_PAGE_SIZE = 12
+export const VIDEO_RECORDS_QUERY_KEY = ['video-generation-records'] as const
