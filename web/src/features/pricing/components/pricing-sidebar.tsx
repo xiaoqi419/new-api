@@ -20,7 +20,6 @@ import { ChevronDown, RotateCcw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -184,46 +183,11 @@ function VendorRow(props: {
       )}
       <span className='flex-1 truncate'>{props.option.label}</span>
       {props.option.count != null && (
-        <span
-          className={cn(
-            'shrink-0 rounded px-1.5 py-0.5 text-[11px] tabular-nums',
-            props.active
-              ? 'bg-background text-foreground'
-              : 'bg-muted/70 text-muted-foreground'
-          )}
-        >
+        <span className='text-muted-foreground/50 shrink-0 text-xs tabular-nums'>
           {props.option.count}
         </span>
       )}
     </button>
-  )
-}
-
-function VendorListSection(props: FilterSectionProps) {
-  return (
-    <Collapsible
-      defaultOpen
-      className='border-border/70 border-b pb-3 last:border-b-0'
-    >
-      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2.5 text-left'>
-        <span className='text-foreground text-sm font-semibold'>
-          {props.title}
-        </span>
-        <ChevronDown className='text-muted-foreground size-4 transition-transform group-data-[panel-open]:rotate-180' />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className='flex max-h-[420px] flex-col gap-0.5 overflow-y-auto'>
-          {props.options.map((option) => (
-            <VendorRow
-              key={option.value}
-              option={option}
-              active={props.value === option.value}
-              onClick={() => props.onChange(option.value)}
-            />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   )
 }
 
@@ -318,64 +282,69 @@ export function PricingSidebar(props: PricingSidebarProps) {
 
   return (
     <aside className={cn('rounded-xl border p-3', props.className)}>
-      <div className='mb-2.5 flex items-center justify-between gap-2'>
-        <div>
-          <h2 className='text-foreground text-sm font-bold'>{t('Filter')}</h2>
-          <p className='text-muted-foreground mt-1 text-xs'>
-            {t('Refine models by provider, group, type, and tags.')}
-          </p>
-        </div>
-        <Button
-          type='button'
-          variant='ghost'
-          size='sm'
-          onClick={props.onClearFilters}
-          disabled={!props.hasActiveFilters}
-          className='h-7 gap-1.5 px-2 text-xs'
-        >
-          <RotateCcw className='size-3.5' />
-          {t('Reset')}
-        </Button>
+      <div className='mb-1.5 flex items-center justify-between gap-2'>
+        <h2 className='text-foreground text-sm font-semibold'>
+          {t('Providers')}
+        </h2>
+        {props.hasActiveFilters && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={props.onClearFilters}
+            className='text-muted-foreground h-6 gap-1 px-1.5 text-xs'
+          >
+            <RotateCcw className='size-3' />
+            {t('Reset')}
+          </Button>
+        )}
       </div>
 
-      {props.hasActiveFilters && (
-        <Badge variant='secondary' className='mb-3'>
-          {t('Filters active')}
-        </Badge>
-      )}
-
-      <div className='space-y-1'>
-        <VendorListSection
-          title={t('Providers')}
-          value={props.vendorFilter}
-          options={vendorOptions}
-          onChange={props.onVendorChange}
-        />
-        <FilterSection
-          title={t('Groups')}
-          value={props.groupFilter}
-          options={groupOptions}
-          onChange={props.onGroupChange}
-        />
-        <FilterSection
-          title={t('Model Tags')}
-          value={props.tagFilter}
-          options={tagOptions}
-          onChange={props.onTagChange}
-        />
-        <FilterSection
-          title={t('Pricing Type')}
-          value={props.quotaTypeFilter}
-          options={quotaOptions}
-          onChange={props.onQuotaTypeChange}
-        />
-        <FilterSection
-          title={t('Endpoint Type')}
-          value={props.endpointTypeFilter}
-          options={endpointOptions}
-          onChange={props.onEndpointTypeChange}
-        />
+      <div className='hover-scrollbar flex max-h-[calc(100dvh-16rem)] flex-col gap-0.5 overflow-y-auto'>
+        {vendorOptions.map((option) => (
+          <VendorRow
+            key={option.value}
+            option={option}
+            active={props.vendorFilter === option.value}
+            onClick={() => props.onVendorChange(option.value)}
+          />
+        ))}
       </div>
+
+      <Collapsible className='border-border/70 mt-3 border-t pt-1'>
+        <CollapsibleTrigger className='group text-muted-foreground hover:text-foreground flex w-full items-center justify-between py-2 text-left transition-colors'>
+          <span className='text-xs font-medium'>{t('More filters')}</span>
+          <ChevronDown className='size-4 transition-transform group-data-[panel-open]:rotate-180' />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className='space-y-1 pt-1'>
+            <FilterSection
+              title={t('Groups')}
+              value={props.groupFilter}
+              options={groupOptions}
+              onChange={props.onGroupChange}
+            />
+            <FilterSection
+              title={t('Model Tags')}
+              value={props.tagFilter}
+              options={tagOptions}
+              onChange={props.onTagChange}
+            />
+            <FilterSection
+              title={t('Pricing Type')}
+              value={props.quotaTypeFilter}
+              options={quotaOptions}
+              onChange={props.onQuotaTypeChange}
+            />
+            <FilterSection
+              title={t('Endpoint Type')}
+              value={props.endpointTypeFilter}
+              options={endpointOptions}
+              onChange={props.onEndpointTypeChange}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </aside>
   )
 }

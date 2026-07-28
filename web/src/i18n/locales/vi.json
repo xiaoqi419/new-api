@@ -5943,6 +5943,7 @@
     "The knowledge cutoff of {{model}} is {{date}}.": "Thời điểm cắt kiến thức của {{model}} là {{date}}.",
     "Newest": "Mới nhất",
     "Context: Large to Small": "Ngữ cảnh: lớn đến nhỏ",
-    "Providers": "Nhà cung cấp"
+    "Providers": "Nhà cung cấp",
+    "More filters": "Thêm bộ lọc"
   }
 }

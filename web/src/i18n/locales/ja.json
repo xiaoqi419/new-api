@@ -5943,6 +5943,7 @@
     "The knowledge cutoff of {{model}} is {{date}}.": "{{model}} の知識のカットオフは {{date}} です。",
     "Newest": "最新",
     "Context: Large to Small": "コンテキスト:大きい順",
-    "Providers": "プロバイダー"
+    "Providers": "プロバイダー",
+    "More filters": "その他のフィルター"
   }
 }

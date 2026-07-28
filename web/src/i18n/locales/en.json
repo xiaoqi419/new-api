@@ -5943,6 +5943,7 @@
     "The knowledge cutoff of {{model}} is {{date}}.": "The knowledge cutoff of {{model}} is {{date}}.",
     "Newest": "Newest",
     "Context: Large to Small": "Context: Large to Small",
-    "Providers": "Providers"
+    "Providers": "Providers",
+    "More filters": "More filters"
   }
 }

@@ -5943,6 +5943,7 @@
     "The knowledge cutoff of {{model}} is {{date}}.": "Дата отсечения знаний {{model}} — {{date}}.",
     "Newest": "Новейшие",
     "Context: Large to Small": "Контекст: от большого к малому",
-    "Providers": "Поставщики"
+    "Providers": "Поставщики",
+    "More filters": "Ещё фильтры"
   }
 }

@@ -5943,6 +5943,7 @@
     "The knowledge cutoff of {{model}} is {{date}}.": "La date de coupure des connaissances de {{model}} est {{date}}.",
     "Newest": "Plus récent",
     "Context: Large to Small": "Contexte : du plus grand au plus petit",
-    "Providers": "Fournisseurs"
+    "Providers": "Fournisseurs",
+    "More filters": "Plus de filtres"
   }
 }
