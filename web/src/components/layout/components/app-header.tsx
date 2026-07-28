@@ -123,8 +123,9 @@ export function AppHeader({
         {rightContent ?? (
           <div className='ms-auto flex items-center gap-1 sm:gap-2'>
             {showTopNav && (
-              <div className='me-1 hidden lg:block'>
+              <div className='me-1 hidden items-center lg:flex'>
                 <TopNav links={links} />
+                <CommunityMenu variant='nav' />
               </div>
             )}
             {showSearch && <Search />}
@@ -140,7 +141,6 @@ export function AppHeader({
                 loading={notifications.loading}
               />
             )}
-            <CommunityMenu />
             <LanguageSwitcher />
             {showConfigDrawer && <ConfigDrawer />}
             {showProfileDropdown && <ProfileDropdown />}

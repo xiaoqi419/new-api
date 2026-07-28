@@ -86,12 +86,14 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Rankings'), href: '/rankings', requiresAuth })
   }
 
-  // Docs: built-in in-app developer docs, plus an optional external link
+  // Docs: built-in in-app developer docs (controlled by `docs`)
   if (modules?.docs !== false) {
     links.push({ title: t('API Documentation'), href: '/docs' })
-    if (docsLink) {
-      links.push({ title: t('Docs'), href: docsLink, external: true })
-    }
+  }
+
+  // External docs link (controlled independently by `externalDocs`)
+  if (modules?.externalDocs !== false && docsLink) {
+    links.push({ title: t('Docs'), href: docsLink, external: true })
   }
 
   // About

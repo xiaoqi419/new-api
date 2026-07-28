@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260729',
+    date: '2026-07-29',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '顶部导航「文档」开关拆分:原来一个开关会同时控制「接入文档」(站内 /docs)与「文档」(外链),现拆为两个独立开关,可在「系统设置 → 站点 → 顶部导航」分别启停。',
+          '「社群」入口由右上角图标改为导航栏文字项,置于「接入文档」之后,点击展开社群弹层(QQ / 微信 / 二维码等);公共页与控制台头部保持一致。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260728',
     date: '2026-07-28',
     changes: [

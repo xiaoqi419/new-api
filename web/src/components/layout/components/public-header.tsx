@@ -23,11 +23,11 @@ import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/components/dialog'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
-import { CommunityMenu } from '@/features/community'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CommunityMenu } from '@/features/community'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
@@ -257,13 +257,14 @@ export function PublicHeader(props: PublicHeaderProps) {
                 )
               })}
 
+              <CommunityMenu variant='nav' />
+
               {(showLanguageSwitcher ||
                 showThemeSwitch ||
                 showNotifications) && (
                 <div className='bg-border/40 mx-2 h-4 w-px' />
               )}
 
-              <CommunityMenu />
               {showLanguageSwitcher && <LanguageSwitcher />}
               {showThemeSwitch && <ThemeSwitch />}
               {showNotifications && (

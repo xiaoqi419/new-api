@@ -25,9 +25,9 @@ import {
   QrCode,
   Users,
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { QRCodeSVG } from 'qrcode.react'
 
 import { IconDiscord, IconTelegram, IconWeChat } from '@/assets/brand-icons'
 import { Dialog } from '@/components/dialog'
@@ -130,12 +130,40 @@ function CommunityRow({
   )
 }
 
-export function CommunityMenu({ className }: { className?: string }) {
+export function CommunityMenu({
+  className,
+  variant = 'icon',
+}: {
+  className?: string
+  variant?: 'icon' | 'nav'
+}) {
   const { t } = useTranslation()
   const links = useCommunityLinks()
   const [qrLink, setQrLink] = useState<CommunityLink | null>(null)
 
   if (links.length === 0) return null
+
+  const trigger =
+    variant === 'nav' ? (
+      <Button
+        variant='ghost'
+        className={cn(
+          'text-muted-foreground hover:text-foreground h-auto rounded-lg px-3 py-1.5 text-[13px] font-medium hover:bg-transparent',
+          className
+        )}
+      >
+        {t('Community')}
+      </Button>
+    ) : (
+      <Button
+        variant='ghost'
+        size='icon'
+        className={cn('size-9', className)}
+        aria-label={t('Community')}
+      >
+        <Users className='size-4' />
+      </Button>
+    )
 
   let qrContent: React.ReactNode = null
   if (qrLink?.qrImageUrl) {
@@ -157,20 +185,9 @@ export function CommunityMenu({ className }: { className?: string }) {
   return (
     <>
       <Popover>
-        <PopoverTrigger
-          render={
-            <Button
-              variant='ghost'
-              size='icon'
-              className={cn('size-9', className)}
-              aria-label={t('Community')}
-            >
-              <Users className='size-4' />
-            </Button>
-          }
-        />
+        <PopoverTrigger render={trigger} />
         <PopoverContent align='end' className='w-72 p-2'>
-          <div className='text-muted-foreground px-2 pb-1 pt-1 text-xs font-medium'>
+          <div className='text-muted-foreground px-2 pt-1 pb-1 text-xs font-medium'>
             {t('Official Community')}
           </div>
           <div className='flex flex-col'>
