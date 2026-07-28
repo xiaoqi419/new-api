@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useMemo, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
@@ -31,10 +32,15 @@ import {
   PricingSidebar,
   PricingToolbar,
   ModelCardGrid,
-  ModelDetailsDrawer,
 } from './components'
 import {
+  DEFAULT_TOKEN_UNIT,
+  ENDPOINT_TYPES,
   EXCLUDED_GROUPS,
+  FILTER_ALL,
+  MODALITY_FILTERS,
+  QUOTA_TYPES,
+  SORT_OPTIONS,
   VIEW_MODES,
   getModalityFilterLabels,
 } from './constants'
@@ -43,18 +49,13 @@ import { usePricingData } from './hooks/use-pricing-data'
 
 export function Pricing() {
   const { t } = useTranslation()
-  const [selectedModelName, setSelectedModelName] = useState<string | null>(
-    null
-  )
+  const navigate = useNavigate()
 
   const {
     models,
     vendors,
     groupRatio,
     usableGroup,
-    endpointMap,
-    autoGroups,
-    autoGroupRoutes,
     isLoading,
     priceRate,
     usdExchangeRate,
@@ -93,18 +94,47 @@ export function Pricing() {
 
   const modalityLabels = getModalityFilterLabels(t)
 
-  const handleModelClick = useCallback((modelName: string) => {
-    setSelectedModelName(modelName)
-  }, [])
-
-  const selectedModel = useMemo(
-    () =>
-      selectedModelName
-        ? (models || []).find(
-            (model) => model.model_name === selectedModelName
-          ) || null
-        : null,
-    [models, selectedModelName]
+  const handleModelClick = useCallback(
+    (modelName: string) => {
+      navigate({
+        to: '/pricing/$modelId',
+        params: { modelId: modelName },
+        search: {
+          search: searchInput || undefined,
+          sort: sortBy !== SORT_OPTIONS.NAME ? sortBy : undefined,
+          vendor: vendorFilter !== FILTER_ALL ? vendorFilter : undefined,
+          group: groupFilter !== FILTER_ALL ? groupFilter : undefined,
+          quotaType:
+            quotaTypeFilter !== QUOTA_TYPES.ALL ? quotaTypeFilter : undefined,
+          endpointType:
+            endpointTypeFilter !== ENDPOINT_TYPES.ALL
+              ? endpointTypeFilter
+              : undefined,
+          tag: tagFilter !== FILTER_ALL ? tagFilter : undefined,
+          modality:
+            modalityFilter !== MODALITY_FILTERS.ALL
+              ? modalityFilter
+              : undefined,
+          tokenUnit: tokenUnit !== DEFAULT_TOKEN_UNIT ? tokenUnit : undefined,
+          view: viewMode !== VIEW_MODES.TABLE ? viewMode : undefined,
+          rechargePrice: showRechargePrice || undefined,
+        },
+      })
+    },
+    [
+      navigate,
+      searchInput,
+      sortBy,
+      vendorFilter,
+      groupFilter,
+      quotaTypeFilter,
+      endpointTypeFilter,
+      tagFilter,
+      modalityFilter,
+      tokenUnit,
+      viewMode,
+      showRechargePrice,
+    ]
   )
 
   const availableGroups = useMemo(
@@ -269,30 +299,6 @@ export function Pricing() {
               {renderPricingContent()}
             </main>
           </div>
-
-          {selectedModel && (
-            <ModelDetailsDrawer
-              open={Boolean(selectedModel)}
-              onOpenChange={(open) => {
-                if (!open) setSelectedModelName(null)
-              }}
-              model={selectedModel}
-              groupRatio={groupRatio || {}}
-              usableGroup={usableGroup || {}}
-              endpointMap={
-                (endpointMap as Record<
-                  string,
-                  { path?: string; method?: string }
-                >) || {}
-              }
-              autoGroups={autoGroups || []}
-              autoGroupRoutes={autoGroupRoutes || []}
-              priceRate={priceRate ?? 1}
-              usdExchangeRate={usdExchangeRate ?? 1}
-              tokenUnit={tokenUnit}
-              showRechargePrice={showRechargePrice}
-            />
-          )}
         </PageTransition>
       </div>
     </PublicLayout>

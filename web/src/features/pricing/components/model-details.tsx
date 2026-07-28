@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   CalendarClock,
+  ChevronRight,
   Code2,
   FileText,
   HeartPulse,
@@ -79,8 +79,11 @@ import type {
 } from '../types'
 import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
+import { ModalityFlow } from '../lib/modality'
+import { toGroupUptimeSeries } from '../lib/perf-uptime'
 import { ModelDetailsApi } from './model-details-api'
 import { ModelDetailsPerformance } from './model-details-performance'
+import { UptimeSparkline } from './model-details-uptime-sparkline'
 
 // ----------------------------------------------------------------------------
 // Local UI helpers
@@ -525,6 +528,78 @@ function ModelBackendDetailsSection(props: { model: PricingModel }) {
 // Model header (always visible above the detail sections)
 // ----------------------------------------------------------------------------
 
+function MetaPill(props: {
+  icon?: React.ComponentType<{ className?: string }>
+  title?: string
+  children: React.ReactNode
+}) {
+  const Icon = props.icon
+  return (
+    <span
+      title={props.title}
+      className='border-border/70 bg-muted/30 text-muted-foreground inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs'
+    >
+      {Icon && <Icon className='size-3 shrink-0' />}
+      {props.children}
+    </span>
+  )
+}
+
+function ModelHeaderMeta(props: { model: PricingModel }) {
+  const { t } = useTranslation()
+  const model = props.model
+  const inputModalities = normalizeCatalogItems(model.input_modalities)
+  const outputModalities = normalizeCatalogItems(model.output_modalities)
+  const capabilities = normalizeCatalogItems(model.capabilities)
+  const contextLength = model.context_length ?? 0
+  const maxOutput = model.max_output_tokens ?? 0
+  const releaseDate = formatCatalogYearMonth(model.release_date)
+
+  const hasModality =
+    inputModalities.length > 0 || outputModalities.length > 0
+  const hasAny =
+    hasModality ||
+    contextLength > 0 ||
+    maxOutput > 0 ||
+    Boolean(releaseDate) ||
+    capabilities.length > 0
+  if (!hasAny) return null
+
+  return (
+    <div className='mt-3 flex flex-wrap items-center gap-1.5'>
+      {hasModality && (
+        <MetaPill title={t('Modalities')}>
+          <ModalityFlow
+            input={model.input_modalities}
+            output={model.output_modalities}
+            size={13}
+          />
+        </MetaPill>
+      )}
+      {contextLength > 0 && (
+        <MetaPill icon={Layers} title={t('Context')}>
+          {formatCatalogTokenCount(contextLength)} {t('Context')}
+        </MetaPill>
+      )}
+      {maxOutput > 0 && (
+        <MetaPill icon={Maximize2} title={t('Max output')}>
+          {formatCatalogTokenCount(maxOutput)} {t('Max output')}
+        </MetaPill>
+      )}
+      {releaseDate && (
+        <MetaPill icon={CalendarClock} title={t('Released')}>
+          {releaseDate}
+        </MetaPill>
+      )}
+      {capabilities.map((capability) => (
+        <MetaPill key={capability}>
+          {t(CAPABILITY_LABEL_KEYS[capability as ModelCapability] ?? capability)}
+        </MetaPill>
+      ))}
+    </div>
+  )
+}
+
 function ModelHeader(props: { model: PricingModel }) {
   const { t } = useTranslation()
   const model = props.model
@@ -555,6 +630,7 @@ function ModelHeader(props: { model: PricingModel }) {
         <span className='text-muted-foreground/30'>·</span>
         <ModelBillingModeBadge model={model} />
       </div>
+      <ModelHeaderMeta model={model} />
       {description && (
         <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>
           {description}
@@ -1332,6 +1408,19 @@ function GroupChannelCards(props: {
                 />
               </div>
 
+              {hasPerf && perf.series.length > 0 && (
+                <div className='mt-2.5'>
+                  <div className='text-muted-foreground/60 mb-1 text-[10px] font-medium tracking-wider uppercase'>
+                    {t('Availability (last 24h)')}
+                  </div>
+                  <UptimeSparkline
+                    series={toGroupUptimeSeries(perf)}
+                    size='sm'
+                    showOverall={false}
+                  />
+                </div>
+              )}
+
               <div className='mt-3 space-y-1.5 border-t pt-3'>
                 {isTokenBased ? (
                   <>
@@ -1642,8 +1731,8 @@ export function ModelDetails() {
   if (isLoading) {
     return (
       <PublicLayout>
-        <div className='mx-auto max-w-5xl px-4 sm:px-6'>
-          <Skeleton className='mb-4 h-5 w-16' />
+        <div className='mx-auto max-w-6xl px-4 sm:px-6'>
+          <Skeleton className='mb-4 h-5 w-48' />
           <div className='space-y-2'>
             <Skeleton className='h-7 w-64' />
             <Skeleton className='h-4 w-40' />
@@ -1684,16 +1773,32 @@ export function ModelDetails() {
 
   return (
     <PublicLayout>
-      <div className='mx-auto max-w-5xl px-4 sm:px-6'>
-        <Button
-          variant='ghost'
-          size='sm'
-          onClick={handleBack}
-          className='text-muted-foreground hover:text-foreground mb-4 h-auto gap-1 px-0 py-1 text-xs'
-        >
-          <ArrowLeft className='size-3.5' />
-          {t('Back')}
-        </Button>
+      <div className='mx-auto max-w-6xl px-4 sm:px-6'>
+        <nav className='text-muted-foreground mb-4 flex flex-wrap items-center gap-1.5 text-xs'>
+          <Link
+            to='/pricing'
+            search={search}
+            className='hover:text-foreground transition-colors'
+          >
+            {t('Model Square')}
+          </Link>
+          {model.vendor_name && (
+            <>
+              <ChevronRight className='size-3 shrink-0' />
+              <Link
+                to='/pricing'
+                search={{ ...search, vendor: model.vendor_name }}
+                className='hover:text-foreground transition-colors'
+              >
+                {model.vendor_name}
+              </Link>
+            </>
+          )}
+          <ChevronRight className='size-3 shrink-0' />
+          <span className='text-foreground font-medium'>
+            {model.model_name}
+          </span>
+        </nav>
 
         <ModelDetailsContent
           model={model}

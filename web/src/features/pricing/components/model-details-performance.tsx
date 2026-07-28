@@ -37,6 +37,7 @@ import type { PerformanceGroup } from '@/features/performance-metrics/types'
 import { cn } from '@/lib/utils'
 
 import type { UptimeDayPoint } from '../lib/mock-stats'
+import { toGroupUptimeSeries, toUptimePct } from '../lib/perf-uptime'
 import type { PricingModel } from '../types'
 import { LatencyTrendChart, UptimeTrendChart } from './model-details-charts'
 import { UptimeSparkline } from './model-details-uptime-sparkline'
@@ -78,12 +79,6 @@ type PerformanceRow = {
   avg_latency_ms: number
   success_rate: number
   avg_tps: number
-}
-
-function toUptimePct(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  const clamped = Math.min(100, Math.max(0, value))
-  return Math.round(clamped * 100) / 100
 }
 
 function toLatencySeries(groups: PerformanceGroup[]) {
@@ -136,18 +131,6 @@ function toUptimeSeries(groups: PerformanceGroup[]): UptimeDayPoint[] {
         outage_minutes: 0,
       }
     })
-}
-
-function toGroupUptimeSeries(group: PerformanceGroup): UptimeDayPoint[] {
-  return group.series.map((point) => {
-    const successRate = toUptimePct(point.success_rate)
-    return {
-      date: new Date(point.ts * 1000).toISOString(),
-      uptime_pct: successRate,
-      incidents: successRate < 100 ? 1 : 0,
-      outage_minutes: 0,
-    }
-  })
 }
 
 function average(
