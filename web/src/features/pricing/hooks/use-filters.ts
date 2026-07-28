@@ -24,6 +24,7 @@ import {
   SORT_OPTIONS,
   QUOTA_TYPES,
   ENDPOINT_TYPES,
+  MODALITY_FILTERS,
   DEFAULT_TOKEN_UNIT,
   VIEW_MODES,
   type ViewMode,
@@ -39,16 +40,17 @@ type FilterState = {
   quotaType?: string
   endpointType?: string
   tag?: string
+  modality?: string
   tokenUnit?: TokenUnit
   view?: ViewMode
   rechargePrice?: boolean
 }
 
 function normalizeViewMode(value: unknown): ViewMode {
-  if (value === VIEW_MODES.TABLE) {
-    return VIEW_MODES.TABLE
+  if (value === VIEW_MODES.CARD) {
+    return VIEW_MODES.CARD
   }
-  return VIEW_MODES.CARD
+  return VIEW_MODES.TABLE
 }
 
 export function useFilters(models: PricingModel[]) {
@@ -61,6 +63,7 @@ export function useFilters(models: PricingModel[]) {
     quotaType: search.quotaType,
     endpointType: search.endpointType,
     tag: search.tag,
+    modality: search.modality,
     tokenUnit: search.tokenUnit,
     view: search.view,
     rechargePrice: search.rechargePrice,
@@ -73,6 +76,7 @@ export function useFilters(models: PricingModel[]) {
   const quotaTypeFilter = filterState.quotaType || QUOTA_TYPES.ALL
   const endpointTypeFilter = filterState.endpointType || ENDPOINT_TYPES.ALL
   const tagFilter = filterState.tag || FILTER_ALL
+  const modalityFilter = filterState.modality || MODALITY_FILTERS.ALL
   const tokenUnit: TokenUnit =
     filterState.tokenUnit === 'K' ? 'K' : DEFAULT_TOKEN_UNIT
   const viewMode = normalizeViewMode(filterState.view)
@@ -123,6 +127,11 @@ export function useFilters(models: PricingModel[]) {
     (v: string) => updateFilters({ tag: v === FILTER_ALL ? undefined : v }),
     [updateFilters]
   )
+  const setModalityFilter = useCallback(
+    (v: string) =>
+      updateFilters({ modality: v === MODALITY_FILTERS.ALL ? undefined : v }),
+    [updateFilters]
+  )
   const setTokenUnit = useCallback(
     (v: TokenUnit) =>
       updateFilters({ tokenUnit: v === DEFAULT_TOKEN_UNIT ? undefined : v }),
@@ -130,7 +139,7 @@ export function useFilters(models: PricingModel[]) {
   )
   const setViewMode = useCallback(
     (v: ViewMode) =>
-      updateFilters({ view: v === VIEW_MODES.CARD ? undefined : v }),
+      updateFilters({ view: v === VIEW_MODES.TABLE ? undefined : v }),
     [updateFilters]
   )
   const setShowRechargePrice = useCallback(
@@ -153,6 +162,7 @@ export function useFilters(models: PricingModel[]) {
       quotaType: quotaTypeFilter,
       endpointType: endpointTypeFilter,
       tag: tagFilter,
+      modality: modalityFilter,
       sortBy,
     })
   }, [
@@ -163,6 +173,7 @@ export function useFilters(models: PricingModel[]) {
     quotaTypeFilter,
     endpointTypeFilter,
     tagFilter,
+    modalityFilter,
     sortBy,
   ])
 
@@ -193,6 +204,7 @@ export function useFilters(models: PricingModel[]) {
       quotaType: undefined,
       endpointType: undefined,
       tag: undefined,
+      modality: undefined,
     })
   }, [updateFilters])
 
@@ -208,6 +220,7 @@ export function useFilters(models: PricingModel[]) {
     quotaTypeFilter,
     endpointTypeFilter,
     tagFilter,
+    modalityFilter,
     tokenUnit,
     viewMode,
     showRechargePrice,
@@ -218,6 +231,7 @@ export function useFilters(models: PricingModel[]) {
     setQuotaTypeFilter,
     setEndpointTypeFilter,
     setTagFilter,
+    setModalityFilter,
     setTokenUnit,
     setViewMode,
     setShowRechargePrice,

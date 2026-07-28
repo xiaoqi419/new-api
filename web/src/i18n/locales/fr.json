@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "{{model}} prend-il en charge le raisonnement ?",
     "Yes. {{model}} is a reasoning-capable model.": "Oui. {{model}} est un modèle capable de raisonnement.",
     "What is the knowledge cutoff of {{model}}?": "Quelle est la date de coupure des connaissances de {{model}} ?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "La date de coupure des connaissances de {{model}} est {{date}}."
+    "The knowledge cutoff of {{model}} is {{date}}.": "La date de coupure des connaissances de {{model}} est {{date}}.",
+    "Newest": "Plus récent",
+    "Context: Large to Small": "Contexte : du plus grand au plus petit",
+    "Providers": "Fournisseurs"
   }
 }

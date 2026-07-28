@@ -22,8 +22,9 @@ import {
   QUOTA_TYPES,
   QUOTA_TYPE_VALUES,
   ENDPOINT_TYPES,
+  MODALITY_FILTERS,
 } from '../constants'
-import type { PricingModel } from '../types'
+import type { Modality, PricingModel } from '../types'
 
 // ----------------------------------------------------------------------------
 // Filter Utilities
@@ -99,10 +100,37 @@ export function filterByEndpointType(
 }
 
 /**
+ * Filter models by modality category (input or output supports the modality)
+ */
+export function filterByModality(
+  models: PricingModel[],
+  modality: string
+): PricingModel[] {
+  if (modality === MODALITY_FILTERS.ALL) return models
+  const target = modality as Modality
+  return models.filter(
+    (m) =>
+      (m.input_modalities?.includes(target) ?? false) ||
+      (m.output_modalities?.includes(target) ?? false)
+  )
+}
+
+/**
  * Get model price for sorting
  */
 function getModelPrice(model: PricingModel): number {
   return model.quota_type === 0 ? model.model_ratio : model.model_price || 0
+}
+
+/**
+ * Parse a user-entered release date string into a timestamp for sorting.
+ * Returns 0 when absent or unparseable so such models sort last on "newest".
+ */
+export function getModelReleaseTime(model: PricingModel): number {
+  const raw = model.release_date?.trim()
+  if (!raw) return 0
+  const parsed = Date.parse(raw)
+  return Number.isNaN(parsed) ? 0 : parsed
 }
 
 /**
@@ -120,11 +148,17 @@ export function sortModels(
         (a.model_name || '').localeCompare(b.model_name || '')
       )
       break
+    case SORT_OPTIONS.NEWEST:
+      sorted.sort((a, b) => getModelReleaseTime(b) - getModelReleaseTime(a))
+      break
     case SORT_OPTIONS.PRICE_LOW:
       sorted.sort((a, b) => getModelPrice(a) - getModelPrice(b))
       break
     case SORT_OPTIONS.PRICE_HIGH:
       sorted.sort((a, b) => getModelPrice(b) - getModelPrice(a))
+      break
+    case SORT_OPTIONS.CONTEXT_HIGH:
+      sorted.sort((a, b) => (b.context_length || 0) - (a.context_length || 0))
       break
   }
 
@@ -143,6 +177,7 @@ export function filterAndSortModels(
     quotaType: string
     endpointType: string
     tag: string
+    modality: string
     sortBy: string
   }
 ): PricingModel[] {
@@ -152,6 +187,7 @@ export function filterAndSortModels(
   result = filterByQuotaType(result, filters.quotaType)
   result = filterByEndpointType(result, filters.endpointType)
   result = filterByTag(result, filters.tag)
+  result = filterByModality(result, filters.modality)
   result = sortModels(result, filters.sortBy)
 
   return result
@@ -183,7 +219,7 @@ export function extractAllTags(models: PricingModel[]): string[] {
     }
   })
 
-  return Array.from(tagSet).sort((a, b) => a.localeCompare(b))
+  return [...tagSet].sort((a, b) => a.localeCompare(b))
 }
 
 /**

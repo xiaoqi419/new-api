@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "Поддерживает ли {{model}} рассуждение?",
     "Yes. {{model}} is a reasoning-capable model.": "Да. {{model}} — модель с поддержкой рассуждений.",
     "What is the knowledge cutoff of {{model}}?": "Какова дата отсечения знаний {{model}}?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "Дата отсечения знаний {{model}} — {{date}}."
+    "The knowledge cutoff of {{model}} is {{date}}.": "Дата отсечения знаний {{model}} — {{date}}.",
+    "Newest": "Новейшие",
+    "Context: Large to Small": "Контекст: от большого к малому",
+    "Providers": "Поставщики"
   }
 }

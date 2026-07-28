@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
+import { cn } from '@/lib/utils'
 
 import {
   LoadingSkeleton,
@@ -32,7 +33,11 @@ import {
   ModelCardGrid,
   ModelDetailsDrawer,
 } from './components'
-import { EXCLUDED_GROUPS, VIEW_MODES } from './constants'
+import {
+  EXCLUDED_GROUPS,
+  VIEW_MODES,
+  getModalityFilterLabels,
+} from './constants'
 import { useFilters } from './hooks/use-filters'
 import { usePricingData } from './hooks/use-pricing-data'
 
@@ -63,6 +68,7 @@ export function Pricing() {
     quotaTypeFilter,
     endpointTypeFilter,
     tagFilter,
+    modalityFilter,
     tokenUnit,
     viewMode,
     showRechargePrice,
@@ -73,6 +79,7 @@ export function Pricing() {
     setQuotaTypeFilter,
     setEndpointTypeFilter,
     setTagFilter,
+    setModalityFilter,
     setTokenUnit,
     setViewMode,
     setShowRechargePrice,
@@ -83,6 +90,8 @@ export function Pricing() {
     clearFilters,
     clearSearch,
   } = useFilters(models || [])
+
+  const modalityLabels = getModalityFilterLabels(t)
 
   const handleModelClick = useCallback((modelName: string) => {
     setSelectedModelName(modelName)
@@ -226,6 +235,24 @@ export function Pricing() {
             />
 
             <main className='min-w-0 space-y-4'>
+              <div className='flex flex-wrap items-center gap-1.5'>
+                {Object.entries(modalityLabels).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type='button'
+                    onClick={() => setModalityFilter(value)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                      modalityFilter === value
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/70 text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <PricingToolbar
                 filteredCount={filteredModels.length}
                 totalCount={models?.length}

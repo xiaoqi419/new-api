@@ -156,6 +156,77 @@ function FilterSection(props: FilterSectionProps) {
   )
 }
 
+function VendorRow(props: {
+  option: FilterOption
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type='button'
+      onClick={props.onClick}
+      title={props.option.label}
+      className={cn(
+        'group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+        props.active
+          ? 'bg-foreground/5 text-foreground font-medium'
+          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+      )}
+    >
+      {props.option.icon ? (
+        <span className='flex size-5 shrink-0 items-center justify-center'>
+          {props.option.icon}
+        </span>
+      ) : (
+        <span className='bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold uppercase'>
+          {props.option.label.slice(0, 1)}
+        </span>
+      )}
+      <span className='flex-1 truncate'>{props.option.label}</span>
+      {props.option.count != null && (
+        <span
+          className={cn(
+            'shrink-0 rounded px-1.5 py-0.5 text-[11px] tabular-nums',
+            props.active
+              ? 'bg-background text-foreground'
+              : 'bg-muted/70 text-muted-foreground'
+          )}
+        >
+          {props.option.count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function VendorListSection(props: FilterSectionProps) {
+  return (
+    <Collapsible
+      defaultOpen
+      className='border-border/70 border-b pb-3 last:border-b-0'
+    >
+      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2.5 text-left'>
+        <span className='text-foreground text-sm font-semibold'>
+          {props.title}
+        </span>
+        <ChevronDown className='text-muted-foreground size-4 transition-transform group-data-[panel-open]:rotate-180' />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className='flex max-h-[420px] flex-col gap-0.5 overflow-y-auto'>
+          {props.options.map((option) => (
+            <VendorRow
+              key={option.value}
+              option={option}
+              active={props.value === option.value}
+              onClick={() => props.onChange(option.value)}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 export function PricingSidebar(props: PricingSidebarProps) {
   const { t } = useTranslation()
   const quotaTypeLabels = getQuotaTypeLabels(t)
@@ -274,17 +345,17 @@ export function PricingSidebar(props: PricingSidebarProps) {
       )}
 
       <div className='space-y-1'>
+        <VendorListSection
+          title={t('Providers')}
+          value={props.vendorFilter}
+          options={vendorOptions}
+          onChange={props.onVendorChange}
+        />
         <FilterSection
           title={t('Groups')}
           value={props.groupFilter}
           options={groupOptions}
           onChange={props.onGroupChange}
-        />
-        <FilterSection
-          title={t('All Vendors')}
-          value={props.vendorFilter}
-          options={vendorOptions}
-          onChange={props.onVendorChange}
         />
         <FilterSection
           title={t('Model Tags')}

@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "{{model}} は推論に対応していますか?",
     "Yes. {{model}} is a reasoning-capable model.": "はい。{{model}} は推論可能なモデルです。",
     "What is the knowledge cutoff of {{model}}?": "{{model}} の知識のカットオフはいつですか?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "{{model}} の知識のカットオフは {{date}} です。"
+    "The knowledge cutoff of {{model}} is {{date}}.": "{{model}} の知識のカットオフは {{date}} です。",
+    "Newest": "最新",
+    "Context: Large to Small": "コンテキスト:大きい順",
+    "Providers": "プロバイダー"
   }
 }

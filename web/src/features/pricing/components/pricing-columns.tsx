@@ -19,13 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
-import {
-  BadgeCell,
-  BadgeListCell,
-  DataTableColumnHeader,
-} from '@/components/data-table'
+import { BadgeListCell } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
-import { StatusBadge } from '@/components/status-badge'
 import { getLobeIcon } from '@/lib/lobe-icon'
 
 import { DEFAULT_TOKEN_UNIT } from '../constants'
@@ -33,8 +28,8 @@ import {
   getDynamicDisplayGroupRatio,
   getDynamicPricingSummary,
 } from '../lib/dynamic-price'
-import { parseTags } from '../lib/filters'
 import { isTokenBasedModel } from '../lib/model-helpers'
+import { ModalityFlow } from '../lib/modality'
 import {
   formatPrice,
   formatRequestPrice,
@@ -44,7 +39,7 @@ import type { PricingModel, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
 
 // ----------------------------------------------------------------------------
-// Pricing Table Columns
+// Pricing Table Columns (ephone-style: Model / Type / Price / Context / Released / Groups)
 // ----------------------------------------------------------------------------
 
 export interface PricingColumnsOptions {
@@ -53,6 +48,17 @@ export interface PricingColumnsOptions {
   usdExchangeRate?: number
   showRechargePrice?: boolean
   selectedGroup?: string
+}
+
+const RECENT_RELEASE_DAYS = 45
+
+function isRecentRelease(model: PricingModel): boolean {
+  const raw = model.release_date?.trim()
+  if (!raw) return false
+  const parsed = Date.parse(raw)
+  if (Number.isNaN(parsed)) return false
+  const diff = Date.now() - parsed
+  return diff >= 0 && diff <= RECENT_RELEASE_DAYS * 24 * 60 * 60 * 1000
 }
 
 export function usePricingColumns(
@@ -74,13 +80,11 @@ export function usePricingColumns(
     {
       accessorKey: 'model_name',
       meta: { label: t('Model') },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('Model')} />
-      ),
+      header: t('Model'),
       cell: ({ row }) => {
         const model = row.original
         const modelIconKey = model.icon || model.vendor_icon
-        const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 14) : null
+        const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 16) : null
 
         return (
           <div className='flex max-w-full min-w-0 items-center gap-2'>
@@ -88,20 +92,40 @@ export function usePricingColumns(
             <span className='truncate font-mono text-sm font-medium'>
               {model.model_name}
             </span>
+            {isRecentRelease(model) && (
+              <span className='shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-600 uppercase dark:text-emerald-400'>
+                {t('New')}
+              </span>
+            )}
           </div>
         )
       },
-      minSize: 200,
+      minSize: 220,
+      enableSorting: false,
     },
 
-    // Type column
+    // Type column (input -> output modalities, falls back to billing mode)
     {
-      accessorKey: 'quota_type',
+      id: 'modality',
       header: t('Type'),
-      cell: ({ row }) => (
-        <ModelBillingModeBadge model={row.original} className='-ml-1.5' />
-      ),
-      size: 110,
+      cell: ({ row }) => {
+        const model = row.original
+        const flow = (
+          <ModalityFlow
+            input={model.input_modalities}
+            output={model.output_modalities}
+            size={15}
+          />
+        )
+        if (
+          (model.input_modalities?.length ?? 0) > 0 ||
+          (model.output_modalities?.length ?? 0) > 0
+        ) {
+          return flow
+        }
+        return <ModelBillingModeBadge model={model} className='-ml-1.5' />
+      },
+      size: 130,
       enableSorting: false,
     },
 
@@ -109,9 +133,7 @@ export function usePricingColumns(
     {
       accessorKey: 'price',
       meta: { label: t('Price') },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('Price')} />
-      ),
+      header: t('Price'),
       cell: ({ row }) => {
         const model = row.original
         const dynamicSummary = getDynamicPricingSummary(model, {
@@ -135,9 +157,6 @@ export function usePricingColumns(
                 <div className='text-muted-foreground text-[11px]'>
                   {t('Unable to parse structured pricing')}
                 </div>
-                <code className='text-muted-foreground/70 mt-1 line-clamp-2 block font-mono text-[10px] leading-relaxed break-all'>
-                  {dynamicSummary.rawExpression}
-                </code>
               </div>
             )
           }
@@ -233,161 +252,45 @@ export function usePricingColumns(
           </div>
         )
       },
-      size: 180,
+      size: 170,
       enableSorting: false,
     },
 
-    // Cached price column (Vercel AI Gateway style)
+    // Context length column
     {
-      id: 'cached_price',
-      header: t('Cached'),
+      id: 'context',
+      header: t('Context'),
       cell: ({ row }) => {
-        const model = row.original
-        const dynamicSummary = getDynamicPricingSummary(model, {
-          tokenUnit,
-          showRechargePrice,
-          priceRate,
-          usdExchangeRate,
-          groupRatioMultiplier: getDynamicDisplayGroupRatio(
-            model,
-            selectedGroup
-          ),
-        })
-
-        if (dynamicSummary) {
-          if (dynamicSummary.isSpecialExpression) {
-            return (
-              <span className='text-muted-foreground/50 text-xs'>
-                {t('Special billing expression')}
-              </span>
-            )
-          }
-
-          const cacheEntry = dynamicSummary.entries.find(
-            (entry) => entry.field === 'cacheReadPrice'
-          )
-          if (!cacheEntry) {
-            return <span className='text-muted-foreground/30 text-xs'>—</span>
-          }
-
-          return (
-            <div className='max-w-full min-w-0'>
-              <span className='font-mono text-sm tabular-nums'>
-                {stripTrailingZeros(cacheEntry.formatted)}
-              </span>
-              <div className='text-muted-foreground/50 text-[10px]'>
-                / {tokenUnitLabel}
-              </div>
-            </div>
-          )
-        }
-
-        const isTokenBased = isTokenBasedModel(model)
-
-        if (!isTokenBased || model.cache_ratio == null) {
+        const context = row.original.context_length
+        if (!context || context <= 0) {
           return <span className='text-muted-foreground/30 text-xs'>—</span>
         }
-
-        const cachedPrice = stripTrailingZeros(
-          formatPrice(
-            model,
-            'cache',
-            tokenUnit,
-            showRechargePrice,
-            priceRate,
-            usdExchangeRate,
-            selectedGroup
-          )
-        )
-
         return (
-          <div className='max-w-full min-w-0'>
-            <span className='font-mono text-sm tabular-nums'>
-              {cachedPrice}
-            </span>
-            <div className='text-muted-foreground/50 text-[10px]'>
-              / {tokenUnitLabel}
-            </div>
-          </div>
+          <span className='font-mono text-sm tabular-nums'>
+            {context.toLocaleString()}
+          </span>
         )
       },
-      size: 110,
+      size: 120,
       enableSorting: false,
     },
 
-    // Vendor column
+    // Release date column
     {
-      accessorKey: 'vendor_name',
-      header: t('Vendor'),
+      id: 'release',
+      header: t('Released'),
       cell: ({ row }) => {
-        const model = row.original
-        if (!model.vendor_name) {
-          return <span className='text-muted-foreground/50 text-xs'>—</span>
+        const release = row.original.release_date?.trim()
+        if (!release) {
+          return <span className='text-muted-foreground/30 text-xs'>—</span>
         }
-        const vendorIcon = model.vendor_icon
-          ? getLobeIcon(model.vendor_icon, 12)
-          : null
         return (
-          <BadgeCell className='gap-1.5'>
-            {vendorIcon}
-            <StatusBadge
-              label={model.vendor_name}
-              autoColor={model.vendor_name}
-              size='sm'
-              copyable={false}
-            />
-          </BadgeCell>
+          <span className='text-muted-foreground font-mono text-xs tabular-nums'>
+            {release}
+          </span>
         )
       },
-      size: 130,
-      enableSorting: false,
-    },
-
-    // Tags column
-    {
-      accessorKey: 'tags',
-      header: t('Tags'),
-      cell: ({ row }) => {
-        const tags = parseTags(row.original.tags)
-        return (
-          <BadgeListCell
-            items={tags.map((tag) => (
-              <StatusBadge
-                key={tag}
-                label={tag}
-                autoColor={tag}
-                size='sm'
-                copyable={false}
-              />
-            ))}
-          />
-        )
-      },
-      size: 140,
-      enableSorting: false,
-    },
-
-    // Endpoints column
-    {
-      accessorKey: 'supported_endpoint_types',
-      header: t('Endpoints'),
-      cell: ({ row }) => {
-        const endpoints = row.original.supported_endpoint_types || []
-        return (
-          <BadgeListCell
-            items={endpoints.map((ep) => (
-              <StatusBadge
-                key={ep}
-                label={ep}
-                autoColor={ep}
-                size='sm'
-                copyable={false}
-              />
-            ))}
-          />
-        )
-      },
-      size: 130,
+      size: 120,
       enableSorting: false,
     },
 
@@ -406,7 +309,7 @@ export function usePricingColumns(
           />
         )
       },
-      size: 130,
+      size: 150,
       enableSorting: false,
     },
   ]

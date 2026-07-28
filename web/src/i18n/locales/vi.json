@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "{{model}} có hỗ trợ suy luận không?",
     "Yes. {{model}} is a reasoning-capable model.": "Có. {{model}} là mô hình có khả năng suy luận.",
     "What is the knowledge cutoff of {{model}}?": "Thời điểm cắt kiến thức của {{model}} là khi nào?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "Thời điểm cắt kiến thức của {{model}} là {{date}}."
+    "The knowledge cutoff of {{model}} is {{date}}.": "Thời điểm cắt kiến thức của {{model}} là {{date}}.",
+    "Newest": "Mới nhất",
+    "Context: Large to Small": "Ngữ cảnh: lớn đến nhỏ",
+    "Providers": "Nhà cung cấp"
   }
 }

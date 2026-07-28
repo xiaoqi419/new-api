@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "Does {{model}} support reasoning?",
     "Yes. {{model}} is a reasoning-capable model.": "Yes. {{model}} is a reasoning-capable model.",
     "What is the knowledge cutoff of {{model}}?": "What is the knowledge cutoff of {{model}}?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "The knowledge cutoff of {{model}} is {{date}}."
+    "The knowledge cutoff of {{model}} is {{date}}.": "The knowledge cutoff of {{model}} is {{date}}.",
+    "Newest": "Newest",
+    "Context: Large to Small": "Context: Large to Small",
+    "Providers": "Providers"
   }
 }

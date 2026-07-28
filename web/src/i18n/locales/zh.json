@@ -5940,6 +5940,9 @@
     "Does {{model}} support reasoning?": "{{model}} 支持推理吗?",
     "Yes. {{model}} is a reasoning-capable model.": "是的。{{model}} 是具备推理能力的模型。",
     "What is the knowledge cutoff of {{model}}?": "{{model}} 的知识截止日期是什么时候?",
-    "The knowledge cutoff of {{model}} is {{date}}.": "{{model}} 的知识截止日期为 {{date}}。"
+    "The knowledge cutoff of {{model}} is {{date}}.": "{{model}} 的知识截止日期为 {{date}}。",
+    "Newest": "最新",
+    "Context: Large to Small": "上下文:从大到小",
+    "Providers": "厂商"
   }
 }
