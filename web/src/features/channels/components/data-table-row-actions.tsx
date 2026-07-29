@@ -18,6 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQueryClient } from '@tanstack/react-query'
 import type { Row } from '@tanstack/react-table'
+import { useContext, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   MoreHorizontal,
   Boxes,
@@ -33,11 +37,7 @@ import {
   Trash2,
   RefreshCw,
   Loader2,
-} from 'lucide-react'
-import { useContext, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

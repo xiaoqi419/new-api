@@ -1,3 +1,8 @@
+import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,12 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ExternalLink, Copy, Music } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+import { ExternalLink, Copy, Music } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'

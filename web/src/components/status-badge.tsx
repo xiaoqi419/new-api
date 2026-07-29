@@ -16,7 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { LucideIcon } from 'lucide-react'
+/* eslint-disable react-refresh/only-export-components */
+import * as React from 'react'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -35,9 +37,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-/* eslint-disable react-refresh/only-export-components */
-import * as React from 'react'
-
+import type { LucideIcon } from '@/components/icons'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { stringToColor } from '@/lib/colors'
 import { cn } from '@/lib/utils'

@@ -18,6 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+
 import {
   ArrowRight,
   Check,
@@ -28,9 +30,7 @@ import {
   Rocket,
   Sparkles,
   TerminalSquare,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { SectionPageLayout } from '@/components/layout'
 import {
   CardStaggerContainer,

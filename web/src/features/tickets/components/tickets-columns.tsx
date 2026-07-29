@@ -1,8 +1,8 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Eye } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Eye } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { formatTimestampToDate } from '@/lib/format'
@@ -66,7 +66,9 @@ export function useTicketsColumns(admin: boolean): ColumnDef<Ticket>[] {
       accessorKey: 'username',
       header: t('User'),
       meta: { mobileHidden: true },
-      cell: ({ row }) => <span className='text-sm'>{row.original.username}</span>,
+      cell: ({ row }) => (
+        <span className='text-sm'>{row.original.username}</span>
+      ),
       size: 120,
     })
   }

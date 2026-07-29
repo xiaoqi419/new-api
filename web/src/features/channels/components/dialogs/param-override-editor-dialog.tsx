@@ -1,3 +1,15 @@
+import {
+  type DragEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -24,19 +36,7 @@ import {
   Plus,
   Search,
   Trash2,
-} from 'lucide-react'
-import {
-  type DragEvent,
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+} from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

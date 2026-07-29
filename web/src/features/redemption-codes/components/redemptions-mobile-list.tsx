@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { Table as TanstackTable } from '@tanstack/react-table'
-import { Database } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { DISABLED_ROW_MOBILE } from '@/components/data-table'
+import { Database } from '@/components/icons'
 import { MaskedValueDisplay } from '@/components/masked-value-display'
 import { StatusBadge } from '@/components/status-badge'
 import {

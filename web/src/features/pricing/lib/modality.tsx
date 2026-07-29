@@ -24,8 +24,7 @@ import {
   Type,
   Video,
   type LucideIcon,
-} from 'lucide-react'
-
+} from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 import type { Modality } from '../types'

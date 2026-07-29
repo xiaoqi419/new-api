@@ -18,16 +18,16 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 import {
   ChevronDown,
   ChevronUp,
   Loader2,
   RefreshCw,
   Trophy,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Table,

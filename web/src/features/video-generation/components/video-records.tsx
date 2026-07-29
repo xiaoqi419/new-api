@@ -17,19 +17,16 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, Loader2, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { ExternalLink, Loader2, RefreshCw } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { getUserTaskLogs } from '@/features/usage-logs/api'
 import type { TaskLog } from '@/features/usage-logs/types'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
-import {
-  VIDEO_RECORDS_PAGE_SIZE,
-  VIDEO_RECORDS_QUERY_KEY,
-} from '../constants'
+import { VIDEO_RECORDS_PAGE_SIZE, VIDEO_RECORDS_QUERY_KEY } from '../constants'
 
 function statusVariant(
   status: string
@@ -101,10 +98,7 @@ export function VideoRecords() {
       {logs.length > 0 && (
         <div className='flex flex-col divide-y'>
           {logs.map((log) => (
-            <div
-              key={log.id}
-              className='flex items-center gap-3 py-2 text-sm'
-            >
+            <div key={log.id} className='flex items-center gap-3 py-2 text-sm'>
               <StatusBadge
                 label={log.status || '-'}
                 variant={statusVariant(log.status)}

@@ -1,8 +1,8 @@
-import { Paperclip, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Paperclip, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 import { uploadTicketAttachment } from '../api'
@@ -55,7 +55,9 @@ export function TicketAttachmentsField({ value, onChange, disabled }: Props) {
           type='button'
           variant='outline'
           size='sm'
-          disabled={disabled || uploading || value.length >= MAX_TICKET_ATTACHMENTS}
+          disabled={
+            disabled || uploading || value.length >= MAX_TICKET_ATTACHMENTS
+          }
           onClick={() => inputRef.current?.click()}
         >
           <Paperclip className='h-4 w-4' />

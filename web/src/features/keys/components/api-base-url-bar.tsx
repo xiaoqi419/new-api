@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Check, Copy, Link2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { Check, Copy, Link2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'

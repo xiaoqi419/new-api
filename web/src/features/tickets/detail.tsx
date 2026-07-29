@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Download, Send } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { ArrowLeft, Download, Send } from '@/components/icons'
 import { SectionPageLayout } from '@/components/layout'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
@@ -188,7 +188,8 @@ export function TicketDetailPage({
                     </span>
                   )}
                   <span className='text-muted-foreground ml-auto font-mono text-xs'>
-                    {ticket.ticket_no} · {formatTimestampToDate(ticket.created_at)}
+                    {ticket.ticket_no} ·{' '}
+                    {formatTimestampToDate(ticket.created_at)}
                   </span>
                 </div>
 

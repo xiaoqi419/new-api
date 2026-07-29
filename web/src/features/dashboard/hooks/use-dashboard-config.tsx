@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -26,9 +28,7 @@ import {
   TrendingUp,
   Activity,
   type LucideIcon,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import type { IconBadgeTone } from '@/components/ui/icon-badge'
 import { safeDivide } from '@/features/dashboard/lib'
 

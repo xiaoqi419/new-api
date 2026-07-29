@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link2, Settings } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Link2, Settings } from '@/components/icons'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'

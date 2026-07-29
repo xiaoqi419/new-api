@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Loader2, RefreshCw } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { getUserDrawingLogs } from '@/features/usage-logs/api'
 import type { DrawingLog } from '@/features/usage-logs/types'
@@ -51,8 +51,7 @@ export function ImageRecords() {
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: IMAGE_RECORDS_QUERY_KEY,
-    queryFn: () =>
-      getUserDrawingLogs({ p: 1, page_size: RECORDS_PAGE_SIZE }),
+    queryFn: () => getUserDrawingLogs({ p: 1, page_size: RECORDS_PAGE_SIZE }),
   })
 
   const logs = (data?.data?.items ?? []) as DrawingLog[]

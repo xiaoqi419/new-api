@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { PromptInputButton } from '@/components/ai-elements/prompt-input'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { SlidersHorizontalIcon } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { PromptInputButton } from '@/components/ai-elements/prompt-input'
+import { SlidersHorizontalIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {

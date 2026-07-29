@@ -18,10 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, Flame, ShieldCheck, TrendingDown } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  ArrowRight,
+  Flame,
+  ShieldCheck,
+  TrendingDown,
+} from '@/components/icons'
 import { StaggerContainer, StaggerItem } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { getUserQuotaDates } from '@/features/dashboard/api'

@@ -22,7 +22,7 @@ import {
   ImageIcon,
   ScreenShareIcon,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 type AttachmentAction = {
   action: string

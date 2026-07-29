@@ -1,3 +1,6 @@
+import type { UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ShieldCheck } from 'lucide-react'
-import type { UseFormReturn } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-
+import { ShieldCheck } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {

@@ -1,3 +1,6 @@
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2025 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ExternalLink, RotateCcw } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { ExternalLink, RotateCcw } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'

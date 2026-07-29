@@ -18,9 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 'use client'
 
-import { ChevronDownIcon, PaperclipIcon } from 'lucide-react'
 import type { ComponentProps } from 'react'
 
+import { ChevronDownIcon, PaperclipIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,

@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -25,10 +28,7 @@ import {
   RefreshCw,
   Trash2,
   type LucideIcon,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

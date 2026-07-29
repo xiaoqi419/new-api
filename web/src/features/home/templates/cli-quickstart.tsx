@@ -17,12 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { CodeBlock } from '@/components/ai-elements/code-block'
 import { AnimateInView } from '@/components/animate-in-view'
 import { CopyButton } from '@/components/copy-button'
+import { ArrowRight, ChevronDown } from '@/components/icons'
 import { Footer } from '@/components/layout/components/footer'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'

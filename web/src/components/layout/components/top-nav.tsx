@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { Menu } from 'lucide-react'
 import { useMemo } from 'react'
 
+import { Menu } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

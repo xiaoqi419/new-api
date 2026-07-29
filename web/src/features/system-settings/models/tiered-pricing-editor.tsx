@@ -1,3 +1,18 @@
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FocusEvent,
+  type InputHTMLAttributes,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,22 +31,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronDown, Copy, Plus, Trash2 } from 'lucide-react'
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FocusEvent,
-  type InputHTMLAttributes,
-  type MouseEvent as ReactMouseEvent,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
+import { ChevronDown, Copy, Plus, Trash2 } from '@/components/icons'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

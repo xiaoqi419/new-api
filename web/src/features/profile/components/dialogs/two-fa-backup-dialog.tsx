@@ -1,3 +1,9 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { CopyButton } from '@/components/copy-button'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,13 +22,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { RefreshCw, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { CopyButton } from '@/components/copy-button'
-import { Dialog } from '@/components/dialog'
+import { RefreshCw, Loader2 } from '@/components/icons'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

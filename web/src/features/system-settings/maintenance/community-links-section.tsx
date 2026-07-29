@@ -1,3 +1,6 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,19 +19,16 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { ArrowDown, ArrowUp, Plus, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
 import type {
   CommunityLinkAction,
   CommunityLinkType,
 } from '@/features/community'
+import { cn } from '@/lib/utils'
 
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
@@ -77,7 +77,8 @@ function parseAdminEntries(raw: string): AdminCommunityEntry[] {
       label: typeof record.label === 'string' ? record.label : '',
       value: typeof record.value === 'string' ? record.value : '',
       action: record.action === 'link' ? 'link' : 'copy',
-      qrImageUrl: typeof record.qrImageUrl === 'string' ? record.qrImageUrl : '',
+      qrImageUrl:
+        typeof record.qrImageUrl === 'string' ? record.qrImageUrl : '',
       enabled: record.enabled !== false,
     }
   })
@@ -95,7 +96,9 @@ function serializeAdminEntries(entries: AdminCommunityEntry[]): string {
     }))
     .filter(
       (entry) =>
-        entry.label !== '' || entry.value !== '' || entry.qrImageUrl !== undefined
+        entry.label !== '' ||
+        entry.value !== '' ||
+        entry.qrImageUrl !== undefined
     )
   if (cleaned.length === 0) return ''
   return JSON.stringify(cleaned)

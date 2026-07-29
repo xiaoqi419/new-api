@@ -18,6 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { CopyButton } from '@/components/copy-button'
+import { StaticDataTable } from '@/components/data-table'
+import { sideDrawerContentClassName } from '@/components/drawer-layout'
+import { GroupBadge } from '@/components/group-badge'
 import {
   CalendarClock,
   ChevronRight,
@@ -29,14 +36,7 @@ import {
   Maximize2,
   Sparkles,
   Timer,
-} from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { CopyButton } from '@/components/copy-button'
-import { StaticDataTable } from '@/components/data-table'
-import { sideDrawerContentClassName } from '@/components/drawer-layout'
-import { GroupBadge } from '@/components/group-badge'
+} from '@/components/icons'
 import { PublicLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -68,7 +68,9 @@ import {
   isDynamicPricingModel,
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
+import { ModalityFlow } from '../lib/modality'
 import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
+import { toGroupUptimeSeries } from '../lib/perf-uptime'
 import { formatFixedPrice, formatGroupPrice } from '../lib/price'
 import type {
   AutoGroupRoute,
@@ -79,8 +81,6 @@ import type {
 } from '../types'
 import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
-import { ModalityFlow } from '../lib/modality'
-import { toGroupUptimeSeries } from '../lib/perf-uptime'
 import { ModelDetailsApi } from './model-details-api'
 import { ModelDetailsPerformance } from './model-details-performance'
 import { UptimeSparkline } from './model-details-uptime-sparkline'
@@ -555,8 +555,7 @@ function ModelHeaderMeta(props: { model: PricingModel }) {
   const maxOutput = model.max_output_tokens ?? 0
   const releaseDate = formatCatalogYearMonth(model.release_date)
 
-  const hasModality =
-    inputModalities.length > 0 || outputModalities.length > 0
+  const hasModality = inputModalities.length > 0 || outputModalities.length > 0
   const hasAny =
     hasModality ||
     contextLength > 0 ||
@@ -593,7 +592,9 @@ function ModelHeaderMeta(props: { model: PricingModel }) {
       )}
       {capabilities.map((capability) => (
         <MetaPill key={capability}>
-          {t(CAPABILITY_LABEL_KEYS[capability as ModelCapability] ?? capability)}
+          {t(
+            CAPABILITY_LABEL_KEYS[capability as ModelCapability] ?? capability
+          )}
         </MetaPill>
       ))}
     </div>

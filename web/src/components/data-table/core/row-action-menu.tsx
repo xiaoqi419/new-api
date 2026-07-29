@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { MoreHorizontal } from 'lucide-react'
-import * as React from 'react'
-
+import { MoreHorizontal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

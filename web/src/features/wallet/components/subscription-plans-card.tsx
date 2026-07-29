@@ -1,3 +1,7 @@
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Crown, RefreshCw, Sparkles, Check } from 'lucide-react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
+import { Crown, RefreshCw, Sparkles, Check } from '@/components/icons'
 import {
   StatusBadge,
   dotColorMap,

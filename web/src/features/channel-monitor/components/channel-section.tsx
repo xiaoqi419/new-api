@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2025 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronRight } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { ChevronRight } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 
 import { MONITOR_HEALTH_COLORS } from '../constants'

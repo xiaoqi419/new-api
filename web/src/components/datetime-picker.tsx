@@ -1,3 +1,7 @@
+import * as React from 'react'
+import { enUS, fr, ja, ru, vi, zhCN } from 'react-day-picker/locale'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronDownIcon } from 'lucide-react'
-import * as React from 'react'
-import { enUS, fr, ja, ru, vi, zhCN } from 'react-day-picker/locale'
-import { useTranslation } from 'react-i18next'
-
+import { ChevronDownIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'

@@ -1,3 +1,8 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,12 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+import { AlertTriangle, Loader2 } from '@/components/icons'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'

@@ -20,16 +20,6 @@ For commercial licensing, please contact support@quantumnous.com
 'use client'
 
 import type { ChatStatus, FileUIPart } from 'ai'
-import {
-  ImageIcon,
-  Loader2Icon,
-  MicIcon,
-  PaperclipIcon,
-  PlusIcon,
-  SendIcon,
-  SquareIcon,
-  XIcon,
-} from 'lucide-react'
 import { nanoid } from 'nanoid'
 import {
   type ChangeEvent,
@@ -55,6 +45,16 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  ImageIcon,
+  Loader2Icon,
+  MicIcon,
+  PaperclipIcon,
+  PlusIcon,
+  SendIcon,
+  SquareIcon,
+  XIcon,
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Command,

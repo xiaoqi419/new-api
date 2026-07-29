@@ -1,3 +1,6 @@
+import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Megaphone } from 'lucide-react'
-import { memo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Megaphone } from '@/components/icons'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useAnnouncements } from '@/features/dashboard/hooks/use-status-data'

@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { AnimateInView } from '@/components/animate-in-view'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -25,10 +28,7 @@ import {
   DollarSign,
   Users,
   HeartHandshake,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { AnimateInView } from '@/components/animate-in-view'
+} from '@/components/icons'
 
 import { getFeatureIcon } from '../../lib/icon-mapper'
 import type { FeaturesContent } from '../../types'

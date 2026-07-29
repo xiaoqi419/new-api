@@ -17,6 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { Row } from '@tanstack/react-table'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
 import {
   Trash2,
   Edit,
@@ -27,12 +32,7 @@ import {
   Copy,
   Link,
   Loader2,
-} from 'lucide-react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenuItem,

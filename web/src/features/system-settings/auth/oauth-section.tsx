@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
-import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +25,7 @@ import { toast } from 'sonner'
 import * as z from 'zod'
 
 import { CopyButton } from '@/components/copy-button'
+import { ExternalLink } from '@/components/icons'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Form,

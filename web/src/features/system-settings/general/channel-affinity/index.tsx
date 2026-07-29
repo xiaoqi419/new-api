@@ -1,3 +1,9 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { StaticDataTable } from '@/components/data-table'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,13 +22,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Edit, FileText, Plus, RefreshCw, Trash2, X } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { StaticDataTable } from '@/components/data-table'
-import { Dialog } from '@/components/dialog'
+import { Edit, FileText, Plus, RefreshCw, Trash2, X } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { StatusBadge, StatusBadgeList } from '@/components/status-badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'

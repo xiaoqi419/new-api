@@ -20,6 +20,16 @@ import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
 import type { EventParamsDefinition, IVChart } from '@visactor/vchart'
 import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
   Activity,
   ChevronRight,
   CircleAlert,
@@ -30,17 +40,7 @@ import {
   Loader2,
   Route,
   WalletCards,
-} from 'lucide-react'
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { MultiSelect } from '@/components/multi-select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {

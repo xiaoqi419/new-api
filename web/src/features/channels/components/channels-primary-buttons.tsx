@@ -17,6 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Plus,
   MoreHorizontal,
@@ -29,11 +33,7 @@ import {
   SortAsc,
   RefreshCw,
   ArrowUpFromLine,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

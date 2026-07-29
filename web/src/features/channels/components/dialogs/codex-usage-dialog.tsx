@@ -16,15 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  Copy,
-  Check,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  AlertTriangle,
-} from 'lucide-react'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -43,11 +39,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ReactNode, useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Dialog } from '@/components/dialog'
+import {
+  Copy,
+  Check,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  AlertTriangle,
+} from '@/components/icons'
 import { StatusBadge, type StatusBadgeProps } from '@/components/status-badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'

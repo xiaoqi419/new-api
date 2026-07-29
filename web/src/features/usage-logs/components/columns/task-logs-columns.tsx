@@ -17,11 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
-import { Music, Video } from 'lucide-react'
 /* eslint-disable react-refresh/only-export-components */
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Music, Video } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'

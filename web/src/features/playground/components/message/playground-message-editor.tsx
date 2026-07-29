@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { CodeBlockEditor } from '@/components/ai-elements/code-block'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Check, RotateCcw, Send, X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { CodeBlockEditor } from '@/components/ai-elements/code-block'
+import { Check, RotateCcw, Send, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 import { getMessageEditorState } from '../../lib'

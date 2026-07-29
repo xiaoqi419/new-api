@@ -1,3 +1,16 @@
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { Yace, type Plugin } from 'yace'
+import { code } from 'yace/highlighters/code'
+import { autoClose, history, tab } from 'yace/plugins'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,20 +29,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { AlertCircle, Braces, CheckCircle2, Code2, Copy } from 'lucide-react'
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentProps,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Yace, type Plugin } from 'yace'
-import { code } from 'yace/highlighters/code'
-import { autoClose, history, tab } from 'yace/plugins'
-
+  AlertCircle,
+  Braces,
+  CheckCircle2,
+  Code2,
+  Copy,
+} from '@/components/icons'
 import {
   createScrollLayerSynchronizer,
   formatJsonDraft,

@@ -1,3 +1,6 @@
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Check, ChevronsUpDown } from 'lucide-react'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Check, ChevronsUpDown } from '@/components/icons'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 

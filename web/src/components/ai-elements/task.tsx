@@ -18,9 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 'use client'
 
-import { ChevronDownIcon, SearchIcon } from 'lucide-react'
 import type { ComponentProps } from 'react'
 
+import { ChevronDownIcon, SearchIcon } from '@/components/icons'
 import {
   Collapsible,
   CollapsibleContent,

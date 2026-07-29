@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2 } from 'lucide-react'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -33,6 +32,7 @@ import {
   sideDrawerHeaderClassName,
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
+import { ChevronDown, Loader2 } from '@/components/icons'
 import { JsonEditor } from '@/components/json-editor'
 import { MultiSelect } from '@/components/multi-select'
 import { TagInput } from '@/components/tag-input'
@@ -154,7 +154,10 @@ function splitCatalogCsv(value?: string): string[] {
 }
 
 function joinCatalogCsv(values?: string[]): string {
-  return (values ?? []).map((item) => item.trim()).filter(Boolean).join(',')
+  return (values ?? [])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(',')
 }
 
 function toCatalogInt(value?: string): number {

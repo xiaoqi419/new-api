@@ -26,7 +26,7 @@ import {
   Users,
   HeartHandshake,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 /**
  * Map of icon names to Lucide icon components

@@ -1,3 +1,9 @@
+import { QRCodeSVG } from 'qrcode.react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { IconDiscord, IconTelegram, IconWeChat } from '@/assets/brand-icons'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -24,13 +30,7 @@ import {
   MessageCircle,
   QrCode,
   Users,
-} from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { IconDiscord, IconTelegram, IconWeChat } from '@/assets/brand-icons'
-import { Dialog } from '@/components/dialog'
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Popover,

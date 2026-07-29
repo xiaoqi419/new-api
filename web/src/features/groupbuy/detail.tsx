@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { CalendarClock, CircleCheck, Server, Users, Zap } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import {
+  CalendarClock,
+  CircleCheck,
+  Server,
+  Users,
+  Zap,
+} from '@/components/icons'
 import { SectionPageLayout } from '@/components/layout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'

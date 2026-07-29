@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2025 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Plus, X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { Plus, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 

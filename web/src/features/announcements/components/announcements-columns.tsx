@@ -1,7 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table'
-import { Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Pencil, Trash2 } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { formatTimestampToDate } from '@/lib/format'

@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ListChecks, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { ErrorState } from '@/components/error-state'
+import { ListChecks, RefreshCw } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'

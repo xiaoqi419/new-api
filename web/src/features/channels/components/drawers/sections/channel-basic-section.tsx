@@ -1,3 +1,10 @@
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
+  SideDrawerSection,
+  SideDrawerSectionHeader,
+} from '@/components/drawer-layout'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,14 +23,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Server } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import {
-  SideDrawerSection,
-  SideDrawerSectionHeader,
-} from '@/components/drawer-layout'
+import { Server } from '@/components/icons'
 
 type ChannelBasicSectionProps = {
   children: ReactNode

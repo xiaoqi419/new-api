@@ -1,3 +1,8 @@
+import { type ReactNode, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -27,12 +32,7 @@ import {
   Shuffle,
   Trash2,
   type LucideIcon,
-} from 'lucide-react'
-import { type ReactNode, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+} from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'

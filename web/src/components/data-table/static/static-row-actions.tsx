@@ -16,8 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Pencil, Trash2 } from 'lucide-react'
-
+import { Pencil, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenuItem,

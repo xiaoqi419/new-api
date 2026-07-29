@@ -1,3 +1,7 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { StaticDataTable } from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Tag as TagIcon } from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { StaticDataTable } from '@/components/data-table'
+import { Tag as TagIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useSystemConfigStore } from '@/stores/system-config-store'

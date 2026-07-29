@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Code, Table, Plus, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Code, Table, Plus, Trash2 } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

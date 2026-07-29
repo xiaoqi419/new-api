@@ -16,10 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Wrench01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useTranslation } from 'react-i18next'
 
+import { Wrench } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -60,11 +59,7 @@ function ToolSurchargeMarker() {
             tabIndex={0}
             data-tool-surcharge-indicator='true'
           >
-            <HugeiconsIcon
-              icon={Wrench01Icon}
-              strokeWidth={2}
-              aria-hidden='true'
-            />
+            <Wrench aria-hidden='true' />
             <span
               className='text-[9px] leading-none font-bold'
               aria-hidden='true'

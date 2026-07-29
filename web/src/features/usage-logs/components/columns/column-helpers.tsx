@@ -17,11 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
-import { Zap } from 'lucide-react'
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 
 import { DataTableColumnHeader } from '@/components/data-table'
+import { Zap } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import {
   Tooltip,

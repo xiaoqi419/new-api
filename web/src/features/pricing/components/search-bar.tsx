@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Search, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Search, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

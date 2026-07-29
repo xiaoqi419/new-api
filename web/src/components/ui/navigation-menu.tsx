@@ -17,10 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { NavigationMenu as NavigationMenuPrimitive } from '@base-ui/react/navigation-menu'
-import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { cva } from 'class-variance-authority'
 
+import { ChevronDown } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 function NavigationMenu({
@@ -90,9 +89,7 @@ function NavigationMenuTrigger({
       {...props}
     >
       {children}{' '}
-      <HugeiconsIcon
-        icon={ArrowDown01Icon}
-        strokeWidth={2}
+      <ChevronDown
         className='relative top-px ml-1 size-3 transition duration-300 group-data-open/navigation-menu-trigger:rotate-180 group-data-popup-open/navigation-menu-trigger:rotate-180'
         aria-hidden='true'
       />

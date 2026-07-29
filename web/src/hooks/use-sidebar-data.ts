@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -43,9 +45,7 @@ import {
   User,
   Users,
   Wallet,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 

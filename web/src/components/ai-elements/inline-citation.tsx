@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 'use client'
 
-import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react'
 import {
   type ComponentProps,
   createContext,
@@ -29,6 +28,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ArrowLeftIcon, ArrowRightIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {

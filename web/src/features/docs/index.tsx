@@ -1,3 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { CopyButton } from '@/components/copy-button'
 /*
 Copyright (C) 2025 QuantumNous
 
@@ -16,12 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronDown, Download } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { CopyButton } from '@/components/copy-button'
+import { ChevronDown, Download } from '@/components/icons'
 import { PublicLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'

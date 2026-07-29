@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -30,9 +32,7 @@ import {
   Pause,
   Play,
   Sparkles,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import type { StatusBadgeProps, StatusVariant } from '@/components/status-badge'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { stringToColor } from '@/lib/colors'

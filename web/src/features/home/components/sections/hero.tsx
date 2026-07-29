@@ -18,9 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { CherryStudio } from '@lobehub/icons'
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { ArrowRight, BookOpen } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
 

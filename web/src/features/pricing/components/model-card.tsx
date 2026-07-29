@@ -1,3 +1,6 @@
+import { memo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronRight, Copy } from 'lucide-react'
-import { memo, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { ChevronRight, Copy } from '@/components/icons'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'

@@ -1,3 +1,15 @@
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { BundledLanguage } from 'shiki/bundle/web'
+
+import {
+  CodeBlock,
+  CodeBlockCopyButton,
+} from '@/components/ai-elements/code-block'
+import {
+  StaticDataTable,
+  staticDataTableClassNames as tableStyles,
+} from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -23,19 +35,7 @@ import {
   ScrollText,
   Sigma,
   Zap,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { BundledLanguage } from 'shiki/bundle/web'
-
-import {
-  CodeBlock,
-  CodeBlockCopyButton,
-} from '@/components/ai-elements/code-block'
-import {
-  StaticDataTable,
-  staticDataTableClassNames as tableStyles,
-} from '@/components/data-table'
+} from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStatus } from '@/hooks/use-status'

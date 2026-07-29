@@ -1,3 +1,7 @@
+import type { UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Search } from 'lucide-react'
-import type { UseFormReturn } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
+import { Search } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 import { useDiscoverEndpoints } from '../hooks/use-custom-oauth-mutations'

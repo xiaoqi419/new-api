@@ -1,6 +1,6 @@
-import { Coins, Gift, RotateCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { Coins, Gift, RotateCw } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 import { WHEEL_COLORS } from '../constants'

@@ -19,12 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 'use client'
 
 import {
-  BrainIcon,
-  ChevronDownIcon,
-  DotIcon,
-  type LucideIcon,
-} from 'lucide-react'
-import {
   type ComponentProps,
   createContext,
   memo,
@@ -32,6 +26,12 @@ import {
   useMemo,
 } from 'react'
 
+import {
+  BrainIcon,
+  ChevronDownIcon,
+  DotIcon,
+  type LucideIcon,
+} from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import {
   Collapsible,

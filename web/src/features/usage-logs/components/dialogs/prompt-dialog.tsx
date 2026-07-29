@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Copy, Check } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { Dialog } from '@/components/dialog'
+import { Copy, Check } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'

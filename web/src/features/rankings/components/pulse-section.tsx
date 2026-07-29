@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -21,9 +23,7 @@ import {
   ArrowUpRight,
   TrendingDown,
   TrendingUp,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
 

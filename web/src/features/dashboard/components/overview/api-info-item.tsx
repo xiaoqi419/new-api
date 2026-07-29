@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { CopyButton } from '@/components/copy-button'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Zap, ExternalLink, Gauge } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { CopyButton } from '@/components/copy-button'
+import { Zap, ExternalLink, Gauge } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Shield, User, Users } from 'lucide-react'
+import { Shield, User, Users } from '@/components/icons'
 
 import type { User as UserType } from './types'
 
