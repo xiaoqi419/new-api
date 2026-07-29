@@ -114,31 +114,44 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 		duration,
 	)
 	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (mark=%s): %v", mark, err))
-		c.Status(http.StatusInternalServerError)
-		c.Abort()
+		// Fail open: a rate-limit backend (Redis) outage must not escalate into a
+		// site-wide 500. Log the anomaly and let the request through so limiter
+		// dependency failures degrade gracefully instead of amplifying.
+		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (mark=%s), allowing request: %v", mark, err))
 		return
 	}
 	if !allowed {
-		writeRateLimited(c, ttlSeconds)
+		writeRateLimited(c, maxRequestNum, ttlSeconds, mark)
 	}
 }
 
 func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
 	key := mark + c.ClientIP()
 	if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
-		writeRateLimited(c, duration)
+		writeRateLimited(c, maxRequestNum, duration, mark)
 		return
 	}
 }
 
-// writeRateLimited rejects the request with 429 and a Retry-After hint so
-// clients can back off instead of treating the rejection as a fatal error.
-// The in-memory limiter cannot report the remaining window, so callers
-// without a TTL pass the full window duration as a conservative upper bound.
-func writeRateLimited(c *gin.Context, retryAfterSeconds int64) {
-	if retryAfterSeconds > 0 {
-		c.Header("Retry-After", strconv.FormatInt(retryAfterSeconds, 10))
+// writeRateLimited rejects the request with 429 plus standard rate-limit
+// metadata so clients can back off deterministically instead of treating the
+// rejection as a fatal error. resetSeconds is the number of seconds until the
+// window frees up and is surfaced both as Retry-After and X-RateLimit-Reset.
+// The in-memory limiter cannot report the remaining window, so callers without
+// a TTL pass the full window duration as a conservative upper bound. policy is
+// the internal limiter mark, exposed as an opaque X-RateLimit-Policy label.
+func writeRateLimited(c *gin.Context, limit int, resetSeconds int64, policy string) {
+	if resetSeconds > 0 {
+		reset := strconv.FormatInt(resetSeconds, 10)
+		c.Header("Retry-After", reset)
+		c.Header("X-RateLimit-Reset", reset)
+	}
+	if limit > 0 {
+		c.Header("X-RateLimit-Limit", strconv.Itoa(limit))
+	}
+	c.Header("X-RateLimit-Remaining", "0")
+	if policy != "" {
+		c.Header("X-RateLimit-Policy", policy)
 	}
 	c.Status(http.StatusTooManyRequests)
 	c.Abort()
@@ -198,7 +211,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 				c.Abort()
 				return
 			}
-			userRedisRateLimiter(c, maxRequestNum, duration, redisUserRateLimitKey(mark, userID))
+			userRedisRateLimiter(c, maxRequestNum, duration, redisUserRateLimitKey(mark, userID), mark)
 		}
 	}
 	// It's safe to call multi times.
@@ -212,24 +225,25 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 		}
 		key := fmt.Sprintf("%s:user:%d", mark, userID)
 		if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
-			writeRateLimited(c, duration)
+			writeRateLimited(c, maxRequestNum, duration, mark)
 			return
 		}
 	}
 }
 
 // userRedisRateLimiter is like redisRateLimiter but accepts a pre-built key
-// (to support user-ID-based keys).
-func userRedisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, key string) {
+// (to support user-ID-based keys). policy is the limiter mark surfaced in the
+// 429 metadata.
+func userRedisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, key string, policy string) {
 	allowed, _, ttlSeconds, err := redisFixedWindowTake(c.Request.Context(), key, maxRequestNum, duration)
 	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (key=%s): %v", key, err))
-		c.Status(http.StatusInternalServerError)
-		c.Abort()
+		// Fail open: see redisRateLimiter — a limiter backend outage should not
+		// turn into a 500 for the caller.
+		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (key=%s), allowing request: %v", key, err))
 		return
 	}
 	if !allowed {
-		writeRateLimited(c, ttlSeconds)
+		writeRateLimited(c, maxRequestNum, ttlSeconds, policy)
 	}
 }
 

@@ -1,10 +1,16 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/QuantumNous/new-api/model"
 )
+
+// ErrWalletQuotaInsufficient signals that an atomic wallet pre-consume lost the
+// balance race: the row no longer covers the requested amount. Callers map it to
+// an insufficient-quota (403) response instead of a generic update error.
+var ErrWalletQuotaInsufficient = errors.New("用户钱包额度不足")
 
 // ---------------------------------------------------------------------------
 // FundingSource — 资金来源接口（钱包 or 订阅）
@@ -37,8 +43,12 @@ func (w *WalletFunding) PreConsume(amount int) error {
 	if amount <= 0 {
 		return nil
 	}
-	if err := model.DecreaseUserQuota(w.userId, amount, false); err != nil {
+	ok, err := model.DecreaseUserQuotaIfEnough(w.userId, amount)
+	if err != nil {
 		return err
+	}
+	if !ok {
+		return ErrWalletQuotaInsufficient
 	}
 	w.consumed = amount
 	return nil

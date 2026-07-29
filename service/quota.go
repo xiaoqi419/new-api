@@ -398,12 +398,20 @@ func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 	if err != nil {
 		return err
 	}
-	if !relayInfo.TokenUnlimited && token.RemainQuota < quota {
-		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
+	// Unlimited tokens have no balance floor; keep the unconditional deduction so
+	// usage is still tracked without rejecting.
+	if relayInfo.TokenUnlimited {
+		return model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
 	}
-	err = model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
+	// Limited tokens deduct atomically: only an update that actually cleared the
+	// remaining-quota floor counts as success, so concurrent requests can no
+	// longer both pass a stale balance read and overspend the same token.
+	ok, err := model.DecreaseTokenQuotaIfEnough(relayInfo.TokenId, relayInfo.TokenKey, quota)
 	if err != nil {
 		return err
+	}
+	if !ok {
+		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
 	}
 	return nil
 }

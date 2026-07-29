@@ -1312,6 +1312,35 @@ func decreaseUserQuota(id int, quota int) (err error) {
 	return err
 }
 
+// DecreaseUserQuotaIfEnough atomically deducts quota only when the row can still
+// cover it, returning ok=false (without error) when the balance is insufficient.
+// The single conditional UPDATE closes the check-then-act race in wallet
+// pre-consume, where concurrent requests could otherwise both pass a stale
+// balance read and drive the quota negative. Post-consume settlement keeps using
+// the unconditional path on purpose, so a delivered request is always charged
+// even if it pushes the balance below zero.
+func DecreaseUserQuotaIfEnough(id int, quota int) (ok bool, err error) {
+	if quota < 0 {
+		return false, errors.New("quota 不能为负数！")
+	}
+	if quota == 0 {
+		return true, nil
+	}
+	result := DB.Model(&User{}).Where("id = ? AND quota >= ?", id, quota).Update("quota", gorm.Expr("quota - ?", quota))
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+	gopool.Go(func() {
+		if cacheErr := cacheDecrUserQuota(id, int64(quota)); cacheErr != nil {
+			common.SysLog("failed to decrease user quota: " + cacheErr.Error())
+		}
+	})
+	return true, nil
+}
+
 func DeltaUpdateUserQuota(id int, delta int) (err error) {
 	if delta == 0 {
 		return nil

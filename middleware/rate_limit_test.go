@@ -64,6 +64,10 @@ func TestRedisIPRateLimiterThresholdTTLAndNamespace(t *testing.T) {
 	limitedResponse := performRateLimitRequest(router, "/limited", remoteAddr)
 	assert.Equal(t, http.StatusTooManyRequests, limitedResponse.Code)
 	assert.Equal(t, "37", limitedResponse.Header().Get("Retry-After"))
+	assert.Equal(t, "37", limitedResponse.Header().Get("X-RateLimit-Reset"))
+	assert.Equal(t, "2", limitedResponse.Header().Get("X-RateLimit-Limit"))
+	assert.Equal(t, "0", limitedResponse.Header().Get("X-RateLimit-Remaining"))
+	assert.Equal(t, "TEST", limitedResponse.Header().Get("X-RateLimit-Policy"))
 
 	key := redisIPRateLimitKey("TEST", "192.0.2.10")
 	count, err := redisServer.Get(key)
@@ -215,11 +219,11 @@ func TestRedisFailurePolicies(t *testing.T) {
 		c.Status(http.StatusNoContent)
 	})
 
+	// A limiter backend (Redis) outage must fail open: the request is allowed
+	// through to the handler instead of being escalated into a site-wide 500.
 	ipResponse := performRateLimitRequest(router, "/ip", "192.0.2.60:12345")
-	assert.Equal(t, http.StatusInternalServerError, ipResponse.Code)
-	assert.Empty(t, ipResponse.Body.String())
+	assert.Equal(t, http.StatusNoContent, ipResponse.Code)
 	userResponse := performRateLimitRequest(router, "/user", "192.0.2.61:12345")
-	assert.Equal(t, http.StatusInternalServerError, userResponse.Code)
-	assert.Empty(t, userResponse.Body.String())
+	assert.Equal(t, http.StatusNoContent, userResponse.Code)
 	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/email", "192.0.2.62:12345").Code)
 }

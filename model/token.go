@@ -458,6 +458,41 @@ func decreaseTokenQuota(id int, quota int) (err error) {
 	return err
 }
 
+// DecreaseTokenQuotaIfEnough atomically deducts token quota only when remain_quota
+// can still cover it, returning ok=false (without error) on insufficient balance.
+// The conditional UPDATE closes the check-then-act race in token pre-consume.
+// Unlimited tokens have no balance floor and must keep using DecreaseTokenQuota,
+// which also tracks usage without rejecting.
+func DecreaseTokenQuotaIfEnough(id int, key string, quota int) (ok bool, err error) {
+	if quota < 0 {
+		return false, errors.New("quota 不能为负数！")
+	}
+	if quota == 0 {
+		return true, nil
+	}
+	result := DB.Model(&Token{}).Where("id = ? AND remain_quota >= ?", id, quota).Updates(
+		map[string]interface{}{
+			"remain_quota":  gorm.Expr("remain_quota - ?", quota),
+			"used_quota":    gorm.Expr("used_quota + ?", quota),
+			"accessed_time": common.GetTimestamp(),
+		},
+	)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+	if common.RedisEnabled {
+		gopool.Go(func() {
+			if cacheErr := cacheDecrTokenQuota(key, int64(quota)); cacheErr != nil {
+				common.SysLog("failed to decrease token quota: " + cacheErr.Error())
+			}
+		})
+	}
+	return true, nil
+}
+
 // CountUserTokens returns total number of tokens for the given user, used for pagination
 func CountUserTokens(userId int) (int64, error) {
 	var total int64
