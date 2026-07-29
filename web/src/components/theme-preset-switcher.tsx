@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -50,29 +51,31 @@ export function ThemePresetSwitcher() {
         <span className='sr-only'>{t('Color preset')}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='min-w-44'>
-        <DropdownMenuLabel>{t('Color preset')}</DropdownMenuLabel>
-        {THEME_PRESETS.map((preset) => (
-          <DropdownMenuItem
-            key={preset.value}
-            onClick={() => setPreset(preset.value as ThemePreset)}
-          >
-            <span
-              aria-hidden='true'
-              className='ring-border size-4 shrink-0 rounded-full ring-1'
-              style={{
-                background:
-                  preset.value === 'default'
-                    ? DEFAULT_PRESET_SWATCH
-                    : `linear-gradient(135deg, ${preset.swatches[0]} 0%, ${preset.swatches[1] ?? preset.swatches[0]} 100%)`,
-              }}
-            />
-            {t(`preset.${preset.value}`)}
-            <Check
-              size={14}
-              className={cn('ms-auto', current !== preset.value && 'hidden')}
-            />
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('Color preset')}</DropdownMenuLabel>
+          {THEME_PRESETS.map((preset) => (
+            <DropdownMenuItem
+              key={preset.value}
+              onClick={() => setPreset(preset.value as ThemePreset)}
+            >
+              <span
+                aria-hidden='true'
+                className='ring-border size-4 shrink-0 rounded-full ring-1'
+                style={{
+                  background:
+                    preset.value === 'default'
+                      ? DEFAULT_PRESET_SWATCH
+                      : `linear-gradient(135deg, ${preset.swatches[0]} 0%, ${preset.swatches[1] ?? preset.swatches[0]} 100%)`,
+                }}
+              />
+              {t(`preset.${preset.value}`)}
+              <Check
+                size={14}
+                className={cn('ms-auto', current !== preset.value && 'hidden')}
+              />
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
