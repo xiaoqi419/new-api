@@ -30,7 +30,8 @@ export type HeaderNavModules = {
   docs: boolean
   externalDocs: boolean
   about: boolean
-  [key: string]: boolean | ModuleAccess
+  icons?: Record<string, string>
+  [key: string]: boolean | ModuleAccess | Record<string, string> | undefined
 }
 
 const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
@@ -118,6 +119,16 @@ export function parseHeaderNavModules(raw: unknown): HeaderNavModules {
     }
     if (key === 'rankings') {
       result.rankings = parseAccess(value, result.rankings)
+      return
+    }
+    if (key === 'icons') {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const map: Record<string, string> = {}
+        Object.entries(value as Record<string, unknown>).forEach(([k, v]) => {
+          if (typeof v === 'string') map[k] = v
+        })
+        result.icons = map
+      }
       return
     }
 

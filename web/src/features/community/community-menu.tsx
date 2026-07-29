@@ -38,6 +38,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
+import { useStatus } from '@/hooks/use-status'
+import { navIconNameFor, resolveNavIcon } from '@/lib/nav-icons'
+import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 
 import {
@@ -139,19 +142,27 @@ export function CommunityMenu({
 }) {
   const { t } = useTranslation()
   const links = useCommunityLinks()
+  const { status } = useStatus()
   const [qrLink, setQrLink] = useState<CommunityLink | null>(null)
 
   if (links.length === 0) return null
+
+  const modules = parseHeaderNavModulesFromStatus(
+    status as Record<string, unknown> | null
+  )
+  const CommunityNavIcon =
+    resolveNavIcon(navIconNameFor(modules.icons, 'community')) ?? Users
 
   const trigger =
     variant === 'nav' ? (
       <Button
         variant='ghost'
         className={cn(
-          'text-muted-foreground hover:text-foreground h-auto rounded-lg px-3 py-1.5 text-[13px] font-medium hover:bg-transparent',
+          'text-muted-foreground hover:text-primary h-auto rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-transparent',
           className
         )}
       >
+        <CommunityNavIcon className='size-4' />
         {t('Community')}
       </Button>
     ) : (
@@ -161,7 +172,7 @@ export function CommunityMenu({
         className={cn('size-9', className)}
         aria-label={t('Community')}
       >
-        <Users className='size-4' />
+        <CommunityNavIcon className='size-4' />
       </Button>
     )
 

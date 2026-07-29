@@ -31,6 +31,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
+import { DEFAULT_NAV_ICONS, NAV_ICON_KEYS } from '@/lib/nav-icons'
 
 import {
   SettingsControlChildren,
@@ -47,6 +48,7 @@ import {
   type HeaderNavModulesConfig,
   serializeHeaderNavModules,
 } from './config'
+import { NavIconPicker } from './nav-icon-picker'
 
 const headerNavSchema = z.object({
   home: z.boolean(),
@@ -58,9 +60,11 @@ const headerNavSchema = z.object({
   docs: z.boolean(),
   externalDocs: z.boolean(),
   about: z.boolean(),
+  icons: z.record(z.string(), z.string()),
 })
 
 type HeaderNavFormValues = z.infer<typeof headerNavSchema>
+type HeaderNavBooleanKey = Exclude<keyof HeaderNavFormValues, 'icons'>
 
 type HeaderNavigationSectionProps = {
   config: HeaderNavModulesConfig
@@ -100,6 +104,10 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.about === undefined
       ? HEADER_NAV_DEFAULT.about
       : Boolean(config.about),
+  icons: NAV_ICON_KEYS.reduce<Record<string, string>>((acc, key) => {
+    acc[key] = config.icons?.[key] ?? DEFAULT_NAV_ICONS[key] ?? ''
+    return acc
+  }, {}),
 })
 
 export function HeaderNavigationSection({
@@ -137,6 +145,7 @@ export function HeaderNavigationSection({
         enabled: values.rankingsEnabled,
         requireAuth: values.rankingsRequireAuth,
       },
+      icons: values.icons,
     }
 
     const serialized = serializeHeaderNavModules(payload)
@@ -155,7 +164,7 @@ export function HeaderNavigationSection({
   }
 
   const simpleModules: Array<{
-    key: keyof HeaderNavFormValues
+    key: HeaderNavBooleanKey
     title: string
     description: string
   }> = [
@@ -187,8 +196,9 @@ export function HeaderNavigationSection({
   ]
 
   const accessModules: Array<{
-    enabledKey: keyof HeaderNavFormValues
-    requireAuthKey: keyof HeaderNavFormValues
+    enabledKey: HeaderNavBooleanKey
+    requireAuthKey: HeaderNavBooleanKey
+    iconKey: 'pricing' | 'rankings'
     requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled'
     title: string
     description: string
@@ -198,6 +208,7 @@ export function HeaderNavigationSection({
     {
       enabledKey: 'pricingEnabled',
       requireAuthKey: 'pricingRequireAuth',
+      iconKey: 'pricing',
       requireAuthDependsOn: 'pricingEnabled',
       title: t('Model Square'),
       description: t('Public model catalog and pricing page.'),
@@ -209,6 +220,7 @@ export function HeaderNavigationSection({
     {
       enabledKey: 'rankingsEnabled',
       requireAuthKey: 'rankingsRequireAuth',
+      iconKey: 'rankings',
       requireAuthDependsOn: 'rankingsEnabled',
       title: t('Rankings'),
       description: t('Public rankings page based on live usage data.'),
@@ -238,10 +250,23 @@ export function HeaderNavigationSection({
                 name={module.key}
                 render={({ field }) => (
                   <SettingsSwitchItem>
-                    <SettingsSwitchContent>
-                      <FormLabel>{module.title}</FormLabel>
-                      <FormDescription>{module.description}</FormDescription>
-                    </SettingsSwitchContent>
+                    <div className='flex min-w-0 flex-1 items-center gap-3'>
+                      <FormField
+                        control={form.control}
+                        name={`icons.${module.key}`}
+                        render={({ field: iconField }) => (
+                          <NavIconPicker
+                            value={iconField.value}
+                            onChange={iconField.onChange}
+                            label={module.title}
+                          />
+                        )}
+                      />
+                      <SettingsSwitchContent>
+                        <FormLabel>{module.title}</FormLabel>
+                        <FormDescription>{module.description}</FormDescription>
+                      </SettingsSwitchContent>
+                    </div>
                     <FormControl>
                       <Switch
                         checked={field.value}
@@ -263,10 +288,25 @@ export function HeaderNavigationSection({
                   name={module.enabledKey}
                   render={({ field }) => (
                     <SettingsSwitchItem>
-                      <SettingsSwitchContent>
-                        <FormLabel>{module.title}</FormLabel>
-                        <FormDescription>{module.description}</FormDescription>
-                      </SettingsSwitchContent>
+                      <div className='flex min-w-0 flex-1 items-center gap-3'>
+                        <FormField
+                          control={form.control}
+                          name={`icons.${module.iconKey}`}
+                          render={({ field: iconField }) => (
+                            <NavIconPicker
+                              value={iconField.value}
+                              onChange={iconField.onChange}
+                              label={module.title}
+                            />
+                          )}
+                        />
+                        <SettingsSwitchContent>
+                          <FormLabel>{module.title}</FormLabel>
+                          <FormDescription>
+                            {module.description}
+                          </FormDescription>
+                        </SettingsSwitchContent>
+                      </div>
                       <FormControl>
                         <Switch
                           checked={field.value}
@@ -304,6 +344,30 @@ export function HeaderNavigationSection({
                 />
               </SettingsControlGroup>
             ))}
+          </div>
+
+          <div className='grid gap-4 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='icons.community'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <div className='flex min-w-0 flex-1 items-center gap-3'>
+                    <NavIconPicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      label={t('Community')}
+                    />
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Community')}</FormLabel>
+                      <FormDescription>
+                        {t('Community entry shown in the header navigation.')}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                  </div>
+                </SettingsSwitchItem>
+              )}
+            />
           </div>
         </SettingsForm>
       </Form>
