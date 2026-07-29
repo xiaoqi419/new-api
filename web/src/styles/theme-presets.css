@@ -821,3 +821,147 @@ For commercial licensing, please contact support@quantumnous.com
     width: 100%;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Sakura full skin (淡雅浅粉 · 整主题皮肤)
+ * 仅 [data-theme-preset='sakura'] 生效。纯 scoped 覆盖各组件外观(圆润 + 轻玻璃
+ * + 柔投影),不改任何组件 .tsx;其它主题不受影响。普通(非分层)规则天然覆盖
+ * Tailwind utilities。图标整套替换需改组件代码,单独评估,不在本皮肤内。
+ * ════════════════════════════════════════════════════════════════════════ */
+[data-theme-preset='sakura'] {
+  --sk-blur: blur(10px) saturate(112%);
+  --sk-glass: color-mix(in oklch, var(--card) 70%, transparent);
+  --sk-glass-strong: color-mix(in oklch, var(--card) 82%, transparent);
+  --sk-hairline: color-mix(in oklch, white 55%, var(--border));
+  --sk-soft-shadow: 0 6px 18px -12px
+    color-mix(in oklch, var(--primary) 42%, transparent);
+  --sk-lift-shadow: 0 10px 26px -14px
+    color-mix(in oklch, var(--primary) 55%, transparent);
+}
+.dark [data-theme-preset='sakura'] {
+  --sk-glass: color-mix(in oklch, var(--card) 58%, transparent);
+  --sk-glass-strong: color-mix(in oklch, var(--card) 72%, transparent);
+  --sk-hairline: color-mix(in oklch, white 12%, var(--border));
+}
+
+/* Buttons — 圆润 + 柔投影;实心按钮微渐变+悬停上浮,浅色按钮走玻璃,幽灵/链接保持扁平 */
+[data-theme-preset='sakura'] [data-slot='button'] {
+  border-radius: 0.7rem;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-primary'] {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklch, white 10%, var(--primary)),
+    var(--primary)
+  );
+  box-shadow: var(--sk-soft-shadow);
+}
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-primary']:hover {
+  box-shadow: var(--sk-lift-shadow);
+  transform: translateY(-1px);
+}
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-secondary'],
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-background'] {
+  background-color: var(--sk-glass);
+  backdrop-filter: var(--sk-blur);
+  -webkit-backdrop-filter: var(--sk-blur);
+  border-color: var(--sk-hairline);
+}
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-secondary']:hover,
+[data-theme-preset='sakura'] [data-slot='button'][class*='bg-background']:hover {
+  background-color: var(--sk-glass-strong);
+}
+
+/* Inputs / textarea / selects — 玻璃底 + 圆润(粉聚焦环已由 --ring 提供) */
+[data-theme-preset='sakura'] [data-slot='input'],
+[data-theme-preset='sakura'] [data-slot='textarea'],
+[data-theme-preset='sakura'] [data-slot='native-select'],
+[data-theme-preset='sakura'] [data-slot='select-trigger'] {
+  background-color: var(--sk-glass);
+  backdrop-filter: var(--sk-blur);
+  -webkit-backdrop-filter: var(--sk-blur);
+  border-color: var(--sk-hairline);
+  border-radius: 0.6rem;
+}
+
+/* Tabs — 玻璃列表容器 + 选中项柔粉 */
+[data-theme-preset='sakura'] [data-slot='tabs-list'] {
+  background-color: var(--sk-glass);
+  backdrop-filter: var(--sk-blur);
+  -webkit-backdrop-filter: var(--sk-blur);
+  border-radius: 0.7rem;
+}
+[data-theme-preset='sakura'] [data-slot='tabs-trigger'][data-active] {
+  background-color: color-mix(in oklch, var(--primary) 14%, var(--card));
+  color: var(--foreground);
+  box-shadow: var(--sk-soft-shadow);
+}
+
+/* Floating menus (dropdown / context / select) — 玻璃 + 圆润,菜单项圆角 */
+[data-theme-preset='sakura'] [data-slot='dropdown-menu-content'],
+[data-theme-preset='sakura'] [data-slot='context-menu-content'],
+[data-theme-preset='sakura'] [data-slot='dropdown-menu-sub-content'],
+[data-theme-preset='sakura'] [data-slot='context-menu-sub-content'],
+[data-theme-preset='sakura'] [data-slot='select-content'] {
+  background-color: var(--sk-glass-strong);
+  backdrop-filter: var(--sk-blur);
+  -webkit-backdrop-filter: var(--sk-blur);
+  border-color: var(--sk-hairline);
+  border-radius: 0.8rem;
+}
+[data-theme-preset='sakura'] [data-slot='dropdown-menu-item'],
+[data-theme-preset='sakura'] [data-slot='context-menu-item'],
+[data-theme-preset='sakura'] [data-slot='select-item'] {
+  border-radius: 0.5rem;
+}
+
+/* Table — 圆角容器 + 柔粉表头(行悬停由组件自身处理) */
+[data-theme-preset='sakura'] [data-slot='table-container'] {
+  border: 1px solid var(--sk-hairline);
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+[data-theme-preset='sakura'] [data-slot='table-header'] {
+  background-color: color-mix(in oklch, var(--primary) 8%, var(--card));
+}
+
+/* Progress — 柔粉轨道 + 粉色进度 */
+[data-theme-preset='sakura'] [data-slot='progress-track'] {
+  background-color: color-mix(in oklch, var(--primary) 16%, var(--card));
+}
+[data-theme-preset='sakura'] [data-slot='progress-indicator'] {
+  background-color: var(--primary);
+}
+
+/* Sidebar 选中项 — 圆润药丸 + 柔投影(底色已由 surface bridge 染粉) */
+[data-theme-preset='sakura'] [data-slot='sidebar-menu-button'][data-active] {
+  border-radius: 0.6rem;
+  box-shadow: var(--sk-soft-shadow);
+}
+
+/* Tooltip — 圆润 */
+[data-theme-preset='sakura'] [data-slot='tooltip-content'] {
+  border-radius: 0.6rem;
+}
+
+/* Scrollbars — 细粉(仅 WebKit) */
+[data-theme-preset='sakura'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-theme-preset='sakura'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-theme-preset='sakura'] ::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--primary) 40%, transparent);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+[data-theme-preset='sakura'] ::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--primary) 60%, transparent);
+}
