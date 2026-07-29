@@ -965,3 +965,27 @@ For commercial licensing, please contact support@quantumnous.com
 [data-theme-preset='sakura'] ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklch, var(--primary) 60%, transparent);
 }
+
+/* Icons (纯 CSS 主题化,仅樱花) — 描边调细让观感更柔;侧栏导航图标加柔粉圆底,
+ * 做成粉系「图标片」。stroke='currentColor' 精准命中 lucide/Huge 等描边图标,
+ * 不影响填充式厂商 logo 与图表(图表用显式颜色而非 currentColor)。
+ * 注:整套「换图标形状/换库」需改组件代码、且会影响所有主题,单独立项。 */
+[data-theme-preset='sakura'] svg[stroke='currentColor'] {
+  stroke-width: 1.6;
+}
+[data-theme-preset='sakura'] [data-slot='sidebar-menu-button'] > svg {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 9999px;
+  background-color: color-mix(in oklch, var(--primary) 12%, transparent);
+  color: color-mix(in oklch, var(--primary) 55%, var(--foreground));
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+[data-theme-preset='sakura']
+  [data-slot='sidebar-menu-button'][data-active]
+  > svg {
+  background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  color: var(--primary);
+}
