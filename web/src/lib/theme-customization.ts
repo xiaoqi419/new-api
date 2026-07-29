@@ -77,6 +77,12 @@ export const THEME_PRESETS = [
     name: 'Lavender Dream',
     swatches: ['oklch(0.5709 0.1808 306.89)', 'oklch(0.811 0.0589 201.14)'],
   },
+  {
+    // 淡雅浅粉 · 樱花:近白粉底 + 柔玫瑰主色,卡片带轻玻璃质感。
+    value: 'sakura',
+    name: 'Sakura',
+    swatches: ['oklch(0.92 0.045 350)', 'oklch(0.722 0.149 357)'],
+  },
 ] as const
 
 export type ThemePreset = (typeof THEME_PRESETS)[number]['value']

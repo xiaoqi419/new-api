@@ -26,9 +26,13 @@ import {
   FormControl,
   FormDescription,
   FormField,
+  FormItem,
   FormLabel,
+  FormMessage,
 } from '@/components/ui/form'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Switch } from '@/components/ui/switch'
+import { THEME_PRESETS } from '@/lib/theme-customization'
 
 import {
   SettingsForm,
@@ -42,6 +46,7 @@ import { useUpdateOption } from '../hooks/use-update-option'
 
 const behaviorSchema = z.object({
   DefaultCollapseSidebar: z.boolean(),
+  DefaultThemePreset: z.string(),
   DemoSiteEnabled: z.boolean(),
   SelfUseModeEnabled: z.boolean(),
 })
@@ -83,6 +88,38 @@ export function SystemBehaviorSection({
             onSave={form.handleSubmit(onSubmit)}
             isSaving={updateOption.isPending}
           />
+          <FormField
+            control={form.control}
+            name='DefaultThemePreset'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('Default Theme')}</FormLabel>
+                <FormControl>
+                  <NativeSelect
+                    className='w-full'
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  >
+                    {THEME_PRESETS.map((preset) => (
+                      <NativeSelectOption
+                        key={preset.value}
+                        value={preset.value}
+                      >
+                        {t(`preset.${preset.value}`)}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </FormControl>
+                <FormDescription>
+                  {t(
+                    'Default color theme for new users; users can switch anytime'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name='DefaultCollapseSidebar'

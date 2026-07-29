@@ -354,6 +354,7 @@ export type BillingSettings = {
 
 export type OperationsSettings = {
   DefaultCollapseSidebar: boolean
+  DefaultThemePreset: string
   DemoSiteEnabled: boolean
   SelfUseModeEnabled: boolean
   QuotaRemindThreshold: string

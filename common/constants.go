@@ -38,6 +38,7 @@ var DataExportEnabled = true
 var DataExportInterval = 5         // unit: minute
 var DataExportDefaultTime = "hour" // unit: minute
 var DefaultCollapseSidebar = true  // default value of collapse sidebar
+var DefaultThemePreset = "default" // site-wide default color theme preset; users may override
 
 // Any options with "Secret", "Token" in its key won't be return by GetOptions
 
