@@ -23,7 +23,7 @@ type AgentPaymentConfig struct {
 	Provider       string  `json:"provider" gorm:"column:provider;uniqueIndex:idx_agent_payment_agent_provider,priority:2;type:varchar(32)"`
 	CredsEncrypted string  `json:"-" gorm:"type:text"`
 	Enabled        bool    `json:"enabled"`
-	UnitPrice      float64 `json:"unit_price" gorm:"type:double;default:0"`
+	UnitPrice      float64 `json:"unit_price" gorm:"type:decimal(10,6);default:0"`
 	MinTopup       int     `json:"min_topup" gorm:"type:int;default:0"`
 	CreatedTime    int64   `json:"created_time" gorm:"bigint"`
 	UpdatedTime    int64   `json:"updated_time" gorm:"bigint"`

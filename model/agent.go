@@ -35,7 +35,7 @@ type Agent struct {
 	Name            string  `json:"name" gorm:"type:varchar(128)"`
 	Status          int     `json:"status" gorm:"type:int;default:0"`
 	WalletQuota     int     `json:"wallet_quota" gorm:"type:int;default:0"`
-	CostRatio       float64 `json:"cost_ratio" gorm:"type:double;default:1"`
+	CostRatio       float64 `json:"cost_ratio" gorm:"type:decimal(10,6);default:1"`
 	SellGroupRatios string  `json:"sell_group_ratios" gorm:"type:text"`
 	Remark          string  `json:"remark,omitempty" gorm:"type:varchar(255)"`
 	CreatedTime     int64   `json:"created_time" gorm:"bigint"`
