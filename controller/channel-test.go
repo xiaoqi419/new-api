@@ -89,6 +89,9 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		constant.ChannelTypeJimeng,
 		constant.ChannelTypeDoubaoVideo,
 		constant.ChannelTypeVidu,
+		// Sora 渠道只提供 /v1/videos 异步视频任务，没有可用于探活的同步端点；
+		// 若放行，测试会按 chat 形状把请求发到 /v1/videos，得到一个误导性的上游错误。
+		constant.ChannelTypeSora,
 	}
 	if lo.Contains(unsupportedTestChannelTypes, channel.Type) {
 		channelTypeName := constant.GetChannelTypeName(channel.Type)
