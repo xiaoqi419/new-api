@@ -66,7 +66,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
   return (
     <SidebarGroup className='px-2 py-1'>
-      <SidebarGroupLabel className='text-muted-foreground/70 px-2 text-[11px] font-medium tracking-wider uppercase'>
+      <SidebarGroupLabel className='text-muted-foreground px-2 text-[11px] font-medium tracking-wider uppercase'>
         {title}
       </SidebarGroupLabel>
       <SidebarMenu>
@@ -117,6 +117,14 @@ function NavBadge({ children }: { children: ReactNode }) {
   return <Badge className='shrink-0 px-1 py-0 text-xs'>{children}</Badge>
 }
 
+/* Top-level nav icons carry the brand accent so the sidebar reads as branded
+ * even with nothing selected, while labels stay on --sidebar-foreground for
+ * legibility. Sub-item icons are deliberately excluded: SidebarMenuSubButton
+ * already pins their color through a `[&>svg]` rule that outranks a plain
+ * utility class on the icon itself. */
+const NAV_ICON_CLASS =
+  'text-primary/70 group-data-active/menu-button:text-primary shrink-0 transition-colors'
+
 /**
  * Sidebar menu link item
  */
@@ -129,7 +137,7 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         tooltip={item.title}
         render={<Link to={item.url} onClick={() => setOpenMobile(false)} />}
       >
-        {item.icon && <item.icon className='shrink-0' />}
+        {item.icon && <item.icon className={NAV_ICON_CLASS} />}
         <span className='min-w-0 flex-1 truncate'>{item.title}</span>
         {item.badge && <NavBadge>{item.badge}</NavBadge>}
       </SidebarMenuButton>
@@ -172,7 +180,7 @@ function SidebarMenuCollapsible({
         className='group/collapsible-trigger'
         render={<SidebarMenuButton tooltip={item.title} />}
       >
-        {item.icon && <item.icon className='shrink-0' />}
+        {item.icon && <item.icon className={NAV_ICON_CLASS} />}
         <span className='min-w-0 flex-1 truncate'>{item.title}</span>
         {item.badge && <NavBadge>{item.badge}</NavBadge>}
         <ChevronRight className='ms-auto size-4 shrink-0 transition-transform duration-200 group-data-[panel-open]/collapsible-trigger:rotate-90' />
@@ -221,7 +229,7 @@ function SidebarMenuCollapsedDropdown({
             />
           }
         >
-          {item.icon && <item.icon className='shrink-0' />}
+          {item.icon && <item.icon className={NAV_ICON_CLASS} />}
           <span className='min-w-0 flex-1 truncate'>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
           <ChevronRight className='ms-auto size-4 shrink-0 transition-transform duration-200 group-data-[popup-open]/dropdown-trigger:rotate-90' />

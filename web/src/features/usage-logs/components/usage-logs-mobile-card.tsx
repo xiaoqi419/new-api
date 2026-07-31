@@ -51,10 +51,8 @@ import { StreamTpsCell, TimingMetricsCell } from './timing-metrics-cell'
 import { useUsageLogsContext } from './usage-logs-provider'
 
 const logTypeRowTint: Record<number, string> = {
-  [LOG_TYPE_ENUM.ERROR]:
-    'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200/50 dark:border-rose-900/30',
-  [LOG_TYPE_ENUM.REFUND]:
-    'bg-blue-50/30 dark:bg-blue-950/15 border-blue-200/50 dark:border-blue-900/30',
+  [LOG_TYPE_ENUM.ERROR]: 'bg-destructive/8 border-destructive/25',
+  [LOG_TYPE_ENUM.REFUND]: 'bg-chart-1/8 border-chart-1/25',
 }
 
 interface UsageLogsMobileListProps<TData> {
@@ -67,7 +65,7 @@ interface UsageLogsMobileListProps<TData> {
 
 function UsageLogsMobileSkeleton() {
   return (
-    <div className='border-border/50 bg-card overflow-hidden rounded-lg border'>
+    <div className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
       {[1, 2, 3].map((i) => (
         <div
           key={i}
@@ -488,7 +486,7 @@ export function UsageLogsMobileList<TData>({
   }
 
   return (
-    <div className='border-border/50 bg-card overflow-hidden rounded-lg border'>
+    <div className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
       {rows.map((row) => {
         const cells = new Map(
           row.getVisibleCells().map((cell) => [cell.column.id, cell])

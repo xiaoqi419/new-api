@@ -67,8 +67,11 @@ export function PanelWrapper(props: PanelWrapperProps) {
   const { t } = useTranslation()
   const resolvedEmptyMessage = props.emptyMessage ?? t('No data available')
   const height = props.height ?? 'h-64'
+  // Matches the canonical surface from components/ui/card.tsx (rounded-xl +
+  // hairline ring, no border/shadow) so dashboard panels sit at the same
+  // elevation as Card-based panels elsewhere.
   const frameClassName = cn(
-    'overflow-hidden rounded-2xl border bg-card shadow-xs',
+    'bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1',
     props.className
   )
 

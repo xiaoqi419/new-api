@@ -28,8 +28,8 @@ import {
   getDynamicDisplayGroupRatio,
   getDynamicPricingSummary,
 } from '../lib/dynamic-price'
-import { isTokenBasedModel } from '../lib/model-helpers'
 import { ModalityFlow } from '../lib/modality'
+import { isTokenBasedModel } from '../lib/model-helpers'
 import {
   formatPrice,
   formatRequestPrice,
@@ -93,7 +93,7 @@ export function usePricingColumns(
               {model.model_name}
             </span>
             {isRecentRelease(model) && (
-              <span className='shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-600 uppercase dark:text-emerald-400'>
+              <span className='bg-success/15 text-success shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase'>
                 {t('New')}
               </span>
             )}
@@ -151,7 +151,7 @@ export function usePricingColumns(
           if (dynamicSummary.isSpecialExpression) {
             return (
               <div className='max-w-full min-w-0'>
-                <div className='text-xs font-medium text-amber-700 dark:text-amber-300'>
+                <div className='text-warning text-xs font-medium'>
                   {t('Special billing expression')}
                 </div>
                 <div className='text-muted-foreground text-[11px]'>

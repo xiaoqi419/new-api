@@ -185,7 +185,7 @@ export function LotteryWheel({
         onClick={onDraw}
         disabled={disabled}
         className={cn(
-          'absolute left-1/2 top-1/2 z-20 flex size-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-white bg-gradient-to-b from-red-500 to-red-600 text-white shadow-lg transition-transform',
+          'absolute left-1/2 top-1/2 z-20 flex size-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-4 border-white bg-gradient-to-b from-primary to-primary/85 text-white shadow-lg transition-transform',
           disabled
             ? 'cursor-not-allowed opacity-70'
             : 'cursor-pointer hover:scale-105 active:scale-95'

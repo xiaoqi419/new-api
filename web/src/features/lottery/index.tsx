@@ -149,7 +149,7 @@ export function LotteryPage() {
     <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
       <div className='grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]'>
         {/* 左侧：橙色渐变主卡 + 转盘 */}
-        <div className='relative overflow-hidden rounded-2xl bg-gradient-to-b from-orange-300 via-orange-400 to-orange-500 p-6 shadow-md'>
+        <div className='from-warning/70 via-warning/85 to-warning relative overflow-hidden rounded-2xl bg-gradient-to-b p-6 shadow-md'>
           <div className='text-center'>
             <h2 className='text-2xl font-extrabold text-white drop-shadow'>
               {t('Crazy Lucky Wheel')}
@@ -164,13 +164,13 @@ export function LotteryPage() {
           </div>
 
           <div className='mt-4 flex flex-wrap justify-center gap-2'>
-            <span className='rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-orange-700'>
+            <span className='text-warning rounded-full bg-white/80 px-3 py-1 text-xs font-semibold'>
               {t('Topup for cards')}
             </span>
-            <span className='rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-orange-700'>
+            <span className='text-warning rounded-full bg-white/80 px-3 py-1 text-xs font-semibold'>
               {t('Spend to unlock cards')}
             </span>
-            <span className='rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-orange-700'>
+            <span className='text-warning rounded-full bg-white/80 px-3 py-1 text-xs font-semibold'>
               {t('Guaranteed prize')}
             </span>
           </div>
@@ -202,24 +202,24 @@ export function LotteryPage() {
         {/* 右侧：统计 + 进度 + 我的卡 */}
         <div className='flex flex-col gap-4'>
           <div className='grid grid-cols-3 gap-3'>
-            <div className='rounded-xl border bg-rose-50 p-4 text-center'>
-              <div className='text-2xl font-bold text-rose-600'>
+            <div className='bg-destructive/10 rounded-xl border p-4 text-center'>
+              <div className='text-destructive text-2xl font-bold'>
                 {availableCards}
               </div>
               <div className='text-muted-foreground mt-1 text-xs'>
                 {t('Available draws')}
               </div>
             </div>
-            <div className='rounded-xl border bg-amber-50 p-4 text-center'>
-              <div className='text-2xl font-bold text-amber-600'>
+            <div className='bg-warning/10 rounded-xl border p-4 text-center'>
+              <div className='text-warning text-2xl font-bold'>
                 {formatQuota(status.base_quota ?? 0)}
               </div>
               <div className='text-muted-foreground mt-1 text-xs'>
                 {t('Guaranteed each draw')}
               </div>
             </div>
-            <div className='rounded-xl border bg-emerald-50 p-4 text-center'>
-              <div className='text-2xl font-bold text-emerald-600'>
+            <div className='bg-success/10 rounded-xl border p-4 text-center'>
+              <div className='text-success text-2xl font-bold'>
                 {prizes.length}
               </div>
               <div className='text-muted-foreground mt-1 text-xs'>
@@ -266,7 +266,7 @@ export function LotteryPage() {
               <ul className='flex flex-col gap-2 text-sm'>
                 <li className='flex items-center justify-between'>
                   <span className='flex items-center gap-2'>
-                    <Ticket className='size-4 text-emerald-500' />
+                    <Ticket className='text-success size-4' />
                     {t('Available draws')}
                   </span>
                   <span className='font-semibold'>{availableCards}</span>
@@ -277,7 +277,7 @@ export function LotteryPage() {
                     className='text-muted-foreground flex items-center justify-between'
                   >
                     <span className='flex items-center gap-2'>
-                      <Clock className='size-4 text-orange-500' />
+                      <Clock className='text-warning size-4' />
                       {t('Limited-time card')}
                     </span>
                     <span className='font-mono text-xs'>

@@ -57,7 +57,7 @@ export function TaskDetailsDialog(props: TaskDetailsDialogProps) {
           aria-label={t('Copy to clipboard')}
         >
           {copiedText === json ? (
-            <Check className='size-3.5 text-green-600' />
+            <Check className='text-success size-3.5' />
           ) : (
             <Copy className='size-3.5' />
           )}

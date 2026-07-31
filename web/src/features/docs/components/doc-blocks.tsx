@@ -25,11 +25,11 @@ import { cn } from '@/lib/utils'
 import type { DocBlock, DocParamRow } from '../doc-data'
 
 const METHOD_CLASSES: Record<string, string> = {
-  GET: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  POST: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-  PUT: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  PATCH: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
-  DELETE: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  GET: 'bg-success/15 text-success',
+  POST: 'bg-chart-1/15 text-chart-1',
+  PUT: 'bg-warning/15 text-warning',
+  PATCH: 'bg-chart-4/15 text-chart-4',
+  DELETE: 'bg-destructive/15 text-destructive',
 }
 
 function methodClass(method: string): string {

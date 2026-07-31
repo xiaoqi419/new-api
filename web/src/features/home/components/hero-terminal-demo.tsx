@@ -45,28 +45,24 @@ const ACCENT_CLASSES: Record<
   }
 > = {
   emerald: {
-    activeText: 'text-emerald-600 dark:text-emerald-400',
-    activeBorder: 'border-emerald-500 dark:border-emerald-400',
-    badge:
-      'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-400',
+    activeText: 'text-success',
+    activeBorder: 'border-success',
+    badge: 'bg-success/10 text-success',
   },
   amber: {
-    activeText: 'text-amber-600 dark:text-amber-400',
-    activeBorder: 'border-amber-500 dark:border-amber-400',
-    badge:
-      'bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400',
+    activeText: 'text-warning',
+    activeBorder: 'border-warning',
+    badge: 'bg-warning/10 text-warning',
   },
   blue: {
-    activeText: 'text-blue-600 dark:text-blue-400',
-    activeBorder: 'border-blue-500 dark:border-blue-400',
-    badge:
-      'bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400',
+    activeText: 'text-chart-1',
+    activeBorder: 'border-chart-1',
+    badge: 'bg-chart-1/10 text-chart-1',
   },
   violet: {
-    activeText: 'text-violet-600 dark:text-violet-400',
-    activeBorder: 'border-violet-500 dark:border-violet-400',
-    badge:
-      'bg-violet-500/10 text-violet-600 dark:bg-violet-400/10 dark:text-violet-400',
+    activeText: 'text-chart-4',
+    activeBorder: 'border-chart-4',
+    badge: 'bg-chart-4/10 text-chart-4',
   },
 }
 
@@ -241,7 +237,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
             )
           })}
           <div className='ml-auto flex items-center gap-2 pr-2 sm:pr-3'>
-            <span className='inline-block size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.45)]' />
+            <span className='bg-success inline-block size-1.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.45)]' />
             <span className='text-foreground/40 font-mono text-[10px] tracking-wider uppercase'>
               200 ok
             </span>

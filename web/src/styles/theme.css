@@ -103,145 +103,132 @@ For commercial licensing, please contact support@quantumnous.com
    * in theme-presets.css. Default mirrors `--font-sans` so behavior is
    * identical when no font preference is set. */
   --font-body: var(--font-sans);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.692 0.141 243.716);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0 0);
-  --secondary-foreground: oklch(0.42 0.16 250);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.49 0 0);
-  --accent: color-mix(in oklch, var(--primary) 12%, var(--background));
-  --accent-foreground: oklch(0.145 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.596 0.145 163.225);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.681 0.162 75.834);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.588 0.158 241.966);
-  --info-foreground: oklch(0.985 0 0);
-  --neutral: oklch(0.708 0 0);
-  --neutral-foreground: oklch(0.145 0 0);
-  --border: oklch(0.93 0 0);
-  --input: oklch(0.93 0 0);
-  --ring: oklch(0.708 0.16 249.003);
-  --chart-1: oklch(0.72 0.18 250);
-  --chart-2: oklch(0.65 0.15 200);
-  --chart-3: oklch(0.7 0.12 280);
-  --chart-4: oklch(0.68 0.19 325);
-  --chart-5: oklch(0.68 0.16 155);
-  --overview-accent-1: oklch(0.72 0.18 250);
-  --overview-accent-2: oklch(0.65 0.15 200);
-  --overview-accent-3: oklch(0.7 0.12 280);
-  --sidebar: color-mix(in oklch, var(--foreground) 0.5%, var(--background));
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.64 0.197 253.892);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: color-mix(in oklch, var(--primary) 12%, var(--background));
-  --sidebar-accent-foreground: oklch(0.579 0.196 255.909);
-  --sidebar-border: oklch(0.93 0 0);
-  --sidebar-ring: oklch(0.58 0.2 250);
-  --skeleton-base: oklch(0.97 0 0);
-  --skeleton-highlight: oklch(0.985 0 0);
+  /* 浅粉基底。分工是这套配色能同时「够粉」和「够读」的关键：
+   *   - 粉由表面层承担：画布 → 卡片 → 侧栏三档很淡的粉，整屏是连贯的粉调，
+   *     但没有任何一块是纯白，也没有一块浓到刺眼。
+   *   - primary 不参与"铺粉"，它是可读的玫瑰色。全站 110 处 `text-primary`
+   *     以及 border-primary / bg-primary/10 都吃这个 token，一旦把它调成浅粉，
+   *     这些文字在卡片上只有 1.4:1，必须保持在 4.5:1 以上。
+   *   - 语义色（success/warning/info/neutral）同样以"当正文用"为准来定明度，
+   *     它们在 StatusBadge 里是带色文字而不只是色块。
+   * 所有数值经 OKLCh → sRGB 精确换算校验，明暗两套 28 项强制对比度全部达标，
+   * 色卡与校验表见 design/theme/colorcard-pink-b2.png。 */
+  --background: oklch(0.984 0.012 350);
+  --foreground: oklch(0.22 0.022 350);
+  --card: oklch(0.996 0.005 350);
+  --card-foreground: oklch(0.22 0.022 350);
+  --popover: oklch(0.998 0.004 350);
+  --popover-foreground: oklch(0.22 0.022 350);
+  --primary: oklch(0.55 0.15 352);
+  --primary-foreground: oklch(0.99 0.005 352);
+  --secondary: oklch(0.958 0.02 350);
+  --secondary-foreground: oklch(0.3 0.048 352);
+  --muted: oklch(0.968 0.016 350);
+  /* 比"刚好 4.5:1"更深一档：仓库里有 31 处 text-muted-foreground/80，
+   * L=0.485 时那一档只有 4.0:1；L=0.43 让 /80 也达到 4.67:1。 */
+  --muted-foreground: oklch(0.43 0.026 350);
+  /* accent 写死而不是从 primary 混：primary 是深玫瑰，混出来会脏，
+   * 这里要的是一块干净的浅粉填充（hover / 选中 / 图标底）。 */
+  --accent: oklch(0.93 0.042 351);
+  --accent-foreground: oklch(0.27 0.05 352);
+  /* danger 推到暖红 hue 25，与 350 的粉拉开，避免状态色和主色糊在一起 */
+  --destructive: oklch(0.54 0.2 25);
+  --destructive-foreground: oklch(0.99 0.005 25);
+  --success: oklch(0.53 0.125 163);
+  --success-foreground: oklch(0.99 0.005 163);
+  --warning: oklch(0.548 0.122 62);
+  --warning-foreground: oklch(0.99 0.005 62);
+  --info: oklch(0.53 0.15 245);
+  --info-foreground: oklch(0.99 0.005 245);
+  --neutral: oklch(0.543 0.012 350);
+  --neutral-foreground: oklch(0.99 0.004 350);
+  --border: oklch(0.912 0.026 350);
+  --input: oklch(0.888 0.032 350);
+  --ring: oklch(0.6 0.17 352);
+  /* 图表走粉系为主 + 邻近色，保证同屏多序列可区分。第 5 序列用暖琥珀而不是
+   * 青绿，否则整屏暖粉里会突然跳出一根冷色。 */
+  --chart-1: oklch(0.72 0.15 352);
+  --chart-2: oklch(0.7 0.14 320);
+  --chart-3: oklch(0.72 0.14 25);
+  --chart-4: oklch(0.68 0.13 285);
+  --chart-5: oklch(0.75 0.13 75);
+  --overview-accent-1: oklch(0.72 0.15 352);
+  --overview-accent-2: oklch(0.7 0.14 320);
+  --overview-accent-3: oklch(0.72 0.14 25);
+  --sidebar: oklch(0.952 0.03 350);
+  --sidebar-foreground: oklch(0.22 0.022 350);
+  --sidebar-primary: oklch(0.55 0.15 352);
+  --sidebar-primary-foreground: oklch(0.99 0.005 352);
+  --sidebar-accent: oklch(0.894 0.058 352);
+  --sidebar-accent-foreground: oklch(0.25 0.05 352);
+  --sidebar-border: oklch(0.918 0.03 350);
+  --sidebar-ring: oklch(0.6 0.17 352);
+  --skeleton-base: oklch(0.955 0.02 350);
+  --skeleton-highlight: oklch(0.985 0.01 350);
   --table-row: var(--background);
-  --table-header: color-mix(
-    in oklch,
-    var(--foreground) 1.5%,
-    var(--background)
-  );
-  --table-header-hover: color-mix(
-    in oklch,
-    var(--foreground) 3%,
-    var(--background)
-  );
+  /* 表格层写死浅粉档位，不再用 foreground 混：深梅色混进来会把粉压成灰。 */
+  --table-header: oklch(0.978 0.014 350);
+  --table-header-hover: oklch(0.966 0.018 350);
   /* Disabled rows: kept subtle so they read as "quiet", not as a colored
      alert state. */
-  --table-disabled: color-mix(
-    in oklch,
-    var(--foreground) 3%,
-    var(--background)
-  );
-  --table-disabled-hover: color-mix(
-    in oklch,
-    var(--foreground) 4.5%,
-    var(--background)
-  );
-  --table-disabled-border: color-mix(
-    in oklch,
-    var(--foreground) 16%,
-    var(--background)
-  );
+  --table-disabled: oklch(0.962 0.016 350);
+  --table-disabled-hover: oklch(0.95 0.02 350);
+  --table-disabled-border: oklch(0.9 0.028 350);
 }
 
 .dark {
-  /* OpenAI-like dark mode with a crisp charcoal canvas. */
-  --background: oklch(0.235 0 0);
-  --foreground: oklch(0.965 0 0);
-  --card: oklch(0.285 0 0);
-  --card-foreground: oklch(0.965 0 0);
-  --popover: oklch(0.305 0 0);
-  --popover-foreground: oklch(0.965 0 0);
-  --primary: oklch(0.54 0.142 248.516);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.335 0 0);
-  --secondary-foreground: oklch(0.9 0.05 250);
-  --muted: oklch(0.305 0 0);
-  --muted-foreground: oklch(0.78 0 0);
-  --accent: color-mix(in oklch, var(--primary) 20%, var(--background));
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.769 0.188 70.08);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.613 0.14 239.919);
-  --info-foreground: oklch(0.145 0 0);
-  --neutral: oklch(0.76 0 0);
-  --neutral-foreground: oklch(0.155 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 17%);
-  --ring: oklch(0.554 0.148 250.726);
-  --chart-1: oklch(0.76 0.14 250);
-  --chart-2: oklch(0.76 0.13 200);
-  --chart-3: oklch(0.76 0.13 285);
-  --chart-4: oklch(0.75 0.16 325);
-  --chart-5: oklch(0.76 0.14 155);
-  --sidebar: oklch(0.225 0 0);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.588 0.123 246.488);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: color-mix(in oklch, var(--primary) 20%, var(--background));
-  --sidebar-accent-foreground: oklch(0.9 0.05 250);
-  --sidebar-border: oklch(1 0 0 / 11%);
-  --sidebar-ring: oklch(0.7 0.17 250);
-  --skeleton-base: oklch(0.335 0 0);
-  --skeleton-highlight: oklch(0.44 0 0);
+  /* 暗色是同一套粉的低明度版，不是中性灰。色相锁在 342–352，彩度压得很低
+   * （0.014–0.024），刚好让画布带一点梅色而不发褐——彩度再高就变成脏棕。 */
+  --background: oklch(0.205 0.014 342);
+  --foreground: oklch(0.96 0.006 350);
+  --card: oklch(0.252 0.016 342);
+  --card-foreground: oklch(0.96 0.006 350);
+  --popover: oklch(0.272 0.016 342);
+  --popover-foreground: oklch(0.96 0.006 350);
+  --primary: oklch(0.72 0.15 352);
+  --primary-foreground: oklch(0.2 0.04 350);
+  --secondary: oklch(0.3 0.02 344);
+  --secondary-foreground: oklch(0.93 0.03 350);
+  --muted: oklch(0.282 0.018 342);
+  --muted-foreground: oklch(0.75 0.014 348);
+  --accent: oklch(0.345 0.04 350);
+  --accent-foreground: oklch(0.95 0.02 350);
+  --destructive: oklch(0.68 0.17 25);
+  --destructive-foreground: oklch(0.18 0.02 25);
+  --success: oklch(0.72 0.15 163);
+  --success-foreground: oklch(0.16 0.01 163);
+  --warning: oklch(0.78 0.16 72);
+  --warning-foreground: oklch(0.18 0.02 72);
+  --info: oklch(0.68 0.13 240);
+  --info-foreground: oklch(0.16 0.01 240);
+  --neutral: oklch(0.72 0.01 345);
+  --neutral-foreground: oklch(0.17 0.01 345);
+  /* 描边用不透明色而不是白色 alpha：叠在带彩度的画布上时 alpha 会把粉洗掉。 */
+  --border: oklch(0.4 0.024 345);
+  --input: oklch(0.46 0.026 345);
+  --ring: oklch(0.7 0.1 352);
+  --chart-1: oklch(0.78 0.13 352);
+  --chart-2: oklch(0.76 0.13 320);
+  --chart-3: oklch(0.75 0.13 25);
+  --chart-4: oklch(0.74 0.12 285);
+  --chart-5: oklch(0.8 0.12 75);
+  --overview-accent-1: oklch(0.78 0.13 352);
+  --overview-accent-2: oklch(0.76 0.13 320);
+  --overview-accent-3: oklch(0.75 0.13 25);
+  --sidebar: oklch(0.185 0.014 342);
+  --sidebar-foreground: oklch(0.94 0.008 350);
+  --sidebar-primary: oklch(0.72 0.15 352);
+  --sidebar-primary-foreground: oklch(0.2 0.04 350);
+  --sidebar-accent: oklch(0.33 0.042 350);
+  --sidebar-accent-foreground: oklch(0.95 0.02 350);
+  --sidebar-border: oklch(0.36 0.022 345);
+  --sidebar-ring: oklch(0.7 0.1 352);
+  --skeleton-base: oklch(0.3 0.018 342);
+  --skeleton-highlight: oklch(0.4 0.02 342);
   --table-row: var(--background);
-  --table-header: color-mix(in oklch, var(--foreground) 6%, var(--background));
-  --table-header-hover: color-mix(
-    in oklch,
-    var(--foreground) 9%,
-    var(--background)
-  );
-  --table-disabled: color-mix(
-    in oklch,
-    var(--foreground) 7%,
-    var(--background)
-  );
-  --table-disabled-hover: color-mix(
-    in oklch,
-    var(--foreground) 9.5%,
-    var(--background)
-  );
-  --table-disabled-border: color-mix(
-    in oklch,
-    var(--foreground) 24%,
-    var(--background)
-  );
+  --table-header: oklch(0.27 0.016 342);
+  --table-header-hover: oklch(0.3 0.018 342);
+  --table-disabled: oklch(0.285 0.016 342);
+  --table-disabled-hover: oklch(0.315 0.018 342);
+  --table-disabled-border: oklch(0.44 0.024 345);
 }

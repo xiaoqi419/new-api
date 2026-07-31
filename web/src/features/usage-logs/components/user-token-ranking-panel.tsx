@@ -44,9 +44,9 @@ import { getDefaultTimeRange } from '../lib/utils'
 const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 const RANK_BADGE: Record<number, string> = {
-  1: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  2: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  3: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+  1: 'bg-warning/15 text-warning',
+  2: 'bg-neutral/15 text-neutral',
+  3: 'bg-chart-3/15 text-chart-3',
 }
 
 export function UserTokenRankingPanel() {

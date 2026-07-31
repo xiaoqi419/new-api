@@ -221,6 +221,12 @@ import type { ComponentType, SVGProps } from 'react'
 export type IconProps = SVGProps<SVGSVGElement> & { size?: number | string }
 export type LucideIcon = ComponentType<IconProps>
 
+// Phosphor's own default is `regular`. The app runs on a light-pink surface
+// palette where regular-weight strokes read heavy and crowd the pastel
+// surfaces, so the house default is one step lighter. Call sites that need
+// emphasis keep opting in through `strokeWidth`.
+const DEFAULT_ICON_WEIGHT: IconWeight = 'light'
+
 function weightFromStroke(
   sw: IconProps['strokeWidth']
 ): IconWeight | undefined {
@@ -234,7 +240,20 @@ function weightFromStroke(
 
 function ic(Phosphor: ComponentType<PhIconProps>): LucideIcon {
   return function Icon({ strokeWidth, ...rest }: IconProps) {
-    return <Phosphor weight={weightFromStroke(strokeWidth)} {...rest} />
+    // Icons are decorative unless the call site gave them an accessible name;
+    // hiding the unnamed ones keeps screen readers on the adjacent label
+    // instead of announcing an unnamed graphic.
+    const named =
+      rest['aria-label'] != null ||
+      rest['aria-labelledby'] != null ||
+      rest.role === 'img'
+    return (
+      <Phosphor
+        weight={weightFromStroke(strokeWidth) ?? DEFAULT_ICON_WEIGHT}
+        aria-hidden={named ? undefined : true}
+        {...rest}
+      />
+    )
   }
 }
 

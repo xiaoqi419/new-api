@@ -54,39 +54,27 @@ import type { TaskLog } from '../../types'
 
 /** Filled, tinted pill classes per status variant (classic-style colored tags). */
 const FILLED_TAG: Record<StatusVariant, string> = {
-  success:
-    'border-emerald-500/25 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  green:
-    'border-emerald-500/25 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  'light-green':
-    'border-emerald-500/25 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  lime: 'border-lime-500/25 bg-lime-500/15 text-lime-600 dark:text-lime-400',
-  warning:
-    'border-amber-500/25 bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  amber:
-    'border-amber-500/25 bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  yellow:
-    'border-amber-500/25 bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  orange:
-    'border-orange-500/25 bg-orange-500/15 text-orange-600 dark:text-orange-400',
-  danger: 'border-red-500/25 bg-red-500/15 text-red-600 dark:text-red-400',
-  red: 'border-red-500/25 bg-red-500/15 text-red-600 dark:text-red-400',
-  pink: 'border-pink-500/25 bg-pink-500/15 text-pink-600 dark:text-pink-400',
-  info: 'border-sky-500/25 bg-sky-500/15 text-sky-600 dark:text-sky-400',
-  'light-blue':
-    'border-sky-500/25 bg-sky-500/15 text-sky-600 dark:text-sky-400',
-  blue: 'border-blue-500/25 bg-blue-500/15 text-blue-600 dark:text-blue-400',
-  indigo:
-    'border-indigo-500/25 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
-  cyan: 'border-cyan-500/25 bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
-  teal: 'border-teal-500/25 bg-teal-500/15 text-teal-600 dark:text-teal-400',
-  purple:
-    'border-purple-500/25 bg-purple-500/15 text-purple-600 dark:text-purple-400',
-  violet:
-    'border-violet-500/25 bg-violet-500/15 text-violet-600 dark:text-violet-400',
-  neutral:
-    'border-slate-400/30 bg-slate-400/15 text-slate-600 dark:text-slate-300',
-  grey: 'border-slate-400/30 bg-slate-400/15 text-slate-600 dark:text-slate-300',
+  success: 'border-success/25 bg-success/15 text-success',
+  green: 'border-success/25 bg-success/15 text-success',
+  'light-green': 'border-success/25 bg-success/15 text-success',
+  lime: 'border-chart-3/25 bg-chart-3/15 text-chart-3',
+  warning: 'border-warning/25 bg-warning/15 text-warning',
+  amber: 'border-warning/25 bg-warning/15 text-warning',
+  yellow: 'border-warning/25 bg-warning/15 text-warning',
+  orange: 'border-warning/25 bg-warning/15 text-warning',
+  danger: 'border-destructive/25 bg-destructive/15 text-destructive',
+  red: 'border-destructive/25 bg-destructive/15 text-destructive',
+  pink: 'border-chart-5/25 bg-chart-5/15 text-chart-5',
+  info: 'border-info/25 bg-info/15 text-info',
+  'light-blue': 'border-info/25 bg-info/15 text-info',
+  blue: 'border-chart-1/25 bg-chart-1/15 text-chart-1',
+  indigo: 'border-chart-1/25 bg-chart-1/15 text-chart-1',
+  cyan: 'border-chart-2/25 bg-chart-2/15 text-chart-2',
+  teal: 'border-chart-2/25 bg-chart-2/15 text-chart-2',
+  purple: 'border-chart-4/25 bg-chart-4/15 text-chart-4',
+  violet: 'border-chart-4/25 bg-chart-4/15 text-chart-4',
+  neutral: 'border-neutral/30 bg-neutral/15 text-neutral',
+  grey: 'border-neutral/30 bg-neutral/15 text-neutral',
 }
 
 const STATUS_ICON: Record<string, LucideIcon> = {
@@ -208,7 +196,7 @@ export function TaskDurationTag({ log }: { log: TaskLog }) {
   if (isActive && log.submit_time) {
     const elapsed = Math.max(0, nowSec - log.submit_time)
     return (
-      <span className='inline-flex items-center gap-1 rounded-full border border-blue-500/25 bg-blue-500/15 px-2 py-0.5 font-mono text-xs text-blue-600 tabular-nums dark:text-blue-400'>
+      <span className='border-chart-1/25 bg-chart-1/15 text-chart-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs tabular-nums'>
         <Clock className='size-3' />
         {formatElapsedSeconds(elapsed)}
       </span>

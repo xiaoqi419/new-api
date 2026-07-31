@@ -31,11 +31,11 @@ import type { Modality } from '../types'
 
 const MODALITY_META: Record<Modality, { icon: LucideIcon; className: string }> =
   {
-    text: { icon: Type, className: 'text-slate-500' },
-    image: { icon: ImageIcon, className: 'text-violet-500' },
-    audio: { icon: AudioLines, className: 'text-amber-500' },
-    video: { icon: Video, className: 'text-rose-500' },
-    file: { icon: FileText, className: 'text-sky-500' },
+    text: { icon: Type, className: 'text-neutral' },
+    image: { icon: ImageIcon, className: 'text-chart-4' },
+    audio: { icon: AudioLines, className: 'text-warning' },
+    video: { icon: Video, className: 'text-destructive' },
+    file: { icon: FileText, className: 'text-info' },
   }
 
 const MODALITY_ORDER: Modality[] = ['text', 'image', 'audio', 'video', 'file']

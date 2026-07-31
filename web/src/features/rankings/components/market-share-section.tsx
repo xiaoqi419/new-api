@@ -212,7 +212,7 @@ export function MarketShareSection(props: MarketShareSectionProps) {
   const right = visible.slice(half)
 
   return (
-    <section className='bg-card overflow-hidden rounded-lg border'>
+    <section className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
       {/* Chart block ----------------------------------------------------- */}
       <header className='px-5 py-4'>
         <h2 className='text-foreground inline-flex items-center gap-2 text-base font-semibold'>

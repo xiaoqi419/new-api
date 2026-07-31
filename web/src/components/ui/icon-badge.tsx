@@ -48,7 +48,10 @@ const iconBadgeVariants = cva(
       },
     },
     defaultVariants: {
-      tone: 'neutral',
+      // Un-toned badges are branding, not state, so they take the accent
+      // instead of grey. Call sites that mean "state" still pass an explicit
+      // semantic tone, and `neutral` stays available for genuinely quiet chips.
+      tone: 'primary',
       size: 'md',
     },
   }

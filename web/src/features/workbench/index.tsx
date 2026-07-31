@@ -201,7 +201,7 @@ export function Workbench() {
           </CardStaggerItem>
 
           <CardStaggerItem className='grid gap-4 sm:grid-cols-2'>
-            <div className='bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-xs'>
+            <div className='bg-card ring-foreground/10 flex flex-col gap-3 rounded-xl p-4 ring-1'>
               <div className='flex items-center gap-2'>
                 <TerminalSquare
                   className='text-muted-foreground size-4'
@@ -231,7 +231,7 @@ export function Workbench() {
               </p>
             </div>
 
-            <div className='bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-xs'>
+            <div className='bg-card ring-foreground/10 flex flex-col gap-3 rounded-xl p-4 ring-1'>
               <div className='flex items-center gap-2'>
                 <KeyRound
                   className='text-muted-foreground size-4'

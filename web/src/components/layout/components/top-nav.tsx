@@ -122,12 +122,14 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
           ({ title, href, isActive, disabled, external, icon }) => {
             const Icon = resolveNavIcon(icon)
             const linkClassName = cn(
-              'hover:text-primary inline-flex items-center gap-1.5 text-sm font-medium transition-colors',
+              'group/top-nav-link hover:text-primary inline-flex items-center gap-1.5 text-sm font-medium transition-colors',
               !isActive && 'text-muted-foreground'
             )
             const content = (
               <>
-                {Icon ? <Icon className='size-4' /> : null}
+                {Icon ? (
+                  <Icon className='text-primary/70 group-hover/top-nav-link:text-primary size-4 transition-colors' />
+                ) : null}
                 {title}
               </>
             )

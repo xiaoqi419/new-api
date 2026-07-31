@@ -44,9 +44,9 @@ import { USER_RANKING_DIMENSIONS } from './constants'
 import type { UserRankingDimension } from './types'
 
 const rankBadgeClass: Record<number, string> = {
-  1: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  2: 'bg-zinc-400/15 text-zinc-600 dark:text-zinc-300',
-  3: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+  1: 'bg-warning/15 text-warning',
+  2: 'bg-neutral/15 text-neutral',
+  3: 'bg-chart-3/15 text-chart-3',
 }
 
 function RankCell({ rank }: { rank: number }) {
@@ -176,7 +176,7 @@ export function UserRanking() {
           </Tabs>
 
           {current.showIp && (
-            <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+            <Alert className='border-warning/30 bg-warning/10 text-warning'>
               <AlertDescription>
                 {t(
                   'Realtime monitoring: shows users who used multiple IPs within the window, to detect abnormal behavior.'

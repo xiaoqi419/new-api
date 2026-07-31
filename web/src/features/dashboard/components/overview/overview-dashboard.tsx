@@ -16,20 +16,42 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link } from '@tanstack/react-router'
+import { Link, type LinkProps } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { ArrowRight, Rocket } from '@/components/icons'
+import {
+  ArrowRight,
+  CreditCard,
+  FileText,
+  KeyRound,
+  Layers,
+  type LucideIcon,
+  Rocket,
+} from '@/components/icons'
 import {
   CardStaggerContainer,
   CardStaggerItem,
 } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
+import { IconBadge } from '@/components/ui/icon-badge'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { PerformanceHealthPanel } from './performance-health-panel'
 import { SummaryCards } from './summary-cards'
+
+/* The four destinations an operator actually reaches for from the console
+ * home. Labels reuse translation keys the sidebar already ships. */
+const QUICK_ACTIONS: {
+  to: LinkProps['to'] | (string & {})
+  labelKey: string
+  Icon: LucideIcon
+}[] = [
+  { to: '/keys', labelKey: 'API Keys', Icon: KeyRound },
+  { to: '/finance/wallet', labelKey: 'Recharge', Icon: CreditCard },
+  { to: '/usage-logs/common', labelKey: 'Usage Logs', Icon: FileText },
+  { to: '/pricing', labelKey: 'Model Square', Icon: Layers },
+]
 
 export function OverviewDashboard() {
   const { t } = useTranslation()
@@ -39,12 +61,12 @@ export function OverviewDashboard() {
   return (
     <div className='flex flex-col gap-4'>
       <CardStaggerContainer>
-        <CardStaggerItem className='bg-card overflow-hidden rounded-2xl border shadow-xs'>
+        <CardStaggerItem className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
           <div className='flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5'>
             <div className='flex min-w-0 items-center gap-3'>
-              <span className='bg-warning/10 text-warning flex size-10 shrink-0 items-center justify-center rounded-xl'>
-                <Rocket className='size-5' aria-hidden='true' />
-              </span>
+              <IconBadge size='lg'>
+                <Rocket />
+              </IconBadge>
               <div className='min-w-0'>
                 <h3 className='text-sm font-semibold'>
                   {t('Get started in the workbench')}
@@ -59,6 +81,20 @@ export function OverviewDashboard() {
               {t('Open workbench')}
               <ArrowRight data-icon='inline-end' />
             </Button>
+          </div>
+
+          <div className='grid grid-cols-2 gap-2 border-t p-3 sm:grid-cols-4 sm:gap-3 sm:p-4'>
+            {QUICK_ACTIONS.map(({ to, labelKey, Icon }) => (
+              <Button
+                key={to}
+                variant='outline'
+                className='[&_svg]:text-primary justify-start'
+                render={<Link to={to} />}
+              >
+                <Icon data-icon='inline-start' />
+                {t(labelKey)}
+              </Button>
+            ))}
           </div>
         </CardStaggerItem>
       </CardStaggerContainer>

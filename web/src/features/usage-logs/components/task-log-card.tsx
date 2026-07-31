@@ -152,7 +152,7 @@ function ResultAction({
   if (isFailure) {
     return (
       <span
-        className='truncate text-xs text-red-600 dark:text-red-400'
+        className='text-destructive truncate text-xs'
         title={log.fail_reason || t('Failed')}
       >
         {log.fail_reason || t('Failed')}

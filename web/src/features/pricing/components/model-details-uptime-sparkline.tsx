@@ -165,12 +165,12 @@ export function UptimeStatusRow(props: {
 
   const statusColour =
     status === 'operational'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-success'
       : status === 'minor'
-        ? 'text-emerald-600 dark:text-emerald-400'
+        ? 'text-success'
         : status === 'degraded'
-          ? 'text-amber-600 dark:text-amber-400'
-          : 'text-rose-600 dark:text-rose-400'
+          ? 'text-warning'
+          : 'text-destructive'
 
   const statusLabel =
     status === 'operational'

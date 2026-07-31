@@ -39,9 +39,9 @@ import { getInviteRanking } from '../api'
 import { REBATE_PAGE_SIZE } from '../constants'
 
 const rankBadgeClass: Record<number, string> = {
-  1: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  2: 'bg-zinc-400/15 text-zinc-600 dark:text-zinc-300',
-  3: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+  1: 'bg-warning/15 text-warning',
+  2: 'bg-neutral/15 text-neutral',
+  3: 'bg-chart-3/15 text-chart-3',
 }
 
 function RankCell({ rank }: { rank: number }) {
