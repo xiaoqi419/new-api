@@ -4818,6 +4818,7 @@
     "Settings & Preferences": "設定と環境設定",
     "Settings updated successfully": "設定が正常に更新されました",
     "Settlement Discount": "決済割引",
+    "Settlement discount must be greater than 0.": "精算割引は 0 より大きい値にしてください。",
     "Setup guide": "セットアップガイド",
     "Setup guide complete": "セットアップガイド完了",
     "Setup guide is collapsed. Expand it anytime.": "セットアップガイドは折りたたまれています。いつでも展開できます。",

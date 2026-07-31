@@ -121,8 +121,9 @@ func AdminUpdateAgent(c *gin.Context) {
 	}
 	agent.Remark = req.Remark
 	if req.CostRatio != nil {
-		if *req.CostRatio < 0 {
-			common.ApiErrorMsg(c, "结算折扣不能为负数")
+		// 必须 >0：折扣为 0 会让终端用户充值时平台完全不从代理钱包扣款，等于免费送额度。
+		if *req.CostRatio <= 0 {
+			common.ApiErrorMsg(c, "结算折扣必须大于 0")
 			return
 		}
 		agent.CostRatio = *req.CostRatio

@@ -4818,6 +4818,7 @@
     "Settings & Preferences": "Settings & Preferences",
     "Settings updated successfully": "Settings updated successfully",
     "Settlement Discount": "Settlement Discount",
+    "Settlement discount must be greater than 0.": "Settlement discount must be greater than 0.",
     "Setup guide": "Setup guide",
     "Setup guide complete": "Setup guide complete",
     "Setup guide is collapsed. Expand it anytime.": "Setup guide is collapsed. Expand it anytime.",

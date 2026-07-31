@@ -4818,6 +4818,7 @@
     "Settings & Preferences": "Cài đặt & Tùy chọn",
     "Settings updated successfully": "Cài đặt đã được cập nhật thành công",
     "Settlement Discount": "Chiết khấu quyết toán",
+    "Settlement discount must be greater than 0.": "Chiết khấu quyết toán phải lớn hơn 0.",
     "Setup guide": "Hướng dẫn thiết lập",
     "Setup guide complete": "Đã hoàn tất hướng dẫn thiết lập",
     "Setup guide is collapsed. Expand it anytime.": "Hướng dẫn thiết lập đã được thu gọn. Bạn có thể mở lại bất cứ lúc nào.",

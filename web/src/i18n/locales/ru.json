@@ -4818,6 +4818,7 @@
     "Settings & Preferences": "Настройки и предпочтения",
     "Settings updated successfully": "Настройки успешно обновлены",
     "Settlement Discount": "Скидка при расчёте",
+    "Settlement discount must be greater than 0.": "Скидка при расчётах должна быть больше 0.",
     "Setup guide": "Руководство по настройке",
     "Setup guide complete": "Руководство по настройке завершено",
     "Setup guide is collapsed. Expand it anytime.": "Руководство по настройке свернуто. Его можно открыть в любой момент.",

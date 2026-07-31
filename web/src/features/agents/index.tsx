@@ -312,13 +312,17 @@ function AgentMutateDialog({
     setInitialized(false)
   }
 
+  // 折扣为 0 会导致终端用户充值时平台不从代理钱包扣款，必须拦在提交前。
+  const parsedCostRatio = Number(costRatio)
+  const costRatioValid = Number.isFinite(parsedCostRatio) && parsedCostRatio > 0
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (mode === 'create') {
         return createAgent({
           owner_user_id: Number(ownerUserId) || 0,
           name,
-          cost_ratio: Number(costRatio) || 1,
+          cost_ratio: parsedCostRatio,
           status: Number(status),
           remark,
         })
@@ -327,7 +331,7 @@ function AgentMutateDialog({
       return updateAgent({
         id: agent.id,
         name,
-        cost_ratio: Number(costRatio),
+        cost_ratio: parsedCostRatio,
         status: Number(status),
         remark,
       })
@@ -377,10 +381,18 @@ function AgentMutateDialog({
               value={costRatio}
               onChange={(e) => setCostRatio(e.target.value)}
             />
-            <p className='text-muted-foreground text-xs'>
-              {t(
-                'For every $M a terminal user tops up, the platform deducts M x discount from the agent wallet.'
-              )}
+            <p
+              className={
+                costRatioValid
+                  ? 'text-muted-foreground text-xs'
+                  : 'text-destructive text-xs'
+              }
+            >
+              {costRatioValid
+                ? t(
+                    'For every $M a terminal user tops up, the platform deducts M x discount from the agent wallet.'
+                  )
+                : t('Settlement discount must be greater than 0.')}
             </p>
           </div>
           <div className='space-y-1'>
@@ -412,7 +424,7 @@ function AgentMutateDialog({
           </Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !name}
+            disabled={mutation.isPending || !name || !costRatioValid}
           >
             {t('Save')}
           </Button>
