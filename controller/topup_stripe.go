@@ -17,8 +17,9 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/stripe/stripe-go/v81"
-	"github.com/stripe/stripe-go/v81/checkout/session"
+	stripeclient "github.com/stripe/stripe-go/v81/client"
 	"github.com/stripe/stripe-go/v81/webhook"
 	"github.com/thanhpk/randstr"
 )
@@ -43,8 +44,9 @@ type StripeAdaptor struct {
 }
 
 func (*StripeAdaptor) RequestAmount(c *gin.Context, req *StripePayRequest) {
-	if req.Amount < getStripeMinTopup() {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup())})
+	cfg := resolveStripeConfig(c)
+	if req.Amount < getStripeMinTopup(cfg.MinTopup) {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup(cfg.MinTopup))})
 		return
 	}
 	id := c.GetInt("id")
@@ -53,7 +55,7 @@ func (*StripeAdaptor) RequestAmount(c *gin.Context, req *StripePayRequest) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getStripePayMoney(float64(req.Amount), group)
+	payMoney := getStripePayMoney(float64(req.Amount), group, cfg.UnitPrice)
 	if payMoney <= 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -66,8 +68,13 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "不支持的支付渠道"})
 		return
 	}
-	if req.Amount < getStripeMinTopup() {
-		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup()), "data": 10})
+	cfg := resolveStripeConfig(c)
+	if !cfg.Enabled {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前站点未配置 Stripe 支付"})
+		return
+	}
+	if req.Amount < getStripeMinTopup(cfg.MinTopup) {
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup(cfg.MinTopup)), "data": 10})
 		return
 	}
 	if req.Amount > 10000 {
@@ -89,10 +96,17 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	user, _ := model.GetUserById(id, false)
 	chargedMoney := GetChargedAmount(float64(req.Amount), *user)
 
+	// 代理用户下单前预检代理钱包，不足则提示，避免支付后挂单(S12)。
+	projectedQuota := int(decimal.NewFromFloat(chargedMoney).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	if ok, msg := precheckAgentWalletForUser(c, projectedQuota); !ok {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
+		return
+	}
+
 	reference := fmt.Sprintf("new-api-ref-%d-%d-%s", user.Id, time.Now().UnixMilli(), randstr.String(4))
 	referenceId := "ref_" + common.Sha1([]byte(reference))
 
-	payLink, err := genStripeLink(referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL)
+	payLink, err := genStripeLinkWithConfig(cfg, referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Stripe 创建 Checkout Session 失败 user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
@@ -173,6 +187,13 @@ func StripeWebhook(c *gin.Context) {
 
 	callerIp := c.ClientIP()
 	logger.LogInfo(ctx, fmt.Sprintf("Stripe webhook 验签成功 event_type=%s client_ip=%s path=%q", string(event.Type), callerIp, c.Request.RequestURI))
+	dispatchStripeEvent(ctx, event, callerIp)
+
+	c.Status(http.StatusOK)
+}
+
+// dispatchStripeEvent 按事件类型分发 Stripe checkout 事件，供平台主站与代理自有 webhook 复用。
+func dispatchStripeEvent(ctx context.Context, event stripe.Event, callerIp string) {
 	switch event.Type {
 	case stripe.EventTypeCheckoutSessionCompleted:
 		sessionCompleted(ctx, event, callerIp)
@@ -185,8 +206,6 @@ func StripeWebhook(c *gin.Context) {
 	default:
 		logger.LogInfo(ctx, fmt.Sprintf("Stripe webhook 忽略事件 event_type=%s client_ip=%s", string(event.Type), callerIp))
 	}
-
-	c.Status(http.StatusOK)
 }
 
 func sessionCompleted(ctx context.Context, event stripe.Event, callerIp string) {
@@ -264,6 +283,13 @@ func fulfillOrder(ctx context.Context, event stripe.Event, referenceId string, c
 
 	LockOrder(referenceId)
 	defer UnlockOrder(referenceId)
+	// 代理预充值订单：到账目标为代理钱包(1:1)，与用户额度充值/订阅互斥。
+	if handled, perr := model.TryCompleteAgentPrepay(referenceId, model.PaymentProviderStripe, callerIp); handled {
+		if perr != nil {
+			logger.LogError(ctx, fmt.Sprintf("Stripe 代理预充值失败 trade_no=%s event_type=%s client_ip=%s error=%q", referenceId, string(event.Type), callerIp, perr.Error()))
+		}
+		return
+	}
 	payload := map[string]any{
 		"customer":     customerId,
 		"amount_total": event.GetObjectValue("amount_total"),
@@ -339,18 +365,31 @@ func sessionExpired(ctx context.Context, event stripe.Event) {
 //
 // Returns the checkout session URL or an error if the session creation fails.
 func genStripeLink(referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string) (string, error) {
-	if !strings.HasPrefix(setting.StripeApiSecret, "sk_") && !strings.HasPrefix(setting.StripeApiSecret, "rk_") {
+	return genStripeLinkWithConfig(tenantStripeConfig{
+		ApiSecret:  setting.StripeApiSecret,
+		PriceId:    setting.StripePriceId,
+		Promotion:  setting.StripePromotionCodesEnabled,
+		SuccessURL: paymentReturnPath("/usage-logs"),
+		CancelURL:  paymentReturnPath("/wallet"),
+	}, referenceId, customerId, email, amount, successURL, cancelURL)
+}
+
+// genStripeLinkWithConfig 用给定(平台或代理)Stripe 配置创建 Checkout Session 并返回支付链接。
+// 使用 per-call client(client.API)绑定该配置的 API 密钥，避免多租户下全局 stripe.Key 竞态。
+func genStripeLinkWithConfig(cfg tenantStripeConfig, referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string) (string, error) {
+	if !strings.HasPrefix(cfg.ApiSecret, "sk_") && !strings.HasPrefix(cfg.ApiSecret, "rk_") {
 		return "", fmt.Errorf("无效的Stripe API密钥")
 	}
+	if cfg.PriceId == "" {
+		return "", fmt.Errorf("未配置 Stripe 价格 ID")
+	}
 
-	stripe.Key = setting.StripeApiSecret
-
-	// Use custom URLs if provided, otherwise use defaults
+	// Use custom URLs if provided, otherwise use config defaults
 	if successURL == "" {
-		successURL = paymentReturnPath("/usage-logs")
+		successURL = cfg.SuccessURL
 	}
 	if cancelURL == "" {
-		cancelURL = paymentReturnPath("/wallet")
+		cancelURL = cfg.CancelURL
 	}
 
 	params := &stripe.CheckoutSessionParams{
@@ -359,12 +398,12 @@ func genStripeLink(referenceId string, customerId string, email string, amount i
 		CancelURL:         stripe.String(cancelURL),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
-				Price:    stripe.String(setting.StripePriceId),
+				Price:    stripe.String(cfg.PriceId),
 				Quantity: stripe.Int64(amount),
 			},
 		},
 		Mode:                stripe.String(string(stripe.CheckoutSessionModePayment)),
-		AllowPromotionCodes: stripe.Bool(setting.StripePromotionCodesEnabled),
+		AllowPromotionCodes: stripe.Bool(cfg.Promotion),
 	}
 
 	if "" == customerId {
@@ -377,7 +416,9 @@ func genStripeLink(referenceId string, customerId string, email string, amount i
 		params.Customer = stripe.String(customerId)
 	}
 
-	result, err := session.New(params)
+	sc := &stripeclient.API{}
+	sc.Init(cfg.ApiSecret, nil)
+	result, err := sc.CheckoutSessions.New(params)
 	if err != nil {
 		return "", err
 	}
@@ -394,7 +435,11 @@ func GetChargedAmount(count float64, user model.User) float64 {
 	return count * topUpGroupRatio
 }
 
-func getStripePayMoney(amount float64, group string) float64 {
+// getStripePayMoney 估算 Stripe 应付金额。unitPrice 为代理自定义单价，<=0 时回退全局 StripeUnitPrice。
+func getStripePayMoney(amount float64, group string, unitPrice float64) float64 {
+	if unitPrice <= 0 {
+		unitPrice = setting.StripeUnitPrice
+	}
 	originalAmount := amount
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		amount = amount / common.QuotaPerUnit
@@ -411,12 +456,16 @@ func getStripePayMoney(amount float64, group string) float64 {
 			discount = ds
 		}
 	}
-	payMoney := amount * setting.StripeUnitPrice * topupGroupRatio * discount
+	payMoney := amount * unitPrice * topupGroupRatio * discount
 	return payMoney
 }
 
-func getStripeMinTopup() int64 {
+// getStripeMinTopup 返回 Stripe 最小充值门槛。minTopupOverride>0 时使用代理自定义值，否则回退全局。
+func getStripeMinTopup(minTopupOverride int) int64 {
 	minTopup := setting.StripeMinTopUp
+	if minTopupOverride > 0 {
+		minTopup = minTopupOverride
+	}
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		minTopup = minTopup * int(common.QuotaPerUnit)
 	}

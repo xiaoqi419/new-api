@@ -60,6 +60,13 @@ const (
 	ContextKeyUserGroup   ContextKey = "user_group"
 	ContextKeyUsingGroup  ContextKey = "group"
 	ContextKeyUserName    ContextKey = "username"
+	ContextKeyUserAgentId ContextKey = "user_agent_id"
+
+	// ContextKeyTenantAgentId 由 ResolveTenant 中间件按请求域名解析出的代理(租户)ID，0=平台主站。
+	ContextKeyTenantAgentId ContextKey = "tenant_agent_id"
+
+	// ContextKeySelfAgentId 由 RequireAgentOwner 中间件解析出的「当前登录 owner 所管理的代理」ID。
+	ContextKeySelfAgentId ContextKey = "self_agent_id"
 
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 

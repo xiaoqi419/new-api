@@ -53,6 +53,8 @@ export interface AuthUser {
   stripe_customer?: string
   sidebar_modules?: string
   permissions?: UserPermissions
+  agent_id?: number
+  is_agent?: boolean
 }
 
 export interface LoginSession {

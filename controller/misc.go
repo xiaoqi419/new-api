@@ -170,6 +170,19 @@ func GetStatus(c *gin.Context) {
 		data["custom_oauth_providers"] = providersInfo
 	}
 
+	// 白标：代理域名覆盖站点品牌字段(未设置则回退平台)。
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "SystemName"); v != "" {
+			data["system_name"] = v
+		}
+		if v := model.GetTenantOption(tenantAgentId, "Logo"); v != "" {
+			data["logo"] = v
+		}
+		if v := model.GetTenantOption(tenantAgentId, "Footer"); v != "" {
+			data["footer_html"] = v
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -180,22 +193,34 @@ func GetStatus(c *gin.Context) {
 
 func GetNotice(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	notice := common.OptionMap["Notice"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "Notice"); v != "" {
+			notice = v
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["Notice"],
+		"data":    notice,
 	})
 	return
 }
 
 func GetAbout(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	about := common.OptionMap["About"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "About"); v != "" {
+			about = v
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["About"],
+		"data":    about,
 	})
 	return
 }
@@ -231,11 +256,17 @@ func GetMidjourney(c *gin.Context) {
 
 func GetHomePageContent(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	content := common.OptionMap["HomePageContent"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "HomePageContent"); v != "" {
+			content = v
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["HomePageContent"],
+		"data":    content,
 	})
 	return
 }

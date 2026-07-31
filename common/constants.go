@@ -79,6 +79,9 @@ var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
 
+// AgentAutoApproveEnabled 代理前台申请自动审批：开启时申请即激活代理(置 is_agent=1)，无需管理员审批。
+var AgentAutoApproveEnabled = false
+
 var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
 var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
 var EmailDomainWhitelist = []string{
@@ -284,4 +287,5 @@ const (
 	TopUpStatusSuccess = "success"
 	TopUpStatusFailed  = "failed"
 	TopUpStatusExpired = "expired"
+	TopUpStatusHeld    = "held" // 代理用户充值已支付但代理钱包不足，挂起待代理补足后自动补发
 )

@@ -59,7 +59,8 @@ func Login(c *gin.Context) {
 		Username: username,
 		Password: password,
 	}
-	err = user.ValidateAndFill()
+	tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId)
+	err = user.ValidateAndFillWithTenant(tenantAgentId)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrDatabase):
@@ -225,6 +226,7 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
+	tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId)
 	if err := common.Validate.Struct(&user); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
@@ -238,7 +240,7 @@ func Register(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
 			return
 		}
-		if err := model.EnsureEmailAvailable(user.Email, 0); err != nil {
+		if err := model.EnsureEmailAvailableInAgent(user.Email, tenantAgentId, 0); err != nil {
 			if errors.Is(err, model.ErrEmailAlreadyTaken) {
 				common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
 				return
@@ -251,7 +253,7 @@ func Register(c *gin.Context) {
 	if common.EmailVerificationEnabled {
 		emailForExistCheck = user.Email
 	}
-	exist, err := model.CheckUserExistOrDeleted(user.Username, emailForExistCheck)
+	exist, err := model.CheckUserExistOrDeletedInAgent(user.Username, emailForExistCheck, tenantAgentId)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -269,6 +271,7 @@ func Register(c *gin.Context) {
 		DisplayName: user.Username,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+		AgentId:     tenantAgentId,         // 归属当前租户(代理)，平台主站为 0
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -287,9 +290,9 @@ func Register(c *gin.Context) {
 		common.DeleteKey(user.Email, common.EmailVerificationPurpose)
 	}
 
-	// 获取插入后的用户ID
+	// 获取插入后的用户ID（按 id 回查，复合命名空间下 username 不再全局唯一）
 	var insertedUser model.User
-	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
+	if err := model.DB.Where("id = ?", cleanUser.Id).First(&insertedUser).Error; err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
 		return
 	}
@@ -608,6 +611,8 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 		"setting":           user.Setting,
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
+		"agent_id":          user.AgentId,
+		"is_agent":          user.IsAgent,
 		"permissions":       permissions,
 	}
 }

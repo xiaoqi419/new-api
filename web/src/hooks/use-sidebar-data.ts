@@ -21,6 +21,7 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   BadgeCheck,
   Box,
+  Building2,
   CreditCard,
   Dices,
   FileText,
@@ -39,6 +40,7 @@ import {
   Rocket,
   ServerCog,
   Settings,
+  Share2,
   Ticket,
   TriangleAlert,
   Trophy,
@@ -48,6 +50,7 @@ import {
 } from '@/components/icons'
 import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -57,9 +60,25 @@ import { ROLE } from '@/lib/roles'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const isAgent = useAuthStore((s) => s.auth.user?.is_agent)
 
   return {
     navGroups: [
+      ...(isAgent
+        ? [
+            {
+              id: 'agent',
+              title: t('Agent'),
+              items: [
+                {
+                  title: t('Agent Console'),
+                  url: '/agent-console',
+                  icon: Share2,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         id: 'chat',
         title: t('Chat'),
@@ -173,6 +192,15 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/tickets/detail'],
             icon: LifeBuoy,
           },
+          ...(isAgent
+            ? []
+            : [
+                {
+                  title: t('Become an Agent'),
+                  url: '/agent-apply',
+                  icon: Building2,
+                },
+              ]),
         ],
       },
       {
@@ -193,6 +221,11 @@ export function useSidebarData(): SidebarData {
             title: t('Users'),
             url: '/users',
             icon: Users,
+          },
+          {
+            title: t('Agent Management'),
+            url: '/agents',
+            icon: Building2,
           },
           {
             title: t('User Ranking'),

@@ -60,6 +60,8 @@ export const userSchema = z.object({
   DeletedAt: z.any().nullable().optional(),
   remark: z.string().optional(),
   max_concurrency: z.number().optional(),
+  agent_id: z.number().optional(),
+  is_agent: z.boolean().optional(),
   admin_permissions: z
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),

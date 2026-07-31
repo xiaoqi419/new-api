@@ -66,6 +66,19 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) types.
 		groupRatioInfo.GroupRatio = ratio_setting.GetGroupRatio(relayInfo.UsingGroup)
 	}
 
+	// 代理用户：以代理自定义分组倍率覆盖平台倍率，下限为平台对应倍率的 9 折(保护平台毛利)。
+	if relayInfo.AgentId > 0 {
+		if agentRatio, hasAgentRatio := model.GetAgentSellGroupRatio(relayInfo.AgentId, relayInfo.UsingGroup); hasAgentRatio {
+			floor := groupRatioInfo.GroupRatio * 0.9
+			if agentRatio < floor {
+				agentRatio = floor
+			}
+			groupRatioInfo.GroupRatio = agentRatio
+			groupRatioInfo.GroupSpecialRatio = -1
+			groupRatioInfo.HasSpecialRatio = false
+		}
+	}
+
 	return groupRatioInfo
 }
 

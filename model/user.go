@@ -78,7 +78,7 @@ func resolveUserSortOptions(sortOptions []UserSortOptions) UserSortOptions {
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
 	Id               int                        `json:"id"`
-	Username         string                     `json:"username" gorm:"unique;index" validate:"max=20"`
+	Username         string                     `json:"username" gorm:"uniqueIndex:idx_users_agent_username,priority:2;index" validate:"max=20"`
 	Password         string                     `json:"password" gorm:"not null;" validate:"min=8,max=20"`
 	OriginalPassword string                     `json:"original_password" gorm:"-:all"` // this field is only for Password change verification, don't save it to database!
 	DisplayName      string                     `json:"display_name" gorm:"index" validate:"max=20"`
@@ -109,7 +109,9 @@ type User struct {
 	StripeCustomer   string                     `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	CreatedAt        int64                      `json:"created_at" gorm:"autoCreateTime;column:created_at"`
 	LastLoginAt      int64                      `json:"last_login_at" gorm:"default:0;column:last_login_at"`
-	MaxConcurrency   int                        `json:"max_concurrency" gorm:"type:int;default:0;column:max_concurrency"` // 用户级最大并发，0=不限
+	MaxConcurrency   int                        `json:"max_concurrency" gorm:"type:int;default:0;column:max_concurrency"`                                         // 用户级最大并发，0=不限
+	AgentId          int                        `json:"agent_id" gorm:"type:int;default:0;index;uniqueIndex:idx_users_agent_username,priority:1;column:agent_id"` // 所属代理，0=平台直属
+	IsAgent          bool                       `json:"is_agent" gorm:"default:false;column:is_agent"`                                                            // 是否代理 owner 账号
 	AuthVersion      int64                      `json:"-" gorm:"type:bigint;not null;default:1;column:auth_version"`
 	AdminPermissions map[string]map[string]bool `json:"admin_permissions,omitempty" gorm:"-:all"`
 }
@@ -125,6 +127,7 @@ func (user *User) ToBaseUser() *UserBase {
 		Setting:        user.Setting,
 		Email:          user.Email,
 		MaxConcurrency: user.MaxConcurrency,
+		AgentId:        user.AgentId,
 		AuthVersion:    user.AuthVersion,
 		CacheSchema:    userCacheSchemaVersion,
 	}
@@ -261,6 +264,26 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 		return false, err
 	}
 	// exist, return true, nil
+	return true, nil
+}
+
+// CheckUserExistOrDeletedInAgent 在指定代理(租户)命名空间内检查用户名/邮箱是否已被占用(含软删除)。
+func CheckUserExistOrDeletedInAgent(username string, email string, agentId int) (bool, error) {
+	var user User
+	var err error
+	email = NormalizeEmail(email)
+	query := DB.Unscoped().Where("agent_id = ?", agentId)
+	if email == "" {
+		err = query.Where("username = ?", username).First(&user).Error
+	} else {
+		err = query.Where("username = ? OR LOWER(email) = ?", username, email).First(&user).Error
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
 	return true, nil
 }
 
@@ -550,7 +573,7 @@ func (user *User) TransferAffQuotaToQuota(quota int) error {
 
 func (user *User) prepareForInsert(tx *gorm.DB) error {
 	user.Email = NormalizeEmail(user.Email)
-	if err := ensureEmailAvailableWithTx(tx, user.Email, 0); err != nil {
+	if err := ensureEmailAvailableInAgentWithTx(tx, user.Email, user.AgentId, 0); err != nil {
 		return err
 	}
 	if user.Password == "" {
@@ -599,6 +622,32 @@ func ensureEmailAvailableWithTx(tx *gorm.DB, email string, excludeUserID int) er
 	return nil
 }
 
+// ensureEmailAvailableInAgentWithTx 在指定代理(租户)命名空间内校验邮箱可用性(应用层软唯一，
+// 允许不同代理复用同一邮箱)。email 为空视为可用。
+func ensureEmailAvailableInAgentWithTx(tx *gorm.DB, email string, agentId int, excludeUserID int) error {
+	email = NormalizeEmail(email)
+	if email == "" {
+		return nil
+	}
+	query := emailQuery(tx, email).Where("agent_id = ?", agentId)
+	if excludeUserID > 0 {
+		query = query.Where("id <> ?", excludeUserID)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrEmailAlreadyTaken
+	}
+	return nil
+}
+
+// EnsureEmailAvailableInAgent 是 ensureEmailAvailableInAgentWithTx 的非事务入口，供注册前预检。
+func EnsureEmailAvailableInAgent(email string, agentId int, excludeUserID int) error {
+	return ensureEmailAvailableInAgentWithTx(DB, email, agentId, excludeUserID)
+}
+
 func (user *User) Insert(inviterId int) error {
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		return withNormalizedEmailLock(tx, user.Email, func(tx *gorm.DB) error {
@@ -627,9 +676,9 @@ func (user *User) Insert(inviterId int) error {
 
 func (user *User) finishInsert(inviterId int) {
 	// 用户创建成功后，根据角色初始化边栏配置
-	// 需要重新获取用户以确保有正确的ID和Role
+	// 需要重新获取用户以确保有正确的ID和Role（按 id 回查，复合命名空间下 username 不再全局唯一）
 	var createdUser User
-	if err := DB.Where("username = ?", user.Username).First(&createdUser).Error; err == nil {
+	if err := DB.Where("id = ?", user.Id).First(&createdUser).Error; err == nil {
 		// 生成基于角色的默认边栏配置
 		defaultSidebarConfig := generateDefaultSidebarConfigForRole(createdUser.Role)
 		if defaultSidebarConfig != "" {
@@ -968,13 +1017,37 @@ func (user *User) ValidateAndFill() (err error) {
 	// When querying with struct, GORM will only query with non-zero fields,
 	// that means if your field's value is 0, '', false or other zero values,
 	// it won't be used to build query conditions
+	return user.ValidateAndFillWithTenant(0)
+}
+
+// ValidateAndFillWithTenant 在指定租户(代理)命名空间内校验用户名/邮箱+密码并回填用户。
+// tenantAgentId=0 表示平台主站；>0 表示代理白标域名。代理域名上优先识别代理 owner
+// (平台账号 agent_id=0)，使其可在自有域名登录为管理员(S2/S3)。
+func (user *User) ValidateAndFillWithTenant(tenantAgentId int) (err error) {
 	password := user.Password
 	username := strings.TrimSpace(user.Username)
 	if username == "" || password == "" {
 		return ErrUserEmptyCredentials
 	}
-	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	// 代理域名：优先匹配该代理的 owner 账号(平台账号 agent_id=0)
+	if tenantAgentId > 0 {
+		if agent, aerr := GetAgentById(tenantAgentId); aerr == nil && agent != nil && agent.OwnerUserId > 0 {
+			owner := &User{}
+			oerr := DB.Where("id = ? AND agent_id = 0 AND (username = ? OR email = ?)", agent.OwnerUserId, username, username).First(owner).Error
+			if oerr == nil {
+				if owner.Password == "" || !common.ValidatePasswordAndHash(password, owner.Password) || owner.Status != common.UserStatusEnabled {
+					return ErrInvalidCredentials
+				}
+				*user = *owner
+				return nil
+			}
+			if !errors.Is(oerr, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("%w: %v", ErrDatabase, oerr)
+			}
+		}
+	}
+	// 按租户作用域查找(平台=0 或 代理终端用户=tenantAgentId)
+	err = DB.Where("agent_id = ? AND (username = ? OR email = ?)", tenantAgentId, username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials

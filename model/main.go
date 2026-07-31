@@ -319,8 +319,16 @@ func migrateDB() error {
 		&Announcement{},
 		&Ticket{},
 		&TicketMessage{},
+		&Agent{},
+		&AgentLedger{},
+		&AgentDomain{},
+		&AgentOption{},
+		&AgentPaymentConfig{},
 	)
 	if err != nil {
+		return err
+	}
+	if err := migrateUsersAgentUsernameIndex(); err != nil {
 		return err
 	}
 	if err := InitializeUserAuthVersions(); err != nil {
@@ -390,6 +398,11 @@ func migrateDBFast() error {
 		{&Announcement{}, "Announcement"},
 		{&Ticket{}, "Ticket"},
 		{&TicketMessage{}, "TicketMessage"},
+		{&Agent{}, "Agent"},
+		{&AgentLedger{}, "AgentLedger"},
+		{&AgentDomain{}, "AgentDomain"},
+		{&AgentOption{}, "AgentOption"},
+		{&AgentPaymentConfig{}, "AgentPaymentConfig"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
@@ -413,6 +426,9 @@ func migrateDBFast() error {
 		if err != nil {
 			return err
 		}
+	}
+	if err := migrateUsersAgentUsernameIndex(); err != nil {
+		return err
 	}
 	if err := InitializeUserAuthVersions(); err != nil {
 		return err
@@ -622,6 +638,120 @@ PRIMARY KEY (` + "`id`" + `)
 		}
 	}
 	return nil
+}
+
+// migrateUsersAgentUsernameIndex 迁移到按代理命名空间的复合唯一索引 (agent_id, username)：
+// 新的复合唯一索引由 AutoMigrate 依据结构体 tag 创建；此处删除历史遗留的「仅 username」全局唯一
+// 索引/约束，否则会继续强制全局用户名唯一，导致不同代理下同名终端用户无法注册。三种数据库分别处理。
+func migrateUsersAgentUsernameIndex() error {
+	if !DB.Migrator().HasTable("users") {
+		return nil
+	}
+	switch {
+	case common.UsingMainDatabase(common.DatabaseTypePostgreSQL):
+		dropLegacyUsernameUniquePostgres()
+	case common.UsingMainDatabase(common.DatabaseTypeMySQL):
+		dropLegacyUsernameUniqueMySQL()
+	default:
+		dropLegacyUsernameUniqueSQLite()
+	}
+	return nil
+}
+
+func dropLegacyUsernameUniquePostgres() {
+	var names []string
+	err := DB.Raw(`
+		SELECT i.relname
+		FROM pg_index x
+		JOIN pg_class i ON i.oid = x.indexrelid
+		JOIN pg_class t ON t.oid = x.indrelid
+		JOIN pg_namespace n ON n.oid = t.relnamespace
+		WHERE t.relname = 'users' AND n.nspname = current_schema()
+		  AND x.indisunique = true AND x.indnatts = 1
+		  AND (SELECT attname FROM pg_attribute WHERE attrelid = t.oid AND attnum = x.indkey[0]) = 'username'`).
+		Scan(&names).Error
+	if err != nil {
+		common.SysLog("probe legacy username unique (pg) failed: " + err.Error())
+		return
+	}
+	for _, n := range names {
+		if n == "idx_users_agent_username" {
+			continue
+		}
+		// GORM 的 unique tag 在 PG 上生成唯一约束；先删约束，再兜底删索引。
+		if e := DB.Exec(`ALTER TABLE users DROP CONSTRAINT IF EXISTS "` + n + `"`).Error; e != nil {
+			common.SysLog("drop legacy username constraint (pg) failed: " + e.Error())
+		}
+		if e := DB.Exec(`DROP INDEX IF EXISTS "` + n + `"`).Error; e != nil {
+			common.SysLog("drop legacy username index (pg) failed: " + e.Error())
+		}
+		common.SysLog("dropped legacy username unique on users: " + n)
+	}
+}
+
+func dropLegacyUsernameUniqueMySQL() {
+	type idxRow struct {
+		IndexName string `gorm:"column:INDEX_NAME"`
+	}
+	var rows []idxRow
+	err := DB.Raw(`
+		SELECT INDEX_NAME FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND NON_UNIQUE = 0
+		GROUP BY INDEX_NAME
+		HAVING COUNT(*) = 1 AND MAX(COLUMN_NAME) = 'username'`).
+		Scan(&rows).Error
+	if err != nil {
+		common.SysLog("probe legacy username unique (mysql) failed: " + err.Error())
+		return
+	}
+	for _, r := range rows {
+		if r.IndexName == "idx_users_agent_username" || r.IndexName == "PRIMARY" {
+			continue
+		}
+		if e := DB.Exec("ALTER TABLE users DROP INDEX `" + r.IndexName + "`").Error; e != nil {
+			common.SysLog("drop legacy username index (mysql) failed: " + e.Error())
+		} else {
+			common.SysLog("dropped legacy username unique on users: " + r.IndexName)
+		}
+	}
+}
+
+func dropLegacyUsernameUniqueSQLite() {
+	type idxRow struct {
+		Name   string `gorm:"column:name"`
+		Unique int    `gorm:"column:unique"`
+		Origin string `gorm:"column:origin"`
+	}
+	var idxs []idxRow
+	if err := DB.Raw("PRAGMA index_list(`users`)").Scan(&idxs).Error; err != nil {
+		common.SysLog("probe legacy username unique (sqlite) failed: " + err.Error())
+		return
+	}
+	for _, idx := range idxs {
+		if idx.Unique == 0 || idx.Name == "idx_users_agent_username" {
+			continue
+		}
+		type colRow struct {
+			Name string `gorm:"column:name"`
+		}
+		var cols []colRow
+		if err := DB.Raw("PRAGMA index_info(`" + idx.Name + "`)").Scan(&cols).Error; err != nil {
+			continue
+		}
+		if len(cols) != 1 || cols[0].Name != "username" {
+			continue
+		}
+		if idx.Origin == "u" {
+			// 内联 UNIQUE 列约束在 SQLite 上无法 DROP INDEX，需重建表；新装不会出现该情况，此处跳过并告警。
+			common.SysLog("legacy inline UNIQUE(username) on SQLite blocks per-agent namespaces; requires manual table rebuild (safe for new installs)")
+			continue
+		}
+		if e := DB.Exec("DROP INDEX IF EXISTS `" + idx.Name + "`").Error; e != nil {
+			common.SysLog("drop legacy username index (sqlite) failed: " + e.Error())
+		} else {
+			common.SysLog("dropped legacy username unique on users: " + idx.Name)
+		}
+	}
 }
 
 // migrateTokenModelLimitsToText migrates model_limits column from varchar(1024) to text

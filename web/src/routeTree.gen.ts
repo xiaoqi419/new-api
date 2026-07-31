@@ -39,6 +39,9 @@ import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as AuthenticatedAccountSectionRouteImport } from './routes/_authenticated/account/$section'
+import { Route as AuthenticatedAgentApplyIndexRouteImport } from './routes/_authenticated/agent-apply/index'
+import { Route as AuthenticatedAgentConsoleIndexRouteImport } from './routes/_authenticated/agent-console/index'
+import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents/index'
 import { Route as AuthenticatedAnnouncementsIndexRouteImport } from './routes/_authenticated/announcements/index'
 import { Route as AuthenticatedAnnouncementsAdminRouteImport } from './routes/_authenticated/announcements/admin'
 import { Route as AuthenticatedAssetLibraryIndexRouteImport } from './routes/_authenticated/asset-library/index'
@@ -246,6 +249,24 @@ const AuthenticatedAccountSectionRoute =
   AuthenticatedAccountSectionRouteImport.update({
     id: '/account/$section',
     path: '/account/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentApplyIndexRoute =
+  AuthenticatedAgentApplyIndexRouteImport.update({
+    id: '/agent-apply/',
+    path: '/agent-apply/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentConsoleIndexRoute =
+  AuthenticatedAgentConsoleIndexRouteImport.update({
+    id: '/agent-console/',
+    path: '/agent-console/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentsIndexRoute =
+  AuthenticatedAgentsIndexRouteImport.update({
+    id: '/agents/',
+    path: '/agents/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnnouncementsIndexRoute =
@@ -633,6 +654,9 @@ export interface FileRoutesByFullPath {
   '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
+  '/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
+  '/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
+  '/agents/': typeof AuthenticatedAgentsIndexRoute
   '/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
   '/changelog/': typeof AuthenticatedChangelogIndexRoute
@@ -719,6 +743,9 @@ export interface FileRoutesByTo {
   '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/account': typeof AuthenticatedAccountIndexRoute
+  '/agent-apply': typeof AuthenticatedAgentApplyIndexRoute
+  '/agent-console': typeof AuthenticatedAgentConsoleIndexRoute
+  '/agents': typeof AuthenticatedAgentsIndexRoute
   '/announcements': typeof AuthenticatedAnnouncementsIndexRoute
   '/asset-library': typeof AuthenticatedAssetLibraryIndexRoute
   '/changelog': typeof AuthenticatedChangelogIndexRoute
@@ -809,6 +836,9 @@ export interface FileRoutesById {
   '/_authenticated/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
+  '/_authenticated/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
+  '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
   '/_authenticated/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/_authenticated/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
   '/_authenticated/changelog/': typeof AuthenticatedChangelogIndexRoute
@@ -898,6 +928,9 @@ export interface FileRouteTypes {
     | '/tickets/detail'
     | '/usage-logs/$section'
     | '/account/'
+    | '/agent-apply/'
+    | '/agent-console/'
+    | '/agents/'
     | '/announcements/'
     | '/asset-library/'
     | '/changelog/'
@@ -984,6 +1017,9 @@ export interface FileRouteTypes {
     | '/tickets/detail'
     | '/usage-logs/$section'
     | '/account'
+    | '/agent-apply'
+    | '/agent-console'
+    | '/agents'
     | '/announcements'
     | '/asset-library'
     | '/changelog'
@@ -1073,6 +1109,9 @@ export interface FileRouteTypes {
     | '/_authenticated/tickets/detail'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/account/'
+    | '/_authenticated/agent-apply/'
+    | '/_authenticated/agent-console/'
+    | '/_authenticated/agents/'
     | '/_authenticated/announcements/'
     | '/_authenticated/asset-library/'
     | '/_authenticated/changelog/'
@@ -1347,6 +1386,27 @@ declare module '@tanstack/react-router' {
       path: '/account/$section'
       fullPath: '/account/$section'
       preLoaderRoute: typeof AuthenticatedAccountSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agent-apply/': {
+      id: '/_authenticated/agent-apply/'
+      path: '/agent-apply'
+      fullPath: '/agent-apply/'
+      preLoaderRoute: typeof AuthenticatedAgentApplyIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agent-console/': {
+      id: '/_authenticated/agent-console/'
+      path: '/agent-console'
+      fullPath: '/agent-console/'
+      preLoaderRoute: typeof AuthenticatedAgentConsoleIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agents/': {
+      id: '/_authenticated/agents/'
+      path: '/agents'
+      fullPath: '/agents/'
+      preLoaderRoute: typeof AuthenticatedAgentsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/announcements/': {
@@ -1856,6 +1916,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTicketsDetailRoute: typeof AuthenticatedTicketsDetailRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
+  AuthenticatedAgentApplyIndexRoute: typeof AuthenticatedAgentApplyIndexRoute
+  AuthenticatedAgentConsoleIndexRoute: typeof AuthenticatedAgentConsoleIndexRoute
+  AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
   AuthenticatedAnnouncementsIndexRoute: typeof AuthenticatedAnnouncementsIndexRoute
   AuthenticatedAssetLibraryIndexRoute: typeof AuthenticatedAssetLibraryIndexRoute
   AuthenticatedChangelogIndexRoute: typeof AuthenticatedChangelogIndexRoute
@@ -1907,6 +1970,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTicketsDetailRoute: AuthenticatedTicketsDetailRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
+  AuthenticatedAgentApplyIndexRoute: AuthenticatedAgentApplyIndexRoute,
+  AuthenticatedAgentConsoleIndexRoute: AuthenticatedAgentConsoleIndexRoute,
+  AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,
   AuthenticatedAnnouncementsIndexRoute: AuthenticatedAnnouncementsIndexRoute,
   AuthenticatedAssetLibraryIndexRoute: AuthenticatedAssetLibraryIndexRoute,
   AuthenticatedChangelogIndexRoute: AuthenticatedChangelogIndexRoute,
