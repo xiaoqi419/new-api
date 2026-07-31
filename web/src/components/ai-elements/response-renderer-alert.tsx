@@ -32,8 +32,8 @@ import type {
 const alertConfig = {
   note: {
     label: 'Note',
-    className: 'border-chart-1/40 bg-chart-1/8 text-chart-1',
-    markerClassName: 'text-chart-1',
+    className: 'border-chart-1/40 bg-chart-1/8 text-tag-1',
+    markerClassName: 'text-tag-1',
   },
   tip: {
     label: 'Tip',
@@ -42,8 +42,8 @@ const alertConfig = {
   },
   important: {
     label: 'Important',
-    className: 'border-chart-4/40 bg-chart-4/8 text-chart-4',
-    markerClassName: 'text-chart-4',
+    className: 'border-chart-4/40 bg-chart-4/8 text-tag-4',
+    markerClassName: 'text-tag-4',
   },
   warning: {
     label: 'Warning',

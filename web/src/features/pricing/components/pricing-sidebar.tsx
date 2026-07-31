@@ -183,7 +183,7 @@ function VendorRow(props: {
       )}
       <span className='flex-1 truncate'>{props.option.label}</span>
       {props.option.count != null && (
-        <span className='text-muted-foreground/50 shrink-0 text-xs tabular-nums'>
+        <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
           {props.option.count}
         </span>
       )}

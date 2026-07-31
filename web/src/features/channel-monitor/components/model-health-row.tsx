@@ -83,7 +83,7 @@ export function ModelHealthRow({
       <HealthHeatmap buckets={item.buckets} className='h-5' />
 
       {start != null && end != null && (
-        <div className='text-muted-foreground/70 flex justify-between text-[10px]'>
+        <div className='text-muted-foreground flex justify-between text-[10px]'>
           <span>{formatMonitorTs(start)}</span>
           <span>{formatMonitorTs(end)}</span>
         </div>

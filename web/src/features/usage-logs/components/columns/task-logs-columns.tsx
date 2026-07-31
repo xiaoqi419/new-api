@@ -134,11 +134,11 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
               {formatTimestampToDate(submitTime, 'seconds')}
             </span>
             {log.finish_time ? (
-              <span className='text-muted-foreground/60 truncate font-mono text-[11px] tabular-nums'>
+              <span className='text-muted-foreground truncate font-mono text-[11px] tabular-nums'>
                 {formatTimestampToDate(log.finish_time, 'seconds')}
               </span>
             ) : (
-              <span className='text-muted-foreground/50 text-[11px]'>-</span>
+              <span className='text-muted-foreground text-[11px]'>-</span>
             )}
           </div>
         )
@@ -155,7 +155,7 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
         cell: ({ row }) => {
           const channelId = row.getValue('channel_id') as number
           if (!channelId) {
-            return <span className='text-muted-foreground/60 text-xs'>-</span>
+            return <span className='text-muted-foreground text-xs'>-</span>
           }
           return <ChannelTag channelId={channelId} />
         },
@@ -228,7 +228,7 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
       cell: ({ row }) => {
         const taskId = row.getValue('task_id') as string
         if (!taskId) {
-          return <span className='text-muted-foreground/60 text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>
         }
         return (
           <StatusBadge
@@ -298,7 +298,7 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
         }
 
         if (!failReason) {
-          return <span className='text-muted-foreground/60 text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>
         }
 
         return (

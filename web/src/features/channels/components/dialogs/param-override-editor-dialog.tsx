@@ -578,11 +578,11 @@ const getOperationSummary = (
 
 const getModeTagTailwind = (mode: string): string => {
   if (mode.includes('header'))
-    return 'bg-chart-2/15 text-chart-2 border-chart-2/20'
+    return 'bg-chart-2/15 text-tag-2 border-chart-2/20'
   if (mode.includes('replace') || mode.includes('trim'))
-    return 'bg-chart-4/15 text-chart-4 border-chart-4/20'
+    return 'bg-chart-4/15 text-tag-4 border-chart-4/20'
   if (mode.includes('copy') || mode.includes('move'))
-    return 'bg-chart-1/15 text-chart-1 border-chart-1/20'
+    return 'bg-chart-1/15 text-tag-1 border-chart-1/20'
   if (mode.includes('error') || mode.includes('prune'))
     return 'bg-destructive/15 text-destructive border-destructive/20'
   if (mode.includes('sync'))

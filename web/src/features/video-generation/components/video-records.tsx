@@ -128,7 +128,7 @@ export function VideoRecords() {
                     {t('View')}
                   </Button>
                 ) : (
-                  <span className='text-muted-foreground/60 text-xs'>-</span>
+                  <span className='text-muted-foreground text-xs'>-</span>
                 )}
               </div>
             </div>

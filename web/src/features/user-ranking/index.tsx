@@ -46,7 +46,7 @@ import type { UserRankingDimension } from './types'
 const rankBadgeClass: Record<number, string> = {
   1: 'bg-warning/15 text-warning',
   2: 'bg-neutral/15 text-neutral',
-  3: 'bg-chart-3/15 text-chart-3',
+  3: 'bg-chart-3/15 text-tag-3',
 }
 
 function RankCell({ rank }: { rank: number }) {

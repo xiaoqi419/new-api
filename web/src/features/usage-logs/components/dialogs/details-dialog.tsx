@@ -1075,7 +1075,7 @@ export function DetailsDialog(props: DetailsDialogProps) {
               value={
                 <span className='flex items-center gap-1'>
                   {isUsageBillingPathLocal(other.admin_info) ? (
-                    <Monitor className='text-chart-1 size-3' />
+                    <Monitor className='text-tag-1 size-3' />
                   ) : (
                     <Cloud className='text-success size-3' />
                   )}

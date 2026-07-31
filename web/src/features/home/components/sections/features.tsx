@@ -51,7 +51,7 @@ export function Features(props: FeaturesProps) {
         'Optimized network architecture ensures millisecond response times'
       ),
       span: 'md:col-span-2',
-      icon: <Zap className='text-chart-1 size-4' />,
+      icon: <Zap className='text-tag-1 size-4' />,
       visual: (
         <div className='mt-4 grid grid-cols-3 gap-2'>
           {['OpenAI', 'Claude', 'Gemini', 'DeepSeek', 'Qwen', 'Llama'].map(
@@ -107,7 +107,7 @@ export function Features(props: FeaturesProps) {
       title: t('Global Coverage'),
       desc: t('Multi-region deployment for stable global access'),
       span: 'md:col-span-1',
-      icon: <Globe className='text-chart-4 size-4' />,
+      icon: <Globe className='text-tag-4 size-4' />,
       visual: (
         <div className='mt-4 space-y-2'>
           {[t('Load Balancing'), t('Rate Limiting'), t('Cost Tracking')].map(
@@ -116,7 +116,7 @@ export function Features(props: FeaturesProps) {
                 <div
                   className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold ${
                     i === 1
-                      ? 'border-chart-1/30 bg-chart-1/20 text-chart-1 border'
+                      ? 'border-chart-1/30 bg-chart-1/20 text-tag-1 border'
                       : 'border-border/40 bg-muted text-muted-foreground border'
                   }`}
                 >
@@ -150,7 +150,7 @@ export function Features(props: FeaturesProps) {
             ))}
           </div>
           <div className='text-muted-foreground flex items-center gap-1.5 text-xs'>
-            <Code className='text-chart-1 size-3.5' />
+            <Code className='text-tag-1 size-3.5' />
             {t('Multi-protocol Compatible')}
           </div>
         </div>

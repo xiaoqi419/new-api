@@ -122,8 +122,7 @@ function NavBadge({ children }: { children: ReactNode }) {
  * legibility. Sub-item icons are deliberately excluded: SidebarMenuSubButton
  * already pins their color through a `[&>svg]` rule that outranks a plain
  * utility class on the icon itself. */
-const NAV_ICON_CLASS =
-  'text-primary/70 group-data-active/menu-button:text-primary shrink-0 transition-colors'
+const NAV_ICON_CLASS = 'text-primary shrink-0'
 
 /**
  * Sidebar menu link item

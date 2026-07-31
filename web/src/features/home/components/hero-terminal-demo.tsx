@@ -55,14 +55,14 @@ const ACCENT_CLASSES: Record<
     badge: 'bg-warning/10 text-warning',
   },
   blue: {
-    activeText: 'text-chart-1',
+    activeText: 'text-tag-1',
     activeBorder: 'border-chart-1',
-    badge: 'bg-chart-1/10 text-chart-1',
+    badge: 'bg-chart-1/10 text-tag-1',
   },
   violet: {
-    activeText: 'text-chart-4',
+    activeText: 'text-tag-4',
     activeBorder: 'border-chart-4',
-    badge: 'bg-chart-4/10 text-chart-4',
+    badge: 'bg-chart-4/10 text-tag-4',
   },
 }
 
@@ -229,7 +229,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
                   'relative -mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-[11px] font-medium tracking-wide transition-colors sm:px-3 sm:text-xs',
                   isActive
                     ? `${tone.activeBorder} ${tone.activeText}`
-                    : 'text-foreground/40 hover:text-foreground/70 border-transparent'
+                    : 'text-foreground/70 hover:text-foreground border-transparent'
                 )}
               >
                 {item.label}
@@ -238,7 +238,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
           })}
           <div className='ml-auto flex items-center gap-2 pr-2 sm:pr-3'>
             <span className='bg-success inline-block size-1.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.45)]' />
-            <span className='text-foreground/40 font-mono text-[10px] tracking-wider uppercase'>
+            <span className='text-foreground/70 font-mono text-[10px] tracking-wider uppercase'>
               200 ok
             </span>
           </div>
@@ -285,7 +285,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
             'border-border/40 bg-muted/30 dark:border-white/[0.05] dark:bg-white/[0.02]'
           )}
         >
-          <div className='text-foreground/40 flex items-center gap-3 text-[10px] tabular-nums'>
+          <div className='text-foreground/70 flex items-center gap-3 text-[10px] tabular-nums'>
             <span className='flex items-center gap-1'>
               <span className='font-mono'>{demo.latency}</span>
               <span className='tracking-wider uppercase'>ms</span>
@@ -303,7 +303,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
               </span>
             </span>
           </div>
-          <span className='text-foreground/30 font-mono text-[10px] tracking-wider uppercase'>
+          <span className='text-foreground/70 font-mono text-[10px] tracking-wider uppercase'>
             stream · sse
           </span>
         </div>
@@ -378,7 +378,7 @@ function ResponseBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
 
 function SectionLabel(props: { children: ReactNode }) {
   return (
-    <span className='text-foreground/30 font-sans text-[10px] font-semibold tracking-[0.18em] uppercase'>
+    <span className='text-foreground/70 font-sans text-[10px] font-semibold tracking-[0.18em] uppercase'>
       {props.children}
     </span>
   )
@@ -533,7 +533,7 @@ function NumberText(props: { children: ReactNode }) {
 }
 
 function Muted(props: { children: ReactNode }) {
-  return <span className='text-foreground/55'>{props.children}</span>
+  return <span className='text-foreground/70'>{props.children}</span>
 }
 
 function Accent(props: { children: ReactNode; accent: AccentTone }) {

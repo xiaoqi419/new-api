@@ -72,6 +72,11 @@ For commercial licensing, please contact support@quantumnous.com
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-tag-1: var(--tag-1);
+  --color-tag-2: var(--tag-2);
+  --color-tag-3: var(--tag-3);
+  --color-tag-4: var(--tag-4);
+  --color-tag-5: var(--tag-5);
   --color-overview-accent-1: var(--overview-accent-1);
   --color-overview-accent-2: var(--overview-accent-2);
   --color-overview-accent-3: var(--overview-accent-3);
@@ -111,36 +116,38 @@ For commercial licensing, please contact support@quantumnous.com
    *     这些文字在卡片上只有 1.4:1，必须保持在 4.5:1 以上。
    *   - 语义色（success/warning/info/neutral）同样以"当正文用"为准来定明度，
    *     它们在 StatusBadge 里是带色文字而不只是色块。
-   * 所有数值经 OKLCh → sRGB 精确换算校验，明暗两套 28 项强制对比度全部达标，
-   * 色卡与校验表见 design/theme/colorcard-pink-b2.png。 */
+   * 明度全部按"最深的承载面"反解，承载面集合含 accent / sidebar-accent：
+   * 侧栏选中项是常驻状态、下拉项 hover 也会承载 destructive 文字，只按
+   * card/background 校验会漏掉这一档（那样 success 只有 3.5:1）。
+   * 所有数值经 OKLCh → sRGB 精确换算校验，色卡见 design/theme/colorcard-pink-b2.png。 */
   --background: oklch(0.984 0.012 350);
   --foreground: oklch(0.22 0.022 350);
   --card: oklch(0.996 0.005 350);
   --card-foreground: oklch(0.22 0.022 350);
   --popover: oklch(0.998 0.004 350);
   --popover-foreground: oklch(0.22 0.022 350);
-  --primary: oklch(0.55 0.15 352);
+  --primary: oklch(0.5 0.15 352);
   --primary-foreground: oklch(0.99 0.005 352);
   --secondary: oklch(0.958 0.02 350);
   --secondary-foreground: oklch(0.3 0.048 352);
   --muted: oklch(0.968 0.016 350);
-  /* 比"刚好 4.5:1"更深一档：仓库里有 31 处 text-muted-foreground/80，
-   * L=0.485 时那一档只有 4.0:1；L=0.43 让 /80 也达到 4.67:1。 */
+  /* 比"刚好 4.5:1"更深一档，留出余量：具名预设会自己重声明这个 token，
+   * 卡到 4.5 边缘的话预设一换就失守。 */
   --muted-foreground: oklch(0.43 0.026 350);
   /* accent 写死而不是从 primary 混：primary 是深玫瑰，混出来会脏，
    * 这里要的是一块干净的浅粉填充（hover / 选中 / 图标底）。 */
   --accent: oklch(0.93 0.042 351);
   --accent-foreground: oklch(0.27 0.05 352);
   /* danger 推到暖红 hue 25，与 350 的粉拉开，避免状态色和主色糊在一起 */
-  --destructive: oklch(0.54 0.2 25);
+  --destructive: oklch(0.505 0.2 25);
   --destructive-foreground: oklch(0.99 0.005 25);
-  --success: oklch(0.53 0.125 163);
+  --success: oklch(0.46 0.125 163);
   --success-foreground: oklch(0.99 0.005 163);
-  --warning: oklch(0.548 0.122 62);
+  --warning: oklch(0.488 0.122 62);
   --warning-foreground: oklch(0.99 0.005 62);
-  --info: oklch(0.53 0.15 245);
+  --info: oklch(0.47 0.15 245);
   --info-foreground: oklch(0.99 0.005 245);
-  --neutral: oklch(0.543 0.012 350);
+  --neutral: oklch(0.483 0.012 350);
   --neutral-foreground: oklch(0.99 0.004 350);
   --border: oklch(0.912 0.026 350);
   --input: oklch(0.888 0.032 350);
@@ -152,6 +159,15 @@ For commercial licensing, please contact support@quantumnous.com
   --chart-3: oklch(0.72 0.14 25);
   --chart-4: oklch(0.68 0.13 285);
   --chart-5: oklch(0.75 0.13 75);
+  /* 分类"文字"色，与 chart-N 同色相但明度按正文反解。chart 是填充色，L≈0.7，
+   * 当文字用时在浅粉面上只有 1.6–2.1:1；分类标签（日志类型、模型能力、HTTP
+   * 方法…）需要的是同一套可区分色相 + 正文级对比度，所以单独一档。
+   * 底色仍用 bg-chart-N/10，只有文字/图标换到这里。 */
+  --tag-1: oklch(0.5 0.15 352);
+  --tag-2: oklch(0.495 0.14 320);
+  --tag-3: oklch(0.495 0.14 25);
+  --tag-4: oklch(0.49 0.13 285);
+  --tag-5: oklch(0.485 0.13 75);
   --overview-accent-1: oklch(0.72 0.15 352);
   --overview-accent-2: oklch(0.7 0.14 320);
   --overview-accent-3: oklch(0.72 0.14 25);
@@ -185,7 +201,7 @@ For commercial licensing, please contact support@quantumnous.com
   --card-foreground: oklch(0.96 0.006 350);
   --popover: oklch(0.272 0.016 342);
   --popover-foreground: oklch(0.96 0.006 350);
-  --primary: oklch(0.72 0.15 352);
+  --primary: oklch(0.735 0.15 352);
   --primary-foreground: oklch(0.2 0.04 350);
   --secondary: oklch(0.3 0.02 344);
   --secondary-foreground: oklch(0.93 0.03 350);
@@ -193,13 +209,13 @@ For commercial licensing, please contact support@quantumnous.com
   --muted-foreground: oklch(0.75 0.014 348);
   --accent: oklch(0.345 0.04 350);
   --accent-foreground: oklch(0.95 0.02 350);
-  --destructive: oklch(0.68 0.17 25);
+  --destructive: oklch(0.74 0.17 25);
   --destructive-foreground: oklch(0.18 0.02 25);
   --success: oklch(0.72 0.15 163);
   --success-foreground: oklch(0.16 0.01 163);
   --warning: oklch(0.78 0.16 72);
   --warning-foreground: oklch(0.18 0.02 72);
-  --info: oklch(0.68 0.13 240);
+  --info: oklch(0.71 0.13 240);
   --info-foreground: oklch(0.16 0.01 240);
   --neutral: oklch(0.72 0.01 345);
   --neutral-foreground: oklch(0.17 0.01 345);
@@ -212,6 +228,12 @@ For commercial licensing, please contact support@quantumnous.com
   --chart-3: oklch(0.75 0.13 25);
   --chart-4: oklch(0.74 0.12 285);
   --chart-5: oklch(0.8 0.12 75);
+  /* 暗底上 chart 本身就是亮色，当文字已有 4.97–6.19:1，不需要另一档 */
+  --tag-1: var(--chart-1);
+  --tag-2: var(--chart-2);
+  --tag-3: var(--chart-3);
+  --tag-4: var(--chart-4);
+  --tag-5: var(--chart-5);
   --overview-accent-1: oklch(0.78 0.13 352);
   --overview-accent-2: oklch(0.76 0.13 320);
   --overview-accent-3: oklch(0.75 0.13 25);

@@ -293,7 +293,7 @@ export function SubscriptionPlansCard({
                 )}
                 {allSubscriptions.length > activeSubscriptions.length && (
                   <>
-                    <span className='text-muted-foreground/30'>·</span>
+                    <span className='text-muted-foreground'>·</span>
                     <span className='text-muted-foreground'>
                       {allSubscriptions.length - activeSubscriptions.length}{' '}
                       {t('expired')}

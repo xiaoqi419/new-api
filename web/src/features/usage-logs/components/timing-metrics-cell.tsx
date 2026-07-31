@@ -203,7 +203,7 @@ export function StreamTpsCell(props: StreamTpsCellProps) {
           </TooltipProvider>
         )}
       </span>
-      <span className='text-muted-foreground/60 px-0.5 tabular-nums'>
+      <span className='text-muted-foreground px-0.5 tabular-nums'>
         {tpsLabel}
       </span>
     </div>

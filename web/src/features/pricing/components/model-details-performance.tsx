@@ -65,9 +65,7 @@ function StatCard(props: {
         {props.value}
       </span>
       {props.hint && (
-        <span className='text-muted-foreground/70 text-[11px]'>
-          {props.hint}
-        </span>
+        <span className='text-muted-foreground text-[11px]'>{props.hint}</span>
       )}
     </div>
   )
@@ -343,15 +341,13 @@ function SectionHeader(props: {
   return (
     <div className='mb-2 flex flex-wrap items-center justify-between gap-2'>
       <div className='flex min-w-0 items-center gap-2'>
-        <Icon className='text-muted-foreground/70 size-3.5 shrink-0' />
+        <Icon className='text-muted-foreground size-3.5 shrink-0' />
         <div className='min-w-0'>
           <div className='text-foreground text-sm font-semibold'>
             {props.title}
           </div>
           {props.description && (
-            <p className='text-muted-foreground/80 text-xs'>
-              {props.description}
-            </p>
+            <p className='text-muted-foreground text-xs'>{props.description}</p>
           )}
         </div>
       </div>

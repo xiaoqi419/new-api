@@ -50,7 +50,7 @@ export function TierLadder({ tiers, paid, currentAmount }: TierLadderProps) {
               {unlocked ? (
                 <Check className='text-primary size-4' />
               ) : (
-                <Lock className='text-muted-foreground/40 size-4' />
+                <Lock className='text-muted-foreground size-4' />
               )}
               <span className='font-medium'>
                 {tier.count} {t('people')}

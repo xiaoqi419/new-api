@@ -134,7 +134,7 @@ function formatBytes(bytes?: number): string {
 }
 
 function ringColorClass(percent: number | null) {
-  if (percent === null) return 'text-muted-foreground/40'
+  if (percent === null) return 'text-muted-foreground'
   if (percent >= 90) return 'text-destructive'
   if (percent >= 70) return 'text-warning'
   return 'text-success'

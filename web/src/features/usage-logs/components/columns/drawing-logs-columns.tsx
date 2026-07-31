@@ -123,7 +123,7 @@ export function useDrawingLogsColumns(
       cell: ({ row }) => {
         const username = row.original.username
         if (!username) {
-          return <span className='text-muted-foreground/60 text-xs'>-</span>
+          return <span className='text-muted-foreground text-xs'>-</span>
         }
         return <span className='truncate text-xs'>{username}</span>
       },
@@ -155,7 +155,7 @@ export function useDrawingLogsColumns(
     cell: ({ row }) => {
       const model = row.original.model_name
       if (!model) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
       return (
         <StatusBadge
@@ -197,7 +197,7 @@ export function useDrawingLogsColumns(
       const [dialogOpen, setDialogOpen] = useState(false)
 
       if (keys.length === 0) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
       const src = toImageSrc(keys[0])
 
@@ -235,7 +235,7 @@ export function useDrawingLogsColumns(
       const [dialogOpen, setDialogOpen] = useState(false)
 
       if (!prompt) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
 
       return (

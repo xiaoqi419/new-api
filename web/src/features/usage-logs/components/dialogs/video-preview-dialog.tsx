@@ -79,7 +79,7 @@ function VideoPreviewBody({ url }: { url: string }) {
             {t('Copy Link')}
           </Button>
         </div>
-        <p className='text-muted-foreground/70 max-w-full text-[10px] break-all'>
+        <p className='text-muted-foreground max-w-full text-[10px] break-all'>
           {url}
         </p>
       </div>

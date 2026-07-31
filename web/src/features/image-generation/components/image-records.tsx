@@ -109,7 +109,7 @@ export function ImageRecords() {
                     />
                   </button>
                 ) : (
-                  <div className='bg-muted/30 text-muted-foreground/60 flex aspect-square w-full items-center justify-center text-xs'>
+                  <div className='bg-muted/30 text-muted-foreground flex aspect-square w-full items-center justify-center text-xs'>
                     {log.status || '-'}
                   </div>
                 )}
@@ -128,7 +128,7 @@ export function ImageRecords() {
                       {log.prompt}
                     </span>
                   )}
-                  <div className='text-muted-foreground/70 flex items-center justify-between text-[10px] tabular-nums'>
+                  <div className='text-muted-foreground flex items-center justify-between text-[10px] tabular-nums'>
                     <span>
                       {formatTimestampToDate(log.created_at, 'seconds')}
                     </span>

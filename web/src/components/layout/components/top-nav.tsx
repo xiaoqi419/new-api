@@ -127,9 +127,7 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
             )
             const content = (
               <>
-                {Icon ? (
-                  <Icon className='text-primary/70 group-hover/top-nav-link:text-primary size-4 transition-colors' />
-                ) : null}
+                {Icon ? <Icon className='text-primary size-4' /> : null}
                 {title}
               </>
             )

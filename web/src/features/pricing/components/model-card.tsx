@@ -99,7 +99,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
           <span className='text-warning'>
             {t('Special billing expression')}
           </span>
-          <code className='text-muted-foreground/70 mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
+          <code className='text-muted-foreground mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
             {dynamicSummary.rawExpression}
           </code>
         </span>
@@ -259,15 +259,15 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
 
         <div className='flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:gap-x-3 sm:gap-y-1'>
           {bottomTags.map((item) => (
-            <span key={item} className='text-muted-foreground/70 text-xs'>
+            <span key={item} className='text-muted-foreground text-xs'>
               {item}
             </span>
           ))}
-          <span className='text-muted-foreground/50 text-xs'>
+          <span className='text-muted-foreground text-xs'>
             {tokenUnitLabel}
           </span>
           {hiddenCount > 0 && (
-            <span className='text-muted-foreground/40 text-xs'>
+            <span className='text-muted-foreground text-xs'>
               +{hiddenCount}
             </span>
           )}

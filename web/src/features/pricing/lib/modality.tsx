@@ -32,7 +32,7 @@ import type { Modality } from '../types'
 const MODALITY_META: Record<Modality, { icon: LucideIcon; className: string }> =
   {
     text: { icon: Type, className: 'text-neutral' },
-    image: { icon: ImageIcon, className: 'text-chart-4' },
+    image: { icon: ImageIcon, className: 'text-tag-4' },
     audio: { icon: AudioLines, className: 'text-warning' },
     video: { icon: Video, className: 'text-destructive' },
     file: { icon: FileText, className: 'text-info' },
@@ -103,7 +103,7 @@ export function ModalityFlow(props: {
   return (
     <span className={cn('inline-flex items-center gap-1', props.className)}>
       <ModalityIcons modalities={input} size={props.size} />
-      <ArrowRight className='text-muted-foreground/40 size-3 shrink-0' />
+      <ArrowRight className='text-muted-foreground size-3 shrink-0' />
       <ModalityIcons modalities={output} size={props.size} />
     </span>
   )

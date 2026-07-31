@@ -428,7 +428,7 @@ export function CheckinCalendarCard({
                         className={cn(
                           'relative flex h-9 w-full flex-col items-center justify-center rounded-lg px-0 text-xs font-medium sm:h-10 sm:text-sm',
                           !dayObj.isCurrentMonth &&
-                            'text-muted-foreground/40 cursor-default',
+                            'text-muted-foreground cursor-default',
                           !isToday && isCheckedIn && 'font-semibold'
                         )}
                       >

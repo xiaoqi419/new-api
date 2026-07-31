@@ -207,7 +207,7 @@ export function Pricing() {
               <h1 className='text-xl font-bold tracking-tight sm:text-2xl'>
                 {t('Model Square')}
               </h1>
-              <span className='text-muted-foreground/70 text-xs sm:text-sm'>
+              <span className='text-muted-foreground text-xs sm:text-sm'>
                 {t('This site currently has {{count}} models enabled', {
                   count: models?.length || 0,
                 })}

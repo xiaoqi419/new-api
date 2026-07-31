@@ -176,13 +176,13 @@ export function usePricingColumns(
                 {primaryEntries.map((entry, index) => (
                   <span key={entry.key}>
                     {index > 0 && (
-                      <span className='text-muted-foreground/40 mx-1'>/</span>
+                      <span className='text-muted-foreground mx-1'>/</span>
                     )}
                     {stripTrailingZeros(entry.formatted)}
                   </span>
                 ))}
               </span>
-              <div className='text-muted-foreground/50 text-[10px]'>
+              <div className='text-muted-foreground text-[10px]'>
                 / {tokenUnitLabel} tokens
                 {dynamicSummary.tierCount > 1 &&
                   ` · ${t('{{count}} tiers', {
@@ -223,10 +223,10 @@ export function usePricingColumns(
             <div className='max-w-full min-w-0'>
               <span className='font-mono text-sm tabular-nums'>
                 {inputPrice}
-                <span className='text-muted-foreground/40 mx-1'>/</span>
+                <span className='text-muted-foreground mx-1'>/</span>
                 {outputPrice}
               </span>
-              <div className='text-muted-foreground/50 text-[10px]'>
+              <div className='text-muted-foreground text-[10px]'>
                 / {tokenUnitLabel} tokens
               </div>
             </div>
@@ -246,7 +246,7 @@ export function usePricingColumns(
         return (
           <div className='max-w-full min-w-0'>
             <span className='font-mono text-sm tabular-nums'>{price}</span>
-            <div className='text-muted-foreground/50 text-[10px]'>
+            <div className='text-muted-foreground text-[10px]'>
               / {t('request')}
             </div>
           </div>
@@ -263,7 +263,7 @@ export function usePricingColumns(
       cell: ({ row }) => {
         const context = row.original.context_length
         if (!context || context <= 0) {
-          return <span className='text-muted-foreground/30 text-xs'>—</span>
+          return <span className='text-muted-foreground text-xs'>—</span>
         }
         return (
           <span className='font-mono text-sm tabular-nums'>
@@ -282,7 +282,7 @@ export function usePricingColumns(
       cell: ({ row }) => {
         const release = row.original.release_date?.trim()
         if (!release) {
-          return <span className='text-muted-foreground/30 text-xs'>—</span>
+          return <span className='text-muted-foreground text-xs'>—</span>
         }
         return (
           <span className='text-muted-foreground font-mono text-xs tabular-nums'>

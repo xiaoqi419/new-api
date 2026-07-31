@@ -17,53 +17,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-/* Editorial "paper + clay" look for the CLI Quickstart home template.
- * Scopes the project's built-in `anthropic` preset palette to `.literary`, so
- * the template always renders this warm editorial theme regardless of the
- * site's active preset, while still following the site's light/dark mode
- * (`.dark` on an ancestor swaps the token block). */
+/* Editorial "paper + grid" look for the CLI Quickstart home template.
+ * Colors are inherited from the site theme so the landing page matches the rest
+ * of the product (and follows the active preset and light/dark mode). Only the
+ * three things this layout structurally needs are overridden here. */
 
 .literary {
-  /* Light: warm cream canvas, ink text, clay/coral accent. */
-  --background: oklch(0.984 0.004 95);
-  --foreground: oklch(0.205 0.005 60);
-  --card: oklch(0.945 0.008 92);
-  --card-foreground: oklch(0.205 0.005 60);
-  --primary: oklch(0.685 0.142 38);
-  --primary-foreground: oklch(0.99 0.005 95);
-  --muted: oklch(0.94 0.007 92);
-  --muted-foreground: oklch(0.51 0.006 75);
-  --accent: oklch(0.92 0.009 92);
-  --accent-foreground: oklch(0.205 0.005 60);
-  --border: oklch(0.895 0.008 92);
-  --ring: oklch(0.685 0.142 38);
+  /* `.literary-card` paints `--card` at 70% over the canvas, which needs a
+   * surface that reads as a distinct layer. The site's `--card` sits *above*
+   * `--background` in the light theme, so the tint would vanish; `--sidebar` is
+   * the token that steps away from the canvas in both light and dark. */
+  --card: var(--sidebar);
+  --card-foreground: var(--sidebar-foreground);
+  /* Hairlines follow the text color instead of a fixed ink, so they stay
+   * correct under every preset and in dark mode. */
+  --literary-grid-line: color-mix(in oklab, var(--foreground) 3%, transparent);
+  --literary-hairline: color-mix(in oklab, var(--foreground) 10%, transparent);
+  /* Editorial layout is tuned for a small radius; keep it independent of the
+   * user's global radius setting. */
   --radius: 0.625rem;
-
-  --literary-grid-line: oklch(0.205 0.005 60 / 3%);
-  --literary-hairline: oklch(0.205 0.005 60 / 10%);
 
   position: relative;
   background: var(--background);
   color: var(--foreground);
-}
-
-.dark .literary {
-  /* Dark: warm near-black surfaces, coral lifts slightly for legibility. */
-  --background: oklch(0.215 0.004 60);
-  --foreground: oklch(0.965 0.005 92);
-  --card: oklch(0.255 0.004 60);
-  --card-foreground: oklch(0.965 0.005 92);
-  --primary: oklch(0.72 0.135 40);
-  --primary-foreground: oklch(0.18 0.005 60);
-  --muted: oklch(0.285 0.004 60);
-  --muted-foreground: oklch(0.76 0.006 75);
-  --accent: oklch(0.33 0.006 60);
-  --accent-foreground: oklch(0.985 0.005 92);
-  --border: oklch(1 0 0 / 12%);
-  --ring: oklch(0.72 0.135 40);
-
-  --literary-grid-line: oklch(0.965 0.005 92 / 3%);
-  --literary-hairline: oklch(1 0 0 / 10%);
 }
 
 /* Uniform 24px hairline grid, fixed behind the snapping sections (niffler 1:1). */

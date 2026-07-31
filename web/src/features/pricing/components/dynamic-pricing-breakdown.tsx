@@ -277,7 +277,7 @@ export function DynamicPricingBreakdown({
                   <div className='mb-1.5 flex flex-wrap items-center gap-1.5'>
                     <Badge
                       variant='secondary'
-                      className='bg-chart-1/15 text-chart-1'
+                      className='bg-chart-1/15 text-tag-1'
                     >
                       {tier.label || t('Default')}
                     </Badge>
@@ -359,7 +359,7 @@ export function DynamicPricingBreakdown({
                       <div className='flex flex-wrap items-center gap-1.5'>
                         <Badge
                           variant='secondary'
-                          className='bg-chart-1/15 text-chart-1'
+                          className='bg-chart-1/15 text-tag-1'
                         >
                           {tier.label || t('Default')}
                         </Badge>

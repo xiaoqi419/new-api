@@ -112,7 +112,7 @@ function CompactCell<TData>({
       {cell ? (
         flexRender(cell.column.columnDef.cell, cell.getContext())
       ) : (
-        <span className='text-muted-foreground/50'>{fallback}</span>
+        <span className='text-muted-foreground'>{fallback}</span>
       )}
     </div>
   )
@@ -229,7 +229,7 @@ function MobileTokensField({ log }: { log: UsageLog }) {
             )}
           </div>
         ) : (
-          <span className='text-muted-foreground/50 text-[11px] leading-none'>
+          <span className='text-muted-foreground text-[11px] leading-none'>
             —
           </span>
         )}

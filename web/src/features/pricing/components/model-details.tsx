@@ -161,7 +161,7 @@ function OverviewMetric(props: {
 
   return (
     <div className='flex min-w-0 items-center gap-2 px-3 py-2'>
-      <Icon className='text-muted-foreground/70 size-3.5 shrink-0' />
+      <Icon className='text-muted-foreground size-3.5 shrink-0' />
       <div className='min-w-0 flex-1'>
         <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
           {props.label}
@@ -331,7 +331,7 @@ function ModelBackendQuickStats(props: { model: PricingModel }) {
         <span className='inline-flex items-center gap-1'>
           <ModalityLabels items={inputModalities} />
           {inputModalities.length > 0 && outputModalities.length > 0 && (
-            <span className='text-muted-foreground/40'>→</span>
+            <span className='text-muted-foreground'>→</span>
           )}
           <ModalityLabels items={outputModalities} />
         </span>
@@ -376,7 +376,7 @@ function ModelBackendQuickStats(props: { model: PricingModel }) {
               {stat.value}
             </span>
             {stat.hint && (
-              <span className='text-muted-foreground/60 truncate text-[10px]'>
+              <span className='text-muted-foreground truncate text-[10px]'>
                 {stat.hint}
               </span>
             )}
@@ -628,7 +628,7 @@ function ModelHeader(props: { model: PricingModel }) {
         {model.vendor_name && (
           <span className='text-muted-foreground'>{model.vendor_name}</span>
         )}
-        <span className='text-muted-foreground/30'>·</span>
+        <span className='text-muted-foreground'>·</span>
         <ModelBillingModeBadge model={model} />
       </div>
       <ModelHeaderMeta model={model} />
@@ -743,7 +743,7 @@ function PriceSection(props: {
                 </div>
                 <div className='text-foreground mt-1 font-mono text-base font-semibold tabular-nums'>
                   {entry.formatted}
-                  <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
+                  <span className='text-muted-foreground ml-1 text-xs font-normal'>
                     / {tokenUnitLabel}
                   </span>
                 </div>
@@ -763,12 +763,12 @@ function PriceSection(props: {
                   key={entry.key}
                   className='flex items-baseline justify-between gap-4'
                 >
-                  <span className='text-muted-foreground/70 text-sm'>
+                  <span className='text-muted-foreground text-sm'>
                     {t(entry.shortLabel)}
                   </span>
                   <span className='text-muted-foreground font-mono text-sm tabular-nums'>
                     {entry.formatted}
-                    <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
+                    <span className='text-muted-foreground ml-1 text-xs font-normal'>
                       / {tokenUnitLabel}
                     </span>
                   </span>
@@ -817,7 +817,7 @@ function PriceSection(props: {
         props.usdExchangeRate,
         baseGroupRatioMap
       )}
-      <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
+      <span className='text-muted-foreground ml-1 text-xs font-normal'>
         / {tokenUnitLabel}
       </span>
     </>
@@ -844,7 +844,7 @@ function PriceSection(props: {
                 key={item.type}
                 className='flex items-baseline justify-between gap-4'
               >
-                <span className='text-muted-foreground/70 text-sm'>
+                <span className='text-muted-foreground text-sm'>
                   {item.label}
                 </span>
                 <span className='text-muted-foreground font-mono text-sm tabular-nums'>
@@ -867,12 +867,12 @@ function GroupChainRow(props: { label: string; chain: string[] }) {
   return (
     <div className='text-muted-foreground flex flex-wrap items-center gap-1 text-xs'>
       <span className='font-medium'>{props.label}</span>
-      <span className='text-muted-foreground/40'>→</span>
+      <span className='text-muted-foreground'>→</span>
       {props.chain.map((g, idx) => (
         <span key={g} className='flex items-center gap-1'>
           <GroupBadge group={g} size='sm' />
           {idx < props.chain.length - 1 && (
-            <span className='text-muted-foreground/40'>→</span>
+            <span className='text-muted-foreground'>→</span>
           )}
         </span>
       ))}
@@ -1132,7 +1132,7 @@ function GroupPricingSection(props: {
               </div>
             )
           })}
-          <p className='text-muted-foreground/40 mt-1.5 text-[10px]'>
+          <p className='text-muted-foreground mt-1.5 text-[10px]'>
             {t('Prices shown per')} {tokenUnitLabel} tokens
           </p>
         </div>
@@ -1227,7 +1227,7 @@ function GroupPricingSection(props: {
       />
       <div className='-mx-4 sm:mx-0'>
         {isTokenBased && (
-          <p className='text-muted-foreground/40 mt-1.5 px-4 text-[10px] sm:px-0'>
+          <p className='text-muted-foreground mt-1.5 px-4 text-[10px] sm:px-0'>
             {t('Prices shown per')} {tokenUnitLabel} tokens
           </p>
         )}
@@ -1269,11 +1269,11 @@ function GroupPriceRow(props: {
 }) {
   return (
     <div className='flex items-baseline justify-between gap-4'>
-      <span className='text-muted-foreground/80 text-xs'>{props.label}</span>
+      <span className='text-muted-foreground text-xs'>{props.label}</span>
       <span className='text-foreground font-mono text-sm tabular-nums'>
         {props.value}
         {props.unit && (
-          <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
+          <span className='text-muted-foreground ml-1 text-xs font-normal'>
             / {props.unit}
           </span>
         )}
@@ -1411,7 +1411,7 @@ function GroupChannelCards(props: {
 
               {hasPerf && perf.series.length > 0 && (
                 <div className='mt-2.5'>
-                  <div className='text-muted-foreground/60 mb-1 text-[10px] font-medium tracking-wider uppercase'>
+                  <div className='text-muted-foreground mb-1 text-[10px] font-medium tracking-wider uppercase'>
                     {t('Availability (last 24h)')}
                   </div>
                   <UptimeSparkline
@@ -1463,7 +1463,7 @@ function GroupChannelCards(props: {
         })}
       </div>
       {isTokenBased && (
-        <p className='text-muted-foreground/40 mt-2 text-[10px]'>
+        <p className='text-muted-foreground mt-2 text-[10px]'>
           {t('Prices shown per')} {tokenUnitLabel} tokens
         </p>
       )}

@@ -76,14 +76,14 @@ function LoadingStep({
       )}
       {status === 'done' && <CheckCircle2 className='text-success h-5 w-5' />}
       {status === 'pending' && (
-        <Circle className='text-muted-foreground/40 h-5 w-5' />
+        <Circle className='text-muted-foreground h-5 w-5' />
       )}
       <span
         className={cn(
           'text-sm',
           status === 'loading' && 'text-foreground font-medium',
           status === 'done' && 'text-muted-foreground',
-          status === 'pending' && 'text-muted-foreground/60'
+          status === 'pending' && 'text-muted-foreground'
         )}
       >
         {label}

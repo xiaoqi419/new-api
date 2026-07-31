@@ -57,22 +57,22 @@ const FILLED_TAG: Record<StatusVariant, string> = {
   success: 'border-success/25 bg-success/15 text-success',
   green: 'border-success/25 bg-success/15 text-success',
   'light-green': 'border-success/25 bg-success/15 text-success',
-  lime: 'border-chart-3/25 bg-chart-3/15 text-chart-3',
+  lime: 'border-chart-3/25 bg-chart-3/15 text-tag-3',
   warning: 'border-warning/25 bg-warning/15 text-warning',
   amber: 'border-warning/25 bg-warning/15 text-warning',
   yellow: 'border-warning/25 bg-warning/15 text-warning',
   orange: 'border-warning/25 bg-warning/15 text-warning',
   danger: 'border-destructive/25 bg-destructive/15 text-destructive',
   red: 'border-destructive/25 bg-destructive/15 text-destructive',
-  pink: 'border-chart-5/25 bg-chart-5/15 text-chart-5',
+  pink: 'border-chart-5/25 bg-chart-5/15 text-tag-5',
   info: 'border-info/25 bg-info/15 text-info',
   'light-blue': 'border-info/25 bg-info/15 text-info',
-  blue: 'border-chart-1/25 bg-chart-1/15 text-chart-1',
-  indigo: 'border-chart-1/25 bg-chart-1/15 text-chart-1',
-  cyan: 'border-chart-2/25 bg-chart-2/15 text-chart-2',
-  teal: 'border-chart-2/25 bg-chart-2/15 text-chart-2',
-  purple: 'border-chart-4/25 bg-chart-4/15 text-chart-4',
-  violet: 'border-chart-4/25 bg-chart-4/15 text-chart-4',
+  blue: 'border-chart-1/25 bg-chart-1/15 text-tag-1',
+  indigo: 'border-chart-1/25 bg-chart-1/15 text-tag-1',
+  cyan: 'border-chart-2/25 bg-chart-2/15 text-tag-2',
+  teal: 'border-chart-2/25 bg-chart-2/15 text-tag-2',
+  purple: 'border-chart-4/25 bg-chart-4/15 text-tag-4',
+  violet: 'border-chart-4/25 bg-chart-4/15 text-tag-4',
   neutral: 'border-neutral/30 bg-neutral/15 text-neutral',
   grey: 'border-neutral/30 bg-neutral/15 text-neutral',
 }
@@ -150,7 +150,7 @@ export function TaskTypeTag({ action }: { action: string }) {
 
 export function TaskPlatformTag({ platform }: { platform: string }) {
   if (!platform) {
-    return <span className='text-muted-foreground/60 text-xs'>-</span>
+    return <span className='text-muted-foreground text-xs'>-</span>
   }
   return (
     <TaskTag
@@ -196,21 +196,21 @@ export function TaskDurationTag({ log }: { log: TaskLog }) {
   if (isActive && log.submit_time) {
     const elapsed = Math.max(0, nowSec - log.submit_time)
     return (
-      <span className='border-chart-1/25 bg-chart-1/15 text-chart-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs tabular-nums'>
+      <span className='border-chart-1/25 bg-chart-1/15 text-tag-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs tabular-nums'>
         <Clock className='size-3' />
         {formatElapsedSeconds(elapsed)}
       </span>
     )
   }
 
-  return <span className='text-muted-foreground/60 text-xs'>-</span>
+  return <span className='text-muted-foreground text-xs'>-</span>
 }
 
 /** Real progress bar with a trailing percentage (amber when the task failed). */
 export function TaskProgressBar({ log }: { log: TaskLog }) {
   const raw = log.progress
   if (!raw) {
-    return <span className='text-muted-foreground/60 text-xs'>-</span>
+    return <span className='text-muted-foreground text-xs'>-</span>
   }
   const numeric = raw.replace('%', '')
   if (Number.isNaN(Number(numeric))) {

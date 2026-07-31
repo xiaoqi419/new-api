@@ -26,9 +26,9 @@ import type { DocBlock, DocParamRow } from '../doc-data'
 
 const METHOD_CLASSES: Record<string, string> = {
   GET: 'bg-success/15 text-success',
-  POST: 'bg-chart-1/15 text-chart-1',
+  POST: 'bg-chart-1/15 text-tag-1',
   PUT: 'bg-warning/15 text-warning',
-  PATCH: 'bg-chart-4/15 text-chart-4',
+  PATCH: 'bg-chart-4/15 text-tag-4',
   DELETE: 'bg-destructive/15 text-destructive',
 }
 

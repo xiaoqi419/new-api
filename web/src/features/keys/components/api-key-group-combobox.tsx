@@ -72,7 +72,7 @@ function getRatioBadgeClassName(ratio: ApiKeyGroupOption['ratio']) {
     return 'border-warning/25 bg-warning/10 text-warning'
   }
   if (ratio > 1) {
-    return 'border-chart-1/25 bg-chart-1/10 text-chart-1'
+    return 'border-chart-1/25 bg-chart-1/10 text-tag-1'
   }
   return 'border-success/25 bg-success/10 text-success'
 }
