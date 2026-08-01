@@ -256,7 +256,7 @@ export function Pricing() {
                     className={cn(
                       'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                       modalityFilter === value
-                        ? 'border-foreground bg-foreground text-background'
+                        ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-border/70 text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     )}
                   >

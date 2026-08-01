@@ -39,7 +39,8 @@ export function ModelBillingModeBadge(props: ModelBillingModeBadgeProps) {
     variant = 'warning'
   } else if (isTokenBasedModel(props.model)) {
     label = t('Token-based')
-    variant = 'info'
+    // 计费方式是三分类,不是语义状态,所以走分类色号而不是 --info。
+    variant = 'blue'
   }
 
   return (

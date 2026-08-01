@@ -102,7 +102,7 @@ function FilterChip(props: {
       className={cn(
         'group inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-all',
         props.active
-          ? 'border-foreground/30 bg-foreground/5 text-foreground shadow-sm'
+          ? 'border-primary/30 bg-accent text-accent-foreground shadow-sm'
           : 'border-border/70 bg-background text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'
       )}
       title={props.option.label}
@@ -168,7 +168,7 @@ function VendorRow(props: {
       className={cn(
         'group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
         props.active
-          ? 'bg-foreground/5 text-foreground font-medium'
+          ? 'bg-accent text-accent-foreground font-medium'
           : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
       )}
     >

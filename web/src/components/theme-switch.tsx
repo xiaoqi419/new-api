@@ -27,20 +27,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
 import { cn } from '@/lib/utils'
 
 export function ThemeSwitch() {
   const { t } = useTranslation()
-  const { theme, setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const { customization } = useThemeCustomization()
 
-  /* Update theme-color meta tag
-   * when theme is updated */
+  /* 同步 meta[theme-color](手机浏览器地址栏底色)。直接读页面实际背景色,而不是
+   * 写死一组黑白:配色方案会改写 --background,写死值会跟页面差出一截。依赖用
+   * resolvedTheme 而不是 theme,「跟随系统」时也才能跟着变。 */
   useEffect(() => {
-    const themeColor = theme === 'dark' ? '#020817' : '#fff'
     const metaThemeColor = document.querySelector("meta[name='theme-color']")
-    if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor)
-  }, [theme])
+    if (!metaThemeColor) return
+    const pageColor = getComputedStyle(document.body).backgroundColor
+    if (pageColor) metaThemeColor.setAttribute('content', pageColor)
+  }, [resolvedTheme, customization.preset])
 
   return (
     <DropdownMenu modal={false}>

@@ -98,7 +98,8 @@ const DEFAULT_FLOW_SANKEY_LABELS: FlowSankeyLabels = {
   share: 'Share',
 }
 
-const DEFAULT_FLOW_CHART_COLOR = '#1664FF'
+// 兜底色跟随仪表盘序列色的第一档,不再是一抹脱离主题的蓝。
+const DEFAULT_FLOW_CHART_COLOR = getDashboardChartColors(1)[0]
 
 const FLOW_NODE_KINDS: readonly FlowNodeKind[] = [
   'user',
@@ -1210,7 +1211,8 @@ export function buildFlowSankeySpec(
       limit: 220,
       interactive: false,
       style: {
-        fill: '#475569',
+        /* 不写 fill:节点标签落在画布上,原先写死的板岩灰在浅粉画布上偏冷、在
+         * 深色主题下更是几乎看不见。交给 VChart 已注册的明/暗主题取色。 */
         fontSize: 11,
         fontWeight: 600,
       },

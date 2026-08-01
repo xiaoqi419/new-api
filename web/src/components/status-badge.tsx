@@ -55,7 +55,9 @@ export const dotColorMap = {
   green: 'bg-success',
   grey: 'bg-neutral',
   indigo: 'bg-chart-1',
-  'light-blue': 'bg-info',
+  /* 色名是历史遗留的分类槽位,一律映射到暖色分类色号;--info 只留给
+   * 「提示 / 进行中」这类真正的语义状态,不再被当成一种蓝色来用。 */
+  'light-blue': 'bg-chart-2',
   'light-green': 'bg-success/70',
   lime: 'bg-chart-3',
   orange: 'bg-warning',
@@ -79,7 +81,7 @@ export const textColorMap = {
   green: 'text-success',
   grey: 'text-muted-foreground',
   indigo: 'text-tag-1',
-  'light-blue': 'text-info',
+  'light-blue': 'text-tag-2',
   'light-green': 'text-success',
   lime: 'text-tag-3',
   orange: 'text-warning',

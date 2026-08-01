@@ -66,7 +66,7 @@ const FILLED_TAG: Record<StatusVariant, string> = {
   red: 'border-destructive/25 bg-destructive/15 text-destructive',
   pink: 'border-chart-5/25 bg-chart-5/15 text-tag-5',
   info: 'border-info/25 bg-info/15 text-info',
-  'light-blue': 'border-info/25 bg-info/15 text-info',
+  'light-blue': 'border-chart-2/25 bg-chart-2/15 text-tag-2',
   blue: 'border-chart-1/25 bg-chart-1/15 text-tag-1',
   indigo: 'border-chart-1/25 bg-chart-1/15 text-tag-1',
   cyan: 'border-chart-2/25 bg-chart-2/15 text-tag-2',

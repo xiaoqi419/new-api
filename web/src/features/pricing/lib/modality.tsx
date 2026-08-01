@@ -31,11 +31,14 @@ import type { Modality } from '../types'
 
 const MODALITY_META: Record<Modality, { icon: LucideIcon; className: string }> =
   {
+    /* 五种模态是分类,一律走分类色号:原来借用 warning / destructive / info
+     * 会让「有音频」看着像警告、「有视频」看着像出错,而 info 的蓝在粉色主题里
+     * 也很跳。 */
     text: { icon: Type, className: 'text-neutral' },
     image: { icon: ImageIcon, className: 'text-tag-4' },
-    audio: { icon: AudioLines, className: 'text-warning' },
-    video: { icon: Video, className: 'text-destructive' },
-    file: { icon: FileText, className: 'text-info' },
+    audio: { icon: AudioLines, className: 'text-tag-5' },
+    video: { icon: Video, className: 'text-tag-3' },
+    file: { icon: FileText, className: 'text-tag-2' },
   }
 
 const MODALITY_ORDER: Modality[] = ['text', 'image', 'audio', 'video', 'file']

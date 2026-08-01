@@ -71,7 +71,7 @@ export const avatarColorMap: Record<SemanticColor, string> = {
   lime: 'bg-chart-3/10 text-tag-3',
   'light-green': 'bg-success/10 text-success',
   teal: 'bg-chart-2/10 text-tag-2',
-  'light-blue': 'bg-info/10 text-info',
+  'light-blue': 'bg-chart-2/10 text-tag-2',
   indigo: 'bg-chart-1/10 text-tag-1',
   violet: 'bg-chart-4/10 text-tag-4',
   grey: 'bg-muted text-muted-foreground',

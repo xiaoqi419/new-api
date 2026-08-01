@@ -36,7 +36,8 @@ function getGroupRatioClassName(ratio: number): string {
     return 'bg-warning/10 text-warning'
   }
   if (ratio < 1) {
-    return 'bg-info/10 text-info'
+    // 折扣分组用「更便宜=绿」与「加价=橙」配对,比原来的蓝色更表意。
+    return 'bg-success/10 text-success'
   }
   return 'bg-muted text-muted-foreground'
 }

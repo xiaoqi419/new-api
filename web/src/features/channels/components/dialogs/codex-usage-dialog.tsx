@@ -48,7 +48,11 @@ import {
   RotateCcw,
   AlertTriangle,
 } from '@/components/icons'
-import { StatusBadge, type StatusBadgeProps } from '@/components/status-badge'
+import {
+  StatusBadge,
+  type StatusBadgeProps,
+  textColorMap,
+} from '@/components/status-badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -418,33 +422,6 @@ function formatLabelValue(label: string, value: string) {
   return label.endsWith('：') ? `${label}${value}` : `${label} ${value}`
 }
 
-const percentTextClassName: Record<
-  NonNullable<StatusBadgeProps['variant']>,
-  string
-> = {
-  success: 'text-success',
-  warning: 'text-warning',
-  danger: 'text-destructive',
-  info: 'text-info',
-  neutral: 'text-muted-foreground',
-  purple: 'text-tag-4',
-  amber: 'text-warning',
-  blue: 'text-tag-1',
-  cyan: 'text-tag-2',
-  green: 'text-success',
-  grey: 'text-muted-foreground',
-  indigo: 'text-tag-1',
-  'light-blue': 'text-info',
-  'light-green': 'text-success',
-  lime: 'text-tag-3',
-  orange: 'text-warning',
-  pink: 'text-tag-5',
-  red: 'text-destructive',
-  teal: 'text-tag-2',
-  violet: 'text-tag-4',
-  yellow: 'text-warning',
-}
-
 type RateLimitWindowProps = {
   title: string
   window?: CodexRateLimitWindow | null
@@ -477,7 +454,7 @@ function RateLimitWindow(props: RateLimitWindowProps) {
             <div
               className={cn(
                 'text-xl leading-none font-semibold tabular-nums',
-                percentTextClassName[variant ?? 'neutral']
+                textColorMap[variant ?? 'neutral']
               )}
             >
               {hasData ? `${percent}%` : '-'}

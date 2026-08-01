@@ -16,8 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { dataScheme as vchartDefaultDataScheme } from '@visactor/vchart/esm/theme/color-scheme/builtin/default'
-
 import { MAX_CHART_TREND_POINTS } from '@/features/dashboard/constants'
 import type {
   QuotaDataItem,
@@ -39,14 +37,33 @@ type TooltipLineItem = {
   shapeSize?: number
 }
 
-export function getDashboardChartColors(domainLength: number): string[] {
-  const scheme =
-    vchartDefaultDataScheme.find(
-      (item) => !item.maxDomainLength || domainLength <= item.maxDomainLength
-    ) ?? vchartDefaultDataScheme[vchartDefaultDataScheme.length - 1]
+/* 图表序列色。VChart 走 canvas 渲染拿不到 var(),所以只能给原始色值——原先直接
+ * 用 VChart 自带的蓝绿黄默认盘,和粉色主题完全脱节。
+ *
+ * 这里是 5 个暖色相(玫 352 / 珊瑚 25 / 紫 285 / 琥珀 75 / 品红 320)× 2 个明度环
+ * (0.66 / 0.54)交错排列:相邻序列同时差色相和明度,灰度打印或色觉障碍下也能分。
+ * 两环的明度是解出来的——10 个色号对浅粉画布最差 3.04、对深色画布最差 3.23,
+ * 都满足图形元素 3:1。再亮一档(0.67/0.53)就会掉到 3 以下。 */
+const DASHBOARD_SERIES_COLORS = [
+  '#d9639c',
+  '#bd3838',
+  '#8a84e4',
+  '#9a6100',
+  '#ba71cb',
+  '#b33979',
+  '#e3645e',
+  '#685ec1',
+  '#c38300',
+  '#9649a7',
+]
 
-  return scheme.scheme.filter(
-    (color): color is string => typeof color === 'string'
+export function getDashboardChartColors(domainLength: number): string[] {
+  if (domainLength <= DASHBOARD_SERIES_COLORS.length) {
+    return DASHBOARD_SERIES_COLORS.slice(0, Math.max(domainLength, 1))
+  }
+  return Array.from(
+    { length: domainLength },
+    (_, i) => DASHBOARD_SERIES_COLORS[i % DASHBOARD_SERIES_COLORS.length]
   )
 }
 
@@ -265,7 +282,7 @@ export function processChartData(
   const modelColorRange = getDashboardChartColors(modelColorDomain.length)
   const otherColor = modelColorRange[modelColorDomain.indexOf(otherLabel)]
   const otherTooltipColor =
-    typeof otherColor === 'string' ? otherColor : '#FF8A00'
+    typeof otherColor === 'string' ? otherColor : DASHBOARD_SERIES_COLORS[0]
   const modelColor = {
     type: 'ordinal',
     domain: modelColorDomain,
@@ -688,19 +705,6 @@ export function processChartData(
   }
 }
 
-const USER_COLORS = [
-  '#5B8FF9',
-  '#5AD8A6',
-  '#F6BD16',
-  '#E8684A',
-  '#6DC8EC',
-  '#9270CA',
-  '#FF9D4D',
-  '#269A99',
-  '#FF99C3',
-  '#5D7092',
-]
-
 export function processUserChartData(
   data: QuotaDataItem[],
   timeGranularity: TimeGranularity = 'day',
@@ -727,7 +731,7 @@ export function processUserChartData(
         subtext: tt('No data available'),
       },
       legends: { visible: false },
-      color: { type: 'ordinal', range: USER_COLORS },
+      color: { type: 'ordinal', range: DASHBOARD_SERIES_COLORS },
       background: { fill: 'transparent' },
     },
     spec_user_trend: {
@@ -742,7 +746,7 @@ export function processUserChartData(
         subtext: tt('No data available'),
       },
       legends: { visible: true, selectMode: 'single' },
-      color: { type: 'ordinal', range: USER_COLORS },
+      color: { type: 'ordinal', range: DASHBOARD_SERIES_COLORS },
       point: { visible: false },
       background: { fill: 'transparent' },
     },
@@ -772,7 +776,7 @@ export function processUserChartData(
 
   const userColorMap = topUsers.reduce<Record<string, string>>(
     (acc, user, i) => {
-      acc[user] = USER_COLORS[i % USER_COLORS.length]
+      acc[user] = DASHBOARD_SERIES_COLORS[i % DASHBOARD_SERIES_COLORS.length]
       return acc
     },
     {}
