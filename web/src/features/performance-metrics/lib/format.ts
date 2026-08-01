@@ -62,7 +62,8 @@ export function getSuccessRateLevel(rate: number): SuccessRateLevel {
 
 const SUCCESS_RATE_TEXT_CLASS: Record<SuccessRateLevel, string> = {
   excellent: 'text-success',
-  good: 'text-success/80',
+  // 不带透明度：--success/80 在最深承载面上只有 3.6:1。档位差已经由数字本身表达。
+  good: 'text-success',
   warning: 'text-warning',
   critical: 'text-destructive',
   unknown: 'text-muted-foreground',
@@ -76,13 +77,27 @@ const SUCCESS_RATE_DOT_CLASS: Record<SuccessRateLevel, string> = {
   unknown: 'bg-muted-foreground',
 }
 
-// Hex colors for non-CSS contexts (e.g. chart libraries that need raw values).
-const SUCCESS_RATE_HEX_COLOR: Record<SuccessRateLevel, string> = {
-  excellent: '#008156', // --success
-  good: '#5ba483', // --success lightened
-  warning: '#a25e0c', // --warning
-  critical: '#c9222b', // --destructive
-  unknown: '#6b5961', // --muted-foreground
+/* VChart 走 canvas 渲染，拿不到 var()，只能给原始色值。因此这里必须按主题分两套，
+ * 并跟 web/src/styles/theme.css 里的语义 token 保持同步——之前只存了一套亮色值，
+ * 暗色图表实际画的是亮色描点。 */
+const SUCCESS_RATE_HEX_COLOR: Record<
+  'light' | 'dark',
+  Record<SuccessRateLevel, string>
+> = {
+  light: {
+    excellent: '#006c43', // --success
+    good: '#006c43', // --success
+    warning: '#8f4c00', // --warning
+    critical: '#bc0c20', // --destructive
+    unknown: '#5b4a52', // --muted-foreground
+  },
+  dark: {
+    excellent: '#1ec189', // --success
+    good: '#1ec189', // --success
+    warning: '#f5a420', // --warning
+    critical: '#ff7a73', // --destructive
+    unknown: '#b5aaaf', // --muted-foreground
+  },
 }
 
 export function getSuccessRateTextClass(rate: number): string {
@@ -93,6 +108,13 @@ export function getSuccessRateDotClass(rate: number): string {
   return SUCCESS_RATE_DOT_CLASS[getSuccessRateLevel(rate)]
 }
 
-export function getSuccessRateColor(rate: number): string {
-  return SUCCESS_RATE_HEX_COLOR[getSuccessRateLevel(rate)]
+export function getSuccessRateColor(
+  rate: number,
+  resolvedTheme: string
+): string {
+  const palette =
+    resolvedTheme === 'dark'
+      ? SUCCESS_RATE_HEX_COLOR.dark
+      : SUCCESS_RATE_HEX_COLOR.light
+  return palette[getSuccessRateLevel(rate)]
 }

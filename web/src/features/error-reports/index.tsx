@@ -53,7 +53,7 @@ const RANGE_PRESETS = [
 ] as const
 
 const CHART_CONFIG = {
-  count: { label: 'Errors', color: '#ef4444' },
+  count: { label: 'Errors', color: 'var(--destructive)' },
 } satisfies ChartConfig
 
 const AUTO_REFRESH_MS = 5 * 60 * 1000

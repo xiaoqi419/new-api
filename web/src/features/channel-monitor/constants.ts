@@ -22,9 +22,11 @@ export const MONITOR_DAYS_OPTIONS = [7, 15, 30] as const
 
 export const MONITOR_DEFAULT_DAYS = 7
 
+/* 同一组色号既做状态点填充，也做成功率数字的文字色，所以必须用正文级的语义
+ * token：原来写死的 green-500 当文字用时在浅底上只有 2.2:1。 */
 export const MONITOR_HEALTH_COLORS: Record<MonitorStatus, string> = {
-  normal: '#22c55e',
-  degraded: '#eab308',
-  abnormal: '#ef4444',
+  normal: 'var(--success)',
+  degraded: 'var(--warning)',
+  abnormal: 'var(--destructive)',
   nodata: 'var(--muted)',
 }

@@ -137,7 +137,7 @@ function MobileUserProfile({ user, onNavigate }: MobileUserProfileProps) {
         <Button
           variant='ghost'
           onClick={() => setSignOutOpen(true)}
-          className='text-destructive hover:text-destructive/80 h-auto w-full justify-start gap-2.5 p-2.5 hover:bg-transparent'
+          className='text-destructive hover:text-destructive hover:bg-destructive/10 h-auto w-full justify-start gap-2.5 p-2.5'
         >
           <LogOut className='size-4' />
           {t('Sign out')}

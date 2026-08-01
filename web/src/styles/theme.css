@@ -171,13 +171,16 @@ For commercial licensing, please contact support@quantumnous.com
   --overview-accent-1: oklch(0.72 0.15 352);
   --overview-accent-2: oklch(0.7 0.14 320);
   --overview-accent-3: oklch(0.72 0.14 25);
-  --sidebar: oklch(0.952 0.03 350);
+  /* 侧栏（顶栏共用同一色号）走"白里透粉"：比画布深一档足以读成一块独立面板，
+   * 但不能再浓——L 再低就变成压手的糖粉色。选中胶囊与分隔线同步跟着这一档，
+   * 否则胶囊会比面板重太多。 */
+  --sidebar: oklch(0.966 0.022 350);
   --sidebar-foreground: oklch(0.22 0.022 350);
   --sidebar-primary: oklch(0.55 0.15 352);
   --sidebar-primary-foreground: oklch(0.99 0.005 352);
-  --sidebar-accent: oklch(0.894 0.058 352);
+  --sidebar-accent: oklch(0.915 0.048 352);
   --sidebar-accent-foreground: oklch(0.25 0.05 352);
-  --sidebar-border: oklch(0.918 0.03 350);
+  --sidebar-border: oklch(0.932 0.024 350);
   --sidebar-ring: oklch(0.6 0.17 352);
   --skeleton-base: oklch(0.955 0.02 350);
   --skeleton-highlight: oklch(0.985 0.01 350);
