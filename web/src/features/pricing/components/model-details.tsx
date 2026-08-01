@@ -84,6 +84,7 @@ import { ModelBillingModeBadge } from './model-billing-mode-badge'
 import { ModelDetailsApi } from './model-details-api'
 import { ModelDetailsPerformance } from './model-details-performance'
 import { UptimeSparkline } from './model-details-uptime-sparkline'
+import { VideoPriceTierTable } from './video-price-tiers'
 
 // ----------------------------------------------------------------------------
 // Local UI helpers
@@ -1617,6 +1618,13 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
             {isDynamic && (
               <DynamicPricingBreakdown billingExpr={props.model.billing_expr} />
             )}
+            <VideoPriceTierTable
+              model={props.model}
+              tokenUnit={props.tokenUnit}
+              showRechargePrice={showRechargePrice}
+              priceRate={props.priceRate}
+              usdExchangeRate={props.usdExchangeRate}
+            />
             {isDynamic ? (
               <GroupPricingSection
                 model={props.model}

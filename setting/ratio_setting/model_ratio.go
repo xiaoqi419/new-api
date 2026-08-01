@@ -342,6 +342,7 @@ func InitRatioSettings() {
 	imageRatioMap.AddAll(defaultImageRatio)
 	audioRatioMap.AddAll(defaultAudioRatio)
 	audioCompletionRatioMap.AddAll(defaultAudioCompletionRatio)
+	videoPriceMap.AddAll(defaultVideoPrice)
 }
 
 func GetModelPriceMap() map[string]float64 {

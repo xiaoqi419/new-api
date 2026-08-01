@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -17,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -134,19 +136,23 @@ func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *r
 	return nil
 }
 
-// EstimateBilling 根据请求 metadata 中的输出分辨率与是否包含视频输入，返回相对基准价的计费 OtherRatio。
+// EstimateBilling 按「视频分档价格」设置把请求特征（输出分辨率、输入是否含视频、输出是否有声）
+// 折算成相对基准档的计费 OtherRatio。
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInfo) map[string]float64 {
 	req, err := relaycommon.GetTaskRequest(c)
 	if err != nil {
 		return nil
 	}
-	hasVideo := hasVideoInMetadata(req.Metadata)
 	resolution, _ := req.Metadata["resolution"].(string)
-	ratio, ok := GetVideoInputRatio(info.OriginModelName, resolution, hasVideo)
+	ratio, ok := ratio_setting.GetVideoPriceRatio(info.OriginModelName, ratio_setting.VideoRequestShape{
+		Resolution: resolution,
+		HasVideo:   hasVideoInMetadata(req.Metadata),
+		HasAudio:   generatesAudioInMetadata(req.Metadata),
+	})
 	if !ok || ratio == 1.0 {
 		return nil
 	}
-	return map[string]float64{"video_input": ratio}
+	return map[string]float64{"video_tier": ratio}
 }
 
 // BuildRequestBody converts request into Doubao specific format.
@@ -407,4 +413,20 @@ func hasVideoInMetadata(metadata map[string]interface{}) bool {
 		}
 	}
 	return false
+}
+
+// generatesAudioInMetadata 判断请求是否要求输出有声视频。上游不传该参数时默认无声，
+// 因此仅在显式为真时返回 true；字符串形态与 dto.BoolValue 的解析口径保持一致。
+func generatesAudioInMetadata(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	switch v := metadata["generate_audio"].(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(strings.TrimSpace(v), "true")
+	default:
+		return false
+	}
 }

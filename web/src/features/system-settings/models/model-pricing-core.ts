@@ -20,6 +20,7 @@ import * as z from 'zod'
 
 import { combineBillingExpr } from '@/features/pricing/lib/billing-expr'
 
+import { safeJsonParse } from '../utils/json-parser'
 import { formatPricingNumber } from './pricing-format'
 
 export const createModelPricingSchema = (t: (key: string) => string) =>
@@ -62,6 +63,183 @@ export type ModelRatioData = {
   billingMode?: PricingMode
   billingExpr?: string
   requestRuleExpr?: string
+  /** Serialized `VideoPriceTiers` entry for this model, empty when unused. */
+  videoPriceTiers?: string
+}
+
+export type VideoPriceTierDraft = {
+  id: string
+  resolution: string
+  hasVideo: boolean
+  hasAudio: boolean
+  price: string
+}
+
+export type VideoPriceDraft = {
+  enabled: boolean
+  basePrice: string
+  tiers: VideoPriceTierDraft[]
+}
+
+type VideoPriceTierJson = {
+  resolution?: string
+  has_video?: boolean
+  has_audio?: boolean
+  price?: number
+}
+
+type VideoPriceConfigJson = {
+  base_price?: number
+  tiers?: VideoPriceTierJson[]
+}
+
+export const EMPTY_VIDEO_PRICE_DRAFT: VideoPriceDraft = {
+  enabled: false,
+  basePrice: '',
+  tiers: [],
+}
+
+// Row identity has to survive reordering and deletion, so it cannot be derived
+// from the row contents (two tiers may legitimately share a price).
+let videoTierDraftSeed = 0
+
+export function createVideoPriceTierDraft(): VideoPriceTierDraft {
+  videoTierDraftSeed += 1
+  return {
+    id: `video-tier-${videoTierDraftSeed}`,
+    resolution: '',
+    hasVideo: false,
+    hasAudio: false,
+    price: '',
+  }
+}
+
+export function parseVideoPriceDraft(json?: string): VideoPriceDraft {
+  if (!json) return { ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] }
+
+  const parsed = safeJsonParse<VideoPriceConfigJson | null>(json, {
+    fallback: null,
+    silent: true,
+  })
+  if (!parsed || typeof parsed !== 'object') {
+    return { ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] }
+  }
+
+  const tiers = (Array.isArray(parsed.tiers) ? parsed.tiers : []).map(
+    (tier) => ({
+      ...createVideoPriceTierDraft(),
+      resolution: typeof tier.resolution === 'string' ? tier.resolution : '',
+      hasVideo: tier.has_video === true,
+      hasAudio: tier.has_audio === true,
+      price: formatPricingNumber(tier.price),
+    })
+  )
+
+  return {
+    enabled: true,
+    basePrice: formatPricingNumber(parsed.base_price),
+    tiers,
+  }
+}
+
+export function serializeVideoPriceDraft(draft: VideoPriceDraft): string {
+  if (!draft.enabled) return ''
+
+  const basePrice = toNumberOrNull(draft.basePrice)
+  if (basePrice === null || basePrice <= 0) return ''
+
+  const tiers = draft.tiers.reduce<VideoPriceTierJson[]>((acc, tier) => {
+    const price = toNumberOrNull(tier.price)
+    if (price === null || price <= 0) return acc
+
+    const entry: VideoPriceTierJson = {}
+    const resolution = tier.resolution.trim()
+    if (resolution) entry.resolution = resolution
+    if (tier.hasVideo) entry.has_video = true
+    if (tier.hasAudio) entry.has_audio = true
+    entry.price = price
+    acc.push(entry)
+    return acc
+  }, [])
+
+  if (tiers.length === 0) return ''
+  return JSON.stringify({ base_price: basePrice, tiers })
+}
+
+/**
+ * Canonical form of a stored video tier config, used to compare a saved value
+ * against a freshly serialized draft. The backend marshals the same data with
+ * its own key order and spacing, so comparing raw strings would report an
+ * untouched model as edited.
+ */
+export function canonicalizeVideoPriceTiers(json?: string): string {
+  const parsed = safeJsonParse<VideoPriceConfigJson | null>(json ?? '', {
+    fallback: null,
+    silent: true,
+  })
+  if (!parsed || typeof parsed !== 'object') return ''
+
+  const basePrice = toNumberOrNull(parsed.base_price)
+  if (basePrice === null || basePrice <= 0) return ''
+
+  const tiers = (Array.isArray(parsed.tiers) ? parsed.tiers : []).reduce<
+    VideoPriceTierJson[]
+  >((acc, tier) => {
+    const price = toNumberOrNull(tier?.price)
+    if (price === null || price <= 0) return acc
+
+    const entry: VideoPriceTierJson = {}
+    const resolution =
+      typeof tier?.resolution === 'string' ? tier.resolution.trim() : ''
+    if (resolution) entry.resolution = resolution
+    if (tier?.has_video === true) entry.has_video = true
+    if (tier?.has_audio === true) entry.has_audio = true
+    entry.price = price
+    acc.push(entry)
+    return acc
+  }, [])
+
+  if (tiers.length === 0) return ''
+  return JSON.stringify({ base_price: basePrice, tiers })
+}
+
+/**
+ * Mirrors the backend validation in `validateVideoPriceConfig` so admins get a
+ * localized message before the whole option is rejected server-side.
+ */
+export function getVideoPriceDraftError(draft: VideoPriceDraft): string | null {
+  if (!draft.enabled || draft.tiers.length === 0) return null
+
+  const basePrice = toNumberOrNull(draft.basePrice)
+  if (basePrice === null || basePrice <= 0) {
+    return 'Video tier pricing needs a base price greater than 0.'
+  }
+
+  const seen = new Set<string>()
+  for (const tier of draft.tiers) {
+    const price = toNumberOrNull(tier.price)
+    if (price === null || price <= 0) {
+      return 'Every video tier price must be greater than 0.'
+    }
+    const key = `${tier.resolution.trim().toLowerCase()}|${tier.hasVideo}|${tier.hasAudio}`
+    if (seen.has(key)) {
+      return 'Two video tiers share the same resolution and input/output conditions.'
+    }
+    seen.add(key)
+  }
+
+  return null
+}
+
+export function getVideoTierRatioLabel(
+  basePrice: string,
+  price: string
+): string {
+  const baseNumber = toNumberOrNull(basePrice)
+  const priceNumber = toNumberOrNull(price)
+  if (baseNumber === null || baseNumber <= 0 || priceNumber === null) return ''
+  // 只作为可读性提示,截到 4 位小数；参与计费的仍是后端按原价现算的比值。
+  return `×${Number((priceNumber / baseNumber).toFixed(4))}`
 }
 
 export type PreviewRow = {
@@ -215,6 +393,7 @@ export function buildPreviewRows(
   promptPrice: string,
   lanePrices: Record<LaneKey, string>,
   laneEnabled: Record<LaneKey, boolean>,
+  videoPrice: VideoPriceDraft,
   t: (key: string) => string
 ): PreviewRow[] {
   if (mode === 'tiered_expr') {
@@ -292,6 +471,14 @@ export function buildPreviewRows(
       value:
         laneEnabled.audioOutput && lanePrices.audioOutput
           ? `$${lanePrices.audioOutput}`
+          : t('Empty'),
+    },
+    {
+      key: 'videoPriceTiers',
+      label: t('Video tier pricing'),
+      value:
+        videoPrice.enabled && videoPrice.tiers.length > 0
+          ? `${videoPrice.tiers.length} ${t('tiers')}`
           : t('Empty'),
     },
   ]

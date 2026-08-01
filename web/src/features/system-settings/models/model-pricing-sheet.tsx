@@ -66,22 +66,28 @@ import { cn } from '@/lib/utils'
 import {
   EMPTY_LANE_ENABLED,
   EMPTY_LANE_PRICES,
+  EMPTY_VIDEO_PRICE_DRAFT,
   buildPreviewRows,
   createInitialLaneState,
   createModelPricingSchema,
+  getVideoPriceDraftError,
   hasValue,
   laneConfigs,
   numericDraftRegex,
+  parseVideoPriceDraft,
   ratioFieldByLane,
+  serializeVideoPriceDraft,
   toNumberOrNull,
   type LaneKey,
   type ModelPricingFormValues,
   type ModelRatioData,
   type PricingMode,
+  type VideoPriceDraft,
 } from './model-pricing-core'
 import { PriceInput, PriceLane } from './model-pricing-inputs'
 import { formatPricingNumber } from './pricing-format'
 import { TieredPricingEditor } from './tiered-pricing-editor'
+import { VideoPriceTierEditor } from './video-price-tier-editor'
 
 export type { ModelRatioData } from './model-pricing-core'
 
@@ -153,6 +159,9 @@ export const ModelPricingEditorPanel = forwardRef<
   const [laneEnabled, setLaneEnabled] = useState<Record<LaneKey, boolean>>({
     ...EMPTY_LANE_ENABLED,
   })
+  const [videoPriceDraft, setVideoPriceDraft] = useState<VideoPriceDraft>(
+    () => ({ ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] })
+  )
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
   const [editorReloadToken, setEditorReloadToken] = useState(0)
@@ -214,6 +223,7 @@ export const ModelPricingEditorPanel = forwardRef<
       setRequestRuleExpr('')
     }
 
+    setVideoPriceDraft(parseVideoPriceDraft(editData?.videoPriceTiers))
     setPromptPrice(nextLaneState.promptPrice)
     setLanePrices(nextLaneState.prices)
     setLaneEnabled(nextLaneState.enabled)
@@ -351,6 +361,7 @@ export const ModelPricingEditorPanel = forwardRef<
         promptPrice,
         lanePrices,
         laneEnabled,
+        videoPriceDraft,
         t
       ),
     [
@@ -361,9 +372,16 @@ export const ModelPricingEditorPanel = forwardRef<
       promptPrice,
       requestRuleExpr,
       t,
+      videoPriceDraft,
       watchedValues,
     ]
   )
+
+  const videoPriceError = useMemo(() => {
+    if (pricingMode !== 'per-token') return null
+    const errorKey = getVideoPriceDraftError(videoPriceDraft)
+    return errorKey ? t(errorKey) : null
+  }, [pricingMode, t, videoPriceDraft])
 
   const warnings = useMemo(() => {
     const nextWarnings: string[] = []
@@ -407,8 +425,18 @@ export const ModelPricingEditorPanel = forwardRef<
       nextWarnings.push(t('Audio output price requires an audio input price.'))
     }
 
+    if (videoPriceError) nextWarnings.push(videoPriceError)
+
     return nextWarnings
-  }, [editData, laneEnabled, lanePrices, pricingMode, promptPrice, t])
+  }, [
+    editData,
+    laneEnabled,
+    lanePrices,
+    pricingMode,
+    promptPrice,
+    t,
+    videoPriceError,
+  ])
 
   const validatePricingValues = useCallback(() => {
     if (
@@ -435,8 +463,18 @@ export const ModelPricingEditorPanel = forwardRef<
       return false
     }
 
+    if (videoPriceError) return false
+
     return true
-  }, [form, laneEnabled, lanePrices, pricingMode, promptPrice, t])
+  }, [
+    form,
+    laneEnabled,
+    lanePrices,
+    pricingMode,
+    promptPrice,
+    t,
+    videoPriceError,
+  ])
 
   const buildSubmitData = useCallback(
     (values: ModelPricingFormValues) => {
@@ -451,6 +489,10 @@ export const ModelPricingEditorPanel = forwardRef<
         imageRatio: values.imageRatio || '',
         audioRatio: values.audioRatio || '',
         audioCompletionRatio: values.audioCompletionRatio || '',
+        videoPriceTiers:
+          pricingMode === 'per-token'
+            ? serializeVideoPriceDraft(videoPriceDraft)
+            : '',
       }
 
       if (pricingMode === 'tiered_expr') {
@@ -460,7 +502,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
       return data
     },
-    [billingExpr, pricingMode, requestRuleExpr]
+    [billingExpr, pricingMode, requestRuleExpr, videoPriceDraft]
   )
 
   useImperativeHandle(
@@ -595,6 +637,12 @@ export const ModelPricingEditorPanel = forwardRef<
                           )
                         })}
                       </div>
+
+                      <VideoPriceTierEditor
+                        draft={videoPriceDraft}
+                        errorMessage={videoPriceError}
+                        onChange={setVideoPriceDraft}
+                      />
                     </FieldGroup>
                   </TabsContent>
 
