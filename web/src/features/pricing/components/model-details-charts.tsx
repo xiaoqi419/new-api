@@ -337,10 +337,7 @@ export function ThroughputBarChart(props: {
   const { textColor, gridColor, seriesColor } =
     getChartThemeTokens(resolvedTheme)
   const { customization } = useThemeCustomization()
-  const barRadius = useThemeRadiusPx(
-    '--radius-sm',
-    `${customization.preset}:${customization.radius}`
-  )
+  const barRadius = useThemeRadiusPx('--radius-sm', customization.radius)
 
   const filtered = useMemo(
     () => props.rows.filter((r) => r.throughput_tps > 0),

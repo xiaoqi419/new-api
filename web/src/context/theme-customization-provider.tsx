@@ -33,12 +33,10 @@ import {
   resolveThemeFont,
   THEME_COOKIE_KEYS,
   THEME_FONT_VALUES,
-  THEME_PRESET_VALUES,
   THEME_RADIUS_VALUES,
   THEME_SCALE_VALUES,
   type ThemeCustomization,
   type ThemeFont,
-  type ThemePreset,
   type ThemeRadius,
   type ThemeScale,
 } from '@/lib/theme-customization'
@@ -52,32 +50,6 @@ function readCookie<T extends string>(
 ): T {
   const value = getCookie(name)
   return value && allowed.has(value as T) ? (value as T) : fallback
-}
-
-// Site-wide default preset chosen by the admin, delivered via `/api/status`
-// and cached in localStorage by `useStatus`. Read synchronously here so the
-// admin default applies on first paint (no flash) when the user has not
-// picked their own preset. Falls back to the hard default until a status
-// payload has been cached.
-function readAdminDefaultPreset(): ThemePreset {
-  try {
-    if (typeof window === 'undefined') {
-      return DEFAULT_THEME_CUSTOMIZATION.preset
-    }
-    const saved = window.localStorage.getItem('status')
-    if (!saved) return DEFAULT_THEME_CUSTOMIZATION.preset
-    const parsed = JSON.parse(saved) as { default_theme_preset?: unknown }
-    const value = parsed?.default_theme_preset
-    if (
-      typeof value === 'string' &&
-      THEME_PRESET_VALUES.has(value as ThemePreset)
-    ) {
-      return value as ThemePreset
-    }
-  } catch {
-    /* empty */
-  }
-  return DEFAULT_THEME_CUSTOMIZATION.preset
 }
 
 function applyAttribute(name: string, value: string | null) {
@@ -94,7 +66,6 @@ function applyAttribute(name: string, value: string | null) {
 type ThemeCustomizationContextType = {
   defaults: ThemeCustomization
   customization: ThemeCustomization
-  setPreset: (preset: ThemePreset) => void
   setFont: (font: ThemeFont) => void
   setRadius: (radius: ThemeRadius) => void
   setScale: (scale: ThemeScale) => void
@@ -109,7 +80,6 @@ type ThemeCustomizationContextType = {
 const FALLBACK_CONTEXT: ThemeCustomizationContextType = {
   defaults: DEFAULT_THEME_CUSTOMIZATION,
   customization: DEFAULT_THEME_CUSTOMIZATION,
-  setPreset: () => {},
   setFont: () => {},
   setRadius: () => {},
   setScale: () => {},
@@ -123,16 +93,6 @@ const ThemeCustomizationContext =
 export function ThemeCustomizationProvider(props: {
   children: React.ReactNode
 }) {
-  // Admin-configured site default (stable for the provider's lifetime).
-  const [adminDefaultPreset] = useState<ThemePreset>(readAdminDefaultPreset)
-  // Precedence: explicit user cookie > admin default > hard default.
-  const [preset, _setPreset] = useState<ThemePreset>(() =>
-    readCookie<ThemePreset>(
-      THEME_COOKIE_KEYS.preset,
-      THEME_PRESET_VALUES,
-      adminDefaultPreset
-    )
-  )
   const [font, _setFont] = useState<ThemeFont>(() =>
     readCookie<ThemeFont>(
       THEME_COOKIE_KEYS.font,
@@ -164,22 +124,13 @@ export function ThemeCustomizationProvider(props: {
 
   // Mirror state to the <body> via data-* attributes so theme-presets.css can
   // override CSS variables at the right cascade layer.
-  useEffect(() => {
-    applyAttribute(
-      'data-theme-preset',
-      preset === DEFAULT_THEME_CUSTOMIZATION.preset ? null : preset
-    )
-  }, [preset])
 
   // Font is the one axis where we resolve before writing the attribute:
   // the persisted preference may be `default`, but CSS works in terms of
   // the concrete `sans`/`serif` choice that should drive the cascade.
-  // Resolving here (instead of in CSS via `:not()` selectors) keeps the
-  // stylesheet to one simple `[data-theme-font='serif']` selector and lets
-  // future presets opt into typography via `PRESET_DEFAULT_FONT` alone.
   useEffect(() => {
-    applyAttribute('data-theme-font', resolveThemeFont(font, preset))
-  }, [font, preset])
+    applyAttribute('data-theme-font', resolveThemeFont(font))
+  }, [font])
 
   useEffect(() => {
     applyAttribute(
@@ -198,21 +149,6 @@ export function ThemeCustomizationProvider(props: {
   useEffect(() => {
     applyAttribute('data-theme-content-layout', contentLayout)
   }, [contentLayout])
-
-  const setPreset = useCallback(
-    (value: ThemePreset) => {
-      _setPreset(value)
-      // Selecting the site default means "follow admin default": drop the
-      // cookie so future admin changes propagate. Any other choice is an
-      // explicit override and is persisted.
-      if (value === adminDefaultPreset) {
-        removeCookie(THEME_COOKIE_KEYS.preset)
-      } else {
-        setCookie(THEME_COOKIE_KEYS.preset, value, COOKIE_MAX_AGE)
-      }
-    },
-    [adminDefaultPreset]
-  )
 
   const setFont = useCallback((value: ThemeFont) => {
     _setFont(value)
@@ -251,25 +187,16 @@ export function ThemeCustomizationProvider(props: {
   }, [])
 
   const resetCustomization = useCallback(() => {
-    setPreset(adminDefaultPreset)
     setFont(DEFAULT_THEME_CUSTOMIZATION.font)
     setRadius(DEFAULT_THEME_CUSTOMIZATION.radius)
     setScale(DEFAULT_THEME_CUSTOMIZATION.scale)
     setContentLayout(DEFAULT_THEME_CUSTOMIZATION.contentLayout)
-  }, [
-    adminDefaultPreset,
-    setPreset,
-    setFont,
-    setRadius,
-    setScale,
-    setContentLayout,
-  ])
+  }, [setFont, setRadius, setScale, setContentLayout])
 
   const value = useMemo<ThemeCustomizationContextType>(
     () => ({
-      defaults: { ...DEFAULT_THEME_CUSTOMIZATION, preset: adminDefaultPreset },
-      customization: { preset, font, radius, scale, contentLayout },
-      setPreset,
+      defaults: DEFAULT_THEME_CUSTOMIZATION,
+      customization: { font, radius, scale, contentLayout },
       setFont,
       setRadius,
       setScale,
@@ -277,13 +204,10 @@ export function ThemeCustomizationProvider(props: {
       resetCustomization,
     }),
     [
-      adminDefaultPreset,
-      preset,
       font,
       radius,
       scale,
       contentLayout,
-      setPreset,
       setFont,
       setRadius,
       setScale,
