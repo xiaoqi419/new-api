@@ -64,7 +64,7 @@ export const CHANGELOG: ChangelogEntry[] = [
           '修复模型广场「调用示例」对视频类端点生成的是聊天格式请求的问题:openai-video / video / doubao-video / jimeng-video 现在给出「提交任务 → 轮询状态 → 下载成片」三步的正确示例(cURL / Python / TypeScript / JavaScript),并按各家实际的请求形状与完成状态词生成。',
           '修复 Sora 渠道点「测试」会按聊天格式把请求打到 /v1/videos、返回令人误解的上游报错的问题;现与可灵 / 即梦 / 豆包视频渠道一致,直接提示该类渠道不支持测试。',
           '修复视频 / 音乐任务查询在遇到未登记的查询类型时会触发空指针崩溃的问题,现改为返回明确的 400 错误。',
-          '补齐两个漏配的豆包视频模型:doubao-seedance-1-0-pro-fast-251015 与 doubao-seedance-2-0-mini-260615 此前不在可选模型列表里,渠道无法勾选。',
+          '补齐两个漏配的豆包视频模型:doubao-seedance-1-0-pro-fast-251015 与 doubao-seedance-2-0-mini-260615 此前不在可选模型列表里,渠道无法勾选;同时移除方舟已下架的 doubao-seedance-1-0-lite-t2v / lite-i2v。',
           '修正豆包视频分档计价缺失导致的错价:2.0 系列「输入含视频」比纯文生视频便宜约 39%(1080p / 4K 另有独立价),1.5-pro 则是有声比无声贵一倍,此前一律按同一个倍率结算,含视频输入的请求多收、有声输出的请求少收。',
         ],
       },
