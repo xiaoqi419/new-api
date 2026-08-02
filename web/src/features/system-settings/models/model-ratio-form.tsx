@@ -136,7 +136,7 @@ const modelJsonFields: Array<{
     name: 'VideoPriceTiers',
     labelKey: 'Video tier pricing',
     descriptionKey:
-      'JSON map of model → base price plus per-tier prices for resolution, video input, and audio output.',
+      'JSON map of model → the model input price it is anchored to, plus the final unit price of each resolution / video input / audio output combination.',
   },
 ]
 
