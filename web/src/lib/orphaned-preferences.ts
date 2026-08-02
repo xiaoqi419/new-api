@@ -16,22 +16,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { DirectionProvider as BaseDirectionProvider } from '@base-ui/react/direction-provider'
-import { useEffect } from 'react'
+import { removeCookie } from '@/lib/cookies'
+import { THEME_COOKIE_KEYS } from '@/lib/theme-customization'
 
-export type Direction = 'ltr' | 'rtl'
+/**
+ * Cookies written by the theme drawer, which was removed in favour of a single
+ * curated design. Nothing reads them any more, but they were persisted for a
+ * year, so an admin who once flipped the UI to RTL or scaled the type up would
+ * stay stuck that way with no control left to undo it.
+ */
+const ORPHANED_PREFERENCE_COOKIES: readonly string[] = [
+  'dir',
+  'font',
+  'layout_collapsible',
+  'layout_variant',
+  ...Object.values(THEME_COOKIE_KEYS),
+]
 
-const DIRECTION = 'ltr'
-
-/** The drawer that let users flip the UI to RTL is gone; direction is fixed. */
-export function DirectionProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    document.documentElement.setAttribute('dir', DIRECTION)
-  }, [])
-
-  return (
-    <BaseDirectionProvider direction={DIRECTION}>
-      {children}
-    </BaseDirectionProvider>
-  )
+export function dropOrphanedPreferenceCookies() {
+  for (const name of ORPHANED_PREFERENCE_COOKIES) removeCookie(name)
 }

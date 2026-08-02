@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260803-PENDING',
+    date: '2026-08-03',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复主题抽屉下线后留下的一批设置无法复原:此前那个抽屉能改界面方向、字体、圆角、字号和侧栏样式,并把选择写进有效期一年的 cookie。抽屉撤掉后这些 cookie 仍在生效,于是动过它的管理员会被永久锁在自己当时的选择里——最糟的情况是整个界面左右镜像翻转(RTL),而已经没有任何开关能改回来。现在这些残留设置会在打开页面时清除,界面一律回到统一的设计,没动过抽屉的用户看不出任何变化。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260802-b24af12f',
     date: '2026-08-02',
     changes: [
