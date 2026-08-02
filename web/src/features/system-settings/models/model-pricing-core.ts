@@ -67,18 +67,33 @@ export type ModelRatioData = {
   videoPriceTiers?: string
 }
 
-export type VideoPriceTierDraft = {
-  id: string
-  resolution: string
-  hasVideo: boolean
-  hasAudio: boolean
-  price: string
+/**
+ * Which dimensions a model is priced by. Vendors publish a video price table
+ * whose axes differ per model (Seedance 2.0 varies by resolution and video
+ * input, 1.5 pro only by audio output), so the editor mirrors that table
+ * instead of asking for one abstract tier at a time.
+ */
+export type VideoPriceAxes = {
+  resolution: boolean
+  videoInput: boolean
+  audioOutput: boolean
 }
 
-export type VideoPriceDraft = {
+/** Column identity inside a row: video-input flag then audio-output flag. */
+export type VideoPriceCellKey = '--' | '-a' | 'v-' | 'va'
+
+export type VideoPriceMatrixRow = {
+  id: string
+  /** Empty on the base row, which covers every resolution not listed. */
+  resolution: string
+  prices: Record<VideoPriceCellKey, string>
+}
+
+export type VideoPriceMatrixDraft = {
   enabled: boolean
-  basePrice: string
-  tiers: VideoPriceTierDraft[]
+  axes: VideoPriceAxes
+  /** `rows[0]` is always the base row. */
+  rows: VideoPriceMatrixRow[]
 }
 
 type VideoPriceTierJson = {
@@ -93,77 +108,219 @@ type VideoPriceConfigJson = {
   tiers?: VideoPriceTierJson[]
 }
 
-export const EMPTY_VIDEO_PRICE_DRAFT: VideoPriceDraft = {
-  enabled: false,
-  basePrice: '',
-  tiers: [],
+const EMPTY_VIDEO_PRICE_CELLS: Record<VideoPriceCellKey, string> = {
+  '--': '',
+  '-a': '',
+  'v-': '',
+  va: '',
 }
 
 // Row identity has to survive reordering and deletion, so it cannot be derived
-// from the row contents (two tiers may legitimately share a price).
-let videoTierDraftSeed = 0
+// from the row contents (two rows may legitimately hold the same prices).
+let videoRowDraftSeed = 0
 
-export function createVideoPriceTierDraft(): VideoPriceTierDraft {
-  videoTierDraftSeed += 1
+export function createVideoPriceMatrixRow(
+  resolution = ''
+): VideoPriceMatrixRow {
+  videoRowDraftSeed += 1
   return {
-    id: `video-tier-${videoTierDraftSeed}`,
-    resolution: '',
-    hasVideo: false,
-    hasAudio: false,
-    price: '',
+    id: `video-row-${videoRowDraftSeed}`,
+    resolution,
+    prices: { ...EMPTY_VIDEO_PRICE_CELLS },
   }
 }
 
-export function parseVideoPriceDraft(json?: string): VideoPriceDraft {
-  if (!json) return { ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] }
+export function createEmptyVideoPriceMatrix(): VideoPriceMatrixDraft {
+  return {
+    enabled: false,
+    axes: { resolution: false, videoInput: false, audioOutput: false },
+    rows: [createVideoPriceMatrixRow()],
+  }
+}
+
+export function videoPriceCellKey(
+  hasVideo: boolean,
+  hasAudio: boolean
+): VideoPriceCellKey {
+  if (hasVideo && hasAudio) return 'va'
+  if (hasVideo) return 'v-'
+  if (hasAudio) return '-a'
+  return '--'
+}
+
+/**
+ * Columns to render for the enabled axes. Video input is the outer grouping so
+ * the layout matches how vendors publish the table.
+ */
+export function videoPriceColumns(
+  axes: VideoPriceAxes
+): { key: VideoPriceCellKey; hasVideo: boolean; hasAudio: boolean }[] {
+  const videoStates = axes.videoInput ? [false, true] : [false]
+  const audioStates = axes.audioOutput ? [false, true] : [false]
+  const columns: {
+    key: VideoPriceCellKey
+    hasVideo: boolean
+    hasAudio: boolean
+  }[] = []
+  for (const hasVideo of videoStates) {
+    for (const hasAudio of audioStates) {
+      columns.push({
+        key: videoPriceCellKey(hasVideo, hasAudio),
+        hasVideo,
+        hasAudio,
+      })
+    }
+  }
+  return columns
+}
+
+/**
+ * Turning an axis off drops the cells it exposed instead of hiding them, so a
+ * saved payload never carries a tier the admin can no longer see.
+ */
+export function setVideoPriceAxis(
+  draft: VideoPriceMatrixDraft,
+  axis: keyof VideoPriceAxes,
+  enabled: boolean
+): VideoPriceMatrixDraft {
+  const axes = { ...draft.axes, [axis]: enabled }
+  if (enabled) return { ...draft, axes }
+
+  if (axis === 'resolution') {
+    return { ...draft, axes, rows: draft.rows.slice(0, 1) }
+  }
+  const cleared: VideoPriceCellKey[] =
+    axis === 'videoInput' ? ['v-', 'va'] : ['-a', 'va']
+  return {
+    ...draft,
+    axes,
+    rows: draft.rows.map((row) => {
+      const prices = { ...row.prices }
+      for (const key of cleared) prices[key] = ''
+      return { ...row, prices }
+    }),
+  }
+}
+
+/**
+ * Deterministic tier order shared by serialization and canonicalization, so two
+ * payloads describing the same price table always produce the same string.
+ */
+function sortVideoPriceTiers(
+  tiers: VideoPriceTierJson[]
+): VideoPriceTierJson[] {
+  return [...tiers].sort((left, right) => {
+    const leftResolution = left.resolution ?? ''
+    const rightResolution = right.resolution ?? ''
+    if (leftResolution !== rightResolution) {
+      return leftResolution < rightResolution ? -1 : 1
+    }
+    if ((left.has_video === true) !== (right.has_video === true)) {
+      return left.has_video === true ? 1 : -1
+    }
+    if ((left.has_audio === true) !== (right.has_audio === true)) {
+      return left.has_audio === true ? 1 : -1
+    }
+    return 0
+  })
+}
+
+function buildVideoPriceTierJson(
+  resolution: string,
+  hasVideo: boolean,
+  hasAudio: boolean,
+  price: number
+): VideoPriceTierJson {
+  const entry: VideoPriceTierJson = {}
+  if (resolution) entry.resolution = resolution
+  if (hasVideo) entry.has_video = true
+  if (hasAudio) entry.has_audio = true
+  entry.price = price
+  return entry
+}
+
+export function parseVideoPriceMatrix(json?: string): VideoPriceMatrixDraft {
+  if (!json) return createEmptyVideoPriceMatrix()
 
   const parsed = safeJsonParse<VideoPriceConfigJson | null>(json, {
     fallback: null,
     silent: true,
   })
   if (!parsed || typeof parsed !== 'object') {
-    return { ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] }
+    return createEmptyVideoPriceMatrix()
   }
 
-  const tiers = (Array.isArray(parsed.tiers) ? parsed.tiers : []).map(
-    (tier) => ({
-      ...createVideoPriceTierDraft(),
-      resolution: typeof tier.resolution === 'string' ? tier.resolution : '',
-      hasVideo: tier.has_video === true,
-      hasAudio: tier.has_audio === true,
-      price: formatPricingNumber(tier.price),
-    })
+  const tiers = (Array.isArray(parsed.tiers) ? parsed.tiers : []).filter(
+    (tier) => toNumberOrNull(tier?.price) !== null
   )
+
+  const baseRow = createVideoPriceMatrixRow()
+  baseRow.prices['--'] = formatPricingNumber(parsed.base_price)
+  const rows = [baseRow]
+
+  for (const tier of tiers) {
+    const resolution =
+      typeof tier.resolution === 'string' ? tier.resolution.trim() : ''
+    const normalized = resolution.toLowerCase()
+    let row = rows.find(
+      (candidate) => candidate.resolution.trim().toLowerCase() === normalized
+    )
+    if (!row) {
+      row = createVideoPriceMatrixRow(resolution)
+      rows.push(row)
+    }
+    row.prices[
+      videoPriceCellKey(tier.has_video === true, tier.has_audio === true)
+    ] = formatPricingNumber(tier.price)
+  }
 
   return {
     enabled: true,
-    basePrice: formatPricingNumber(parsed.base_price),
-    tiers,
+    axes: {
+      resolution: tiers.some(
+        (tier) => typeof tier.resolution === 'string' && tier.resolution.trim()
+      ),
+      videoInput: tiers.some((tier) => tier.has_video === true),
+      audioOutput: tiers.some((tier) => tier.has_audio === true),
+    },
+    rows,
   }
 }
 
-export function serializeVideoPriceDraft(draft: VideoPriceDraft): string {
+export function serializeVideoPriceMatrix(
+  draft: VideoPriceMatrixDraft
+): string {
   if (!draft.enabled) return ''
 
-  const basePrice = toNumberOrNull(draft.basePrice)
+  const baseRow = draft.rows[0]
+  const basePrice = toNumberOrNull(baseRow?.prices['--'])
   if (basePrice === null || basePrice <= 0) return ''
 
-  const tiers = draft.tiers.reduce<VideoPriceTierJson[]>((acc, tier) => {
-    const price = toNumberOrNull(tier.price)
-    if (price === null || price <= 0) return acc
-
-    const entry: VideoPriceTierJson = {}
-    const resolution = tier.resolution.trim()
-    if (resolution) entry.resolution = resolution
-    if (tier.hasVideo) entry.has_video = true
-    if (tier.hasAudio) entry.has_audio = true
-    entry.price = price
-    acc.push(entry)
-    return acc
-  }, [])
+  const columns = videoPriceColumns(draft.axes)
+  const tiers: VideoPriceTierJson[] = []
+  draft.rows.forEach((row, rowIndex) => {
+    const resolution = draft.axes.resolution ? row.resolution.trim() : ''
+    for (const column of columns) {
+      // The base cell becomes base_price rather than a tier of its own.
+      if (rowIndex === 0 && column.key === '--') continue
+      const price = toNumberOrNull(row.prices[column.key])
+      if (price === null || price <= 0) continue
+      tiers.push(
+        buildVideoPriceTierJson(
+          resolution,
+          column.hasVideo,
+          column.hasAudio,
+          price
+        )
+      )
+    }
+  })
 
   if (tiers.length === 0) return ''
-  return JSON.stringify({ base_price: basePrice, tiers })
+  return JSON.stringify({
+    base_price: basePrice,
+    tiers: sortVideoPriceTiers(tiers),
+  })
 }
 
 /**
@@ -188,44 +345,68 @@ export function canonicalizeVideoPriceTiers(json?: string): string {
     const price = toNumberOrNull(tier?.price)
     if (price === null || price <= 0) return acc
 
-    const entry: VideoPriceTierJson = {}
-    const resolution =
-      typeof tier?.resolution === 'string' ? tier.resolution.trim() : ''
-    if (resolution) entry.resolution = resolution
-    if (tier?.has_video === true) entry.has_video = true
-    if (tier?.has_audio === true) entry.has_audio = true
-    entry.price = price
-    acc.push(entry)
+    acc.push(
+      buildVideoPriceTierJson(
+        typeof tier?.resolution === 'string' ? tier.resolution.trim() : '',
+        tier?.has_video === true,
+        tier?.has_audio === true,
+        price
+      )
+    )
     return acc
   }, [])
 
   if (tiers.length === 0) return ''
-  return JSON.stringify({ base_price: basePrice, tiers })
+  return JSON.stringify({
+    base_price: basePrice,
+    tiers: sortVideoPriceTiers(tiers),
+  })
 }
 
 /**
- * Mirrors the backend validation in `validateVideoPriceConfig` so admins get a
- * localized message before the whole option is rejected server-side.
+ * Mirrors the backend validation in `validateVideoPriceConfig`, plus the one
+ * constraint the matrix layout can still violate: two rows naming the same
+ * resolution. Blank cells are legitimate — they mean the vendor does not price
+ * that combination separately, so the request falls back to the base tier.
  */
-export function getVideoPriceDraftError(draft: VideoPriceDraft): string | null {
-  if (!draft.enabled || draft.tiers.length === 0) return null
+export function getVideoPriceMatrixError(
+  draft: VideoPriceMatrixDraft
+): string | null {
+  if (!draft.enabled) return null
 
-  const basePrice = toNumberOrNull(draft.basePrice)
-  if (basePrice === null || basePrice <= 0) {
-    return 'Video tier pricing needs a base price greater than 0.'
+  const columns = videoPriceColumns(draft.axes)
+
+  if (draft.axes.resolution) {
+    const seen = new Set<string>()
+    for (const row of draft.rows.slice(1)) {
+      const normalized = row.resolution.trim().toLowerCase()
+      if (!normalized) continue
+      if (seen.has(normalized)) {
+        return 'Two rows use the same output resolution.'
+      }
+      seen.add(normalized)
+    }
   }
 
-  const seen = new Set<string>()
-  for (const tier of draft.tiers) {
-    const price = toNumberOrNull(tier.price)
-    if (price === null || price <= 0) {
-      return 'Every video tier price must be greater than 0.'
+  let hasTierCell = false
+  for (const [rowIndex, row] of draft.rows.entries()) {
+    for (const column of columns) {
+      if (rowIndex === 0 && column.key === '--') continue
+      const raw = row.prices[column.key].trim()
+      if (raw === '') continue
+      hasTierCell = true
+      const price = toNumberOrNull(raw)
+      if (price === null || price <= 0) {
+        return 'Every video tier price must be greater than 0.'
+      }
     }
-    const key = `${tier.resolution.trim().toLowerCase()}|${tier.hasVideo}|${tier.hasAudio}`
-    if (seen.has(key)) {
-      return 'Two video tiers share the same resolution and input/output conditions.'
-    }
-    seen.add(key)
+  }
+
+  if (!hasTierCell) return null
+
+  const basePrice = toNumberOrNull(draft.rows[0]?.prices['--'])
+  if (basePrice === null || basePrice <= 0) {
+    return 'Video tier pricing needs a base price greater than 0.'
   }
 
   return null
@@ -393,7 +574,7 @@ export function buildPreviewRows(
   promptPrice: string,
   lanePrices: Record<LaneKey, string>,
   laneEnabled: Record<LaneKey, boolean>,
-  videoPrice: VideoPriceDraft,
+  videoPrice: VideoPriceMatrixDraft,
   t: (key: string) => string
 ): PreviewRow[] {
   if (mode === 'tiered_expr') {
@@ -476,10 +657,23 @@ export function buildPreviewRows(
     {
       key: 'videoPriceTiers',
       label: t('Video tier pricing'),
-      value:
-        videoPrice.enabled && videoPrice.tiers.length > 0
-          ? `${videoPrice.tiers.length} ${t('tiers')}`
-          : t('Empty'),
+      value: videoPriceTierCount(videoPrice)
+        ? `${videoPriceTierCount(videoPrice)} ${t('tiers')}`
+        : t('Empty'),
     },
   ]
+}
+
+/** Number of priced combinations besides the base tier, used for the preview. */
+function videoPriceTierCount(draft: VideoPriceMatrixDraft): number {
+  if (!draft.enabled) return 0
+  const columns = videoPriceColumns(draft.axes)
+  let count = 0
+  for (const [rowIndex, row] of draft.rows.entries()) {
+    for (const column of columns) {
+      if (rowIndex === 0 && column.key === '--') continue
+      if (toNumberOrNull(row.prices[column.key]) !== null) count += 1
+    }
+  }
+  return count
 }

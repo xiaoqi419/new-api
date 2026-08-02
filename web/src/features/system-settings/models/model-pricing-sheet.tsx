@@ -66,23 +66,23 @@ import { cn } from '@/lib/utils'
 import {
   EMPTY_LANE_ENABLED,
   EMPTY_LANE_PRICES,
-  EMPTY_VIDEO_PRICE_DRAFT,
+  createEmptyVideoPriceMatrix,
   buildPreviewRows,
   createInitialLaneState,
   createModelPricingSchema,
-  getVideoPriceDraftError,
+  getVideoPriceMatrixError,
   hasValue,
   laneConfigs,
   numericDraftRegex,
-  parseVideoPriceDraft,
+  parseVideoPriceMatrix,
   ratioFieldByLane,
-  serializeVideoPriceDraft,
+  serializeVideoPriceMatrix,
   toNumberOrNull,
   type LaneKey,
   type ModelPricingFormValues,
   type ModelRatioData,
   type PricingMode,
-  type VideoPriceDraft,
+  type VideoPriceMatrixDraft,
 } from './model-pricing-core'
 import { PriceInput, PriceLane } from './model-pricing-inputs'
 import { formatPricingNumber } from './pricing-format'
@@ -159,8 +159,8 @@ export const ModelPricingEditorPanel = forwardRef<
   const [laneEnabled, setLaneEnabled] = useState<Record<LaneKey, boolean>>({
     ...EMPTY_LANE_ENABLED,
   })
-  const [videoPriceDraft, setVideoPriceDraft] = useState<VideoPriceDraft>(
-    () => ({ ...EMPTY_VIDEO_PRICE_DRAFT, tiers: [] })
+  const [videoPriceDraft, setVideoPriceDraft] = useState<VideoPriceMatrixDraft>(
+    createEmptyVideoPriceMatrix
   )
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
@@ -223,7 +223,7 @@ export const ModelPricingEditorPanel = forwardRef<
       setRequestRuleExpr('')
     }
 
-    setVideoPriceDraft(parseVideoPriceDraft(editData?.videoPriceTiers))
+    setVideoPriceDraft(parseVideoPriceMatrix(editData?.videoPriceTiers))
     setPromptPrice(nextLaneState.promptPrice)
     setLanePrices(nextLaneState.prices)
     setLaneEnabled(nextLaneState.enabled)
@@ -379,7 +379,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
   const videoPriceError = useMemo(() => {
     if (pricingMode !== 'per-token') return null
-    const errorKey = getVideoPriceDraftError(videoPriceDraft)
+    const errorKey = getVideoPriceMatrixError(videoPriceDraft)
     return errorKey ? t(errorKey) : null
   }, [pricingMode, t, videoPriceDraft])
 
@@ -491,7 +491,7 @@ export const ModelPricingEditorPanel = forwardRef<
         audioCompletionRatio: values.audioCompletionRatio || '',
         videoPriceTiers:
           pricingMode === 'per-token'
-            ? serializeVideoPriceDraft(videoPriceDraft)
+            ? serializeVideoPriceMatrix(videoPriceDraft)
             : '',
       }
 

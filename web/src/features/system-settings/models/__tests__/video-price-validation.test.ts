@@ -21,12 +21,17 @@ import { describe, test } from 'node:test'
 
 import {
   canonicalizeVideoPriceTiers,
-  createVideoPriceTierDraft,
-  getVideoPriceDraftError,
-  parseVideoPriceDraft,
-  serializeVideoPriceDraft,
+  createVideoPriceMatrixRow,
+  getVideoPriceMatrixError,
+  parseVideoPriceMatrix,
+  serializeVideoPriceMatrix,
+  setVideoPriceAxis,
+  type VideoPriceAxes,
+  type VideoPriceCellKey,
+  type VideoPriceMatrixDraft,
 } from '../model-pricing-core'
 
+/** Doubao Seedance 2.0 as the vendor publishes it: 46/51/26 plus 28/31/16. */
 const DOUBAO_SEEDANCE_2_0 = JSON.stringify({
   base_price: 46,
   tiers: [
@@ -38,65 +43,241 @@ const DOUBAO_SEEDANCE_2_0 = JSON.stringify({
   ],
 })
 
-function tier(overrides: {
-  resolution?: string
-  hasVideo?: boolean
-  hasAudio?: boolean
-  price: string
-}) {
-  return { ...createVideoPriceTierDraft(), ...overrides }
+function matrix(
+  axes: Partial<VideoPriceAxes>,
+  rows: {
+    resolution?: string
+    cells: Partial<Record<VideoPriceCellKey, string>>
+  }[]
+): VideoPriceMatrixDraft {
+  return {
+    enabled: true,
+    axes: {
+      resolution: false,
+      videoInput: false,
+      audioOutput: false,
+      ...axes,
+    },
+    rows: rows.map((row) => {
+      const built = createVideoPriceMatrixRow(row.resolution ?? '')
+      built.prices = { ...built.prices, ...row.cells }
+      return built
+    }),
+  }
 }
 
-describe('video price tier serialization', () => {
-  test('round-trips the stored payload without renaming or adding fields', () => {
-    const draft = parseVideoPriceDraft(DOUBAO_SEEDANCE_2_0)
+describe('video price matrix parsing', () => {
+  test('lays the stored payload out as the vendor table', () => {
+    const draft = parseVideoPriceMatrix(DOUBAO_SEEDANCE_2_0)
+
     assert.equal(draft.enabled, true)
-    assert.equal(draft.basePrice, '46')
-    assert.equal(draft.tiers.length, 5)
-    assert.equal(serializeVideoPriceDraft(draft), DOUBAO_SEEDANCE_2_0)
+    assert.deepEqual(draft.axes, {
+      resolution: true,
+      videoInput: true,
+      audioOutput: false,
+    })
+    assert.deepEqual(
+      draft.rows.map((row) => [
+        row.resolution,
+        row.prices['--'],
+        row.prices['v-'],
+      ]),
+      [
+        ['', '46', '28'],
+        ['1080p', '51', '31'],
+        ['4k', '26', '16'],
+      ]
+    )
   })
 
-  test('omits empty resolutions and false switches so the payload matches Go omitempty', () => {
-    const serialized = serializeVideoPriceDraft({
-      enabled: true,
-      basePrice: '8',
-      tiers: [tier({ resolution: '  ', hasAudio: true, price: '16' })],
-    })
-    assert.equal(
-      serialized,
+  test('reports only the axes the vendor actually prices by', () => {
+    const audioOnly = parseVideoPriceMatrix(
       JSON.stringify({ base_price: 8, tiers: [{ has_audio: true, price: 16 }] })
     )
+    assert.deepEqual(audioOnly.axes, {
+      resolution: false,
+      videoInput: false,
+      audioOutput: true,
+    })
+    assert.equal(audioOnly.rows.length, 1)
+    assert.equal(audioOnly.rows[0].prices['-a'], '16')
   })
 
-  test('drops the whole payload when it carries no usable tier', () => {
+  test('round-trips the stored payload byte for byte', () => {
     assert.equal(
-      serializeVideoPriceDraft({
-        enabled: true,
-        basePrice: '46',
-        tiers: [tier({ price: '' })],
-      }),
-      ''
+      serializeVideoPriceMatrix(parseVideoPriceMatrix(DOUBAO_SEEDANCE_2_0)),
+      DOUBAO_SEEDANCE_2_0
+    )
+  })
+})
+
+describe('video price matrix serialization', () => {
+  test('turns the base cell into base_price instead of a tier', () => {
+    const serialized = serializeVideoPriceMatrix(
+      matrix({ videoInput: true }, [{ cells: { '--': '37', 'v-': '22' } }])
     )
     assert.equal(
-      serializeVideoPriceDraft({
-        enabled: false,
-        basePrice: '46',
-        tiers: [tier({ price: '28' })],
-      }),
+      serialized,
+      JSON.stringify({
+        base_price: 37,
+        tiers: [{ has_video: true, price: 22 }],
+      })
+    )
+  })
+
+  test('skips blank cells so an unpriced combination falls back to the base tier', () => {
+    const serialized = serializeVideoPriceMatrix(
+      matrix({ resolution: true, videoInput: true }, [
+        { cells: { '--': '46', 'v-': '28' } },
+        { resolution: '1080p', cells: { '--': '51' } },
+      ])
+    )
+    assert.equal(
+      serialized,
+      JSON.stringify({
+        base_price: 46,
+        tiers: [
+          { has_video: true, price: 28 },
+          { resolution: '1080p', price: 51 },
+        ],
+      })
+    )
+  })
+
+  test('drops the payload when only the base price is filled in', () => {
+    assert.equal(
+      serializeVideoPriceMatrix(matrix({}, [{ cells: { '--': '46' } }])),
       ''
+    )
+  })
+
+  test('ignores a resolution row left entirely blank', () => {
+    const serialized = serializeVideoPriceMatrix(
+      matrix({ resolution: true, videoInput: true }, [
+        { cells: { '--': '46', 'v-': '28' } },
+        { resolution: '', cells: {} },
+      ])
+    )
+    assert.equal(
+      serialized,
+      JSON.stringify({
+        base_price: 46,
+        tiers: [{ has_video: true, price: 28 }],
+      })
+    )
+  })
+
+  test('emits the same payload regardless of row order', () => {
+    const ordered = serializeVideoPriceMatrix(
+      matrix({ resolution: true }, [
+        { cells: { '--': '46' } },
+        { resolution: '1080p', cells: { '--': '51' } },
+        { resolution: '4k', cells: { '--': '26' } },
+      ])
+    )
+    const reversed = serializeVideoPriceMatrix(
+      matrix({ resolution: true }, [
+        { cells: { '--': '46' } },
+        { resolution: '4k', cells: { '--': '26' } },
+        { resolution: '1080p', cells: { '--': '51' } },
+      ])
+    )
+    assert.equal(ordered, reversed)
+  })
+})
+
+describe('video price axis toggles', () => {
+  test('drops the cells an axis exposed so no hidden tier gets saved', () => {
+    const draft = matrix({ videoInput: true, audioOutput: true }, [
+      { cells: { '--': '46', 'v-': '28', '-a': '60', va: '40' } },
+    ])
+    const next = setVideoPriceAxis(draft, 'audioOutput', false)
+
+    assert.equal(next.rows[0].prices['-a'], '')
+    assert.equal(next.rows[0].prices.va, '')
+    assert.equal(next.rows[0].prices['v-'], '28')
+    assert.equal(
+      serializeVideoPriceMatrix(next),
+      JSON.stringify({
+        base_price: 46,
+        tiers: [{ has_video: true, price: 28 }],
+      })
+    )
+  })
+
+  test('drops extra resolution rows when resolution pricing is turned off', () => {
+    const draft = matrix({ resolution: true }, [
+      { cells: { '--': '46' } },
+      { resolution: '1080p', cells: { '--': '51' } },
+    ])
+    const next = setVideoPriceAxis(draft, 'resolution', false)
+
+    assert.equal(next.rows.length, 1)
+    assert.equal(serializeVideoPriceMatrix(next), '')
+  })
+})
+
+describe('video price matrix validation', () => {
+  test('accepts a table where only the base price is filled in', () => {
+    assert.equal(
+      getVideoPriceMatrixError(matrix({}, [{ cells: { '--': '46' } }])),
+      null
+    )
+  })
+
+  test('accepts blank cells next to filled ones', () => {
+    assert.equal(
+      getVideoPriceMatrixError(
+        matrix({ resolution: true, videoInput: true }, [
+          { cells: { '--': '46', 'v-': '28' } },
+          { resolution: '1080p', cells: { '--': '51' } },
+        ])
+      ),
+      null
+    )
+  })
+
+  test('rejects a tier price without a base price', () => {
+    assert.equal(
+      getVideoPriceMatrixError(
+        matrix({ videoInput: true }, [{ cells: { '--': '', 'v-': '22' } }])
+      ),
+      'Video tier pricing needs a base price greater than 0.'
+    )
+  })
+
+  test('rejects a non-positive price', () => {
+    assert.equal(
+      getVideoPriceMatrixError(
+        matrix({ videoInput: true }, [{ cells: { '--': '37', 'v-': '0' } }])
+      ),
+      'Every video tier price must be greater than 0.'
+    )
+  })
+
+  test('rejects two rows naming the same resolution', () => {
+    assert.equal(
+      getVideoPriceMatrixError(
+        matrix({ resolution: true }, [
+          { cells: { '--': '46' } },
+          { resolution: '1080p', cells: { '--': '51' } },
+          { resolution: ' 1080P ', cells: { '--': '52' } },
+        ])
+      ),
+      'Two rows use the same output resolution.'
     )
   })
 })
 
 describe('video price tier canonicalization', () => {
-  test('treats a differently ordered backend payload as unchanged', () => {
+  test('treats a differently ordered payload as unchanged', () => {
     const reordered = JSON.stringify({
       tiers: [
-        { price: 28, has_video: true },
+        { price: 16, resolution: '4k', has_video: true },
         { price: 51, resolution: '1080p' },
+        { price: 28, has_video: true },
         { has_video: true, price: 31, resolution: '1080p' },
         { price: 26, resolution: '4k' },
-        { price: 16, resolution: '4k', has_video: true },
       ],
       base_price: 46,
     })
@@ -110,7 +291,7 @@ describe('video price tier canonicalization', () => {
   test('agrees with a freshly serialized draft so an untouched model stays clean', () => {
     assert.equal(
       canonicalizeVideoPriceTiers(DOUBAO_SEEDANCE_2_0),
-      serializeVideoPriceDraft(parseVideoPriceDraft(DOUBAO_SEEDANCE_2_0))
+      serializeVideoPriceMatrix(parseVideoPriceMatrix(DOUBAO_SEEDANCE_2_0))
     )
   })
 
@@ -120,66 +301,6 @@ describe('video price tier canonicalization', () => {
     assert.equal(
       canonicalizeVideoPriceTiers('{"base_price":0,"tiers":[{"price":1}]}'),
       ''
-    )
-  })
-})
-
-describe('video price tier validation', () => {
-  test('accepts a draft with no tiers regardless of base price', () => {
-    assert.equal(
-      getVideoPriceDraftError({ enabled: true, basePrice: '', tiers: [] }),
-      null
-    )
-  })
-
-  test('rejects a non-positive base price', () => {
-    assert.equal(
-      getVideoPriceDraftError({
-        enabled: true,
-        basePrice: '0',
-        tiers: [tier({ price: '28' })],
-      }),
-      'Video tier pricing needs a base price greater than 0.'
-    )
-  })
-
-  test('rejects a non-positive tier price', () => {
-    assert.equal(
-      getVideoPriceDraftError({
-        enabled: true,
-        basePrice: '46',
-        tiers: [tier({ price: '-1' })],
-      }),
-      'Every video tier price must be greater than 0.'
-    )
-  })
-
-  test('rejects duplicate tiers ignoring resolution case and padding', () => {
-    assert.equal(
-      getVideoPriceDraftError({
-        enabled: true,
-        basePrice: '46',
-        tiers: [
-          tier({ resolution: '1080P', price: '51' }),
-          tier({ resolution: ' 1080p ', price: '52' }),
-        ],
-      }),
-      'Two video tiers share the same resolution and input/output conditions.'
-    )
-  })
-
-  test('keeps tiers that differ only by a switch', () => {
-    assert.equal(
-      getVideoPriceDraftError({
-        enabled: true,
-        basePrice: '46',
-        tiers: [
-          tier({ resolution: '1080p', price: '51' }),
-          tier({ resolution: '1080p', hasVideo: true, price: '31' }),
-          tier({ resolution: '1080p', hasAudio: true, price: '61' }),
-        ],
-      }),
-      null
     )
   })
 })

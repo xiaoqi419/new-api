@@ -19,45 +19,66 @@ For commercial licensing, please contact support@quantumnous.com
 import { useTranslation } from 'react-i18next'
 
 import { Plus, Trash2 } from '@/components/icons'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Checkbox } from '@/components/ui/checkbox'
+import { FieldDescription } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@/components/ui/input-group'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 
 import {
   SettingsControlGroup,
   SettingsSwitchField,
 } from '../components/settings-form-layout'
 import {
-  createVideoPriceTierDraft,
+  createVideoPriceMatrixRow,
   getVideoTierRatioLabel,
   numericDraftRegex,
-  type VideoPriceDraft,
-  type VideoPriceTierDraft,
+  setVideoPriceAxis,
+  videoPriceColumns,
+  type VideoPriceAxes,
+  type VideoPriceCellKey,
+  type VideoPriceMatrixDraft,
 } from './model-pricing-core'
 
 type VideoPriceTierEditorProps = {
-  draft: VideoPriceDraft
+  draft: VideoPriceMatrixDraft
   errorMessage?: string | null
-  onChange: (next: VideoPriceDraft) => void
+  onChange: (next: VideoPriceMatrixDraft) => void
 }
+
+const AXIS_LABEL_KEYS: { axis: keyof VideoPriceAxes; labelKey: string }[] = [
+  { axis: 'resolution', labelKey: 'Output resolution' },
+  { axis: 'videoInput', labelKey: 'Video input' },
+  { axis: 'audioOutput', labelKey: 'Audio output' },
+]
 
 export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
   const { t } = useTranslation()
+  const columns = videoPriceColumns(props.draft.axes)
+  const basePrice = props.draft.rows[0]?.prices['--'] ?? ''
 
-  const updateTier = (id: string, patch: Partial<VideoPriceTierDraft>) => {
+  const setCell = (rowId: string, key: VideoPriceCellKey, value: string) => {
+    if (!numericDraftRegex.test(value)) return
     props.onChange({
       ...props.draft,
-      tiers: props.draft.tiers.map((tier) =>
-        tier.id === id ? { ...tier, ...patch } : tier
+      rows: props.draft.rows.map((row) =>
+        row.id === rowId
+          ? { ...row, prices: { ...row.prices, [key]: value } }
+          : row
       ),
     })
+  }
+
+  const columnLabel = (column: (typeof columns)[number]) => {
+    const parts: string[] = []
+    if (props.draft.axes.videoInput) {
+      parts.push(column.hasVideo ? t('With video input') : t('No video input'))
+    }
+    if (props.draft.axes.audioOutput) {
+      parts.push(column.hasAudio ? t('With audio') : t('Silent'))
+    }
+    return parts.length > 0 ? parts.join(' · ') : t('Unit price')
   }
 
   return (
@@ -76,131 +97,146 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
 
       {props.draft.enabled && (
         <div className='space-y-4'>
-          <Field>
-            <FieldLabel htmlFor='video-tier-base-price'>
-              {t('Base tier unit price')}
-            </FieldLabel>
-            <Input
-              id='video-tier-base-price'
-              inputMode='decimal'
-              value={props.draft.basePrice}
-              placeholder='46'
-              onChange={(event) => {
-                const value = event.target.value
-                if (!numericDraftRegex.test(value)) return
-                props.onChange({ ...props.draft, basePrice: value })
-              }}
-            />
-            <FieldDescription>
-              {t(
-                'Vendor list price for the tier the model ratio already covers. Only the ratio between prices matters, so any currency works as long as every tier of this model uses the same one.'
-              )}
-            </FieldDescription>
-          </Field>
+          <div className='flex flex-wrap items-center gap-x-6 gap-y-2'>
+            <span className='text-sm font-medium'>
+              {t('Pricing dimensions')}
+            </span>
+            {AXIS_LABEL_KEYS.map((entry) => (
+              <div key={entry.axis} className='flex items-center gap-2'>
+                <Checkbox
+                  id={`video-axis-${entry.axis}`}
+                  checked={props.draft.axes[entry.axis]}
+                  onCheckedChange={(checked) =>
+                    props.onChange(
+                      setVideoPriceAxis(
+                        props.draft,
+                        entry.axis,
+                        checked === true
+                      )
+                    )
+                  }
+                />
+                <Label
+                  htmlFor={`video-axis-${entry.axis}`}
+                  className='text-sm font-normal'
+                >
+                  {t(entry.labelKey)}
+                </Label>
+              </div>
+            ))}
+          </div>
 
-          {props.draft.tiers.length === 0 ? (
-            <p className='text-muted-foreground text-xs'>
-              {t('No tiers yet. Add one for each price the vendor lists.')}
-            </p>
-          ) : (
-            <div className='space-y-3'>
-              {props.draft.tiers.map((tier) => {
-                const ratioLabel = getVideoTierRatioLabel(
-                  props.draft.basePrice,
-                  tier.price
-                )
-                return (
-                  <div
-                    key={tier.id}
-                    className='bg-background space-y-3 rounded-lg border p-3'
-                  >
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <Input
-                        className='w-28'
-                        value={tier.resolution}
-                        placeholder='1080p'
-                        aria-label={t('Output resolution')}
-                        onChange={(event) =>
-                          updateTier(tier.id, {
-                            resolution: event.target.value,
-                          })
-                        }
-                      />
-                      <InputGroup className='min-w-40 flex-1'>
-                        <InputGroupInput
-                          inputMode='decimal'
-                          value={tier.price}
-                          placeholder='51'
-                          aria-label={t('Tier unit price')}
-                          onChange={(event) => {
-                            const value = event.target.value
-                            if (!numericDraftRegex.test(value)) return
-                            updateTier(tier.id, { price: value })
-                          }}
+          <div className='overflow-x-auto'>
+            <table className='w-full table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1 text-sm'>
+              <thead>
+                <tr>
+                  <th className='text-muted-foreground w-[5.25rem] text-left text-xs font-medium'>
+                    {props.draft.axes.resolution ? t('Output resolution') : ''}
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column.key}
+                      className='text-muted-foreground text-left text-xs font-medium break-words'
+                    >
+                      {columnLabel(column)}
+                    </th>
+                  ))}
+                  <th className='w-8' />
+                </tr>
+              </thead>
+              <tbody>
+                {props.draft.rows.map((row, rowIndex) => (
+                  <tr key={row.id}>
+                    <td>
+                      {rowIndex === 0 ? (
+                        <div className='flex h-9 flex-col justify-center'>
+                          <Badge variant='secondary' className='w-fit'>
+                            {t('Base tier')}
+                          </Badge>
+                          {props.draft.axes.resolution && (
+                            <span className='text-muted-foreground text-[11px] leading-tight'>
+                              {t('Other resolutions')}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <Input
+                          className='w-full px-2'
+                          value={row.resolution}
+                          placeholder='1080p'
+                          aria-label={t('Output resolution')}
+                          onChange={(event) =>
+                            props.onChange({
+                              ...props.draft,
+                              rows: props.draft.rows.map((item) =>
+                                item.id === row.id
+                                  ? { ...item, resolution: event.target.value }
+                                  : item
+                              ),
+                            })
+                          }
                         />
-                        {ratioLabel && (
-                          <InputGroupAddon align='inline-end'>
+                      )}
+                    </td>
+
+                    {columns.map((column) => {
+                      const isBaseCell = rowIndex === 0 && column.key === '--'
+                      const ratioLabel = isBaseCell
+                        ? ''
+                        : getVideoTierRatioLabel(
+                            basePrice,
+                            row.prices[column.key]
+                          )
+                      return (
+                        <td key={column.key}>
+                          <Input
+                            className='w-full px-2'
+                            inputMode='decimal'
+                            value={row.prices[column.key]}
+                            placeholder={isBaseCell ? '46' : ''}
+                            aria-label={`${columnLabel(column)} ${
+                              rowIndex === 0
+                                ? t('Base tier')
+                                : row.resolution || t('Output resolution')
+                            }`}
+                            onChange={(event) =>
+                              setCell(row.id, column.key, event.target.value)
+                            }
+                          />
+                          <span className='text-muted-foreground block h-4 font-mono text-xs'>
                             {ratioLabel}
-                          </InputGroupAddon>
-                        )}
-                      </InputGroup>
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        aria-label={t('Remove tier')}
-                        onClick={() =>
-                          props.onChange({
-                            ...props.draft,
-                            tiers: props.draft.tiers.filter(
-                              (item) => item.id !== tier.id
-                            ),
-                          })
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
+                          </span>
+                        </td>
+                      )
+                    })}
 
-                    <div className='flex flex-wrap items-center gap-x-6 gap-y-2'>
-                      <div className='flex items-center gap-2'>
-                        <Switch
-                          id={`${tier.id}-video`}
-                          checked={tier.hasVideo}
-                          onCheckedChange={(checked) =>
-                            updateTier(tier.id, { hasVideo: checked })
+                    <td>
+                      {rowIndex > 0 && (
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon'
+                          aria-label={t('Remove resolution')}
+                          onClick={() =>
+                            props.onChange({
+                              ...props.draft,
+                              rows: props.draft.rows.filter(
+                                (item) => item.id !== row.id
+                              ),
+                            })
                           }
-                        />
-                        <Label
-                          htmlFor={`${tier.id}-video`}
-                          className='text-sm font-normal'
                         >
-                          {t('Request includes video input')}
-                        </Label>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <Switch
-                          id={`${tier.id}-audio`}
-                          checked={tier.hasAudio}
-                          onCheckedChange={(checked) =>
-                            updateTier(tier.id, { hasAudio: checked })
-                          }
-                        />
-                        <Label
-                          htmlFor={`${tier.id}-audio`}
-                          className='text-sm font-normal'
-                        >
-                          {t('Output has audio')}
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                          <Trash2 />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <div className='flex flex-wrap items-center gap-3'>
+          {props.draft.axes.resolution && (
             <Button
               type='button'
               variant='outline'
@@ -208,19 +244,25 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
               onClick={() =>
                 props.onChange({
                   ...props.draft,
-                  tiers: [...props.draft.tiers, createVideoPriceTierDraft()],
+                  rows: [...props.draft.rows, createVideoPriceMatrixRow()],
                 })
               }
             >
               <Plus data-icon='inline-start' />
-              {t('Add tier')}
+              {t('Add resolution')}
             </Button>
-            <p className='text-muted-foreground text-xs'>
-              {t(
-                'Leave the resolution blank when a tier applies to every resolution. Do not repeat the base tier here.'
-              )}
-            </p>
-          </div>
+          )}
+
+          <FieldDescription>
+            {t(
+              'Copy the vendor price table as published. Leave a cell blank when the vendor does not price that combination separately.'
+            )}
+          </FieldDescription>
+          <FieldDescription>
+            {t(
+              'Vendor list price for the tier the model ratio already covers. Only the ratio between prices matters, so any currency works as long as every tier of this model uses the same one.'
+            )}
+          </FieldDescription>
 
           {props.errorMessage && (
             <p className='text-destructive text-xs'>{props.errorMessage}</p>
