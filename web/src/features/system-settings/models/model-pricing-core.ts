@@ -187,7 +187,13 @@ export function setVideoPriceAxis(
   if (enabled) return { ...draft, axes }
 
   if (axis === 'resolution') {
-    return { ...draft, axes, rows: draft.rows.slice(0, 1) }
+    // Without the resolution axis every row would describe the same conditions,
+    // so only the first one can survive.
+    return {
+      ...draft,
+      axes,
+      rows: [{ ...draft.rows[0], resolution: '' }],
+    }
   }
   const cleared: VideoPriceCellKey[] =
     axis === 'videoInput' ? ['v-', 'va'] : ['-a', 'va']
@@ -239,7 +245,22 @@ function buildVideoPriceTierJson(
   return entry
 }
 
-export function parseVideoPriceMatrix(json?: string): VideoPriceMatrixDraft {
+/**
+ * Lays a stored config out as the vendor's price table. Every cell holds the
+ * final unit price in the same currency-per-1M-tokens unit as the model's own
+ * input price.
+ *
+ * `promptPrice` is that input price, and it is what anchors the stored ratios.
+ * Configs written before this form existed anchored them to their own
+ * `base_price` (the vendor's list price for the un-itemized combination), so
+ * their cells are rescaled here. That turns the vendor list prices into the
+ * prices actually being charged today, which is what the admin needs to see
+ * before editing anything.
+ */
+export function parseVideoPriceMatrix(
+  json?: string,
+  promptPrice?: string
+): VideoPriceMatrixDraft {
   if (!json) return createEmptyVideoPriceMatrix()
 
   const parsed = safeJsonParse<VideoPriceConfigJson | null>(json, {
@@ -250,29 +271,51 @@ export function parseVideoPriceMatrix(json?: string): VideoPriceMatrixDraft {
     return createEmptyVideoPriceMatrix()
   }
 
+  const anchor = toNumberOrNull(promptPrice)
+  const storedAnchor = toNumberOrNull(parsed.base_price)
+  const rescale =
+    anchor !== null && anchor > 0 && storedAnchor !== null && storedAnchor > 0
+      ? anchor / storedAnchor
+      : 1
+  // Rescaling turns a clean list price into something like 27.351351351351;
+  // six decimals is a fraction of a cent per million tokens, and an editable
+  // number the admin can actually read.
+  const rescalePrice = (price: number) =>
+    formatPricingNumber(
+      rescale === 1 ? price : Number((price * rescale).toFixed(6))
+    )
+
   const tiers = (Array.isArray(parsed.tiers) ? parsed.tiers : []).filter(
     (tier) => toNumberOrNull(tier?.price) !== null
   )
 
-  const baseRow = createVideoPriceMatrixRow()
-  baseRow.prices['--'] = formatPricingNumber(parsed.base_price)
-  const rows = [baseRow]
+  const rows: VideoPriceMatrixRow[] = []
+  const rowFor = (resolution: string) => {
+    const normalized = resolution.trim().toLowerCase()
+    const existing = rows.find(
+      (candidate) => candidate.resolution.trim().toLowerCase() === normalized
+    )
+    if (existing) return existing
+    const created = createVideoPriceMatrixRow(resolution)
+    rows.push(created)
+    return created
+  }
+
+  // base_price priced the combination no tier itemized, so it becomes that
+  // row's plain cell instead of a separate concept.
+  if (storedAnchor !== null && storedAnchor > 0) {
+    rowFor('').prices['--'] = rescalePrice(storedAnchor)
+  }
 
   for (const tier of tiers) {
     const resolution =
       typeof tier.resolution === 'string' ? tier.resolution.trim() : ''
-    const normalized = resolution.toLowerCase()
-    let row = rows.find(
-      (candidate) => candidate.resolution.trim().toLowerCase() === normalized
-    )
-    if (!row) {
-      row = createVideoPriceMatrixRow(resolution)
-      rows.push(row)
-    }
-    row.prices[
+    rowFor(resolution).prices[
       videoPriceCellKey(tier.has_video === true, tier.has_audio === true)
-    ] = formatPricingNumber(tier.price)
+    ] = rescalePrice(tier.price as number)
   }
+
+  if (rows.length === 0) rows.push(createVideoPriceMatrixRow())
 
   return {
     enabled: true,
@@ -287,24 +330,33 @@ export function parseVideoPriceMatrix(json?: string): VideoPriceMatrixDraft {
   }
 }
 
+/**
+ * Stores the matrix as tier prices anchored to `promptPrice`. The backend
+ * divides each tier price by `base_price` to get the billing multiplier, so
+ * writing the model's own input price as the anchor is what makes every cell
+ * behave as an absolute unit price.
+ */
 export function serializeVideoPriceMatrix(
-  draft: VideoPriceMatrixDraft
+  draft: VideoPriceMatrixDraft,
+  promptPrice?: string
 ): string {
   if (!draft.enabled) return ''
 
-  const baseRow = draft.rows[0]
-  const basePrice = toNumberOrNull(baseRow?.prices['--'])
-  if (basePrice === null || basePrice <= 0) return ''
+  const anchor = toNumberOrNull(promptPrice)
+  if (anchor === null || anchor <= 0) return ''
 
   const columns = videoPriceColumns(draft.axes)
   const tiers: VideoPriceTierJson[] = []
-  draft.rows.forEach((row, rowIndex) => {
+  for (const row of draft.rows) {
     const resolution = draft.axes.resolution ? row.resolution.trim() : ''
     for (const column of columns) {
-      // The base cell becomes base_price rather than a tier of its own.
-      if (rowIndex === 0 && column.key === '--') continue
       const price = toNumberOrNull(row.prices[column.key])
       if (price === null || price <= 0) continue
+      // base_price already prices the combination no condition narrows down, so
+      // repeating it as a tier would only make an untouched model look edited.
+      const isAnchorCell =
+        !resolution && !column.hasVideo && !column.hasAudio && price === anchor
+      if (isAnchorCell) continue
       tiers.push(
         buildVideoPriceTierJson(
           resolution,
@@ -314,11 +366,11 @@ export function serializeVideoPriceMatrix(
         )
       )
     }
-  })
+  }
 
   if (tiers.length === 0) return ''
   return JSON.stringify({
-    base_price: basePrice,
+    base_price: anchor,
     tiers: sortVideoPriceTiers(tiers),
   })
 }
@@ -364,23 +416,25 @@ export function canonicalizeVideoPriceTiers(json?: string): string {
 }
 
 /**
- * Mirrors the backend validation in `validateVideoPriceConfig`, plus the one
- * constraint the matrix layout can still violate: two rows naming the same
- * resolution. Blank cells are legitimate — they mean the vendor does not price
- * that combination separately, so the request falls back to the base tier.
+ * Mirrors the backend validation in `validateVideoPriceConfig`. Blank cells are
+ * legitimate — they mean the vendor does not price that combination
+ * separately, so the request falls back to the model's own input price.
  */
 export function getVideoPriceMatrixError(
-  draft: VideoPriceMatrixDraft
+  draft: VideoPriceMatrixDraft,
+  promptPrice?: string
 ): string | null {
   if (!draft.enabled) return null
 
   const columns = videoPriceColumns(draft.axes)
 
   if (draft.axes.resolution) {
+    // A blank resolution is a legitimate value: that row prices every output
+    // resolution the table does not list. But two such rows serialize into the
+    // same condition, which the backend rejects as a duplicate.
     const seen = new Set<string>()
-    for (const row of draft.rows.slice(1)) {
+    for (const row of draft.rows) {
       const normalized = row.resolution.trim().toLowerCase()
-      if (!normalized) continue
       if (seen.has(normalized)) {
         return 'Two rows use the same output resolution.'
       }
@@ -388,13 +442,12 @@ export function getVideoPriceMatrixError(
     }
   }
 
-  let hasTierCell = false
-  for (const [rowIndex, row] of draft.rows.entries()) {
+  let hasPricedCell = false
+  for (const row of draft.rows) {
     for (const column of columns) {
-      if (rowIndex === 0 && column.key === '--') continue
       const raw = row.prices[column.key].trim()
       if (raw === '') continue
-      hasTierCell = true
+      hasPricedCell = true
       const price = toNumberOrNull(raw)
       if (price === null || price <= 0) {
         return 'Every video tier price must be greater than 0.'
@@ -402,11 +455,13 @@ export function getVideoPriceMatrixError(
     }
   }
 
-  if (!hasTierCell) return null
+  if (!hasPricedCell) return null
 
-  const basePrice = toNumberOrNull(draft.rows[0]?.prices['--'])
-  if (basePrice === null || basePrice <= 0) {
-    return 'Video tier pricing needs a base price greater than 0.'
+  // Tier prices are stored relative to the model's input price, so without one
+  // there is nothing to anchor them to and the table cannot be saved at all.
+  const anchor = toNumberOrNull(promptPrice)
+  if (anchor === null || anchor <= 0) {
+    return 'Set the input price before pricing video tiers.'
   }
 
   return null
@@ -664,14 +719,13 @@ export function buildPreviewRows(
   ]
 }
 
-/** Number of priced combinations besides the base tier, used for the preview. */
+/** Number of priced combinations, used for the preview row. */
 function videoPriceTierCount(draft: VideoPriceMatrixDraft): number {
   if (!draft.enabled) return 0
   const columns = videoPriceColumns(draft.axes)
   let count = 0
-  for (const [rowIndex, row] of draft.rows.entries()) {
+  for (const row of draft.rows) {
     for (const column of columns) {
-      if (rowIndex === 0 && column.key === '--') continue
       if (toNumberOrNull(row.prices[column.key]) !== null) count += 1
     }
   }

@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next'
 
 import { StaticDataTable } from '@/components/data-table'
 import { Video } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
 
 import { formatGroupPrice } from '../lib/price'
 import type {
@@ -62,15 +61,6 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
       return parts
     }
 
-    // 基准档不在 tiers 里：它是「所有未单独列出的组合」,单价等于 base_price。
-    const base: TierRow = {
-      key: 'base',
-      conditions: describe(null),
-      ratio: 1,
-      price: formatTierPrice(props, 1),
-      isBase: true,
-    }
-
     const rest = tiers.tiers.map((tier, index) => {
       const ratio = tier.price / tiers.base_price
       return {
@@ -82,7 +72,24 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
       }
     })
 
-    return [base, ...rest]
+    // 未被任何档位列出的组合按 base_price 计费,所以补一行说明它。若管理员已经把
+    // 这一组合单独填了价,它就已经在 tiers 里,再补一行会出现两行完全相同的内容。
+    const unlisted = tiers.tiers.some(
+      (tier) =>
+        !tier.resolution && tier.has_video !== true && tier.has_audio !== true
+    )
+    if (unlisted) return rest
+
+    return [
+      {
+        key: 'base',
+        conditions: describe(null),
+        ratio: 1,
+        price: formatTierPrice(props, 1),
+        isBase: true,
+      },
+      ...rest,
+    ]
   }, [props, t, tiers])
 
   if (rows.length <= 1) return null
@@ -109,11 +116,6 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
         {rows.map((row) => (
           <div key={row.key} className='rounded-md border p-2'>
             <div className='mb-1.5 flex flex-wrap items-center gap-1.5'>
-              {row.isBase && (
-                <Badge variant='secondary' className='bg-chart-1/15 text-tag-1'>
-                  {t('Base tier')}
-                </Badge>
-              )}
               <span className='text-muted-foreground text-xs'>
                 {row.conditions.join(' · ')}
               </span>
@@ -143,19 +145,9 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
             className: 'text-muted-foreground py-2 font-medium',
             cellClassName: 'align-top py-2.5',
             cell: (row) => (
-              <div className='flex flex-wrap items-center gap-1.5'>
-                {row.isBase && (
-                  <Badge
-                    variant='secondary'
-                    className='bg-chart-1/15 text-tag-1'
-                  >
-                    {t('Base tier')}
-                  </Badge>
-                )}
-                <span className={row.isBase ? 'text-muted-foreground' : ''}>
-                  {row.conditions.join(' · ')}
-                </span>
-              </div>
+              <span className={row.isBase ? 'text-muted-foreground' : ''}>
+                {row.conditions.join(' · ')}
+              </span>
             ),
           },
           {

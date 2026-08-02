@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 import { useTranslation } from 'react-i18next'
 
 import { Plus, Trash2 } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FieldDescription } from '@/components/ui/field'
@@ -44,6 +43,8 @@ import {
 type VideoPriceTierEditorProps = {
   draft: VideoPriceMatrixDraft
   errorMessage?: string | null
+  /** The model's input price, which every tier price is stored relative to. */
+  promptPrice: string
   onChange: (next: VideoPriceMatrixDraft) => void
 }
 
@@ -56,7 +57,6 @@ const AXIS_LABEL_KEYS: { axis: keyof VideoPriceAxes; labelKey: string }[] = [
 export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
   const { t } = useTranslation()
   const columns = videoPriceColumns(props.draft.axes)
-  const basePrice = props.draft.rows[0]?.prices['--'] ?? ''
 
   const setCell = (rowId: string, key: VideoPriceCellKey, value: string) => {
     if (!numericDraftRegex.test(value)) return
@@ -145,25 +145,14 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
                 </tr>
               </thead>
               <tbody>
-                {props.draft.rows.map((row, rowIndex) => (
+                {props.draft.rows.map((row) => (
                   <tr key={row.id}>
                     <td>
-                      {rowIndex === 0 ? (
-                        <div className='flex h-9 flex-col justify-center'>
-                          <Badge variant='secondary' className='w-fit'>
-                            {t('Base tier')}
-                          </Badge>
-                          {props.draft.axes.resolution && (
-                            <span className='text-muted-foreground text-[11px] leading-tight'>
-                              {t('Other resolutions')}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
+                      {props.draft.axes.resolution && (
                         <Input
                           className='w-full px-2'
                           value={row.resolution}
-                          placeholder='1080p'
+                          placeholder={t('Others')}
                           aria-label={t('Output resolution')}
                           onChange={(event) =>
                             props.onChange({
@@ -179,39 +168,31 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
                       )}
                     </td>
 
-                    {columns.map((column) => {
-                      const isBaseCell = rowIndex === 0 && column.key === '--'
-                      const ratioLabel = isBaseCell
-                        ? ''
-                        : getVideoTierRatioLabel(
-                            basePrice,
+                    {columns.map((column) => (
+                      <td key={column.key}>
+                        <Input
+                          className='w-full px-2'
+                          inputMode='decimal'
+                          value={row.prices[column.key]}
+                          placeholder={props.promptPrice}
+                          aria-label={`${columnLabel(column)} ${
+                            row.resolution || t('Others')
+                          }`}
+                          onChange={(event) =>
+                            setCell(row.id, column.key, event.target.value)
+                          }
+                        />
+                        <span className='text-muted-foreground block h-4 font-mono text-xs'>
+                          {getVideoTierRatioLabel(
+                            props.promptPrice,
                             row.prices[column.key]
-                          )
-                      return (
-                        <td key={column.key}>
-                          <Input
-                            className='w-full px-2'
-                            inputMode='decimal'
-                            value={row.prices[column.key]}
-                            placeholder={isBaseCell ? '46' : ''}
-                            aria-label={`${columnLabel(column)} ${
-                              rowIndex === 0
-                                ? t('Base tier')
-                                : row.resolution || t('Output resolution')
-                            }`}
-                            onChange={(event) =>
-                              setCell(row.id, column.key, event.target.value)
-                            }
-                          />
-                          <span className='text-muted-foreground block h-4 font-mono text-xs'>
-                            {ratioLabel}
-                          </span>
-                        </td>
-                      )
-                    })}
+                          )}
+                        </span>
+                      </td>
+                    ))}
 
                     <td>
-                      {rowIndex > 0 && (
+                      {props.draft.rows.length > 1 && (
                         <Button
                           type='button'
                           variant='ghost'
@@ -255,12 +236,12 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
 
           <FieldDescription>
             {t(
-              'Copy the vendor price table as published. Leave a cell blank when the vendor does not price that combination separately.'
+              'Every cell is the final unit price for that combination, in the same unit as the input price above.'
             )}
           </FieldDescription>
           <FieldDescription>
             {t(
-              'Vendor list price for the tier the model ratio already covers. Only the ratio between prices matters, so any currency works as long as every tier of this model uses the same one.'
+              'Leave the resolution blank to price every output resolution the table does not list, and leave a cell blank to charge the input price for that combination.'
             )}
           </FieldDescription>
 

@@ -223,7 +223,12 @@ export const ModelPricingEditorPanel = forwardRef<
       setRequestRuleExpr('')
     }
 
-    setVideoPriceDraft(parseVideoPriceMatrix(editData?.videoPriceTiers))
+    setVideoPriceDraft(
+      parseVideoPriceMatrix(
+        editData?.videoPriceTiers,
+        nextLaneState.promptPrice
+      )
+    )
     setPromptPrice(nextLaneState.promptPrice)
     setLanePrices(nextLaneState.prices)
     setLaneEnabled(nextLaneState.enabled)
@@ -379,9 +384,9 @@ export const ModelPricingEditorPanel = forwardRef<
 
   const videoPriceError = useMemo(() => {
     if (pricingMode !== 'per-token') return null
-    const errorKey = getVideoPriceMatrixError(videoPriceDraft)
+    const errorKey = getVideoPriceMatrixError(videoPriceDraft, promptPrice)
     return errorKey ? t(errorKey) : null
-  }, [pricingMode, t, videoPriceDraft])
+  }, [pricingMode, promptPrice, t, videoPriceDraft])
 
   const warnings = useMemo(() => {
     const nextWarnings: string[] = []
@@ -491,7 +496,7 @@ export const ModelPricingEditorPanel = forwardRef<
         audioCompletionRatio: values.audioCompletionRatio || '',
         videoPriceTiers:
           pricingMode === 'per-token'
-            ? serializeVideoPriceMatrix(videoPriceDraft)
+            ? serializeVideoPriceMatrix(videoPriceDraft, promptPrice)
             : '',
       }
 
@@ -502,7 +507,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
       return data
     },
-    [billingExpr, pricingMode, requestRuleExpr, videoPriceDraft]
+    [billingExpr, pricingMode, promptPrice, requestRuleExpr, videoPriceDraft]
   )
 
   useImperativeHandle(
@@ -641,6 +646,7 @@ export const ModelPricingEditorPanel = forwardRef<
                       <VideoPriceTierEditor
                         draft={videoPriceDraft}
                         errorMessage={videoPriceError}
+                        promptPrice={promptPrice}
                         onChange={setVideoPriceDraft}
                       />
                     </FieldGroup>
