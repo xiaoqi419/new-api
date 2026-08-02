@@ -83,7 +83,9 @@ describe('video price matrix parsing', () => {
         row.prices['v-'],
       ]),
       [
-        ['', '46', '28'],
+        // 兜底行的「元视频输入」留空:留空就是按输入价格计费,而 base_price 恰好
+        // 等于输入价格,所以没有任何值需要替管理员填进去。
+        ['', '', '28'],
         ['1080p', '51', '31'],
         ['4k', '26', '16'],
       ]
@@ -100,13 +102,16 @@ describe('video price matrix parsing', () => {
       }),
       '46'
     )
-    assert.equal(draft.rows[0].prices['--'], '46')
+    assert.equal(draft.rows[0].prices['--'], '')
     assert.equal(draft.rows[0].prices['v-'], '27.351351')
   })
 
   test('reports only the axes the vendor actually prices by', () => {
     const audioOnly = parseVideoPriceMatrix(
-      JSON.stringify({ base_price: 8, tiers: [{ has_audio: true, price: 16 }] }),
+      JSON.stringify({
+        base_price: 8,
+        tiers: [{ has_audio: true, price: 16 }],
+      }),
       '8'
     )
     assert.deepEqual(audioOnly.axes, {
@@ -139,7 +144,7 @@ describe('video price matrix serialization', () => {
       serialized,
       JSON.stringify({
         base_price: 46,
-        tiers: [{ has_video: true, price: 22 }],
+        tiers: [{ price: 46 }, { has_video: true, price: 22 }],
       })
     )
   })
@@ -163,15 +168,6 @@ describe('video price matrix serialization', () => {
   test('drops the payload when no cell is priced', () => {
     assert.equal(
       serializeVideoPriceMatrix(matrix({}, [{ cells: {} }]), '46'),
-      ''
-    )
-  })
-
-  test('leaves out a catch-all cell that just repeats the input price', () => {
-    // base_price 已经表达了「没有任何条件收窄的那个组合」,再写成档位只会让没动过的
-    // 模型看起来有未保存改动。
-    assert.equal(
-      serializeVideoPriceMatrix(matrix({}, [{ cells: { '--': '46' } }]), '46'),
       ''
     )
   })
@@ -210,17 +206,85 @@ describe('video price matrix serialization', () => {
     )
   })
 
-  test('emits the same payload regardless of row order', () => {
+  test('stores the rows in the order the admin arranged them', () => {
+    const draft = matrix({ resolution: true }, [
+      { resolution: '720p', cells: { '--': '46' } },
+      { resolution: '1080p', cells: { '--': '51' } },
+      { resolution: '4k', cells: { '--': '26' } },
+      { resolution: '480p', cells: { '--': '40' } },
+    ])
+    assert.deepEqual(
+      JSON.parse(serializeVideoPriceMatrix(draft, '46')).tiers.map(
+        (tier: { resolution?: string }) => tier.resolution
+      ),
+      ['720p', '1080p', '4k', '480p']
+    )
+  })
+
+  test('reordering rows alone does not make the model look edited', () => {
     const rows = [
       { resolution: '1080p', cells: { '--': '51' } },
       { resolution: '4k', cells: { '--': '26' } },
     ]
     assert.equal(
-      serializeVideoPriceMatrix(matrix({ resolution: true }, rows), '46'),
-      serializeVideoPriceMatrix(
-        matrix({ resolution: true }, [...rows].reverse()),
-        '46'
+      canonicalizeVideoPriceTiers(
+        serializeVideoPriceMatrix(matrix({ resolution: true }, rows), '46')
+      ),
+      canonicalizeVideoPriceTiers(
+        serializeVideoPriceMatrix(
+          matrix({ resolution: true }, [...rows].reverse()),
+          '46'
+        )
       )
+    )
+  })
+
+  test('keeps the row order through a save and a reload', () => {
+    const draft = matrix({ resolution: true, videoInput: true }, [
+      { resolution: '720p', cells: { '--': '46', 'v-': '28' } },
+      { resolution: '1080p', cells: { '--': '51', 'v-': '31' } },
+      { resolution: '4k', cells: { '--': '26', 'v-': '16' } },
+    ])
+    const reloaded = parseVideoPriceMatrix(
+      serializeVideoPriceMatrix(draft, '46'),
+      '46'
+    )
+    assert.deepEqual(
+      reloaded.rows.map((row) => row.resolution),
+      ['720p', '1080p', '4k']
+    )
+  })
+
+  test('a deleted catch-all row stays deleted after a reload', () => {
+    const stored = serializeVideoPriceMatrix(
+      matrix({ resolution: true, videoInput: true }, [
+        { resolution: '1080p', cells: { '--': '51', 'v-': '31' } },
+      ]),
+      '46'
+    )
+    const reloaded = parseVideoPriceMatrix(stored, '46')
+
+    assert.deepEqual(
+      reloaded.rows.map((row) => row.resolution),
+      ['1080p']
+    )
+  })
+
+  test('keeps a catch-all row priced at the input price', () => {
+    const draft = matrix({ resolution: true }, [
+      { cells: { '--': '46' } },
+      { resolution: '1080p', cells: { '--': '51' } },
+    ])
+    const reloaded = parseVideoPriceMatrix(
+      serializeVideoPriceMatrix(draft, '46'),
+      '46'
+    )
+    assert.deepEqual(
+      reloaded.rows.map((row) => [row.resolution, row.prices['--']]),
+      [
+        ['', '46'],
+        ['1080p', '51'],
+      ]
     )
   })
 })
@@ -239,7 +303,7 @@ describe('video price axis toggles', () => {
       serializeVideoPriceMatrix(next, '46'),
       JSON.stringify({
         base_price: 46,
-        tiers: [{ has_video: true, price: 28 }],
+        tiers: [{ price: 46 }, { has_video: true, price: 28 }],
       })
     )
   })

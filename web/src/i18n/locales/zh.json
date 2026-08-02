@@ -2829,7 +2829,7 @@
     "Leave empty to use the system name": "留空则使用系统名称",
     "Leave empty to use username": "留空以使用用户名",
     "Leave the final split empty as the fallback for models not matched above.": "将最后一个分流留空作为兜底，用于匹配前面未命中的模型。",
-    "Leave the resolution blank to price every output resolution the table does not list, and leave a cell blank to charge the input price for that combination.": "分辨率留空的那一行，用来给表格没有列出的所有输出分辨率定价；格子留空表示该组合按输入价格计费。",
+    "Leave the resolution blank to price every output resolution the table does not list, and leave a cell blank to charge the input price for that combination.": "把某一行的分辨率留空，就是给表格没有列出的所有输出分辨率定价；格子留空则该组合按输入价格计费。",
     "Leave this empty only for the final fallback split; it catches client models not matched above.": "只有最后一个兜底分流可以留空；它会匹配前面未命中的客户端模型。",
     "Ledgers": "流水",
     "Legacy Format (JSON Object)": "旧格式（JSON 对象）",

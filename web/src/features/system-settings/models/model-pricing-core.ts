@@ -301,12 +301,6 @@ export function parseVideoPriceMatrix(
     return created
   }
 
-  // base_price priced the combination no tier itemized, so it becomes that
-  // row's plain cell instead of a separate concept.
-  if (storedAnchor !== null && storedAnchor > 0) {
-    rowFor('').prices['--'] = rescalePrice(storedAnchor)
-  }
-
   for (const tier of tiers) {
     const resolution =
       typeof tier.resolution === 'string' ? tier.resolution.trim() : ''
@@ -352,11 +346,6 @@ export function serializeVideoPriceMatrix(
     for (const column of columns) {
       const price = toNumberOrNull(row.prices[column.key])
       if (price === null || price <= 0) continue
-      // base_price already prices the combination no condition narrows down, so
-      // repeating it as a tier would only make an untouched model look edited.
-      const isAnchorCell =
-        !resolution && !column.hasVideo && !column.hasAudio && price === anchor
-      if (isAnchorCell) continue
       tiers.push(
         buildVideoPriceTierJson(
           resolution,
@@ -369,10 +358,11 @@ export function serializeVideoPriceMatrix(
   }
 
   if (tiers.length === 0) return ''
-  return JSON.stringify({
-    base_price: anchor,
-    tiers: sortVideoPriceTiers(tiers),
-  })
+  // Row order is the admin's, not ours: the table is read top to bottom, and a
+  // reload that reshuffles it looks like the form lost the edit. Nothing downstream
+  // depends on the order — the backend matches tiers by shape, and the
+  // unsaved-changes check compares canonical forms.
+  return JSON.stringify({ base_price: anchor, tiers })
 }
 
 /**
