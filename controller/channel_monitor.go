@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/gin-gonic/gin"
@@ -92,6 +93,12 @@ type channelModelItem struct {
 	Throughput   float64              `json:"throughput"`   // completion tokens / second
 	RequestCount int64                `json:"request_count"`
 	Buckets      []channelModelBucket `json:"buckets"`
+
+	// 以下来自探针最近一次探测，空 verdict 表示这个渠道/模型还没被探过。
+	Verdict       string          `json:"verdict"`
+	ReportedModel string          `json:"reported_model"`
+	ProbedAt      int64           `json:"probed_at"`
+	Evidence      []probeEvidence `json:"evidence"`
 }
 
 type channelMonitorItem struct {
@@ -103,6 +110,8 @@ type channelMonitorItem struct {
 	Availability float64            `json:"availability"` // -1 when no data
 	RequestCount int64              `json:"request_count"`
 	Models       []channelModelItem `json:"models"`
+	// SuspectCount 是这个渠道下被判为疑似与声称不一致的模型数，供列表直接打标。
+	SuspectCount int `json:"suspect_count"`
 }
 
 type channelMonitorBucketCounts struct {
@@ -171,6 +180,13 @@ func GetChannelMonitor(c *gin.Context) {
 		}
 	}
 
+	probesByTarget := make(map[string]*model.ChannelProbe)
+	if probes, err := model.GetAllChannelProbes(); err == nil {
+		for _, probe := range probes {
+			probesByTarget[channelProbeKey(probe.ChannelId, probe.ModelName)] = probe
+		}
+	}
+
 	items := make([]channelMonitorItem, 0, len(perChannel))
 	overallRank := 0
 	for channelId, models := range perChannel {
@@ -216,6 +232,20 @@ func GetChannelMonitor(c *gin.Context) {
 					Health:       health,
 					Availability: availability,
 				})
+			}
+			if probe := probesByTarget[channelProbeKey(channelId, modelName)]; probe != nil {
+				mItem.Verdict = probe.Verdict
+				mItem.ReportedModel = probe.ReportedModel
+				mItem.ProbedAt = probe.ProbedAt
+				if probe.Evidence != "" {
+					var evidence []probeEvidence
+					if err := common.UnmarshalJsonStr(probe.Evidence, &evidence); err == nil {
+						mItem.Evidence = evidence
+					}
+				}
+				if probe.Verdict == model.ProbeVerdictSuspect {
+					item.SuspectCount++
+				}
 			}
 			item.Models = append(item.Models, mItem)
 		}
@@ -265,4 +295,9 @@ func GetChannelMonitor(c *gin.Context) {
 			"channels":       items,
 		},
 	})
+}
+
+// channelProbeKey 把渠道与模型拼成索引键，用 \x00 分隔避免模型名里的字符撞键。
+func channelProbeKey(channelId int, modelName string) string {
+	return strconv.Itoa(channelId) + "\x00" + modelName
 }

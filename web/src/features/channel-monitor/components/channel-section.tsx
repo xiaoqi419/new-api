@@ -18,7 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronRight } from '@/components/icons'
+import { ChevronRight, ShieldAlert } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 
 import { MONITOR_HEALTH_COLORS } from '../constants'
@@ -62,6 +62,15 @@ export function ChannelSection({
           )}
         </div>
         <div className='flex shrink-0 items-center gap-3'>
+          {item.suspect_count > 0 && (
+            <span
+              className='text-destructive flex shrink-0 items-center gap-1 text-xs font-medium'
+              title={t('Models suspected of not matching what they claim')}
+            >
+              <ShieldAlert className='size-3.5' />
+              {t('{{count}} suspect model(s)', { count: item.suspect_count })}
+            </span>
+          )}
           <span className='text-muted-foreground hidden text-xs tabular-nums sm:inline'>
             {item.request_count} {t('Requests')}
           </span>

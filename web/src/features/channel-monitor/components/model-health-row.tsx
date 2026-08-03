@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { MONITOR_HEALTH_COLORS } from '../constants'
 import { formatMonitorTs } from '../lib'
 import type { ChannelModelItem } from '../types'
+import { AuthenticityBadge } from './authenticity-badge'
 import { HealthHeatmap } from './health-heatmap'
 
 function MetricValue({
@@ -75,6 +76,7 @@ export function ModelHealthRow({
         >
           {item.model}
         </span>
+        <AuthenticityBadge item={item} />
         <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
           {item.request_count} {t('Requests')}
         </span>

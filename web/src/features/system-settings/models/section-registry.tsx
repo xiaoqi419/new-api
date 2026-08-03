@@ -85,6 +85,16 @@ const MODELS_SECTIONS = [
             settings['monitor_setting.auto_test_channel_minutes'],
           'monitor_setting.channel_test_mode':
             settings['monitor_setting.channel_test_mode'],
+          'health_probe_setting.enabled':
+            settings['health_probe_setting.enabled'],
+          'health_probe_setting.interval_minutes':
+            settings['health_probe_setting.interval_minutes'],
+          'health_probe_setting.concurrency':
+            settings['health_probe_setting.concurrency'],
+          'health_probe_setting.max_targets_per_round':
+            settings['health_probe_setting.max_targets_per_round'],
+          'health_probe_setting.authenticity_enabled':
+            settings['health_probe_setting.authenticity_enabled'],
         }}
       />
     ),

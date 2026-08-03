@@ -30,6 +30,16 @@ export interface ChannelModelBucket {
   availability: number // -1 when no data
 }
 
+/** Empty string means this channel/model pair has not been probed yet. */
+export type ProbeVerdict = 'trusted' | 'suspect' | 'unknown' | ''
+
+export interface ProbeEvidence {
+  signal: string
+  /** `suspect` drives the verdict; `info` is context only. */
+  severity: 'suspect' | 'info'
+  detail: string
+}
+
 export interface ChannelModelItem {
   model: string
   status: MonitorStatus
@@ -39,6 +49,10 @@ export interface ChannelModelItem {
   throughput: number // completion tokens / second
   request_count: number
   buckets: ChannelModelBucket[]
+  verdict: ProbeVerdict
+  reported_model: string
+  probed_at: number // 0 when never probed
+  evidence: ProbeEvidence[] | null
 }
 
 export interface ChannelMonitorItem {
@@ -50,6 +64,7 @@ export interface ChannelMonitorItem {
   availability: number // -1 when no data
   request_count: number
   models: ChannelModelItem[]
+  suspect_count: number
 }
 
 export interface ChannelMonitorData {

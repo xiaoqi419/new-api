@@ -41,6 +41,31 @@ type testResult struct {
 	localErr    error
 	newAPIError *types.NewAPIError
 	viaFallback bool
+	// facts 是从上游响应里读出的可核对信息，仅在请求成功时非空。模型真实性检测靠它，
+	// 手动测试渠道不用管。
+	facts *upstreamFacts
+}
+
+// upstreamFacts 是上游响应中能用来核对「给的是不是它声称的那个模型」的字段。
+type upstreamFacts struct {
+	ReportedModel     string
+	ResponseId        string
+	SystemFingerprint string
+	PromptTokens      int
+	CompletionTokens  int
+	ReplyText         string
+}
+
+// channelTestOptions 收敛 testChannel 的可选行为，避免继续往参数列表后面追加布尔量。
+type channelTestOptions struct {
+	endpointType string
+	isStream     bool
+	// silent 为 true 时跳过「模型测试」消费日志记录，供健康探测等内部调用复用，
+	// 避免污染用户日志与统计（探测另有独立的 health_probe 日志，quota=0）。
+	silent bool
+	// probePrompt 非空时替换测试提问。健康探测借它把提问换成自我识别问题，
+	// 这样行为判据不需要额外发一次请求。
+	probePrompt string
 }
 
 func normalizeChannelTestEndpoint(channel *model.Channel, modelName, endpointType string) string {
@@ -74,9 +99,10 @@ func resolveChannelTestUserID(c *gin.Context) (int, error) {
 	return rootUser.Id, nil
 }
 
-// silent 为 true 时跳过内部的「模型测试」消费日志记录，供健康探测等内部调用复用，
-// 避免污染用户日志与统计（探测另有独立的 health_probe 日志，quota=0）。
-func testChannel(ctx context.Context, channel *model.Channel, testUserID int, testModel string, endpointType string, isStream bool, silent bool) testResult {
+func testChannel(ctx context.Context, channel *model.Channel, testUserID int, testModel string, opts channelTestOptions) testResult {
+	endpointType := opts.endpointType
+	isStream := opts.isStream
+	silent := opts.silent
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -239,7 +265,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		}
 	}
 
-	request := buildTestRequest(testModel, endpointType, channel, isStream)
+	request := buildTestRequest(testModel, endpointType, channel, isStream, opts.probePrompt)
 
 	info, err := relaycommon.GenRelayInfo(c, relayFormat, request, nil)
 
@@ -451,6 +477,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		}
 	}
 	info.SetEstimatePromptTokens(usage.PromptTokens)
+	facts := extractUpstreamFacts(respBody, isStream, usage)
 
 	if !silent {
 		quota, tieredResult := settleTestQuota(info, priceData, usage)
@@ -478,6 +505,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		localErr:    nil,
 		newAPIError: nil,
 		viaFallback: viaFallback,
+		facts:       facts,
 	}
 }
 
@@ -736,7 +764,11 @@ func detectErrorMessageFromJSONBytes(jsonBytes []byte) string {
 	return message
 }
 
-func buildTestRequest(model string, endpointType string, channel *model.Channel, isStream bool) dto.Request {
+func buildTestRequest(model string, endpointType string, channel *model.Channel, isStream bool, probePrompt string) dto.Request {
+	prompt := "hi"
+	if probePrompt != "" {
+		prompt = probePrompt
+	}
 	testResponsesInput := json.RawMessage(`[{"role":"user","content":"hi"}]`)
 
 	// 根据端点类型构建不同的测试请求
@@ -780,6 +812,10 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 		case constant.EndpointTypeAnthropic, constant.EndpointTypeGemini, constant.EndpointTypeOpenAI:
 			// 返回 GeneralOpenAIRequest
 			maxTokens := uint(16)
+			if probePrompt != "" {
+				// 自我识别的回答比 "hi" 的回答长，16 个 token 会把型号名截断。
+				maxTokens = probeReplyMaxTokens
+			}
 			if constant.EndpointType(endpointType) == constant.EndpointTypeGemini {
 				maxTokens = 3000
 			}
@@ -789,7 +825,7 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 				Messages: []dto.Message{
 					{
 						Role:    "user",
-						Content: "hi",
+						Content: prompt,
 					},
 				},
 				MaxTokens: lo.ToPtr(maxTokens),
@@ -846,7 +882,7 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 		Messages: []dto.Message{
 			{
 				Role:    "user",
-				Content: "hi",
+				Content: prompt,
 			},
 		},
 	}
@@ -901,7 +937,7 @@ func TestChannel(c *gin.Context) {
 	if c.Request != nil {
 		requestCtx = c.Request.Context()
 	}
-	result := testChannel(requestCtx, channel, testUserID, testModel, endpointType, isStream, false)
+	result := testChannel(requestCtx, channel, testUserID, testModel, channelTestOptions{endpointType: endpointType, isStream: isStream})
 	if result.localErr != nil {
 		resp := gin.H{
 			"success": false,
@@ -969,7 +1005,7 @@ func performChannelTests(ctx context.Context, channels []*model.Channel, testUse
 		}
 		isChannelEnabled := channel.Status == common.ChannelStatusEnabled
 		tik := time.Now()
-		result := testChannel(ctx, channel, testUserID, "", "", shouldUseStreamForAutomaticChannelTest(channel), false)
+		result := testChannel(ctx, channel, testUserID, "", channelTestOptions{isStream: shouldUseStreamForAutomaticChannelTest(channel)})
 		tok := time.Now()
 		milliseconds := tok.Sub(tik).Milliseconds()
 		if ctx != nil && ctx.Err() != nil {

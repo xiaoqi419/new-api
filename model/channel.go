@@ -604,8 +604,15 @@ func (channel *Channel) Delete() error {
 	if err != nil {
 		return err
 	}
-	err = channel.DeleteAbilities()
-	return err
+	if err = channel.DeleteAbilities(); err != nil {
+		return err
+	}
+	// 探测结果只是监控用的附属数据，清理失败不能让渠道删除对外报错——渠道此时已经删掉了，
+	// 残留记录也不会被渠道监控查到（它只展示日志里出现过的渠道）。
+	if probeErr := DeleteChannelProbesByChannelId(channel.Id); probeErr != nil {
+		common.SysError(fmt.Sprintf("failed to clean probe results of channel #%d: %s", channel.Id, probeErr.Error()))
+	}
+	return nil
 }
 
 var channelStatusLock sync.Mutex
