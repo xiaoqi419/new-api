@@ -20,10 +20,13 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StaticDataTable } from '@/components/data-table'
-import { GroupBadge } from '@/components/group-badge'
+import { StatusBadge } from '@/components/status-badge'
 import { TableCell, TableRow } from '@/components/ui/table'
-import { getGroupRatioClassName } from '@/lib/colors'
-import { getLobeIcon } from '@/lib/lobe-icon'
+import {
+  avatarColorMap,
+  getGroupRatioClassName,
+  getVendorColor,
+} from '@/lib/colors'
 import { cn } from '@/lib/utils'
 
 import { DEFAULT_TOKEN_UNIT, MAX_GROUP_VIEW_CHIPS } from '../constants'
@@ -33,17 +36,20 @@ import type { PricingModel, TokenUnit, UsableGroupMap } from '../types'
 
 type PriceContext = Omit<GroupChipPriceOptions, 'dynamicLabel'>
 
-type GroupVendor = {
+/** A group's models grouped by the vendor that serves them. */
+type VendorSegment = {
   name: string
-  icon: React.ReactNode
+  colorClassName: string
+  variant: ReturnType<typeof getVendorColor>
+  models: PricingModel[]
 }
 
 type GroupRow = {
   group: string
   description?: string
   ratio: number
-  models: PricingModel[]
-  vendors: GroupVendor[]
+  modelCount: number
+  segments: VendorSegment[]
 }
 
 export interface GroupViewProps {
@@ -61,48 +67,92 @@ export interface GroupViewProps {
 function ModelChip(props: {
   model: PricingModel
   price: string
+  colorClassName: string
   onClick: () => void
 }) {
-  // 不放厂商图标:供应商已经是独立一列,每个 chip 再画一遍会把 chip 撑宽约 20px,
-  // 几十个 chip 累积下来会让模型列一行只放得下一个。
   return (
     <button
       type='button'
       onClick={props.onClick}
       title={`${props.model.model_name} · ${props.price}`}
-      className='border-border/70 bg-background hover:border-primary/40 hover:bg-accent/60 inline-flex max-w-full items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] transition-colors'
+      className={cn(
+        'inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] transition-opacity hover:opacity-75',
+        props.colorClassName
+      )}
     >
-      <span className='text-foreground truncate font-mono font-medium'>
+      <span className='truncate font-mono font-medium'>
         {props.model.model_name}
       </span>
-      <span className='text-muted-foreground shrink-0 font-mono tabular-nums'>
+      <span className='shrink-0 font-mono tabular-nums opacity-70'>
         {props.price}
       </span>
     </button>
   )
 }
 
-function VendorPills(props: { vendors: GroupVendor[] }) {
+/**
+ * One vendor's row inside a group: the vendor on the left, the models it serves
+ * on the right, both in that vendor's color. Mirrors the reference layout, where
+ * a group spanning five domestic vendors stays readable instead of collapsing
+ * into one undifferentiated run of chips.
+ */
+function VendorSegmentRow(props: {
+  segment: VendorSegment
+  group: string
+  ctx: PriceContext
+  dynamicLabel: string
+  onModelClick: (modelName: string, group: string) => void
+}) {
   return (
-    <div className='flex flex-wrap gap-1'>
-      {props.vendors.map((vendor) => (
-        <span
-          key={vendor.name}
-          className='border-border/70 text-muted-foreground inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]'
-        >
-          {vendor.icon && (
-            <span className='flex size-3.5 shrink-0 items-center justify-center'>
-              {vendor.icon}
-            </span>
-          )}
-          <span className='truncate'>{vendor.name}</span>
-        </span>
-      ))}
+    <div className='flex flex-col gap-1 sm:flex-row sm:gap-3'>
+      <div className='shrink-0 pt-0.5 sm:w-[8.5rem]'>
+        <StatusBadge
+          variant={props.segment.variant}
+          label={props.segment.name}
+          showDot
+          size='sm'
+        />
+      </div>
+      <div className='flex min-w-0 flex-1 flex-wrap gap-1.5'>
+        {props.segment.models.map((model) => (
+          <ModelChip
+            key={model.model_name}
+            model={model}
+            colorClassName={props.segment.colorClassName}
+            price={formatGroupChipPrice(model, props.group, {
+              ...props.ctx,
+              dynamicLabel: props.dynamicLabel,
+            })}
+            onClick={() => props.onModelClick(model.model_name, props.group)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
-function ModelChips(props: {
+/**
+ * Trim a group's vendor segments down to the collapsed chip budget, dropping
+ * whole trailing segments once the budget runs out so a collapsed group never
+ * shows a vendor with an empty model list.
+ */
+function limitSegments(
+  segments: VendorSegment[],
+  budget: number
+): VendorSegment[] {
+  const limited: VendorSegment[] = []
+  let remaining = budget
+
+  for (const segment of segments) {
+    if (remaining <= 0) break
+    limited.push({ ...segment, models: segment.models.slice(0, remaining) })
+    remaining -= segment.models.length
+  }
+
+  return limited
+}
+
+function GroupModels(props: {
   row: GroupRow
   ctx: PriceContext
   expanded: boolean
@@ -111,46 +161,36 @@ function ModelChips(props: {
 }) {
   const { t } = useTranslation()
   const dynamicLabel = t('Dynamic Pricing')
-  const hiddenCount = Math.max(
-    props.row.models.length - MAX_GROUP_VIEW_CHIPS,
-    0
-  )
-  const visible =
+  const hiddenCount = Math.max(props.row.modelCount - MAX_GROUP_VIEW_CHIPS, 0)
+  const segments =
     props.expanded || hiddenCount === 0
-      ? props.row.models
-      : props.row.models.slice(0, MAX_GROUP_VIEW_CHIPS)
+      ? props.row.segments
+      : limitSegments(props.row.segments, MAX_GROUP_VIEW_CHIPS)
 
   return (
-    <>
-      <div className='flex flex-wrap gap-1.5'>
-        {visible.map((model) => (
-          <ModelChip
-            key={model.model_name}
-            model={model}
-            price={formatGroupChipPrice(model, props.row.group, {
-              ...props.ctx,
-              dynamicLabel,
-            })}
-            onClick={() =>
-              props.onModelClick(model.model_name, props.row.group)
-            }
-          />
-        ))}
-      </div>
+    <div className='space-y-2'>
+      {segments.map((segment) => (
+        <VendorSegmentRow
+          key={segment.name}
+          segment={segment}
+          group={props.row.group}
+          ctx={props.ctx}
+          dynamicLabel={dynamicLabel}
+          onModelClick={props.onModelClick}
+        />
+      ))}
       {hiddenCount > 0 && (
         <button
           type='button'
           onClick={props.onToggleExpanded}
-          className='text-muted-foreground hover:text-foreground mt-1.5 text-xs font-medium transition-colors'
+          className='text-muted-foreground hover:text-foreground text-xs font-medium transition-colors'
         >
           {props.expanded
             ? t('Collapse')
-            : t('Show all {{count}} models', {
-                count: props.row.models.length,
-              })}
+            : t('Show all {{count}} models', { count: props.row.modelCount })}
         </button>
       )}
-    </>
+    </div>
   )
 }
 
@@ -185,35 +225,47 @@ export function GroupView(props: GroupViewProps) {
   const rows = useMemo<GroupRow[]>(() => {
     return props.groups
       .map((group) => {
-        const models = props.models.filter((model) =>
-          (model.enable_groups || []).includes(group)
-        )
-        const vendorNames = new Map<string, string | undefined>()
-        for (const model of models) {
+        const byVendor = new Map<string, PricingModel[]>()
+        const icons = new Map<string, string | undefined>()
+
+        for (const model of props.models) {
+          if (!(model.enable_groups || []).includes(group)) continue
           const name = model.vendor_name || unknownVendorLabel
-          if (!vendorNames.has(name)) {
-            vendorNames.set(name, model.vendor_icon)
+          const bucket = byVendor.get(name)
+          if (bucket) {
+            bucket.push(model)
+          } else {
+            byVendor.set(name, [model])
+            icons.set(name, model.vendor_icon)
           }
         }
+
+        const segments = [...byVendor.entries()]
+          // 未归属厂商的模型排在最后,否则「其他」会插在两家真实厂商中间。
+          .sort(([a], [b]) => {
+            if (a === unknownVendorLabel) return 1
+            if (b === unknownVendorLabel) return -1
+            return a.localeCompare(b)
+          })
+          .map(([name, models]) => {
+            const variant = getVendorColor({ name, icon: icons.get(name) })
+            return {
+              name,
+              variant,
+              colorClassName: avatarColorMap[variant],
+              models,
+            }
+          })
+
         return {
           group,
           description: props.usableGroup[group],
           ratio: props.groupRatio[group] ?? 1,
-          models,
-          vendors: [...vendorNames.entries()]
-            // 未归属厂商的模型排在最后,否则「其他」会插在两个真实厂商中间。
-            .sort(([a], [b]) => {
-              if (a === unknownVendorLabel) return 1
-              if (b === unknownVendorLabel) return -1
-              return a.localeCompare(b)
-            })
-            .map(([name, icon]) => ({
-              name,
-              icon: icon ? getLobeIcon(icon, 14) : null,
-            })),
+          modelCount: segments.reduce((sum, s) => sum + s.models.length, 0),
+          segments,
         }
       })
-      .filter((row) => row.models.length > 0)
+      .filter((row) => row.modelCount > 0)
   }, [
     props.groups,
     props.models,
@@ -240,10 +292,18 @@ export function GroupView(props: GroupViewProps) {
         {rows.map((row) => (
           <section key={row.group} className='rounded-xl border p-3'>
             <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
-              <GroupBadge group={row.group} ratio={row.ratio} size='sm' />
+              <span className='font-mono text-sm font-medium'>{row.group}</span>
+              <span
+                className={cn(
+                  'rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums',
+                  getGroupRatioClassName(row.ratio)
+                )}
+              >
+                {formatGroupRatioLabel(row.ratio) ?? `x${row.ratio}`}
+              </span>
               <span className='text-muted-foreground text-xs tabular-nums'>
-                {row.models.length}{' '}
-                {row.models.length === 1 ? t('model') : t('models')}
+                {row.modelCount}{' '}
+                {row.modelCount === 1 ? t('model') : t('models')}
               </span>
             </div>
             {row.description && row.description !== row.group && (
@@ -251,17 +311,8 @@ export function GroupView(props: GroupViewProps) {
                 {row.description}
               </p>
             )}
-            <div className='mt-1.5'>
-              <VendorPills vendors={row.vendors} />
-            </div>
-            <p className='text-muted-foreground mt-2 text-[11px]'>
-              {t(
-                'Available models · price is input / output per {{unit}} tokens',
-                { unit: tokenUnitLabel }
-              )}
-            </p>
-            <div className='mt-1'>
-              <ModelChips
+            <div className='mt-2'>
+              <GroupModels
                 row={row}
                 ctx={ctx}
                 expanded={expandedGroups.has(row.group)}
@@ -275,18 +326,18 @@ export function GroupView(props: GroupViewProps) {
 
       <StaticDataTable
         className='hidden lg:block'
-        // table-fixed 是必须的:自动布局会让说明列按文字撑宽,把模型列压成窄柱。
+        // table-fixed 是必须的:自动布局会让说明列按文字撑宽,挤掉右边的模型区。
         tableClassName='table-fixed text-sm'
-        headerRowClassName='hover:bg-transparent'
+        headerRowClassName='bg-muted/40 hover:bg-muted/40'
         data={rows}
         getRowKey={(row) => row.group}
         columns={GROUP_COLUMNS.map((col) => ({
           id: col.id,
-          header: col.header(t, tokenUnitLabel),
-          className: cn('text-muted-foreground py-2 font-medium', col.width),
+          header: col.header(t),
+          className: cn('text-muted-foreground py-2.5 font-medium', col.width),
         }))}
-        // chip 单独占一整行:挤在最后一列里时列宽只有约 480px,而带价格的 chip 中位
-        // 宽 239px,一行放不下两个,几十个模型就变成一条竖直长柱。跨列后能排 3-4 个。
+        // 厂商分段需要整行宽度:塞进最后一列时列宽只有约 480px,带价格的 chip 中位
+        // 宽 239px,一行放不下两个,几十个模型会变成一条竖直长柱。
         renderRow={(row, index) => (
           <>
             <TableRow className='border-b-0 hover:bg-transparent'>
@@ -305,8 +356,8 @@ export function GroupView(props: GroupViewProps) {
                 index === rows.length - 1 && 'border-b-0'
               )}
             >
-              <TableCell colSpan={GROUP_COLUMNS.length} className='pt-0 pb-3'>
-                <ModelChips
+              <TableCell colSpan={GROUP_COLUMNS.length} className='pt-0 pb-4'>
+                <GroupModels
                   row={row}
                   ctx={ctx}
                   expanded={expandedGroups.has(row.group)}
@@ -318,6 +369,13 @@ export function GroupView(props: GroupViewProps) {
           </>
         )}
       />
+
+      <p className='text-muted-foreground mt-2 text-xs'>
+        {t(
+          'Prices are input / output per {{unit}} tokens, with this group ratio already applied.',
+          { unit: tokenUnitLabel }
+        )}
+      </p>
     </>
   )
 }
@@ -332,12 +390,12 @@ const GROUP_COLUMNS: {
   id: string
   width: string
   cellClassName?: string
-  header: (t: TranslateFn, tokenUnitLabel: string) => string
+  header: (t: TranslateFn) => string
   render: (row: GroupRow, t: TranslateFn) => React.ReactNode
 }[] = [
   {
     id: 'group',
-    width: 'w-[6.5rem]',
+    width: 'w-[9rem]',
     header: (t) => t('Group'),
     render: (row) => (
       <span className='text-foreground font-mono font-medium break-all'>
@@ -347,22 +405,16 @@ const GROUP_COLUMNS: {
   },
   {
     id: 'description',
-    width: 'w-[11rem]',
-    // TableCell 基类是 whitespace-nowrap,不解除的话这句中文会横着压到供应商列上。
+    width: 'w-[16rem]',
+    // TableCell 基类是 whitespace-nowrap,不解除的话长说明会横向压到右边的列上。
     cellClassName: 'text-muted-foreground text-xs whitespace-normal',
     header: (t) => t('Description'),
     render: (row) =>
       row.description && row.description !== row.group ? row.description : '—',
   },
   {
-    id: 'vendor',
-    width: 'w-[8rem]',
-    header: (t) => t('Vendor'),
-    render: (row) => <VendorPills vendors={row.vendors} />,
-  },
-  {
     id: 'ratio',
-    width: 'w-[5.5rem]',
+    width: 'w-[6rem]',
     header: (t) => t('Group Ratio'),
     // 分组名已占第一列,这一格只出倍率,否则同一行把分组名印两遍。
     render: (row) => (
@@ -380,13 +432,10 @@ const GROUP_COLUMNS: {
     id: 'models',
     width: '',
     cellClassName: 'text-muted-foreground text-xs',
-    header: (t, tokenUnitLabel) =>
-      t('Available models · price is input / output per {{unit}} tokens', {
-        unit: tokenUnitLabel,
-      }),
+    header: (t) => t('Vendors and their models'),
     render: (row, t) => (
       <span className='tabular-nums'>
-        {row.models.length} {row.models.length === 1 ? t('model') : t('models')}
+        {row.modelCount} {row.modelCount === 1 ? t('model') : t('models')}
       </span>
     ),
   },

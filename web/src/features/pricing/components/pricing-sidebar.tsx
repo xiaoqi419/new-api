@@ -277,7 +277,10 @@ export function PricingSidebar(props: PricingSidebarProps) {
           props.models,
           (model) => model.supported_endpoint_types?.includes(value) ?? false
         ),
-      })),
+      }))
+      // 同厂商列表:一个端点类型站上没有任何模型支持时不列出来。此前这里漏了过滤,
+      // 只挂 chat 模型的站点会看到七八个恒为 0、点了也没反应的死选项。
+      .filter((option) => option.count > 0),
   ]
 
   return (

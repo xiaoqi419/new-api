@@ -137,6 +137,51 @@ export function getGroupRatioClassName(ratio: number): string {
 }
 
 /**
+ * Recognizable hues for the vendors this gateway commonly proxies.
+ *
+ * Matched as substrings against the vendor's lobe icon key and its name, in the
+ * order below, so a pasted icon value still resolves (one production row holds
+ * a whole `import { Volcengine } ...` statement) and a renamed vendor keeps its
+ * brand color as long as the icon survives. Vendors outside this list fall back
+ * to the name hash, which still gives every vendor on screen a distinct hue.
+ *
+ * Values are limited to `TAG_COLORS` so the result is also a valid badge
+ * variant, and every hue resolves through the existing theme tokens rather than
+ * a second palette that would ignore dark mode and the active accent.
+ */
+const VENDOR_BRAND_COLORS: [string, TagColor][] = [
+  ['openai', 'green'],
+  ['anthropic', 'orange'],
+  ['claude', 'orange'],
+  ['gemini', 'blue'],
+  ['google', 'blue'],
+  ['deepseek', 'cyan'],
+  ['qwen', 'purple'],
+  ['tongyi', 'purple'],
+  ['zhipu', 'lime'],
+  ['glm', 'lime'],
+  ['moonshot', 'grey'],
+  ['kimi', 'grey'],
+  ['minimax', 'red'],
+  ['volcengine', 'pink'],
+  ['bytedance', 'pink'],
+  ['doubao', 'pink'],
+  ['spark', 'indigo'],
+  ['xunfei', 'indigo'],
+]
+
+export function getVendorColor(vendor: {
+  name?: string
+  icon?: string
+}): TagColor {
+  const haystack = `${vendor.icon ?? ''} ${vendor.name ?? ''}`.toLowerCase()
+  for (const [token, color] of VENDOR_BRAND_COLORS) {
+    if (haystack.includes(token)) return color
+  }
+  return stringToColor(vendor.name || vendor.icon || '')
+}
+
+/**
  * Semantic colors for tags and badges
  */
 const TAG_COLORS = [
@@ -158,6 +203,14 @@ const TAG_COLORS = [
 ] as const
 
 /**
+ * The subset of `SemanticColor` that automatic assignment can produce. Narrower
+ * than `SemanticColor` on purpose: every value here is also a valid badge
+ * variant, while `SemanticColor` additionally carries picker-only entries the
+ * badge component has no styles for.
+ */
+export type TagColor = (typeof TAG_COLORS)[number]
+
+/**
  * Convert string to a stable semantic color
  * Used for model tags, group badges, user avatars, etc.
  * Same string always returns the same color
@@ -170,7 +223,7 @@ const TAG_COLORS = [
  * stringToColor('claude-3') // 'purple'
  * stringToColor('default') // 'green'
  */
-export function stringToColor(str: string): SemanticColor {
+export function stringToColor(str: string): TagColor {
   let sum = 0
   for (let i = 0; i < str.length; i++) {
     sum += str.charCodeAt(i)
