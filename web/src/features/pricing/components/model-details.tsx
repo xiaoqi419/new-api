@@ -1624,6 +1624,8 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
               showRechargePrice={showRechargePrice}
               priceRate={props.priceRate}
               usdExchangeRate={props.usdExchangeRate}
+              groupRatio={props.groupRatio}
+              usableGroup={props.usableGroup}
             />
             {isDynamic ? (
               <GroupPricingSection

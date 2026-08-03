@@ -20,8 +20,10 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StaticDataTable } from '@/components/data-table'
+import { GroupBadge } from '@/components/group-badge'
 import { Video } from '@/components/icons'
 
+import { getAvailableGroups } from '../lib/model-helpers'
 import { formatGroupPrice } from '../lib/price'
 import type {
   PricingModel,
@@ -36,63 +38,49 @@ type VideoPriceTierTableProps = {
   showRechargePrice: boolean
   priceRate: number
   usdExchangeRate: number
+  groupRatio: Record<string, number>
+  usableGroup: Record<string, { desc: string; ratio: number }>
 }
 
 type TierRow = {
   key: string
   conditions: string[]
-  ratio: number
-  price: string
-  isBase: boolean
+  listPrice: string
+  groupPrices: Record<string, string>
 }
 
 export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
   const { t } = useTranslation()
   const tiers = props.model.video_price_tiers
 
+  const groups = useMemo(
+    () => getAvailableGroups(props.model, props.usableGroup || {}),
+    [props.model, props.usableGroup]
+  )
+
   const rows = useMemo<TierRow[]>(() => {
     if (!tiers || tiers.base_price <= 0) return []
 
-    const describe = (tier: VideoPriceTier | null): string[] => {
-      const parts: string[] = []
-      for (const axis of tiers.axes) {
-        parts.push(describeAxis(axis, tier, t))
-      }
-      return parts
-    }
-
-    const rest = tiers.tiers.map((tier, index) => {
+    return tiers.tiers.map((tier, index) => {
       const ratio = tier.price / tiers.base_price
+      const groupPrices: Record<string, string> = {}
+      for (const group of groups) {
+        groupPrices[group] = formatTierPrice(
+          props,
+          ratio,
+          props.groupRatio[group] || 1
+        )
+      }
       return {
         key: `tier-${index}`,
-        conditions: describe(tier),
-        ratio,
-        price: formatTierPrice(props, ratio),
-        isBase: false,
+        conditions: tiers.axes.map((axis) => describeAxis(axis, tier, t)),
+        listPrice: formatTierPrice(props, ratio, 1),
+        groupPrices,
       }
     })
+  }, [groups, props, t, tiers])
 
-    // 未被任何档位列出的组合按 base_price 计费,所以补一行说明它。若管理员已经把
-    // 这一组合单独填了价,它就已经在 tiers 里,再补一行会出现两行完全相同的内容。
-    const unlisted = tiers.tiers.some(
-      (tier) =>
-        !tier.resolution && tier.has_video !== true && tier.has_audio !== true
-    )
-    if (unlisted) return rest
-
-    return [
-      {
-        key: 'base',
-        conditions: describe(null),
-        ratio: 1,
-        price: formatTierPrice(props, 1),
-        isBase: true,
-      },
-      ...rest,
-    ]
-  }, [props, t, tiers])
-
-  if (rows.length <= 1) return null
+  if (rows.length === 0) return null
 
   return (
     <section className='min-w-0'>
@@ -121,13 +109,28 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
               </span>
             </div>
             <div className='flex items-baseline justify-between gap-3'>
-              <span className='font-mono text-sm font-semibold'>
-                {row.price}
+              <span className='text-muted-foreground text-xs'>
+                {t('List price')}
               </span>
-              <span className='text-muted-foreground font-mono text-xs'>
-                {formatRatio(row.ratio)}
+              <span className='font-mono text-sm font-semibold'>
+                {row.listPrice}
               </span>
             </div>
+            {groups.map((group) => (
+              <div
+                key={group}
+                className='mt-1 flex items-baseline justify-between gap-3'
+              >
+                <GroupBadge
+                  group={group}
+                  ratio={props.groupRatio[group] || 1}
+                  size='sm'
+                />
+                <span className='font-mono text-sm font-semibold'>
+                  {row.groupPrices[group]}
+                </span>
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -144,39 +147,55 @@ export function VideoPriceTierTable(props: VideoPriceTierTableProps) {
             header: t('Tier'),
             className: 'text-muted-foreground py-2 font-medium',
             cellClassName: 'align-top py-2.5',
-            cell: (row) => (
-              <span className={row.isBase ? 'text-muted-foreground' : ''}>
-                {row.conditions.join(' · ')}
-              </span>
-            ),
+            cell: (row) => <span>{row.conditions.join(' · ')}</span>,
           },
           {
-            id: 'ratio',
-            header: t('Ratio'),
+            id: 'list-price',
+            header: t('List price'),
             className: 'text-muted-foreground py-2 text-right font-medium',
             cellClassName: 'text-right align-top py-2.5 font-mono',
             cell: (row) => (
-              <span className='text-muted-foreground'>
-                {formatRatio(row.ratio)}
+              <span
+                className={groups.length > 0 ? 'text-muted-foreground' : ''}
+              >
+                {row.listPrice}
               </span>
             ),
           },
-          {
-            id: 'price',
-            header: t('Unit price'),
+          ...groups.map((group) => ({
+            id: `group-${group}`,
+            header: (
+              <span className='flex justify-end'>
+                <GroupBadge
+                  group={group}
+                  ratio={props.groupRatio[group] || 1}
+                  size='sm'
+                />
+              </span>
+            ),
             className: 'text-muted-foreground py-2 text-right font-medium',
             cellClassName: 'text-right align-top py-2.5 font-mono',
-            cell: (row) => <span className='font-semibold'>{row.price}</span>,
-          },
+            cell: (row: TierRow) => (
+              <span className='font-semibold'>{row.groupPrices[group]}</span>
+            ),
+          })),
         ]}
       />
+
+      {groups.length > 0 && (
+        <p className='text-muted-foreground mt-2 text-xs'>
+          {t(
+            'The list price is what the tier costs before any group ratio; each group column already has that group ratio applied.'
+          )}
+        </p>
+      )}
     </section>
   )
 }
 
 function describeAxis(
   axis: VideoPriceAxis,
-  tier: VideoPriceTier | null,
+  tier: VideoPriceTier,
   t: (key: string) => string
 ): string {
   if (axis === 'resolution') {
@@ -189,17 +208,14 @@ function describeAxis(
   return tier?.has_audio ? t('With audio') : t('Silent')
 }
 
-function formatRatio(ratio: number): string {
-  return `×${Number(ratio.toFixed(4))}`
-}
-
 // 复用现成的定价格式化：把档位倍率乘进模型倍率后走同一条路径，货币换算与充值折扣就不会
-// 和同屏「输入」那一栏出现两套算法。分组倍率同样固定为 1，保证基准档与「输入」逐字相同。
+// 和同屏「输入」那一栏出现两套算法。分组倍率从这里传进去，列价与「按分组定价」一致。
 const BASE_GROUP_KEY = '_base'
 
 function formatTierPrice(
   props: VideoPriceTierTableProps,
-  ratio: number
+  ratio: number,
+  groupRatio: number
 ): string {
   return formatGroupPrice(
     { ...props.model, model_ratio: props.model.model_ratio * ratio },
@@ -209,6 +225,6 @@ function formatTierPrice(
     props.showRechargePrice,
     props.priceRate,
     props.usdExchangeRate,
-    { [BASE_GROUP_KEY]: 1 }
+    { [BASE_GROUP_KEY]: groupRatio }
   )
 }
