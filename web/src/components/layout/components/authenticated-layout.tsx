@@ -21,7 +21,9 @@ import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { SearchProvider } from '@/context/search-provider'
 import { LegalConsentGate } from '@/features/legal/legal-consent-gate'
+import { usePromoBanner } from '@/hooks/use-promo-banner'
 import { getCookie } from '@/lib/cookies'
+import { PROMO_BANNER_HEIGHT } from '@/lib/promo-banner'
 import { cn } from '@/lib/utils'
 
 import { AppHeader } from './app-header'
@@ -33,10 +35,21 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  const { visible: promoVisible } = usePromoBanner()
 
   return (
     <SearchProvider>
-      <SidebarProvider defaultOpen={defaultOpen} className='flex-col'>
+      <SidebarProvider
+        defaultOpen={defaultOpen}
+        className='flex-col'
+        style={
+          promoVisible
+            ? ({
+                '--app-header-height': `calc(3rem + ${PROMO_BANNER_HEIGHT})`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
         <SkipToMain />
         <LegalConsentGate />
         <AppHeader />

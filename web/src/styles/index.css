@@ -428,6 +428,25 @@ For commercial licensing, please contact support@quantumnous.com
   .scroll-container:hover .animate-scroll-down {
     animation-play-state: paused;
   }
+
+  /* Horizontal marquee for the site promotion strip */
+  @keyframes promo-marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-promo-marquee {
+    animation: promo-marquee 40s linear infinite;
+    will-change: transform;
+  }
+
+  .promo-banner:hover .animate-promo-marquee {
+    animation-play-state: paused;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -435,6 +454,7 @@ For commercial licensing, please contact support@quantumnous.com
   .animate-appear-zoom,
   .animate-scroll-up,
   .animate-scroll-down,
+  .animate-promo-marquee,
   [data-slot='table'] tbody tr {
     animation: none !important;
     opacity: 1;

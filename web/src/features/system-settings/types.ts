@@ -115,6 +115,7 @@ export type SiteSettings = {
   HomePageContent: string
   HomePageConfig: string
   LoginPageConfig: string
+  PromoBannerConfig: string
   ServerAddress: string
   'legal.user_agreement': string
   'legal.privacy_policy': string

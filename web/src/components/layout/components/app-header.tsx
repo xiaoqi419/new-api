@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
+import { PromoBanner } from '@/components/promo-banner'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { CommunityMenu } from '@/features/community'
@@ -113,7 +114,7 @@ export function AppHeader({
 
   return (
     <>
-      <Header>
+      <Header banner={<PromoBanner />}>
         <SystemBrand variant='inline' />
 
         {leftContent ? (

@@ -73,6 +73,7 @@ func InitOptionMap() {
 	common.OptionMap["HomePageContent"] = ""
 	common.OptionMap["HomePageConfig"] = ""
 	common.OptionMap["LoginPageConfig"] = ""
+	common.OptionMap["PromoBannerConfig"] = ""
 	common.OptionMap["CommunityLinks"] = ""
 	common.OptionMap["Footer"] = common.Footer
 	common.OptionMap["SystemName"] = common.SystemName

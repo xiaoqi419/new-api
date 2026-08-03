@@ -16,6 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { usePromoBanner } from '@/hooks/use-promo-banner'
+import { cn } from '@/lib/utils'
+
 import type { TopNavLink } from '../types'
 import { PublicHeader, type PublicHeaderProps } from './public-header'
 
@@ -33,8 +36,18 @@ type PublicLayoutProps = {
 }
 
 export function PublicLayout(props: PublicLayoutProps) {
+  const { visible: promoVisible } = usePromoBanner()
+
   return (
-    <div className='bg-background text-foreground relative min-h-svh overflow-x-clip'>
+    <div
+      className={cn(
+        'bg-background text-foreground relative min-h-svh overflow-x-clip',
+        // The header is fixed, so each page reserves room for it with its own
+        // top padding. Padding the wrapper shifts every page down by the strip
+        // height at once, including the many that opt out of `main`.
+        promoVisible && 'pt-9'
+      )}
+    >
       <PublicHeader
         navContent={props.navContent}
         navLinks={props.navLinks}

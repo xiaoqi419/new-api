@@ -31,6 +31,7 @@ import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
 import { HomeTemplatesSection } from './home-templates-section'
 import { LoginPageSection } from './login-page-section'
+import { PromoBannerSection } from './promo-banner-section'
 
 const SITE_SECTIONS = [
   {
@@ -72,6 +73,13 @@ const SITE_SECTIONS = [
     titleKey: 'System Notice',
     build: (settings: SiteSettings) => (
       <NoticeSection defaultValue={settings.Notice ?? ''} />
+    ),
+  },
+  {
+    id: 'promo-banner',
+    titleKey: 'Promotion Banner',
+    build: (settings: SiteSettings) => (
+      <PromoBannerSection defaultValue={settings.PromoBannerConfig ?? ''} />
     ),
   },
   {
