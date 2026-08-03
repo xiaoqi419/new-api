@@ -20,7 +20,8 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import type { PricingModel } from '../../types'
-import { formatGroupRatioLabel, getGroupRatioTone } from '../model-helpers'
+import { getGroupRatioClassName } from '../../../../lib/colors'
+import { formatGroupRatioLabel } from '../model-helpers'
 import { formatGroupChipPrice, formatGroupPrice } from '../price'
 
 const GROUP_RATIO = { default: 1, vip: 0.9, trial: 2 }
@@ -169,12 +170,10 @@ describe('group ratio badge', () => {
     assert.equal(formatGroupRatioLabel(Number.POSITIVE_INFINITY), undefined)
   })
 
-  test('tones a ratio by whether it is cheaper than base', () => {
-    assert.equal(getGroupRatioTone(0.9), 'discount')
-    assert.equal(getGroupRatioTone(0), 'discount')
-    assert.equal(getGroupRatioTone(1), 'neutral')
-    assert.equal(getGroupRatioTone(undefined), 'neutral')
-    assert.equal(getGroupRatioTone(Number.NaN), 'neutral')
-    assert.equal(getGroupRatioTone(1.5), 'premium')
+  test('colors a ratio by whether it is cheaper than base', () => {
+    // 分组视图、侧栏筛选、详情分组卡三处共用这一个判定,避免同屏出现两套语义色。
+    assert.match(getGroupRatioClassName(0.9), /text-success/)
+    assert.match(getGroupRatioClassName(1.5), /text-warning/)
+    assert.match(getGroupRatioClassName(1), /text-muted-foreground/)
   })
 })

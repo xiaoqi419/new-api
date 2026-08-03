@@ -27,6 +27,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { getLobeIcon } from '@/lib/lobe-icon'
+import { getGroupRatioClassName } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 
 import {
@@ -37,12 +38,7 @@ import {
   getQuotaTypeLabels,
 } from '../constants'
 import { parseTags } from '../lib/filters'
-import {
-  GROUP_RATIO_TONE_CLASS,
-  formatGroupRatioLabel,
-  getGroupRatioTone,
-  type GroupRatioTone,
-} from '../lib/model-helpers'
+import { formatGroupRatioLabel } from '../lib/model-helpers'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -50,7 +46,7 @@ type FilterOption = {
   label: string
   count?: number
   suffix?: string
-  suffixTone?: GroupRatioTone
+  suffixClassName?: string
   icon?: ReactNode
 }
 
@@ -97,8 +93,8 @@ function FilterChip(props: {
   let suffixClass = props.active
     ? 'bg-background text-foreground'
     : 'bg-muted text-muted-foreground'
-  if (props.option.suffixTone) {
-    suffixClass = GROUP_RATIO_TONE_CLASS[props.option.suffixTone]
+  if (props.option.suffixClassName) {
+    suffixClass = props.option.suffixClassName
   }
 
   return (
@@ -225,7 +221,8 @@ export function PricingSidebar(props: PricingSidebarProps) {
         value: group,
         label: group,
         suffix: formatGroupRatioLabel(ratio),
-        suffixTone: getGroupRatioTone(ratio),
+        suffixClassName:
+          ratio == null ? undefined : getGroupRatioClassName(ratio),
       }
     }),
   ]

@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useTranslation } from 'react-i18next'
 
+import { getGroupRatioClassName } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 
 import { StatusBadge, type StatusBadgeProps } from './status-badge'
@@ -29,17 +30,6 @@ type GroupBadgeProps = Omit<
   group?: string | null
   label?: string
   ratio?: number | null
-}
-
-function getGroupRatioClassName(ratio: number): string {
-  if (ratio > 1) {
-    return 'bg-warning/10 text-warning'
-  }
-  if (ratio < 1) {
-    // 折扣分组用「更便宜=绿」与「加价=橙」配对,比原来的蓝色更表意。
-    return 'bg-success/10 text-success'
-  }
-  return 'bg-muted text-muted-foreground'
 }
 
 function getGroupLabel(params: {

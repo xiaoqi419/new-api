@@ -56,6 +56,7 @@ import {
   getSuccessRateTextClass,
 } from '@/features/performance-metrics/lib/format'
 import type { PerformanceGroup } from '@/features/performance-metrics/types'
+import { getGroupRatioClassName } from '@/lib/colors'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
 
@@ -70,11 +71,9 @@ import {
 import { parseTags } from '../lib/filters'
 import { ModalityFlow } from '../lib/modality'
 import {
-  GROUP_RATIO_TONE_CLASS,
   formatGroupRatioLabel,
   getAvailableGroups,
   getConfiguredGroupRatio,
-  getGroupRatioTone,
   isTokenBasedModel,
 } from '../lib/model-helpers'
 import { toGroupUptimeSeries } from '../lib/perf-uptime'
@@ -677,7 +676,6 @@ function PriceSection(props: {
     ? props.groupRatio || {}
     : { [baseGroupKey]: 1 }
   const ratioLabel = formatGroupRatioLabel(groupMultiplier)
-  const ratioTone = getGroupRatioTone(groupMultiplier)
   const dynamicSummary = getDynamicPricingSummary(props.model, {
     tokenUnit: props.tokenUnit,
     showRechargePrice: props.showRechargePrice,
@@ -693,7 +691,7 @@ function PriceSection(props: {
         <span
           className={cn(
             'rounded-md px-1.5 py-0.5 font-mono text-[11px] normal-case tabular-nums',
-            GROUP_RATIO_TONE_CLASS[ratioTone]
+            getGroupRatioClassName(groupMultiplier)
           )}
         >
           {ratioLabel}
@@ -1423,7 +1421,7 @@ function GroupChannelCards(props: {
                 <span
                   className={cn(
                     'rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums',
-                    GROUP_RATIO_TONE_CLASS[getGroupRatioTone(ratio)]
+                    getGroupRatioClassName(ratio)
                   )}
                 >
                   {formatGroupRatioLabel(ratio) ?? `x${ratio}`}

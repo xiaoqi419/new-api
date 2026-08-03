@@ -601,6 +601,7 @@
     "Available disk space": "可用磁盘空间",
     "Available draws": "可抽次数",
     "Available Models": "可用模型",
+    "Available models · price is input / output per {{unit}} tokens": "可用模型 · 价格为输入 / 输出，每 {{unit}} tokens",
     "Available reset credits": "可用重置次数",
     "Available Rewards": "可用奖励",
     "Average latency": "平均延迟",

@@ -601,6 +601,7 @@
     "Available disk space": "Espace disque disponible",
     "Available draws": "Tirages disponibles",
     "Available Models": "Modèles disponibles",
+    "Available models · price is input / output per {{unit}} tokens": "Modèles disponibles · prix entrée / sortie par {{unit}} tokens",
     "Available reset credits": "Crédits de réinitialisation disponibles",
     "Available Rewards": "Récompenses disponibles",
     "Average latency": "Latence moyenne",

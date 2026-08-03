@@ -601,6 +601,7 @@
     "Available disk space": "Доступное дисковое пространство",
     "Available draws": "Доступно розыгрышей",
     "Available Models": "Доступные модели",
+    "Available models · price is input / output per {{unit}} tokens": "Доступные модели · цена ввод / вывод за {{unit}} токенов",
     "Available reset credits": "Доступные сбросы лимита",
     "Available Rewards": "Доступные награды",
     "Average latency": "Средняя задержка",

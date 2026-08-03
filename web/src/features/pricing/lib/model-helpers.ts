@@ -116,23 +116,6 @@ export function formatGroupRatioLabel(
   return `x${ratio.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}`
 }
 
-export type GroupRatioTone = 'discount' | 'premium' | 'neutral'
-
-/**
- * Classify a group ratio so the multiplier can be read without parsing the
- * number: below 1 is cheaper than base, above 1 is a surcharge.
- */
-export function getGroupRatioTone(ratio: number | undefined): GroupRatioTone {
-  if (ratio == null || !Number.isFinite(ratio) || ratio === 1) return 'neutral'
-  return ratio < 1 ? 'discount' : 'premium'
-}
-
-export const GROUP_RATIO_TONE_CLASS: Record<GroupRatioTone, string> = {
-  discount: 'bg-success/12 text-success',
-  premium: 'bg-warning/12 text-warning',
-  neutral: 'bg-muted text-muted-foreground',
-}
-
 /**
  * Replace model placeholder in endpoint path
  */

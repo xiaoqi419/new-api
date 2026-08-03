@@ -601,6 +601,7 @@
     "Available disk space": "Available disk space",
     "Available draws": "Available draws",
     "Available Models": "Available Models",
+    "Available models · price is input / output per {{unit}} tokens": "Available models · price is input / output per {{unit}} tokens",
     "Available reset credits": "Available reset credits",
     "Available Rewards": "Available Rewards",
     "Average latency": "Average latency",

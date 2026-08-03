@@ -119,6 +119,24 @@ export function getAnnouncementColorClass(type?: string): string {
 }
 
 /**
+ * Color a group ratio so the multiplier can be read without parsing the number:
+ * below 1 is cheaper than base price, above 1 is a surcharge.
+ *
+ * Shared by the group badge, the pricing group view, the pricing sidebar filter
+ * and the model detail group cards, so one screen cannot show two color schemes
+ * for the same multiplier.
+ */
+export function getGroupRatioClassName(ratio: number): string {
+  if (ratio > 1) {
+    return 'bg-warning/10 text-warning'
+  }
+  if (ratio < 1) {
+    return 'bg-success/10 text-success'
+  }
+  return 'bg-muted text-muted-foreground'
+}
+
+/**
  * Semantic colors for tags and badges
  */
 const TAG_COLORS = [

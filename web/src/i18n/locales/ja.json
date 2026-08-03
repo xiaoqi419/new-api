@@ -601,6 +601,7 @@
     "Available disk space": "利用可能なディスク容量",
     "Available draws": "抽選可能回数",
     "Available Models": "利用可能なモデル",
+    "Available models · price is input / output per {{unit}} tokens": "利用可能モデル · 価格は入力 / 出力、{{unit}} トークンあたり",
     "Available reset credits": "利用可能なリセット回数",
     "Available Rewards": "利用可能な報酬",
     "Average latency": "平均レイテンシ",
