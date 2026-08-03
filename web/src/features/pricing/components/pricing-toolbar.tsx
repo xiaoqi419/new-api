@@ -24,7 +24,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ArrowUpDown, Check, Filter, Grid2X2, Table2 } from '@/components/icons'
+import {
+  ArrowUpDown,
+  Check,
+  Filter,
+  Grid2X2,
+  Layers,
+  Table2,
+} from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -264,6 +271,11 @@ export function PricingToolbar(props: PricingToolbarProps) {
                 value: VIEW_MODES.TABLE,
                 icon: Table2,
                 tooltip: t('Table view'),
+              },
+              {
+                value: VIEW_MODES.GROUP,
+                icon: Layers,
+                tooltip: t('Group view'),
               },
             ]}
             value={props.viewMode}

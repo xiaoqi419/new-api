@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import {
   LoadingSkeleton,
   EmptyState,
+  GroupView,
   SearchBar,
   PricingTable,
   PricingSidebar,
@@ -95,7 +96,7 @@ export function Pricing() {
   const modalityLabels = getModalityFilterLabels(t)
 
   const handleModelClick = useCallback(
-    (modelName: string) => {
+    (modelName: string, sourceGroup?: string) => {
       navigate({
         to: '/pricing/$modelId',
         params: { modelId: modelName },
@@ -103,7 +104,12 @@ export function Pricing() {
           search: searchInput || undefined,
           sort: sortBy !== SORT_OPTIONS.NAME ? sortBy : undefined,
           vendor: vendorFilter !== FILTER_ALL ? vendorFilter : undefined,
-          group: groupFilter !== FILTER_ALL ? groupFilter : undefined,
+          // The group view clicks through from a specific group row, so that
+          // row's group wins over the sidebar filter: the detail page must
+          // price the model with the ratio the user just saw on the chip.
+          group:
+            sourceGroup ??
+            (groupFilter !== FILTER_ALL ? groupFilter : undefined),
           quotaType:
             quotaTypeFilter !== QUOTA_TYPES.ALL ? quotaTypeFilter : undefined,
           endpointType:
@@ -157,6 +163,22 @@ export function Pricing() {
           searchQuery={searchInput}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearAll}
+        />
+      )
+    }
+
+    if (viewMode === VIEW_MODES.GROUP) {
+      return (
+        <GroupView
+          models={filteredModels}
+          groups={availableGroups}
+          groupRatio={groupRatio || {}}
+          usableGroup={usableGroup || {}}
+          priceRate={priceRate}
+          usdExchangeRate={usdExchangeRate}
+          tokenUnit={tokenUnit}
+          showRechargePrice={showRechargePrice}
+          onModelClick={handleModelClick}
         />
       )
     }

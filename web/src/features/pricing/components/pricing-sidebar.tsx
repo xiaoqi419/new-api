@@ -37,6 +37,12 @@ import {
   getQuotaTypeLabels,
 } from '../constants'
 import { parseTags } from '../lib/filters'
+import {
+  GROUP_RATIO_TONE_CLASS,
+  formatGroupRatioLabel,
+  getGroupRatioTone,
+  type GroupRatioTone,
+} from '../lib/model-helpers'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -44,6 +50,7 @@ type FilterOption = {
   label: string
   count?: number
   suffix?: string
+  suffixTone?: GroupRatioTone
   icon?: ReactNode
 }
 
@@ -82,19 +89,18 @@ function countBy(
   return models.reduce((count, model) => count + (predicate(model) ? 1 : 0), 0)
 }
 
-function formatGroupRatio(ratio: number | undefined): string | undefined {
-  if (ratio == null) return undefined
-  const formatted = Number.isInteger(ratio)
-    ? ratio.toString()
-    : ratio.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
-  return `x${formatted}`
-}
-
 function FilterChip(props: {
   option: FilterOption
   active: boolean
   onClick: () => void
 }) {
+  let suffixClass = props.active
+    ? 'bg-background text-foreground'
+    : 'bg-muted text-muted-foreground'
+  if (props.option.suffixTone) {
+    suffixClass = GROUP_RATIO_TONE_CLASS[props.option.suffixTone]
+  }
+
   return (
     <button
       type='button'
@@ -112,14 +118,7 @@ function FilterChip(props: {
       )}
       <span className='truncate'>{props.option.label}</span>
       {(props.option.suffix || props.option.count != null) && (
-        <span
-          className={cn(
-            'rounded-md px-1.5 py-0.5 text-[12px]',
-            props.active
-              ? 'bg-background text-foreground'
-              : 'bg-muted text-muted-foreground'
-          )}
-        >
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[12px]', suffixClass)}>
           {props.option.suffix ?? props.option.count}
         </span>
       )}
@@ -220,11 +219,15 @@ export function PricingSidebar(props: PricingSidebarProps) {
       value: FILTER_ALL,
       label: t('All Groups'),
     },
-    ...props.groups.map((group) => ({
-      value: group,
-      label: group,
-      suffix: formatGroupRatio(props.groupRatios?.[group]),
-    })),
+    ...props.groups.map((group) => {
+      const ratio = props.groupRatios?.[group]
+      return {
+        value: group,
+        label: group,
+        suffix: formatGroupRatioLabel(ratio),
+        suffixTone: getGroupRatioTone(ratio),
+      }
+    }),
   ]
 
   const quotaOptions: FilterOption[] = [

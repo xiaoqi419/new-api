@@ -69,7 +69,14 @@ import {
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
 import { ModalityFlow } from '../lib/modality'
-import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
+import {
+  GROUP_RATIO_TONE_CLASS,
+  formatGroupRatioLabel,
+  getAvailableGroups,
+  getConfiguredGroupRatio,
+  getGroupRatioTone,
+  isTokenBasedModel,
+} from '../lib/model-helpers'
 import { toGroupUptimeSeries } from '../lib/perf-uptime'
 import { formatFixedPrice, formatGroupPrice } from '../lib/price'
 import type {
@@ -78,6 +85,7 @@ import type {
   PriceType,
   PricingModel,
   TokenUnit,
+  UsableGroupMap,
 } from '../types'
 import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
@@ -652,19 +660,49 @@ function PriceSection(props: {
   usdExchangeRate: number
   tokenUnit: TokenUnit
   showRechargePrice: boolean
+  sourceGroup?: string
+  groupRatio?: Record<string, number>
 }) {
   const { t } = useTranslation()
   const isTokenBased = isTokenBasedModel(props.model)
   const tokenUnitLabel = props.tokenUnit === 'K' ? '1K' : '1M'
+  // Without a source group the section keeps its base-price meaning: ratio 1
+  // under a private key so no real group can collide with it.
   const baseGroupKey = '_base'
-  const baseGroupRatioMap = { [baseGroupKey]: 1 }
+  const priceGroupKey = props.sourceGroup ?? baseGroupKey
+  const groupMultiplier = props.sourceGroup
+    ? getConfiguredGroupRatio(props.groupRatio || {}, props.sourceGroup)
+    : 1
+  const baseGroupRatioMap = props.sourceGroup
+    ? props.groupRatio || {}
+    : { [baseGroupKey]: 1 }
+  const ratioLabel = formatGroupRatioLabel(groupMultiplier)
+  const ratioTone = getGroupRatioTone(groupMultiplier)
   const dynamicSummary = getDynamicPricingSummary(props.model, {
     tokenUnit: props.tokenUnit,
     showRechargePrice: props.showRechargePrice,
     priceRate: props.priceRate,
     usdExchangeRate: props.usdExchangeRate,
-    groupRatioMultiplier: 1,
+    groupRatioMultiplier: groupMultiplier,
   })
+
+  const sectionTitle = props.sourceGroup ? (
+    <span className='flex flex-wrap items-center gap-1.5'>
+      {t('Price for group {{group}}', { group: props.sourceGroup })}
+      {ratioLabel && (
+        <span
+          className={cn(
+            'rounded-md px-1.5 py-0.5 font-mono text-[11px] normal-case tabular-nums',
+            GROUP_RATIO_TONE_CLASS[ratioTone]
+          )}
+        >
+          {ratioLabel}
+        </span>
+      )}
+    </span>
+  ) : (
+    t('Base Price')
+  )
 
   const primaryPriceTypes: { label: string; type: PriceType }[] = [
     { label: t('Input'), type: 'input' },
@@ -708,7 +746,7 @@ function PriceSection(props: {
     if (dynamicSummary.isSpecialExpression) {
       return (
         <section>
-          <SectionTitle>{t('Base Price')}</SectionTitle>
+          <SectionTitle>{sectionTitle}</SectionTitle>
           <div className='border-warning/25 bg-warning/10 rounded-lg border p-3'>
             <div className='text-warning text-sm font-medium'>
               {t('Special billing expression')}
@@ -731,7 +769,7 @@ function PriceSection(props: {
 
     return (
       <section>
-        <SectionTitle>{t('Base Price')}</SectionTitle>
+        <SectionTitle>{sectionTitle}</SectionTitle>
         {dynamicSummary.primaryEntries.length > 0 ? (
           <div className='grid grid-cols-2 gap-2'>
             {dynamicSummary.primaryEntries.map((entry) => (
@@ -785,7 +823,7 @@ function PriceSection(props: {
   if (!isTokenBased) {
     return (
       <section>
-        <SectionTitle>{t('Base Price')}</SectionTitle>
+        <SectionTitle>{sectionTitle}</SectionTitle>
         <div className='flex items-baseline justify-between'>
           <span className='text-muted-foreground text-sm'>
             {t('Per request')}
@@ -793,7 +831,7 @@ function PriceSection(props: {
           <span className='text-foreground font-mono text-sm font-semibold tabular-nums'>
             {formatFixedPrice(
               props.model,
-              baseGroupKey,
+              priceGroupKey,
               props.showRechargePrice,
               props.priceRate,
               props.usdExchangeRate,
@@ -810,7 +848,7 @@ function PriceSection(props: {
     <>
       {formatGroupPrice(
         props.model,
-        baseGroupKey,
+        priceGroupKey,
         type,
         props.tokenUnit,
         props.showRechargePrice,
@@ -826,7 +864,7 @@ function PriceSection(props: {
 
   return (
     <section>
-      <SectionTitle>{t('Base Price')}</SectionTitle>
+      <SectionTitle>{sectionTitle}</SectionTitle>
       <div className='grid grid-cols-2 gap-2'>
         {primaryPriceTypes.map((item) => (
           <div key={item.type} className='bg-muted/20 rounded-lg border p-3'>
@@ -959,7 +997,7 @@ function getDynamicFormattedPricesByTier(
 function GroupPricingSection(props: {
   model: PricingModel
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroupMap
   autoGroups: string[]
   autoGroupRoutes: AutoGroupRoute[]
   priceRate: number
@@ -1286,7 +1324,7 @@ function GroupPriceRow(props: {
 function GroupChannelCards(props: {
   model: PricingModel
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroupMap
   autoGroups: string[]
   autoGroupRoutes: AutoGroupRoute[]
   priceRate: number
@@ -1294,6 +1332,7 @@ function GroupChannelCards(props: {
   tokenUnit: TokenUnit
   showRechargePrice?: boolean
   perfByGroup: Map<string, PerformanceGroup>
+  highlightGroup?: string
 }) {
   const { t } = useTranslation()
   const showRechargePrice = props.showRechargePrice ?? false
@@ -1370,15 +1409,24 @@ function GroupChannelCards(props: {
           const ratio = props.groupRatio[group] || 1
           const perf = props.perfByGroup.get(group)
           const hasPerf = perf != null && perf.success_rate >= 0
+          const isHighlighted = group === props.highlightGroup
           return (
             <div
               key={group}
-              className='bg-card/60 flex flex-col rounded-xl border p-3 shadow-sm'
+              className={cn(
+                'bg-card/60 flex flex-col rounded-xl border p-3 shadow-sm',
+                isHighlighted && 'border-primary/40 ring-primary/20 ring-2'
+              )}
             >
               <div className='flex items-center justify-between gap-2'>
                 <GroupBadge group={group} size='sm' />
-                <span className='text-muted-foreground font-mono text-xs'>
-                  {ratio}x
+                <span
+                  className={cn(
+                    'rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums',
+                    GROUP_RATIO_TONE_CLASS[getGroupRatioTone(ratio)]
+                  )}
+                >
+                  {formatGroupRatioLabel(ratio) ?? `x${ratio}`}
                 </span>
               </div>
 
@@ -1551,7 +1599,7 @@ const TAB_META: Record<
 export interface ModelDetailsContentProps {
   model: PricingModel
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroupMap
   endpointMap: Record<string, { path?: string; method?: string }>
   autoGroups: string[]
   autoGroupRoutes: AutoGroupRoute[]
@@ -1559,11 +1607,21 @@ export interface ModelDetailsContentProps {
   usdExchangeRate: number
   tokenUnit: TokenUnit
   showRechargePrice?: boolean
+  /** Group the visitor arrived from, used to price the page as they saw it. */
+  sourceGroup?: string
 }
 
 export function ModelDetailsContent(props: ModelDetailsContentProps) {
   const { t } = useTranslation()
   const showRechargePrice = props.showRechargePrice ?? false
+
+  // Only honour the incoming group when this model is actually served in it,
+  // otherwise a stale link would headline a price the visitor cannot buy.
+  const sourceGroup =
+    props.sourceGroup &&
+    (props.model.enable_groups || []).includes(props.sourceGroup)
+      ? props.sourceGroup
+      : undefined
 
   const isDynamic =
     props.model.billing_mode === 'tiered_expr' &&
@@ -1614,6 +1672,8 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
               usdExchangeRate={props.usdExchangeRate}
               tokenUnit={props.tokenUnit}
               showRechargePrice={showRechargePrice}
+              sourceGroup={sourceGroup}
+              groupRatio={props.groupRatio}
             />
             {isDynamic && (
               <DynamicPricingBreakdown billingExpr={props.model.billing_expr} />
@@ -1651,6 +1711,7 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
                 tokenUnit={props.tokenUnit}
                 showRechargePrice={showRechargePrice}
                 perfByGroup={perfByGroup}
+                highlightGroup={sourceGroup}
               />
             )}
           </section>
@@ -1821,6 +1882,7 @@ export function ModelDetails() {
           usdExchangeRate={usdExchangeRate ?? 1}
           tokenUnit={tokenUnit}
           showRechargePrice={search.rechargePrice ?? false}
+          sourceGroup={search.group}
           endpointMap={
             (endpointMap as Record<
               string,

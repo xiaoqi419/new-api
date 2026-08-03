@@ -47,8 +47,8 @@ type FilterState = {
 }
 
 function normalizeViewMode(value: unknown): ViewMode {
-  if (value === VIEW_MODES.CARD) {
-    return VIEW_MODES.CARD
+  if (value === VIEW_MODES.CARD || value === VIEW_MODES.GROUP) {
+    return value
   }
   return VIEW_MODES.TABLE
 }

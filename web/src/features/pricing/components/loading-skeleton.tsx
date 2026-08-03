@@ -35,11 +35,39 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
       </div>
       <Skeleton className='h-10 w-full rounded-lg' />
       <FilterBarSkeleton />
-      {viewMode === VIEW_MODES.TABLE ? (
-        <TableContentSkeleton />
-      ) : (
-        <CardContentSkeleton />
-      )}
+      {viewMode === VIEW_MODES.TABLE && <TableContentSkeleton />}
+      {viewMode === VIEW_MODES.CARD && <CardContentSkeleton />}
+      {viewMode === VIEW_MODES.GROUP && <GroupContentSkeleton />}
+    </div>
+  )
+}
+
+const GROUP_SKELETON_ROWS = [
+  { id: 'first', chipKeys: ['a', 'b', 'c', 'd', 'e', 'f'] },
+  { id: 'second', chipKeys: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'] },
+  { id: 'third', chipKeys: ['a', 'b', 'c', 'd'] },
+]
+
+function GroupContentSkeleton() {
+  return (
+    <div className='space-y-3'>
+      {GROUP_SKELETON_ROWS.map((row) => (
+        <div key={row.id} className='rounded-xl border p-3'>
+          <div className='flex items-center gap-2'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-4 w-10 rounded-md' />
+            <Skeleton className='h-3.5 w-16' />
+          </div>
+          <div className='mt-2.5 flex flex-wrap gap-1.5'>
+            {row.chipKeys.map((chipKey) => (
+              <Skeleton
+                key={`${row.id}-${chipKey}`}
+                className='h-6 w-32 rounded-lg'
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

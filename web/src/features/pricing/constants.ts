@@ -165,9 +165,17 @@ export const DEFAULT_TOKEN_UNIT: TokenUnit = 'M'
 export const VIEW_MODES = {
   CARD: 'card',
   TABLE: 'table',
+  GROUP: 'group',
 } as const
 
 export type ViewMode = (typeof VIEW_MODES)[keyof typeof VIEW_MODES]
+
+/**
+ * Chips shown per group row before collapsing. A reseller group can hold
+ * hundreds of models, which would turn one row into a full-page wall and
+ * defeat the point of comparing groups side by side.
+ */
+export const MAX_GROUP_VIEW_CHIPS = 24
 
 /** Default page size for pricing table */
 export const DEFAULT_PRICING_PAGE_SIZE = 20

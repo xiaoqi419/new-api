@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { EXCLUDED_GROUPS, FILTER_ALL, QUOTA_TYPE_VALUES } from '../constants'
-import type { PricingModel } from '../types'
+import type { PricingModel, UsableGroupMap } from '../types'
 
 // ----------------------------------------------------------------------------
 // Model Helper Utilities
@@ -28,7 +28,7 @@ import type { PricingModel } from '../types'
  */
 export function getAvailableGroups(
   model: PricingModel,
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroupMap
 ): string[] {
   const modelEnableGroups = Array.isArray(model.enable_groups)
     ? model.enable_groups
@@ -92,6 +92,45 @@ export function getDisplayGroupRatio(
   }
 
   return minRatio === Number.POSITIVE_INFINITY ? 1 : minRatio
+}
+
+/** Smallest ratio the badge prints as an exact number. */
+const MIN_DISPLAYED_GROUP_RATIO = 0.001
+
+/**
+ * Format a group ratio as a display multiplier, e.g. `x0.9`.
+ *
+ * A ratio that would round away to zero renders as `x<0.001` instead of `x0`,
+ * because `x0` claims the group is free. Only a ratio configured as exactly
+ * zero may print `x0`.
+ */
+export function formatGroupRatioLabel(
+  ratio: number | undefined
+): string | undefined {
+  if (ratio == null || !Number.isFinite(ratio)) return undefined
+  if (Number.isInteger(ratio)) return `x${ratio}`
+  if (ratio > 0 && ratio < MIN_DISPLAYED_GROUP_RATIO) {
+    return `x<${MIN_DISPLAYED_GROUP_RATIO}`
+  }
+
+  return `x${ratio.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}`
+}
+
+export type GroupRatioTone = 'discount' | 'premium' | 'neutral'
+
+/**
+ * Classify a group ratio so the multiplier can be read without parsing the
+ * number: below 1 is cheaper than base, above 1 is a surcharge.
+ */
+export function getGroupRatioTone(ratio: number | undefined): GroupRatioTone {
+  if (ratio == null || !Number.isFinite(ratio) || ratio === 1) return 'neutral'
+  return ratio < 1 ? 'discount' : 'premium'
+}
+
+export const GROUP_RATIO_TONE_CLASS: Record<GroupRatioTone, string> = {
+  discount: 'bg-success/12 text-success',
+  premium: 'bg-warning/12 text-warning',
+  neutral: 'bg-muted text-muted-foreground',
 }
 
 /**

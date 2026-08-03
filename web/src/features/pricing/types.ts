@@ -121,13 +121,21 @@ export type AutoGroupRoute = {
   user_selectable: boolean
 }
 
+/**
+ * Group name to its human readable description.
+ *
+ * `/api/pricing` serves `service.GetUserUsableGroups`, which is a
+ * `map[string]string`; ratios travel separately in `group_ratio`.
+ */
+export type UsableGroupMap = Record<string, string>
+
 export type PricingData = {
   success: boolean
   message?: string
   data: PricingModel[]
   vendors: PricingVendor[]
   group_ratio: Record<string, number>
-  usable_group: Record<string, { desc: string; ratio: number }>
+  usable_group: UsableGroupMap
   supported_endpoint: Record<string, string>
   auto_groups: string[]
   auto_group_routes: AutoGroupRoute[]

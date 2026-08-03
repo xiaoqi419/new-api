@@ -28,6 +28,7 @@ import { formatGroupPrice } from '../lib/price'
 import type {
   PricingModel,
   TokenUnit,
+  UsableGroupMap,
   VideoPriceAxis,
   VideoPriceTier,
 } from '../types'
@@ -39,7 +40,7 @@ type VideoPriceTierTableProps = {
   priceRate: number
   usdExchangeRate: number
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroupMap
 }
 
 type TierRow = {
