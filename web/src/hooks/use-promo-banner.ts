@@ -31,5 +31,8 @@ export function usePromoBanner() {
     [status?.promo_banner_config]
   )
 
-  return { config, visible: config.enabled && !!config.text && !dismissed }
+  return {
+    config,
+    visible: config.enabled && config.items.length > 0 && !dismissed,
+  }
 }

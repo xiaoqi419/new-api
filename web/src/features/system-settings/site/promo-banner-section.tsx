@@ -19,10 +19,25 @@ For commercial licensing, please contact support@quantumnous.com
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Plus, Trash2 } from '@/components/icons'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  getBannerColorClass,
+  PICKABLE_COLORS,
+  type SemanticColor,
+} from '@/lib/colors'
+import {
+  DEFAULT_PROMO_BANNER_COLOR,
   parsePromoBannerConfig,
   serializePromoBannerConfig,
 } from '@/lib/promo-banner'
@@ -31,6 +46,20 @@ import { SettingsSwitchField } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
+
+type BannerRow = {
+  key: string
+  text: string
+  button_text: string
+  button_link: string
+  color: SemanticColor
+}
+
+let bannerRowSeq = 0
+function makeBannerRowKey() {
+  bannerRowSeq += 1
+  return `banner-${bannerRowSeq}-${Math.random().toString(36).slice(2)}`
+}
 
 type PromoBannerSectionProps = {
   defaultValue: string
@@ -45,18 +74,39 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
   )
 
   const [enabled, setEnabled] = useState(parsed.enabled)
-  const [text, setText] = useState(parsed.text)
-  const [buttonText, setButtonText] = useState(parsed.button_text)
-  const [buttonLink, setButtonLink] = useState(parsed.button_link)
+  const [rows, setRows] = useState<BannerRow[]>(() =>
+    parsed.items.map((item) => ({ key: makeBannerRowKey(), ...item }))
+  )
+
+  const updateRow = (key: string, patch: Partial<BannerRow>) =>
+    setRows((prev) =>
+      prev.map((row) => (row.key === key ? { ...row, ...patch } : row))
+    )
+  const addRow = () =>
+    setRows((prev) => [
+      ...prev,
+      {
+        key: makeBannerRowKey(),
+        text: '',
+        button_text: '',
+        button_link: '',
+        color: PICKABLE_COLORS[prev.length % PICKABLE_COLORS.length].value,
+      },
+    ])
+  const removeRow = (key: string) =>
+    setRows((prev) => prev.filter((row) => row.key !== key))
 
   const handleSave = () => {
     updateOption.mutate({
       key: 'PromoBannerConfig',
       value: serializePromoBannerConfig({
         enabled,
-        text,
-        button_text: buttonText,
-        button_link: buttonLink,
+        items: rows.map((row) => ({
+          text: row.text,
+          button_text: row.button_text,
+          button_link: row.button_link,
+          color: row.color ?? DEFAULT_PROMO_BANNER_COLOR,
+        })),
       }),
     })
   }
@@ -69,7 +119,7 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
       />
       <p className='text-muted-foreground text-sm'>
         {t(
-          'A single scrolling strip pinned above the header on every page, for public visitors and signed-in users alike. Visitors can close it, and it comes back on the next page load.'
+          'A strip pinned above the header on every page, for public visitors and signed-in users alike. Add several entries and the strip cycles through them one line at a time, each in its own color. Visitors can close it, and it comes back on the next page load.'
         )}
       </p>
 
@@ -80,45 +130,108 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
         className='py-0'
       />
 
-      <div className='flex flex-col gap-2'>
-        <Label>{t('Banner text')}</Label>
-        <Textarea
-          rows={2}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t(
-            '🔥 Flexible GPT plans · 0.3x on the first top-up · 0.5x all day'
-          )}
-        />
+      <div className='flex flex-col gap-3'>
+        <div className='flex items-center justify-between'>
+          <Label>{t('Banner entries')}</Label>
+          <Button variant='outline' size='sm' onClick={addRow}>
+            <Plus data-icon='inline-start' />
+            {t('Add')}
+          </Button>
+        </div>
+
+        {rows.length === 0 ? (
+          <p className='text-muted-foreground text-xs'>
+            {t('No entries yet. Add one to show the strip.')}
+          </p>
+        ) : (
+          <div className='flex flex-col gap-3'>
+            {rows.map((row) => (
+              <div
+                key={row.key}
+                className='flex flex-col gap-2 rounded-lg border p-3'
+              >
+                <div className='flex items-center gap-2'>
+                  <Input
+                    className='flex-1'
+                    value={row.text}
+                    onChange={(e) =>
+                      updateRow(row.key, { text: e.target.value })
+                    }
+                    placeholder={t(
+                      '🔥 Flexible GPT plans · 0.3x on the first top-up'
+                    )}
+                  />
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => removeRow(row.key)}
+                    aria-label={t('Remove')}
+                  >
+                    <Trash2 className='size-4' />
+                  </Button>
+                </div>
+
+                <div className='flex flex-wrap items-center gap-2'>
+                  <Input
+                    className='w-40'
+                    value={row.button_text}
+                    onChange={(e) =>
+                      updateRow(row.key, { button_text: e.target.value })
+                    }
+                    placeholder={t('Buy now')}
+                  />
+                  <Input
+                    className='min-w-48 flex-1'
+                    value={row.button_link}
+                    onChange={(e) =>
+                      updateRow(row.key, { button_link: e.target.value })
+                    }
+                    placeholder={t('/pricing')}
+                  />
+                  <Select
+                    items={PICKABLE_COLORS.map((option) => ({
+                      value: option.value,
+                      label: (
+                        <div className='flex items-center gap-2'>
+                          <div
+                            className={`size-4 rounded-full ${getBannerColorClass(option.value)}`}
+                          />
+                          {option.label}
+                        </div>
+                      ),
+                    }))}
+                    value={row.color}
+                    onValueChange={(value) =>
+                      updateRow(row.key, { color: value as SemanticColor })
+                    }
+                  >
+                    <SelectTrigger className='w-36'>
+                      <SelectValue placeholder={t('Select a color')} />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {PICKABLE_COLORS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className='flex items-center gap-2'>
+                              <div
+                                className={`size-4 rounded-full ${getBannerColorClass(option.value)}`}
+                              />
+                              {option.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <p className='text-muted-foreground text-xs'>
           {t(
-            'Written as one line. Emoji are allowed, and a separator such as · keeps several offers readable while scrolling.'
-          )}
-        </p>
-      </div>
-
-      <div className='flex flex-col gap-2'>
-        <Label>{t('Button label')}</Label>
-        <Input
-          value={buttonText}
-          onChange={(e) => setButtonText(e.target.value)}
-          placeholder={t('Buy now')}
-        />
-        <p className='text-muted-foreground text-xs'>
-          {t('The button is hidden unless both a label and a link are set.')}
-        </p>
-      </div>
-
-      <div className='flex flex-col gap-2'>
-        <Label>{t('Button link')}</Label>
-        <Input
-          value={buttonLink}
-          onChange={(e) => setButtonLink(e.target.value)}
-          placeholder={t('/pricing')}
-        />
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'A path such as /pricing stays on this site. A full https:// address opens in a new tab.'
+            'Each entry stays on screen for 5 seconds. Hovering the strip pauses both the rotation and the scrolling text. A button only shows when both its label and link are filled in; a path such as /pricing stays on this site while a full https:// address opens in a new tab.'
           )}
         </p>
       </div>

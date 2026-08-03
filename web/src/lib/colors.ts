@@ -58,6 +58,62 @@ export const colorToBgClass: Record<SemanticColor, string> = {
   slate: 'bg-slate-500',
 }
 
+/**
+ * The colors an admin is offered in a picker. The `light-*` and `grey` members
+ * of `SemanticColor` are left out on purpose: they exist so hashed vendor colors
+ * spread over more buckets, and next to their base hue they read as duplicates.
+ */
+export const PICKABLE_COLORS: { value: SemanticColor; label: string }[] = [
+  { value: 'blue', label: 'Blue' },
+  { value: 'green', label: 'Green' },
+  { value: 'cyan', label: 'Cyan' },
+  { value: 'purple', label: 'Purple' },
+  { value: 'pink', label: 'Pink' },
+  { value: 'red', label: 'Red' },
+  { value: 'orange', label: 'Orange' },
+  { value: 'amber', label: 'Amber' },
+  { value: 'yellow', label: 'Yellow' },
+  { value: 'lime', label: 'Lime' },
+  { value: 'teal', label: 'Teal' },
+  { value: 'indigo', label: 'Indigo' },
+  { value: 'violet', label: 'Violet' },
+  { value: 'slate', label: 'Slate' },
+]
+
+/**
+ * Solid fills for a full-width strip that always carries white text. The weight
+ * differs per hue because white needs 4.5:1 to pass AA: the cool hues reach it
+ * at 600 while the warm ones only do at 700. Measured against the Tailwind
+ * palette the weakest pair here is pink-600 at 4.54, so a single shared weight
+ * would have shipped unreadable yellow and lime strips.
+ */
+export const bannerColorMap: Record<SemanticColor, string> = {
+  blue: 'bg-blue-600',
+  green: 'bg-green-700',
+  cyan: 'bg-cyan-700',
+  purple: 'bg-purple-600',
+  pink: 'bg-pink-600',
+  red: 'bg-red-600',
+  orange: 'bg-orange-700',
+  amber: 'bg-amber-700',
+  yellow: 'bg-yellow-700',
+  lime: 'bg-lime-700',
+  'light-green': 'bg-green-700',
+  teal: 'bg-teal-700',
+  'light-blue': 'bg-blue-600',
+  indigo: 'bg-indigo-600',
+  violet: 'bg-violet-600',
+  grey: 'bg-slate-600',
+  slate: 'bg-slate-600',
+}
+
+export function getBannerColorClass(color?: string): string {
+  if (!color) return bannerColorMap.blue
+  return (
+    (bannerColorMap as Record<string, string>)[color] || bannerColorMap.blue
+  )
+}
+
 export const avatarColorMap: Record<SemanticColor, string> = {
   blue: 'bg-chart-1/10 text-tag-1',
   green: 'bg-success/10 text-success',

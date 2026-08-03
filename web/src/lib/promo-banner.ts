@@ -16,19 +16,25 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { bannerColorMap, type SemanticColor } from '@/lib/colors'
 
-export interface PromoBannerConfig {
-  enabled: boolean
+export interface PromoBannerItem {
   text: string
   button_text: string
   button_link: string
+  color: SemanticColor
 }
+
+export interface PromoBannerConfig {
+  enabled: boolean
+  items: PromoBannerItem[]
+}
+
+export const DEFAULT_PROMO_BANNER_COLOR: SemanticColor = 'blue'
 
 export const EMPTY_PROMO_BANNER_CONFIG: PromoBannerConfig = {
   enabled: false,
-  text: '',
-  button_text: '',
-  button_link: '',
+  items: [],
 }
 
 /**
@@ -37,6 +43,31 @@ export const EMPTY_PROMO_BANNER_CONFIG: PromoBannerConfig = {
  * CSS length rather than the `h-9` utility the banner itself uses.
  */
 export const PROMO_BANNER_HEIGHT = '2.25rem'
+
+/** How long each entry stays on screen before the strip slides to the next. */
+export const PROMO_BANNER_ROTATE_MS = 5000
+
+function readItem(raw: unknown): PromoBannerItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+
+  const text = typeof obj.text === 'string' ? obj.text.trim() : ''
+  if (!text) return null
+
+  const color = typeof obj.color === 'string' ? obj.color : ''
+
+  return {
+    text,
+    button_text:
+      typeof obj.button_text === 'string' ? obj.button_text.trim() : '',
+    button_link:
+      typeof obj.button_link === 'string' ? obj.button_link.trim() : '',
+    color:
+      color in bannerColorMap
+        ? (color as SemanticColor)
+        : DEFAULT_PROMO_BANNER_COLOR,
+  }
+}
 
 export function parsePromoBannerConfig(raw: unknown): PromoBannerConfig {
   if (!raw) return EMPTY_PROMO_BANNER_CONFIG
@@ -54,21 +85,29 @@ export function parsePromoBannerConfig(raw: unknown): PromoBannerConfig {
   if (!source || typeof source !== 'object') return EMPTY_PROMO_BANNER_CONFIG
   const obj = source as Record<string, unknown>
 
+  // A site configured before the strip supported several entries stored the
+  // single message on the root object. Read it as one entry so upgrading does
+  // not silently blank a live banner.
+  const rawItems = Array.isArray(obj.items) ? obj.items : [obj]
+
   return {
     enabled: obj.enabled === true,
-    text: typeof obj.text === 'string' ? obj.text.trim() : '',
-    button_text:
-      typeof obj.button_text === 'string' ? obj.button_text.trim() : '',
-    button_link:
-      typeof obj.button_link === 'string' ? obj.button_link.trim() : '',
+    items: rawItems
+      .map(readItem)
+      .filter((item): item is PromoBannerItem => item !== null),
   }
 }
 
 export function serializePromoBannerConfig(config: PromoBannerConfig): string {
   return JSON.stringify({
     enabled: config.enabled === true,
-    text: (config.text ?? '').trim(),
-    button_text: (config.button_text ?? '').trim(),
-    button_link: (config.button_link ?? '').trim(),
+    items: (config.items ?? [])
+      .map((item) => ({
+        text: (item.text ?? '').trim(),
+        button_text: (item.button_text ?? '').trim(),
+        button_link: (item.button_link ?? '').trim(),
+        color: item.color,
+      }))
+      .filter((item) => item.text),
   })
 }
