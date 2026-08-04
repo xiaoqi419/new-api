@@ -190,16 +190,23 @@ func GetChannelMonitor(c *gin.Context) {
 	items := make([]channelMonitorItem, 0, len(perChannel))
 	overallRank := 0
 	for channelId, models := range perChannel {
+		// The list is built from usage logs, so a channel that has since been
+		// disabled or deleted still has rows in the window. Only channels that
+		// are currently serving traffic belong on a monitor, and this also
+		// matches the probe, which already skips everything but enabled ones.
+		meta := channelMeta[channelId]
+		if meta == nil || meta.Status != common.ChannelStatusEnabled {
+			continue
+		}
+
 		item := channelMonitorItem{
 			ChannelId: channelId,
 			Models:    make([]channelModelItem, 0, len(models)),
+			Name:      meta.Name,
+			Type:      meta.Type,
 		}
-		if meta := channelMeta[channelId]; meta != nil {
-			item.Name = meta.Name
-			item.Type = meta.Type
-			if meta.Tag != nil {
-				item.Tag = *meta.Tag
-			}
+		if meta.Tag != nil {
+			item.Tag = *meta.Tag
 		}
 		if item.Name == "" {
 			item.Name = fmt.Sprintf("#%d", channelId)
