@@ -29,7 +29,7 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: 'PENDING',
+    version: '20260804-97fadea0',
     date: '2026-08-04',
     changes: [
       {
