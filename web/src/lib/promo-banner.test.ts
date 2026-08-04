@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { bannerColorMap, PICKABLE_COLORS } from './colors'
+import { DEFAULT_BANNER_FILL, GRADIENT_PREFIX } from './banner-fill'
 import {
   parsePromoBannerConfig,
   serializePromoBannerConfig,
@@ -58,10 +58,10 @@ describe('promo banner config', () => {
       text: '首充 0.3x',
       button_text: '立即购买',
       button_link: '/pricing',
-      color: 'red',
+      color: '#e7000b',
     })
     assert.equal(parsed.items[1].text, '全天 0.5x')
-    assert.equal(parsed.items[1].color, 'teal')
+    assert.equal(parsed.items[1].color, '#00786f')
   })
 
   test('drops entries with no message so the strip never rotates onto a blank row', () => {
@@ -72,14 +72,14 @@ describe('promo banner config', () => {
     assert.equal(parsed.items[0].text, '有文案')
   })
 
-  test('falls back to a known color when the stored one is not in the palette', () => {
+  test('falls back to a usable fill when the stored one is unreadable garbage', () => {
     const parsed = parsePromoBannerConfig(
-      '{"enabled":true,"items":[{"text":"a","color":"chartreuse"},{"text":"b"}]}'
+      '{"enabled":true,"items":[{"text":"a","color":"chartreuse"},{"text":"b"},{"text":"c","color":"#ABC"}]}'
     )
-    // 落到调色板外的值会渲染成没有底色类的裸横幅,白字直接看不见。
-    for (const item of parsed.items) {
-      assert.ok(bannerColorMap[item.color], `bannerColorMap 缺 ${item.color}`)
-    }
+    // 无法解析的值会渲染成没有底色的裸横幅,文字直接看不见。
+    assert.equal(parsed.items[0].color, DEFAULT_BANNER_FILL)
+    assert.equal(parsed.items[1].color, DEFAULT_BANNER_FILL)
+    assert.equal(parsed.items[2].color, '#aabbcc')
   })
 
   test('reads a config saved before the strip supported several entries', () => {
@@ -92,7 +92,7 @@ describe('promo banner config', () => {
     assert.equal(parsed.items.length, 1)
     assert.equal(parsed.items[0].text, '老格式文案')
     assert.equal(parsed.items[0].button_text, '立即购买')
-    assert.ok(bannerColorMap[parsed.items[0].color])
+    assert.equal(parsed.items[0].color, DEFAULT_BANNER_FILL)
   })
 
   test('survives a serialize and parse round trip', () => {
@@ -103,13 +103,13 @@ describe('promo banner config', () => {
           text: '🔥 GPT 灵活套餐 · 0.3x 首充',
           button_text: '立即购买',
           button_link: 'https://example.com/buy',
-          color: 'violet' as const,
+          color: '#7f22fe',
         },
         {
           text: '全天稳定 0.5x',
           button_text: '',
           button_link: '',
-          color: 'amber' as const,
+          color: `${GRADIENT_PREFIX}sunset`,
         },
       ],
     }
@@ -117,14 +117,5 @@ describe('promo banner config', () => {
       parsePromoBannerConfig(serializePromoBannerConfig(config)),
       config
     )
-  })
-
-  test('every pickable color has a strip fill', () => {
-    for (const option of PICKABLE_COLORS) {
-      assert.ok(
-        bannerColorMap[option.value],
-        `bannerColorMap 缺 ${option.value},选了它的横幅会没有底色`
-      )
-    }
   })
 })

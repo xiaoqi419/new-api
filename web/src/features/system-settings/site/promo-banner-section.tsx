@@ -23,21 +23,8 @@ import { Plus, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BANNER_PRESET_COLORS, DEFAULT_BANNER_FILL } from '@/lib/banner-fill'
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  getBannerColorClass,
-  PICKABLE_COLORS,
-  type SemanticColor,
-} from '@/lib/colors'
-import {
-  DEFAULT_PROMO_BANNER_COLOR,
   parsePromoBannerConfig,
   serializePromoBannerConfig,
 } from '@/lib/promo-banner'
@@ -46,13 +33,14 @@ import { SettingsSwitchField } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
+import { BannerFillPicker } from './banner-fill-picker'
 
 type BannerRow = {
   key: string
   text: string
   button_text: string
   button_link: string
-  color: SemanticColor
+  color: string
 }
 
 let bannerRowSeq = 0
@@ -90,7 +78,8 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
         text: '',
         button_text: '',
         button_link: '',
-        color: PICKABLE_COLORS[prev.length % PICKABLE_COLORS.length].value,
+        color:
+          BANNER_PRESET_COLORS[prev.length % BANNER_PRESET_COLORS.length].value,
       },
     ])
   const removeRow = (key: string) =>
@@ -105,7 +94,7 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
           text: row.text,
           button_text: row.button_text,
           button_link: row.button_link,
-          color: row.color ?? DEFAULT_PROMO_BANNER_COLOR,
+          color: row.color ?? DEFAULT_BANNER_FILL,
         })),
       }),
     })
@@ -188,41 +177,10 @@ export function PromoBannerSection({ defaultValue }: PromoBannerSectionProps) {
                     }
                     placeholder={t('/pricing')}
                   />
-                  <Select
-                    items={PICKABLE_COLORS.map((option) => ({
-                      value: option.value,
-                      label: (
-                        <div className='flex items-center gap-2'>
-                          <div
-                            className={`size-4 rounded-full ${getBannerColorClass(option.value)}`}
-                          />
-                          {option.label}
-                        </div>
-                      ),
-                    }))}
+                  <BannerFillPicker
                     value={row.color}
-                    onValueChange={(value) =>
-                      updateRow(row.key, { color: value as SemanticColor })
-                    }
-                  >
-                    <SelectTrigger className='w-36'>
-                      <SelectValue placeholder={t('Select a color')} />
-                    </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false}>
-                      <SelectGroup>
-                        {PICKABLE_COLORS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className='flex items-center gap-2'>
-                              <div
-                                className={`size-4 rounded-full ${getBannerColorClass(option.value)}`}
-                              />
-                              {option.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                    onChange={(color) => updateRow(row.key, { color })}
+                  />
                 </div>
               </div>
             ))}

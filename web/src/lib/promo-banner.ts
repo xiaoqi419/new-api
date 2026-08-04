@@ -16,21 +16,20 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { bannerColorMap, type SemanticColor } from '@/lib/colors'
+import { normalizeBannerFill } from '@/lib/banner-fill'
 
 export interface PromoBannerItem {
   text: string
-  button_text: string
   button_link: string
-  color: SemanticColor
+  button_text: string
+  /** A hex color or a `gradient/<id>` preset; see `normalizeBannerFill`. */
+  color: string
 }
 
 export interface PromoBannerConfig {
   enabled: boolean
   items: PromoBannerItem[]
 }
-
-export const DEFAULT_PROMO_BANNER_COLOR: SemanticColor = 'blue'
 
 export const EMPTY_PROMO_BANNER_CONFIG: PromoBannerConfig = {
   enabled: false,
@@ -54,18 +53,13 @@ function readItem(raw: unknown): PromoBannerItem | null {
   const text = typeof obj.text === 'string' ? obj.text.trim() : ''
   if (!text) return null
 
-  const color = typeof obj.color === 'string' ? obj.color : ''
-
   return {
     text,
     button_text:
       typeof obj.button_text === 'string' ? obj.button_text.trim() : '',
     button_link:
       typeof obj.button_link === 'string' ? obj.button_link.trim() : '',
-    color:
-      color in bannerColorMap
-        ? (color as SemanticColor)
-        : DEFAULT_PROMO_BANNER_COLOR,
+    color: normalizeBannerFill(obj.color),
   }
 }
 
@@ -106,7 +100,7 @@ export function serializePromoBannerConfig(config: PromoBannerConfig): string {
         text: (item.text ?? '').trim(),
         button_text: (item.button_text ?? '').trim(),
         button_link: (item.button_link ?? '').trim(),
-        color: item.color,
+        color: normalizeBannerFill(item.color),
       }))
       .filter((item) => item.text),
   })

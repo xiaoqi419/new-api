@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ArrowRight, Megaphone, X } from '@/components/icons'
 import { usePromoBanner } from '@/hooks/use-promo-banner'
-import { getBannerColorClass } from '@/lib/colors'
+import { resolveBannerFill } from '@/lib/banner-fill'
 import {
   PROMO_BANNER_HEIGHT,
   PROMO_BANNER_ROTATE_MS,
@@ -80,14 +80,16 @@ function PromoLine({ item }: { item: PromoBannerItem }) {
     [scrolls, copiesPerRun]
   )
 
+  const fill = useMemo(() => resolveBannerFill(item.color), [item.color])
   const hasCta = !!item.button_text && !!item.button_link
   const isExternalCta = /^https?:\/\//i.test(item.button_link)
 
   return (
     <div
+      style={{ background: fill.background }}
       className={cn(
-        'flex h-9 w-full shrink-0 items-center gap-2 pr-9 pl-3 text-xs text-white',
-        getBannerColorClass(item.color)
+        'flex h-9 w-full shrink-0 items-center gap-2 pr-9 pl-3 text-xs',
+        fill.onLight ? 'text-slate-900' : 'text-white'
       )}
     >
       <Megaphone className='size-3.5 shrink-0 opacity-90' />
@@ -123,7 +125,12 @@ function PromoLine({ item }: { item: PromoBannerItem }) {
           href={item.button_link}
           target={isExternalCta ? '_blank' : undefined}
           rel={isExternalCta ? 'noreferrer noopener' : undefined}
-          className='flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 font-medium transition-colors hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none'
+          className={cn(
+            'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none',
+            fill.onLight
+              ? 'bg-black/10 hover:bg-black/20 focus-visible:ring-black/40'
+              : 'bg-white/20 hover:bg-white/30 focus-visible:ring-white/70'
+          )}
         >
           {item.button_text}
           <ArrowRight className='size-3' />
@@ -167,6 +174,12 @@ export function PromoBanner() {
 
   if (!visible) return null
 
+  // The close button floats above the track, so it follows whichever entry is
+  // showing rather than the strip as a whole.
+  const activeOnLight = resolveBannerFill(
+    lines[activeIndex]?.item.color
+  ).onLight
+
   return (
     <div
       role='region'
@@ -190,7 +203,12 @@ export function PromoBanner() {
         type='button'
         onClick={dismiss}
         aria-label={t('Dismiss promotion')}
-        className='absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-white transition-colors hover:bg-white/25 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none'
+        className={cn(
+          'absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none',
+          activeOnLight
+            ? 'text-slate-900 hover:bg-black/15 focus-visible:ring-black/40'
+            : 'text-white hover:bg-white/25 focus-visible:ring-white/70'
+        )}
       >
         <X className='size-3.5' />
       </button>
