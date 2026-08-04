@@ -24,6 +24,8 @@ import { useAuthStore } from '@/stores/auth-store'
 import { getAffiliateCode } from './lib/storage'
 import type { TelegramAuthorization } from './lib/telegram-login'
 import type {
+  CaptchaQuery,
+  ClickCaptchaChallenge,
   LoginPayload,
   LoginResponse,
   Login2FAResponse,
@@ -42,14 +44,19 @@ import type {
 
 // User login with username and password
 export async function login(payload: LoginPayload) {
-  const turnstile = payload.turnstile ?? ''
   const res = await api.post<LoginResponse>(
-    `/api/user/login?turnstile=${turnstile}`,
+    '/api/user/login',
     {
       username: payload.username,
       password: payload.password,
     },
-    { skipAuthRefresh: true }
+    {
+      params: {
+        turnstile: payload.turnstile ?? '',
+        ...payload.captcha,
+      },
+      skipAuthRefresh: true,
+    }
   )
   return res.data
 }
@@ -119,10 +126,11 @@ export async function logout(): Promise<ApiResponse> {
 // Send password reset email
 export async function sendPasswordResetEmail(
   email: string,
-  turnstile?: string
+  turnstile?: string,
+  captcha?: CaptchaQuery
 ): Promise<ApiResponse> {
   const res = await api.get('/api/reset_password', {
-    params: { email, turnstile },
+    params: { email, turnstile, ...captcha },
   })
   return res.data
 }
@@ -183,7 +191,7 @@ export async function telegramLogin(
 // User registration
 export async function register(payload: RegisterPayload): Promise<ApiResponse> {
   const res = await api.post(`/api/user/register`, payload, {
-    params: { turnstile: payload.turnstile ?? '' },
+    params: { turnstile: payload.turnstile ?? '', ...payload.captcha },
   })
   return res.data
 }
@@ -209,4 +217,22 @@ export async function bindEmail(
     code,
   })
   return res.data
+}
+
+// ----------------------------------------------------------------------------
+// Click captcha
+// ----------------------------------------------------------------------------
+
+// Fetch a click captcha challenge. Where the targets are stays on the server.
+export async function fetchClickCaptcha(): Promise<ClickCaptchaChallenge> {
+  const res = await api.get<ApiResponse<ClickCaptchaChallenge>>(
+    '/api/captcha',
+    {
+      skipAuthRefresh: true,
+    }
+  )
+  if (!res.data?.success || !res.data.data) {
+    throw new Error(res.data?.message || 'Failed to load captcha')
+  }
+  return res.data.data
 }

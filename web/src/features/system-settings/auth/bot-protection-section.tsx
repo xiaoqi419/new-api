@@ -44,6 +44,7 @@ import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 
 const botProtectionSchema = z.object({
+  ClickCaptchaEnabled: z.boolean(),
   TurnstileCheckEnabled: z.boolean(),
   TurnstileSiteKey: z.string().optional(),
   TurnstileSecretKey: z.string().optional(),
@@ -89,6 +90,29 @@ export function BotProtectionSection({
             onSave={form.handleSubmit(onSubmit)}
             isSaving={updateOption.isPending}
           />
+          <FormField
+            control={form.control}
+            name='ClickCaptchaEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable click captcha')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Self-hosted image captcha: users click the prompted characters in order on sign-in, sign-up, password reset and check-in. Needs no third-party service.'
+                    )}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name='TurnstileCheckEnabled'

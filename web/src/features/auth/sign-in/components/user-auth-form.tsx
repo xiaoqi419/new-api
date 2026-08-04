@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
+import { ClickCaptcha } from '@/components/click-captcha'
 import { Dialog } from '@/components/dialog'
 import { Loader2, LogIn, KeyRound } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
@@ -45,6 +46,7 @@ import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { loginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
 import type { AuthFormProps } from '@/features/auth/types'
@@ -90,6 +92,14 @@ export function UserAuthForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const {
+    isClickCaptchaEnabled,
+    setSolution: setCaptchaSolution,
+    resetSignal: captchaResetSignal,
+    resetClickCaptcha,
+    validateClickCaptcha,
+    captchaQuery,
+  } = useClickCaptcha()
   const { handleLoginSuccess, redirectTo2FA } = useAuthRedirect()
   const setPending2FAFlowToken = useAuthStore(
     (state) => state.auth.setPending2FAFlowToken
@@ -157,13 +167,18 @@ export function UserAuthForm({
     }
 
     if (!validateTurnstile()) return
+    if (!validateClickCaptcha()) return
 
     setIsLoading(true)
+    // A click captcha is spent on the first check, so anything short of a
+    // successful sign-in has to start over with a fresh image.
+    let captchaAccepted = false
     try {
       const res = await login({
         username: data.username,
         password: data.password,
         turnstile: turnstileToken,
+        captcha: captchaQuery,
       })
 
       if (res.success) {
@@ -172,6 +187,7 @@ export function UserAuthForm({
             throw new Error(t('Login flow expired. Please sign in again.'))
           }
           setPending2FAFlowToken(res.data.flow_token)
+          captchaAccepted = true
           redirectTo2FA()
           return
         }
@@ -180,6 +196,7 @@ export function UserAuthForm({
           throw new Error(t('Login failed'))
         }
         await handleLoginSuccess(res.data, redirectTo)
+        captchaAccepted = true
         toast.success(t('Welcome back!'))
       }
     } catch (error: unknown) {
@@ -187,6 +204,7 @@ export function UserAuthForm({
       toast.error(error instanceof Error ? error.message : loginFailedMessage)
     } finally {
       setIsLoading(false)
+      if (!captchaAccepted) resetClickCaptcha()
     }
   }
 
@@ -393,6 +411,14 @@ export function UserAuthForm({
                 </FormItem>
               )}
             />
+
+            {isClickCaptchaEnabled && (
+              <ClickCaptcha
+                onSolvedChange={setCaptchaSolution}
+                resetSignal={captchaResetSignal}
+                className='mt-1'
+              />
+            )}
 
             {/* Submit Button */}
             <Button

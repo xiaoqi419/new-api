@@ -26,6 +26,7 @@ export interface LoginPayload {
   username: string
   password: string
   turnstile?: string
+  captcha?: CaptchaQuery
 }
 
 export interface TwoFAPayload {
@@ -40,6 +41,7 @@ export interface RegisterPayload {
   verification_code?: string
   aff_code?: string
   turnstile?: string
+  captcha?: CaptchaQuery
 }
 
 export interface PasswordResetPayload {
@@ -118,6 +120,7 @@ export interface SystemStatus {
     wechat_account_qrcode_image_url?: string
     WeChatAccountQRCodeImageURL?: string
     turnstile_check?: boolean
+    click_captcha_enabled?: boolean
     turnstile_site_key?: string
     email_verification?: boolean
     self_use_mode_enabled?: boolean
@@ -166,6 +169,7 @@ export interface SystemStatus {
   wechat_account_qrcode_image_url?: string
   WeChatAccountQRCodeImageURL?: string
   turnstile_check?: boolean
+  click_captcha_enabled?: boolean
   turnstile_site_key?: string
   email_verification?: boolean
   self_use_mode_enabled?: boolean
@@ -218,4 +222,23 @@ export interface CustomOAuthProviderInfo {
 
 export interface AuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
+}
+
+/** A solved click captcha: the challenge id plus flat "x,y,x,y,x,y" click positions. */
+export interface ClickCaptchaSolution {
+  id: string
+  points: string
+}
+
+export interface ClickCaptchaChallenge {
+  id: string
+  image: string
+  targets: string[]
+  width: number
+  height: number
+}
+
+export interface CaptchaQuery {
+  captcha_id?: string
+  captcha_points?: string
 }

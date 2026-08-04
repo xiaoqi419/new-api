@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { CaptchaQuery } from '@/features/auth/types'
 import { api } from '@/lib/api'
 import type { LoginSession } from '@/stores/auth-store'
 
@@ -216,11 +217,14 @@ export async function getCheckinStatus(
  * Perform daily checkin
  */
 export async function performCheckin(
-  turnstileToken?: string
+  turnstileToken?: string,
+  captcha?: CaptchaQuery
 ): Promise<ApiResponse<CheckinResponse>> {
-  const url = turnstileToken
-    ? `/api/user/checkin?turnstile=${encodeURIComponent(turnstileToken)}`
-    : '/api/user/checkin'
-  const res = await api.post(url)
+  const res = await api.post('/api/user/checkin', undefined, {
+    params: {
+      ...(turnstileToken ? { turnstile: turnstileToken } : {}),
+      ...captcha,
+    },
+  })
   return res.data
 }

@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
+import { ClickCaptcha } from '@/components/click-captcha'
 import { Dialog } from '@/components/dialog'
 import { Loader2 } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
@@ -43,6 +44,7 @@ import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import {
@@ -76,6 +78,14 @@ export function SignUpForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
+  const {
+    isClickCaptchaEnabled,
+    setSolution: setCaptchaSolution,
+    resetSignal: captchaResetSignal,
+    resetClickCaptcha,
+    validateClickCaptcha,
+    captchaQuery,
+  } = useClickCaptcha()
   const { redirectToLogin, handleLoginSuccess } = useAuthRedirect()
   const {
     isSending: isSendingCode,
@@ -157,8 +167,12 @@ export function SignUpForm({
     }
 
     if (!validateTurnstile()) return
+    if (!validateClickCaptcha()) return
 
     setIsLoading(true)
+    // The server spends a click captcha on the first check, so a rejected
+    // registration needs a fresh image rather than the solved one.
+    let captchaAccepted = false
     try {
       const res = await register({
         username: data.username,
@@ -167,9 +181,11 @@ export function SignUpForm({
         verification_code: verificationCode || undefined,
         aff_code: getAffiliateCode(),
         turnstile: turnstileToken,
+        captcha: captchaQuery,
       })
 
       if (res?.success) {
+        captchaAccepted = true
         toast.success(t('Account created! Please sign in'))
         redirectToLogin()
       } else {
@@ -179,6 +195,7 @@ export function SignUpForm({
       // Errors are handled by global interceptor
     } finally {
       setIsLoading(false)
+      if (!captchaAccepted) resetClickCaptcha()
     }
   }
 
@@ -363,6 +380,14 @@ export function SignUpForm({
           onCheckedChange={setAgreedToLegal}
           className='mt-1'
         />
+
+        {isClickCaptchaEnabled && (
+          <ClickCaptcha
+            onSolvedChange={setCaptchaSolution}
+            resetSignal={captchaResetSignal}
+            className='mt-1'
+          />
+        )}
 
         {/* Submit Button */}
         <Button

@@ -191,6 +191,10 @@ func CriticalRateLimit() func(c *gin.Context) {
 	return defNext
 }
 
+func CaptchaRateLimit() func(c *gin.Context) {
+	return rateLimitFactory(common.CaptchaRateLimitNum, common.CaptchaRateLimitDuration, "CP")
+}
+
 func DownloadRateLimit() func(c *gin.Context) {
 	return rateLimitFactory(common.DownloadRateLimitNum, common.DownloadRateLimitDuration, "DW")
 }

@@ -30,8 +30,16 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: 'PENDING',
-    date: '2026-08-04',
+    date: '2026-08-05',
     changes: [
+      {
+        kind: 'feature',
+        items: [
+          '新增自研点选文字验证码:图上随机排布 5 个汉字,按提示顺序点中 3 个即可通过。图片由服务端生成,不依赖任何第三方服务,内网环境也能用。',
+          '可在「系统设置 → 身份验证 → 机器人防护」里开启,作用于登录、注册、找回密码和每日签到四个入口,和 Cloudflare Turnstile 互不影响,可同时开启。',
+          '每道题只能用一次:无论答对还是答错都立即作废,答错会自动换一张新图,避免同一张图被反复试。',
+        ],
+      },
       {
         kind: 'improvement',
         items: [

@@ -76,6 +76,7 @@ var LinuxDOOAuthEnabled = false
 var WeChatAuthEnabled = false
 var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
+var ClickCaptchaEnabled = false
 var RegisterEnabled = true
 
 // AgentAutoApproveEnabled 代理前台申请自动审批：开启时申请即激活代理(置 is_agent=1)，无需管理员审批。
@@ -241,6 +242,12 @@ var (
 
 	DownloadRateLimitNum            = 10
 	DownloadRateLimitDuration int64 = 60
+
+	// Click captcha images get their own bucket: they share an IP with the login
+	// bucket otherwise, so every refresh would eat one of the user's sign-in
+	// attempts. Issuing an image is cheap, a wrong answer forces a new one.
+	CaptchaRateLimitNum            = 60
+	CaptchaRateLimitDuration int64 = 10 * 60
 
 	// Per-user search rate limit (applies after authentication, keyed by user ID)
 	SearchRateLimitEnable         = true

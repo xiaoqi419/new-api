@@ -57,6 +57,7 @@ const defaultAuthSettings: AuthSettings = {
   WeChatServerAddress: '',
   WeChatServerToken: '',
   WeChatAccountQRCodeImageURL: '',
+  ClickCaptchaEnabled: false,
   TurnstileCheckEnabled: false,
   TurnstileSiteKey: '',
   TurnstileSecretKey: '',

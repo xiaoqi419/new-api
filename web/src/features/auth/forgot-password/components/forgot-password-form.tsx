@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
+import { ClickCaptcha } from '@/components/click-captcha'
 import { ArrowRight, Loader2 } from '@/components/icons'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,7 @@ import {
   forgotPasswordFormSchema,
   PASSWORD_RESET_COUNTDOWN,
 } from '@/features/auth/constants'
+import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { useCountdown } from '@/hooks/use-countdown'
 import { cn } from '@/lib/utils'
@@ -59,6 +61,14 @@ export function ForgotPasswordForm({
     validateTurnstile,
   } = useTurnstile()
   const {
+    isClickCaptchaEnabled,
+    setSolution: setCaptchaSolution,
+    resetSignal: captchaResetSignal,
+    resetClickCaptcha,
+    validateClickCaptcha,
+    captchaQuery,
+  } = useClickCaptcha()
+  const {
     secondsLeft,
     isActive,
     start: startCountdown,
@@ -72,11 +82,19 @@ export function ForgotPasswordForm({
 
   async function onSubmit(data: z.infer<typeof forgotPasswordFormSchema>) {
     if (!validateTurnstile()) return
+    if (!validateClickCaptcha()) return
 
     setIsLoading(true)
+    // One check spends the challenge, so a rejected request needs a new image.
+    let captchaAccepted = false
     try {
-      const res = await sendPasswordResetEmail(data.email, turnstileToken)
+      const res = await sendPasswordResetEmail(
+        data.email,
+        turnstileToken,
+        captchaQuery
+      )
       if (res?.success) {
+        captchaAccepted = true
         form.reset()
         startCountdown()
         toast.success(t('Reset email sent, please check your inbox'))
@@ -87,6 +105,7 @@ export function ForgotPasswordForm({
       // Errors are handled by global interceptor
     } finally {
       setIsLoading(false)
+      if (!captchaAccepted) resetClickCaptcha()
     }
   }
 
@@ -110,6 +129,14 @@ export function ForgotPasswordForm({
             </FormItem>
           )}
         />
+
+        {isClickCaptchaEnabled && (
+          <ClickCaptcha
+            onSolvedChange={setCaptchaSolution}
+            resetSignal={captchaResetSignal}
+            className='mt-1'
+          />
+        )}
 
         <Button
           type='submit'
