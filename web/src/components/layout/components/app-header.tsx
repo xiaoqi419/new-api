@@ -137,8 +137,8 @@ export function AppHeader({
                 unreadCount={notifications.unreadCount}
                 activeTab={notifications.activeTab}
                 onTabChange={notifications.setActiveTab}
-                notice={notifications.notice}
                 announcements={notifications.announcements}
+                versions={notifications.versions}
                 loading={notifications.loading}
               />
             )}

@@ -17,15 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { SystemInfoSection } from '../general/system-info-section'
+import { CommunityLinksSection } from '../maintenance/community-links-section'
 import {
   parseHeaderNavModules,
   parseSidebarModulesAdmin,
   serializeHeaderNavModules,
   serializeSidebarModulesAdmin,
 } from '../maintenance/config'
-import { CommunityLinksSection } from '../maintenance/community-links-section'
 import { HeaderNavigationSection } from '../maintenance/header-navigation-section'
-import { NoticeSection } from '../maintenance/notice-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -66,13 +65,6 @@ const SITE_SECTIONS = [
     titleKey: 'Login Page',
     build: (settings: SiteSettings) => (
       <LoginPageSection defaultValue={settings.LoginPageConfig ?? ''} />
-    ),
-  },
-  {
-    id: 'notice',
-    titleKey: 'System Notice',
-    build: (settings: SiteSettings) => (
-      <NoticeSection defaultValue={settings.Notice ?? ''} />
     ),
   },
   {
