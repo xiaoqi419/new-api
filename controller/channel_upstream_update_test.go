@@ -6,16 +6,34 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// allowLoopbackModelFetch lets a test reach an httptest server, which always
+// binds a loopback address on an ephemeral port and would otherwise be rejected
+// by the SSRF guard that fronts upstream model-list fetches.
+func allowLoopbackModelFetch(t *testing.T) {
+	t.Helper()
+	fetchSetting := system_setting.GetFetchSetting()
+	originalAllowPrivateIp := fetchSetting.AllowPrivateIp
+	originalAllowedPorts := fetchSetting.AllowedPorts
+	fetchSetting.AllowPrivateIp = true
+	fetchSetting.AllowedPorts = nil
+	t.Cleanup(func() {
+		fetchSetting.AllowPrivateIp = originalAllowPrivateIp
+		fetchSetting.AllowedPorts = originalAllowedPorts
+	})
+}
 
 func newAdvancedCustomModelListChannel(baseURL string, key string, upstreamPath string, auth *dto.AdvancedCustomRouteAuth) *model.Channel {
 	config := &dto.AdvancedCustomConfig{
@@ -71,6 +89,7 @@ func TestParseOpenAIModelIDsStrictResponseContract(t *testing.T) {
 }
 
 func TestFetchAdvancedCustomModelsAppliesHeaderOverrideAfterRouteAuth(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	type receivedRequest struct {
 		Headers http.Header
 		Host    string
@@ -109,6 +128,7 @@ func TestFetchAdvancedCustomModelsAppliesHeaderOverrideAfterRouteAuth(t *testing
 }
 
 func TestFetchAdvancedCustomModelsUsesEnabledSavedMultiKey(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	authorization := make(chan string, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization <- r.Header.Get("Authorization")
@@ -132,6 +152,7 @@ func TestFetchAdvancedCustomModelsUsesEnabledSavedMultiKey(t *testing.T) {
 }
 
 func TestFetchAdvancedCustomModelsRejectsNonOKResponse(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = w.Write([]byte(`{"data":[{"id":"must-not-be-used"}]}`))
@@ -171,6 +192,7 @@ func TestFetchAdvancedCustomModelsRedactsQueryKeyFromTransportErrors(t *testing.
 }
 
 func TestFetchOrdinaryOpenAIModelsKeepsExistingEmptyDataBehavior(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"object":"list"}`))
 	}))
@@ -187,7 +209,38 @@ func TestFetchOrdinaryOpenAIModelsKeepsExistingEmptyDataBehavior(t *testing.T) {
 	require.Empty(t, models)
 }
 
+func TestFetchOrdinaryOpenAIModelsStopsSSRFBlockedTargetBeforeDialing(t *testing.T) {
+	fetchSetting := system_setting.GetFetchSetting()
+	originalAllowPrivateIp := fetchSetting.AllowPrivateIp
+	originalAllowedPorts := fetchSetting.AllowedPorts
+	fetchSetting.AllowPrivateIp = false
+	fetchSetting.AllowedPorts = []string{"80", "443"}
+	t.Cleanup(func() {
+		fetchSetting.AllowPrivateIp = originalAllowPrivateIp
+		fetchSetting.AllowedPorts = originalAllowedPorts
+	})
+
+	var reached atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached.Store(true)
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-4.1"}]}`))
+	}))
+	defer server.Close()
+
+	baseURL := server.URL
+	channel := &model.Channel{
+		Type:    constant.ChannelTypeOpenAI,
+		Key:     "ordinary-key",
+		BaseURL: &baseURL,
+	}
+	models, err := fetchChannelUpstreamModelIDs(channel)
+	require.Error(t, err)
+	assert.Empty(t, models)
+	assert.False(t, reached.Load(), "the upstream must never be dialed once the SSRF guard rejects the target")
+}
+
 func TestFetchModelsAdvancedCustomCreatePreview(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	receivedAuthorization := make(chan string, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedAuthorization <- r.Header.Get("Authorization")
@@ -233,6 +286,7 @@ func TestFetchModelsAdvancedCustomCreatePreview(t *testing.T) {
 }
 
 func TestFetchModelsAdvancedCustomEditPreviewUsesSavedKeyAndExplicitClears(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	db := setupModelListControllerTestDB(t)
 	receivedHeaders := make(chan http.Header, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -321,6 +375,7 @@ func TestFetchModelsAdvancedCustomEditPreviewUsesSavedKeyAndExplicitClears(t *te
 }
 
 func TestFailedAdvancedCustomDetectionDoesNotStageFullRemoval(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	db := setupModelListControllerTestDB(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"data":[]}`))
@@ -352,6 +407,7 @@ func TestFailedAdvancedCustomDetectionDoesNotStageFullRemoval(t *testing.T) {
 }
 
 func TestFetchModelsUsesSharedChannelFetchBehavior(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/models" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
@@ -386,6 +442,7 @@ func TestFetchModelsUsesSharedChannelFetchBehavior(t *testing.T) {
 }
 
 func TestFetchNewAPIModelsUsesOpenAIContract(t *testing.T) {
+	allowLoopbackModelFetch(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v1/models", r.URL.Path)
 		assert.Equal(t, "Bearer new-api-key", r.Header.Get("Authorization"))
