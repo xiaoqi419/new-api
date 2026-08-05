@@ -64,8 +64,19 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 printf '%s' "$TAG" > "$VERSION_FILE"
 
+# Hand the host's Go module proxy to the builder. Without this the in-container
+# build falls back to proxy.golang.org, which is unreachable from some networks
+# and only shows up when a go.mod change invalidates the download layer.
+build_args=()
+goproxy="${GOPROXY:-$(go env GOPROXY 2>/dev/null || true)}"
+if [[ -n "$goproxy" ]]; then
+  echo ">> GOPROXY:  $goproxy"
+  build_args+=(--build-arg "GOPROXY=${goproxy}")
+fi
+
 docker buildx build \
   --platform "$PLATFORM" \
+  "${build_args[@]}" \
   -t "${IMAGE}:${TAG}" \
   -t "${IMAGE}:latest" \
   --push \
