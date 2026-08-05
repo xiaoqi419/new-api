@@ -2640,6 +2640,7 @@
     "Incomplete": "Incomplet",
     "Increased user quota by {{quota}}": "Quota de l'utilisateur augmenté de {{quota}}",
     "Index": "Index",
+    "Infinite Canvas": "Canvas infini",
     "Initial quota given to new users": "Quota initial donné aux nouveaux utilisateurs",
     "Initial quota given to new users ({{formattedQuota}})": "Quota initial donné aux nouveaux utilisateurs ({{formattedQuota}})",
     "Initialization failed, please try again.": "L'initialisation a échoué, veuillez réessayer.",

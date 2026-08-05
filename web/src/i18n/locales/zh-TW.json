@@ -2640,6 +2640,7 @@
     "Incomplete": "未完成",
     "Increased user quota by {{quota}}": "增加用戶額度 {{quota}}",
     "Index": "索引",
+    "Infinite Canvas": "無限畫布",
     "Initial quota given to new users": "授予新用戶的初始配額",
     "Initial quota given to new users ({{formattedQuota}})": "授予新用戶的初始配額（{{formattedQuota}}）",
     "Initialization failed, please try again.": "初始化失敗，請重試。",

@@ -2640,6 +2640,7 @@
     "Incomplete": "未完了",
     "Increased user quota by {{quota}}": "ユーザーのクォータを {{quota}} 増やしました",
     "Index": "インデックス",
+    "Infinite Canvas": "無限キャンバス",
     "Initial quota given to new users": "新規ユーザーに付与される初期クォータ",
     "Initial quota given to new users ({{formattedQuota}})": "新規ユーザーに付与される初期クォータ（{{formattedQuota}}）",
     "Initialization failed, please try again.": "初期化に失敗しました。もう一度お試しください。",

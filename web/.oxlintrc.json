@@ -17,6 +17,7 @@
     "coverage",
     ".tanstack",
     ".eslintrc.cjs",
+    "/canvas",
     "src/components/ui",
     "src/routeTree.gen.ts"
   ],

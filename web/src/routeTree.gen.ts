@@ -45,6 +45,7 @@ import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAnnouncementsIndexRouteImport } from './routes/_authenticated/announcements/index'
 import { Route as AuthenticatedAnnouncementsAdminRouteImport } from './routes/_authenticated/announcements/admin'
 import { Route as AuthenticatedAssetLibraryIndexRouteImport } from './routes/_authenticated/asset-library/index'
+import { Route as AuthenticatedCanvasIndexRouteImport } from './routes/_authenticated/canvas/index'
 import { Route as AuthenticatedChangelogIndexRouteImport } from './routes/_authenticated/changelog/index'
 import { Route as AuthenticatedChannelMonitorIndexRouteImport } from './routes/_authenticated/channel-monitor/index'
 import { Route as AuthenticatedChannelMonitorDetailRouteImport } from './routes/_authenticated/channel-monitor/detail'
@@ -285,6 +286,12 @@ const AuthenticatedAssetLibraryIndexRoute =
   AuthenticatedAssetLibraryIndexRouteImport.update({
     id: '/asset-library/',
     path: '/asset-library/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCanvasIndexRoute =
+  AuthenticatedCanvasIndexRouteImport.update({
+    id: '/canvas/',
+    path: '/canvas/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedChangelogIndexRoute =
@@ -659,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/agents/': typeof AuthenticatedAgentsIndexRoute
   '/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
+  '/canvas/': typeof AuthenticatedCanvasIndexRoute
   '/changelog/': typeof AuthenticatedChangelogIndexRoute
   '/channel-monitor/': typeof AuthenticatedChannelMonitorIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -748,6 +756,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AuthenticatedAgentsIndexRoute
   '/announcements': typeof AuthenticatedAnnouncementsIndexRoute
   '/asset-library': typeof AuthenticatedAssetLibraryIndexRoute
+  '/canvas': typeof AuthenticatedCanvasIndexRoute
   '/changelog': typeof AuthenticatedChangelogIndexRoute
   '/channel-monitor': typeof AuthenticatedChannelMonitorIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
@@ -841,6 +850,7 @@ export interface FileRoutesById {
   '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
   '/_authenticated/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
   '/_authenticated/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
+  '/_authenticated/canvas/': typeof AuthenticatedCanvasIndexRoute
   '/_authenticated/changelog/': typeof AuthenticatedChangelogIndexRoute
   '/_authenticated/channel-monitor/': typeof AuthenticatedChannelMonitorIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -933,6 +943,7 @@ export interface FileRouteTypes {
     | '/agents/'
     | '/announcements/'
     | '/asset-library/'
+    | '/canvas/'
     | '/changelog/'
     | '/channel-monitor/'
     | '/channels/'
@@ -1022,6 +1033,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/announcements'
     | '/asset-library'
+    | '/canvas'
     | '/changelog'
     | '/channel-monitor'
     | '/channels'
@@ -1114,6 +1126,7 @@ export interface FileRouteTypes {
     | '/_authenticated/agents/'
     | '/_authenticated/announcements/'
     | '/_authenticated/asset-library/'
+    | '/_authenticated/canvas/'
     | '/_authenticated/changelog/'
     | '/_authenticated/channel-monitor/'
     | '/_authenticated/channels/'
@@ -1428,6 +1441,13 @@ declare module '@tanstack/react-router' {
       path: '/asset-library'
       fullPath: '/asset-library/'
       preLoaderRoute: typeof AuthenticatedAssetLibraryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/canvas/': {
+      id: '/_authenticated/canvas/'
+      path: '/canvas'
+      fullPath: '/canvas/'
+      preLoaderRoute: typeof AuthenticatedCanvasIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/changelog/': {
@@ -1921,6 +1941,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
   AuthenticatedAnnouncementsIndexRoute: typeof AuthenticatedAnnouncementsIndexRoute
   AuthenticatedAssetLibraryIndexRoute: typeof AuthenticatedAssetLibraryIndexRoute
+  AuthenticatedCanvasIndexRoute: typeof AuthenticatedCanvasIndexRoute
   AuthenticatedChangelogIndexRoute: typeof AuthenticatedChangelogIndexRoute
   AuthenticatedChannelMonitorIndexRoute: typeof AuthenticatedChannelMonitorIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
@@ -1975,6 +1996,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,
   AuthenticatedAnnouncementsIndexRoute: AuthenticatedAnnouncementsIndexRoute,
   AuthenticatedAssetLibraryIndexRoute: AuthenticatedAssetLibraryIndexRoute,
+  AuthenticatedCanvasIndexRoute: AuthenticatedCanvasIndexRoute,
   AuthenticatedChangelogIndexRoute: AuthenticatedChangelogIndexRoute,
   AuthenticatedChannelMonitorIndexRoute: AuthenticatedChannelMonitorIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
