@@ -34,7 +34,16 @@ export const apiKeySchema = z.object({
   created_time: z.number(),
   accessed_time: z.number(),
   group: z.string().nullish().default(''),
+  auto_groups: z.array(z.string()).nullish().default(null),
   group_switch_enabled: z
+    .preprocess((v) => {
+      if (v === 1) return true
+      if (v === 0) return false
+      return v
+    }, z.boolean())
+    .optional()
+    .default(false),
+  cross_group_retry: z
     .preprocess((v) => {
       if (v === 1) return true
       if (v === 0) return false
@@ -100,6 +109,13 @@ export interface ApiKeyFormData {
   group_switch_threshold: number
   group_switch_cooldown: number
   max_concurrency: number
+  auto_groups: string[]
+  cross_group_retry: boolean
+}
+
+export interface TokenAutoGroupsConfig {
+  groups: string[]
+  max_count: number
 }
 
 // ============================================================================

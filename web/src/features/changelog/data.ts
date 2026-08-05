@@ -42,6 +42,22 @@ export const CHANGELOG: ChangelogEntry[] = [
           '基于开源项目「无限画布」(infinite-canvas,AGPL-3.0) 构建,随镜像一起发布,无需额外部署。',
         ],
       },
+      {
+        kind: 'feature',
+        items: [
+          '同步上游 new-api v1.0.0-rc.23:新增「New API」渠道类型,可直接把另一个 new-api 站点当作上游接入,模型列表能自动拉取。',
+          'DeepSeek 渠道新增 Responses 接口支持,思考模式也一并适配。',
+          '渠道高级设置新增「HTTP 协议」与「HTTP/2 连接分片」:可按渠道强制 HTTP/1.1,或把 HTTP/2 流量分散到同一上游的多条可复用连接上(1-8),用于缓解个别上游在高并发下的连接瓶颈。',
+          '「系统设置 → 身份验证 → OAuth」新增 OIDC 显示名称,可把登录页上的按钮文案改成自定义名称(如「公司 SSO」),留空仍显示 OIDC。',
+        ],
+      },
+      {
+        kind: 'improvement',
+        items: [
+          '请求体新增 zstd 压缩解码支持,上游或客户端使用 zstd 时不再报错。',
+          '新增 SQL_SLOW_THRESHOLD_MS 环境变量,可自定义慢查询日志阈值(毫秒,置 0 关闭)。',
+        ],
+      },
     ],
   },
   {

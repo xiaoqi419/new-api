@@ -33,6 +33,7 @@ type Token struct {
 	GroupSwitchThreshold int            `json:"group_switch_threshold" gorm:"default:2"`   // 每组可重试上游失败阈值 1-5
 	GroupSwitchCooldown  int            `json:"group_switch_cooldown" gorm:"default:10"`   // 升档冷却分钟 5/10/30
 	MaxConcurrency       int            `json:"max_concurrency" gorm:"type:int;default:0"` // 令牌级最大并发，0=不限
+	AutoGroups           string         `json:"-" gorm:"type:text"`                        // 上游 auto 分组候选快照，见 GetAutoGroups
 	DeletedAt            gorm.DeletedAt `gorm:"index"`
 }
 
@@ -47,6 +48,30 @@ func (token *Token) GetGroupSwitchGroups() []string {
 		return make([]string, 0)
 	}
 	return groups
+}
+
+func (token *Token) GetAutoGroups() ([]string, error) {
+	if token.AutoGroups == "" {
+		return nil, nil
+	}
+	var groups []string
+	if err := common.UnmarshalJsonStr(token.AutoGroups, &groups); err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func (token *Token) SetAutoGroups(groups []string) error {
+	if len(groups) == 0 {
+		token.AutoGroups = ""
+		return nil
+	}
+	data, err := common.Marshal(groups)
+	if err != nil {
+		return err
+	}
+	token.AutoGroups = string(data)
+	return nil
 }
 
 func (token *Token) Clean() {
@@ -309,19 +334,18 @@ func (token *Token) Insert() error {
 
 // Update Make sure your token's fields is completed, because this will update non-zero values
 func (token *Token) Update() (err error) {
-	defer func() {
-		if shouldUpdateRedis(true, err) {
-			gopool.Go(func() {
-				err := cacheSetToken(*token)
-				if err != nil {
-					common.SysLog("failed to update token cache: " + err.Error())
-				}
-			})
-		}
-	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
 		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "max_concurrency",
-		"group_switch_enabled", "group_switch_groups", "group_switch_threshold", "group_switch_cooldown").Updates(token).Error
+		"group_switch_enabled", "group_switch_groups", "group_switch_threshold", "group_switch_cooldown",
+		"auto_groups").Updates(token).Error
+	if shouldUpdateRedis(true, err) {
+		if cacheErr := cacheSetToken(*token); cacheErr != nil {
+			common.SysLog("failed to update token cache: " + cacheErr.Error())
+			if deleteErr := cacheDeleteToken(token.Key); deleteErr != nil {
+				common.SysLog("failed to invalidate token cache after update: " + deleteErr.Error())
+			}
+		}
+	}
 	return err
 }
 

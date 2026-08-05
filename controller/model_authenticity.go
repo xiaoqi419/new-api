@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/relaykit/dto"
 )
 
 // probeIdentityPrompt 是行为判据的提问。要求只回型号，是为了让回答短到能塞进探测的

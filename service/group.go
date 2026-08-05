@@ -3,9 +3,12 @@ package service
 import (
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/gin-gonic/gin"
 )
 
 func GetUserUsableGroups(userGroup string) map[string]string {
@@ -42,26 +45,84 @@ func GroupInUserUsableGroups(userGroup, groupName string) bool {
 	return ok
 }
 
+func IsUserSelectableGroup(userGroup, groupName string) bool {
+	if groupName == "" || groupName == "auto" {
+		return false
+	}
+	return GroupInUserUsableGroups(userGroup, groupName) && ratio_setting.ContainsGroupRatio(groupName)
+}
+
 // GetUserAutoGroup 根据用户分组获取（旧版）自动分组链路，等价于解析 "auto"。
 func GetUserAutoGroup(userGroup string) []string {
 	return GetUserAutoGroupChain(userGroup, "auto")
 }
 
 // GetUserAutoGroupChain 解析某个 token 分组（"auto" 或 "auto:<key>"）对应的
-// 有序真实分组链路，并按用户可用分组过滤。
+// 有序真实分组链路，按当前用户可选分组过滤并去重。
 func GetUserAutoGroupChain(userGroup, tokenGroup string) []string {
 	chain := setting.ResolveAutoGroupChain(tokenGroup)
 	if len(chain) == 0 {
 		return []string{}
 	}
-	groups := GetUserUsableGroups(userGroup)
 	autoGroups := make([]string, 0, len(chain))
+	seen := make(map[string]struct{})
 	for _, group := range chain {
-		if _, ok := groups[group]; ok {
-			autoGroups = append(autoGroups, group)
+		if !IsUserSelectableGroup(userGroup, group) {
+			continue
 		}
+		if _, ok := seen[group]; ok {
+			continue
+		}
+		seen[group] = struct{}{}
+		autoGroups = append(autoGroups, group)
 	}
 	return autoGroups
+}
+
+// FilterUserTokenAutoGroups applies current permissions before the current
+// per-token limit. It intentionally does not fall back to the global Auto list.
+func FilterUserTokenAutoGroups(userGroup string, groups []string) []string {
+	maxCount := setting.GetMaxTokenAutoGroups()
+	filtered := make([]string, 0, min(len(groups), maxCount))
+	seen := make(map[string]struct{})
+	for _, group := range groups {
+		if !IsUserSelectableGroup(userGroup, group) {
+			continue
+		}
+		if _, ok := seen[group]; ok {
+			continue
+		}
+		seen[group] = struct{}{}
+		filtered = append(filtered, group)
+		if len(filtered) == maxCount {
+			break
+		}
+	}
+	return filtered
+}
+
+// GetRequestAutoGroups resolves the ordered Auto groups for the current token.
+// The absence of the context value means that the token inherits the complete
+// global Auto list; a present (even empty) value is an explicit token snapshot.
+func GetRequestAutoGroups(c *gin.Context, userGroup string) []string {
+	value, ok := common.GetContextKey(c, constant.ContextKeyTokenAutoGroups)
+	if !ok {
+		return GetUserAutoGroup(userGroup)
+	}
+	groups, ok := value.([]string)
+	if !ok {
+		return []string{}
+	}
+	return FilterUserTokenAutoGroups(userGroup, groups)
+}
+
+// ResolveRequestAutoGroups 解析本次请求实际生效的有序自动分组链路：
+// "auto:<key>" 走具名链路配置，裸 "auto" 走令牌自带的候选快照并回退到全局 Auto 列表。
+func ResolveRequestAutoGroups(c *gin.Context, userGroup, usingGroup string) []string {
+	if strings.HasPrefix(usingGroup, setting.AutoGroupPrefix) {
+		return GetUserAutoGroupChain(userGroup, usingGroup)
+	}
+	return GetRequestAutoGroups(c, userGroup)
 }
 
 // UserAutoGroupRoute 是暴露给前端（价格页/令牌表单）的自动链路信息，
