@@ -954,6 +954,31 @@ func GetErrorStatByContent(start, end int64, limit int) ([]ErrorStatRow, error) 
 	return rows, err
 }
 
+// GetUserErrorTotal 返回某个用户在时间范围内的失败请求数。
+func GetUserErrorTotal(userId int, start, end int64) (int64, error) {
+	var total int64
+	err := errorStatBaseQuery(start, end).Where("user_id = ?", userId).Count(&total).Error
+	return total, err
+}
+
+// GetUserErrorStatByContent 按错误内容聚合某个用户的失败请求，倒序取前 limit 项。
+// 分组直接用 content 原文：错误文本里可能带请求 id 等变量，同一类错误会被拆成多行，
+// 这里先保留原文以免归一化规则误合并语义不同的错误。
+func GetUserErrorStatByContent(userId int, start, end int64, limit int) ([]ErrorStatRow, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []ErrorStatRow
+	err := errorStatBaseQuery(start, end).
+		Where("user_id = ?", userId).
+		Select("content as name, count(*) as count").
+		Group("content").
+		Order("count desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
 func errorTrendBucketExpr(bucketSeconds int64) string {
 	if common.UsingLogDatabase(common.DatabaseTypeMySQL) {
 		return fmt.Sprintf("(created_at DIV %d) * %d", bucketSeconds, bucketSeconds)

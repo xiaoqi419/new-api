@@ -28,6 +28,7 @@ import type {
   GetTaskLogsParams,
   UserInfo,
   UserRankingResponse,
+  UserStat,
 } from './types'
 
 // ============================================================================
@@ -89,6 +90,20 @@ export async function getUserInfo(
   userId: number
 ): Promise<{ success: boolean; message?: string; data?: UserInfo }> {
   const res = await api.get(`/api/user/${userId}`)
+  return res.data
+}
+
+export async function getUserStat(params: {
+  user_id: number
+  start_timestamp: number
+  end_timestamp: number
+  limit?: number
+}): Promise<{
+  success: boolean
+  message?: string
+  data?: UserStat
+}> {
+  const res = await api.get('/api/log/user_stat', { params })
   return res.data
 }
 

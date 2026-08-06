@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '消费日志点用户名弹出的「用户信息」现在会显示今日/本月的消耗与请求数,不再只有开户至今的累计值。数据取自按小时预聚合的用量表,不扫日志表,大账号也能秒开。',
+          '「用户信息」新增今日/本月失败次数,并可展开查看本月各项失败原因及次数(按错误原文分组,倒序取前 20 条),便于快速判断是用户在刷错误还是渠道出了问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260806-b165d421f',
     date: '2026-08-06',
     changes: [

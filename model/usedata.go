@@ -160,6 +160,23 @@ func GetQuotaDataByUserId(userId int, startTime int64, endTime int64) (quotaData
 	return quotaDatas, err
 }
 
+// UserUsageSummary 是某个用户在一个时间窗内的用量汇总。
+type UserUsageSummary struct {
+	Requests int64 `json:"requests"`
+	Quota    int64 `json:"quota"`
+}
+
+// SumQuotaDataByUserId 在数据库侧把用量汇总成一行。按 user_id 而不是 username 聚合：
+// 同一个 user_id 的记录可能带不同 username（例如系统健康探测），按名字过滤会漏账。
+func SumQuotaDataByUserId(userId int, startTime int64, endTime int64) (UserUsageSummary, error) {
+	var summary UserUsageSummary
+	err := DB.Table("quota_data").
+		Select("COALESCE(sum(count), 0) as requests, COALESCE(sum(quota), 0) as quota").
+		Where("user_id = ? and created_at >= ? and created_at <= ?", userId, startTime, endTime).
+		Scan(&summary).Error
+	return summary, err
+}
+
 func GetQuotaDataGroupByUser(startTime int64, endTime int64) (quotaData []*QuotaData, err error) {
 	var quotaDatas []*QuotaData
 	err = DB.Table("quota_data").

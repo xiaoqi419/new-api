@@ -275,6 +275,60 @@ func GetErrorStat(c *gin.Context) {
 	})
 }
 
+// GetUserStat 单个用户在指定时间范围内的用量汇总、失败请求数，以及按错误内容分组的 Top-N。
+// 时间窗由调用方给出而不在服务端算「今天/本月」，因为日/月边界取决于查看者所在时区。
+// 用量来自按小时预聚合的 quota_data（只含已计费请求），失败数来自错误日志，两者数据源不同。
+func GetUserStat(c *gin.Context) {
+	userId, err := strconv.Atoi(c.Query("user_id"))
+	if err != nil || userId <= 0 {
+		common.ApiErrorMsg(c, "user_id 无效")
+		return
+	}
+
+	start, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	end, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	now := common.GetTimestamp()
+	if end <= 0 {
+		end = now
+	}
+	if start <= 0 {
+		start = end - 24*3600
+	}
+	if start > end {
+		start, end = end, start
+	}
+
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	usage, err := model.SumQuotaDataByUserId(userId, start, end)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	failures, err := model.GetUserErrorTotal(userId, start, end)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	byContent, err := model.GetUserErrorStatByContent(userId, start, end, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	common.ApiSuccess(c, gin.H{
+		"quota":           usage.Quota,
+		"requests":        usage.Requests,
+		"failures":        failures,
+		"by_content":      byContent,
+		"start_timestamp": start,
+		"end_timestamp":   end,
+	})
+}
+
 // TestErrorAlert 向企业微信群机器人发送一条测试消息，用于验证 Webhook 配置。
 // 优先使用请求体中的 webhook_url（便于保存前测试），为空时回退到已保存的设置。
 func TestErrorAlert(c *gin.Context) {

@@ -473,3 +473,17 @@ export interface UserInfo {
   aff_quota?: number
   remark?: string
 }
+
+export interface UserErrorStatRow {
+  name: string
+  count: number
+}
+
+export interface UserStat {
+  quota: number
+  requests: number
+  failures: number
+  by_content: UserErrorStatRow[] | null
+  start_timestamp: number
+  end_timestamp: number
+}
