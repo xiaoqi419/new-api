@@ -25,6 +25,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/samber/lo"
@@ -199,6 +200,16 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		meta = request.GetTokenCountMeta()
 	} else {
 		meta = fastTokenCountMetaForPricing(request)
+	}
+
+	// 图片按次计费时，分辨率/质量档位倍率要在预扣费之前乘进单价，否则预扣和结算会用不同的价。
+	if imageRequest, ok := request.(*dto.ImageRequest); ok && meta != nil {
+		if ratio, ok := ratio_setting.GetImagePriceRatio(relayInfo.OriginModelName, ratio_setting.ImageRequestShape{
+			Size:    imageRequest.Size,
+			Quality: imageRequest.Quality,
+		}); ok {
+			meta.ImagePriceRatio = ratio
+		}
 	}
 
 	if needSensitiveCheck && meta != nil {
