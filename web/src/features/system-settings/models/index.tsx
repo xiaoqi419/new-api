@@ -53,6 +53,7 @@ const defaultModelSettings: ModelSettings = {
   AudioCompletionRatio: '',
   ExposeRatioEnabled: false,
   VideoPriceTiers: '{}',
+  ImagePriceTiers: '{}',
   'billing_setting.billing_mode': '{}',
   'billing_setting.billing_expr': '{}',
   'tool_price_setting.prices': '{}',

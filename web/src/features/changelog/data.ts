@@ -29,6 +29,20 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '图片模型的「按次」计费现在支持按输出尺寸和质量分档定价:在模型定价弹窗的「按次」页签填一张档位表,即可让 2K、4K、高质量各走各的价,不必再为同一个模型拆出多个条目。',
+          '档位尺寸既可以写 2K 这类档位名,也可以写 2048x2048 这类具体尺寸;命中时按总像素数就近归档,所以同一档下的各种长宽比(如 1536x2752)都会落到正确的价格上。',
+          '原先写死在代码里的 DALL·E 2/3 尺寸与 hd 质量倍率已迁为默认配置项,价格保持不变,但现在可以在后台直接调整。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260806-48ee6d596',
     date: '2026-08-06',
     changes: [

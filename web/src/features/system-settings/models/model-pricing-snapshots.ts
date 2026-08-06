@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { splitBillingExprAndRequestRules } from '@/features/pricing/lib/billing-expr'
 
 import { safeJsonParse } from '../utils/json-parser'
-import { canonicalizeVideoPriceTiers } from './model-pricing-core'
+import {
+  canonicalizeImagePriceTiers,
+  canonicalizeVideoPriceTiers,
+} from './model-pricing-core'
 import { formatPricingNumber } from './pricing-format'
 
 export type ModelPricingSnapshotInput = {
@@ -34,6 +37,7 @@ export type ModelPricingSnapshotInput = {
   billingMode: string
   billingExpr: string
   videoPriceTiers: string
+  imagePriceTiers: string
 }
 
 export type ModelPricingSnapshot = {
@@ -50,6 +54,7 @@ export type ModelPricingSnapshot = {
   billingExpr?: string
   requestRuleExpr?: string
   videoPriceTiers?: string
+  imagePriceTiers?: string
   hasConflict: boolean
 }
 
@@ -178,6 +183,7 @@ export const buildModelSnapshots = ({
   billingMode,
   billingExpr,
   videoPriceTiers,
+  imagePriceTiers,
 }: ModelPricingSnapshotInput): ModelPricingSnapshot[] => {
   const priceMap = safeJsonParse<Record<string, number>>(modelPrice, {
     fallback: {},
@@ -223,6 +229,10 @@ export const buildModelSnapshots = ({
     videoPriceTiers,
     { fallback: {}, context: 'video price tiers' }
   )
+  const imagePriceMap = safeJsonParse<Record<string, unknown>>(
+    imagePriceTiers,
+    { fallback: {}, context: 'image price tiers' }
+  )
 
   const modelNames = new Set([
     ...Object.keys(priceMap),
@@ -236,6 +246,7 @@ export const buildModelSnapshots = ({
     ...Object.keys(billingModeMap),
     ...Object.keys(billingExprMap),
     ...Object.keys(videoPriceMap),
+    ...Object.keys(imagePriceMap),
   ])
 
   return Array.from(modelNames).map((name) => {
@@ -249,6 +260,9 @@ export const buildModelSnapshots = ({
     const audioCompletion = audioCompletionMap[name]?.toString() || ''
     const videoTiers = videoPriceMap[name]
       ? JSON.stringify(videoPriceMap[name])
+      : ''
+    const imageTiers = imagePriceMap[name]
+      ? JSON.stringify(imagePriceMap[name])
       : ''
 
     const modeForModel = billingModeMap[name]
@@ -270,6 +284,7 @@ export const buildModelSnapshots = ({
         audioRatio: audio,
         audioCompletionRatio: audioCompletion,
         videoPriceTiers: videoTiers,
+        imagePriceTiers: imageTiers,
         hasConflict: false,
       }
     }
@@ -285,6 +300,7 @@ export const buildModelSnapshots = ({
       audioRatio: audio,
       audioCompletionRatio: audioCompletion,
       videoPriceTiers: videoTiers,
+      imagePriceTiers: imageTiers,
       billingMode: price !== '' ? 'per-request' : 'per-token',
       hasConflict:
         price !== '' &&
@@ -314,5 +330,6 @@ export const getSnapshotSignature = (snapshot?: ModelPricingSnapshot) => {
     billingExpr: snapshot.billingExpr || '',
     requestRuleExpr: snapshot.requestRuleExpr || '',
     videoPriceTiers: canonicalizeVideoPriceTiers(snapshot.videoPriceTiers),
+    imagePriceTiers: canonicalizeImagePriceTiers(snapshot.imagePriceTiers),
   })
 }

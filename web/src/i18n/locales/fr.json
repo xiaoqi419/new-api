@@ -6080,6 +6080,21 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Image tier pricing": "Tarifs par palier d'image",
+    "Charge image models differently by output size or quality.": "Facturer les modèles d'image selon la taille ou la qualité de sortie.",
+    "Base tier size": "Taille du palier de base",
+    "The output size the fixed price above already covers.": "La taille de sortie déjà couverte par le prix fixe ci-dessus.",
+    "Output size": "Taille de sortie",
+    "Any size": "Toute taille",
+    "Any quality": "Toute qualité",
+    "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.": "Chaque prix est le prix unitaire final pour cette taille et cette qualité, dans la même unité que le prix fixe ci-dessus.",
+    "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.": "La taille accepte un nom de palier comme 2K ou une taille exacte comme 2048x2048. Laissez la taille ou la qualité vide pour couvrir tout ce que le tableau ne liste pas.",
+    "Every image tier price must be greater than 0.": "Chaque prix de palier d'image doit être supérieur à 0.",
+    "Image tier sizes must be written like 2K or 2048x2048.": "Les tailles de palier d'image s'écrivent 2K ou 2048x2048.",
+    "Two image tiers use the same size and quality.": "Deux paliers d'image ont la même taille et la même qualité.",
+    "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.": "Définissez la taille du palier de base, par exemple 2K ou 1024x1024, avant de tarifer par taille.",
+    "Set the fixed price before pricing image tiers.": "Définissez le prix fixe avant de configurer les paliers d'image.",
+    "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.": "Table JSON des modèles → taille du palier de base et prix fixe associé, plus le prix unitaire final de chaque combinaison taille / qualité."
   }
 }

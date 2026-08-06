@@ -63,21 +63,27 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
+import { ImagePriceTierEditor } from './image-price-tier-editor'
 import {
   EMPTY_LANE_ENABLED,
   EMPTY_LANE_PRICES,
+  createEmptyImagePriceTiers,
   createEmptyVideoPriceMatrix,
   buildPreviewRows,
   createInitialLaneState,
   createModelPricingSchema,
+  getImagePriceTiersError,
   getVideoPriceMatrixError,
   hasValue,
   laneConfigs,
   numericDraftRegex,
+  parseImagePriceTiers,
   parseVideoPriceMatrix,
   ratioFieldByLane,
+  serializeImagePriceTiers,
   serializeVideoPriceMatrix,
   toNumberOrNull,
+  type ImagePriceTiersDraft,
   type LaneKey,
   type ModelPricingFormValues,
   type ModelRatioData,
@@ -162,6 +168,9 @@ export const ModelPricingEditorPanel = forwardRef<
   const [videoPriceDraft, setVideoPriceDraft] = useState<VideoPriceMatrixDraft>(
     createEmptyVideoPriceMatrix
   )
+  const [imagePriceDraft, setImagePriceDraft] = useState<ImagePriceTiersDraft>(
+    createEmptyImagePriceTiers
+  )
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
   const [editorReloadToken, setEditorReloadToken] = useState(0)
@@ -228,6 +237,9 @@ export const ModelPricingEditorPanel = forwardRef<
         editData?.videoPriceTiers,
         nextLaneState.promptPrice
       )
+    )
+    setImagePriceDraft(
+      parseImagePriceTiers(editData?.imagePriceTiers, editData?.price)
     )
     setPromptPrice(nextLaneState.promptPrice)
     setLanePrices(nextLaneState.prices)
@@ -367,10 +379,12 @@ export const ModelPricingEditorPanel = forwardRef<
         lanePrices,
         laneEnabled,
         videoPriceDraft,
+        imagePriceDraft,
         t
       ),
     [
       billingExpr,
+      imagePriceDraft,
       laneEnabled,
       lanePrices,
       pricingMode,
@@ -387,6 +401,15 @@ export const ModelPricingEditorPanel = forwardRef<
     const errorKey = getVideoPriceMatrixError(videoPriceDraft, promptPrice)
     return errorKey ? t(errorKey) : null
   }, [pricingMode, promptPrice, t, videoPriceDraft])
+
+  const imagePriceError = useMemo(() => {
+    if (pricingMode !== 'per-request') return null
+    const errorKey = getImagePriceTiersError(
+      imagePriceDraft,
+      watchedValues.price
+    )
+    return errorKey ? t(errorKey) : null
+  }, [imagePriceDraft, pricingMode, t, watchedValues.price])
 
   const warnings = useMemo(() => {
     const nextWarnings: string[] = []
@@ -431,10 +454,12 @@ export const ModelPricingEditorPanel = forwardRef<
     }
 
     if (videoPriceError) nextWarnings.push(videoPriceError)
+    if (imagePriceError) nextWarnings.push(imagePriceError)
 
     return nextWarnings
   }, [
     editData,
+    imagePriceError,
     laneEnabled,
     lanePrices,
     pricingMode,
@@ -469,10 +494,12 @@ export const ModelPricingEditorPanel = forwardRef<
     }
 
     if (videoPriceError) return false
+    if (imagePriceError) return false
 
     return true
   }, [
     form,
+    imagePriceError,
     laneEnabled,
     lanePrices,
     pricingMode,
@@ -498,6 +525,10 @@ export const ModelPricingEditorPanel = forwardRef<
           pricingMode === 'per-token'
             ? serializeVideoPriceMatrix(videoPriceDraft, promptPrice)
             : '',
+        imagePriceTiers:
+          pricingMode === 'per-request'
+            ? serializeImagePriceTiers(imagePriceDraft, values.price)
+            : '',
       }
 
       if (pricingMode === 'tiered_expr') {
@@ -507,7 +538,14 @@ export const ModelPricingEditorPanel = forwardRef<
 
       return data
     },
-    [billingExpr, pricingMode, promptPrice, requestRuleExpr, videoPriceDraft]
+    [
+      billingExpr,
+      imagePriceDraft,
+      pricingMode,
+      promptPrice,
+      requestRuleExpr,
+      videoPriceDraft,
+    ]
   )
 
   useImperativeHandle(
@@ -689,6 +727,13 @@ export const ModelPricingEditorPanel = forwardRef<
                             </Field>
                           </FormItem>
                         )}
+                      />
+
+                      <ImagePriceTierEditor
+                        draft={imagePriceDraft}
+                        errorMessage={imagePriceError}
+                        basePrice={watchedValues.price || ''}
+                        onChange={setImagePriceDraft}
                       />
                     </FieldGroup>
                   </TabsContent>

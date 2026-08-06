@@ -6080,6 +6080,21 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Image tier pricing": "Image tier pricing",
+    "Charge image models differently by output size or quality.": "Charge image models differently by output size or quality.",
+    "Base tier size": "Base tier size",
+    "The output size the fixed price above already covers.": "The output size the fixed price above already covers.",
+    "Output size": "Output size",
+    "Any size": "Any size",
+    "Any quality": "Any quality",
+    "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.": "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.",
+    "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.": "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.",
+    "Every image tier price must be greater than 0.": "Every image tier price must be greater than 0.",
+    "Image tier sizes must be written like 2K or 2048x2048.": "Image tier sizes must be written like 2K or 2048x2048.",
+    "Two image tiers use the same size and quality.": "Two image tiers use the same size and quality.",
+    "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.": "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.",
+    "Set the fixed price before pricing image tiers.": "Set the fixed price before pricing image tiers.",
+    "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.": "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination."
   }
 }

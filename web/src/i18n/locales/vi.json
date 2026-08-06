@@ -6080,6 +6080,21 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Thu phóng"
+    "Zoom": "Thu phóng",
+    "Image tier pricing": "Giá theo bậc cho ảnh",
+    "Charge image models differently by output size or quality.": "Tính giá mô hình ảnh khác nhau theo kích thước hoặc chất lượng đầu ra.",
+    "Base tier size": "Kích thước bậc cơ sở",
+    "The output size the fixed price above already covers.": "Kích thước đầu ra mà giá cố định ở trên đã bao gồm.",
+    "Output size": "Kích thước đầu ra",
+    "Any size": "Mọi kích thước",
+    "Any quality": "Mọi chất lượng",
+    "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.": "Mỗi giá là đơn giá cuối cùng cho kích thước và chất lượng đó, cùng đơn vị với giá cố định ở trên.",
+    "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.": "Kích thước chấp nhận tên bậc như 2K hoặc kích thước cụ thể như 2048x2048. Để trống kích thước hoặc chất lượng để áp giá cho những trường hợp bảng chưa liệt kê.",
+    "Every image tier price must be greater than 0.": "Giá mỗi bậc ảnh phải lớn hơn 0.",
+    "Image tier sizes must be written like 2K or 2048x2048.": "Kích thước bậc phải viết dạng 2K hoặc 2048x2048.",
+    "Two image tiers use the same size and quality.": "Có hai bậc ảnh trùng kích thước và chất lượng.",
+    "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.": "Hãy đặt kích thước bậc cơ sở, ví dụ 2K hoặc 1024x1024, trước khi tính giá theo kích thước.",
+    "Set the fixed price before pricing image tiers.": "Hãy đặt giá cố định trước khi cấu hình bậc giá ảnh.",
+    "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.": "Bản đồ JSON mô hình → kích thước bậc cơ sở và giá cố định neo theo, cùng đơn giá cuối cùng cho mỗi tổ hợp kích thước / chất lượng."
   }
 }

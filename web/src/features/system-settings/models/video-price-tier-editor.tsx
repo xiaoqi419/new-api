@@ -31,7 +31,7 @@ import {
 } from '../components/settings-form-layout'
 import {
   createVideoPriceMatrixRow,
-  getVideoTierRatioLabel,
+  getTierRatioLabel,
   numericDraftRegex,
   setVideoPriceAxis,
   videoPriceColumns,
@@ -183,7 +183,7 @@ export function VideoPriceTierEditor(props: VideoPriceTierEditorProps) {
                           }
                         />
                         <span className='text-muted-foreground block h-4 font-mono text-xs'>
-                          {getVideoTierRatioLabel(
+                          {getTierRatioLabel(
                             props.promptPrice,
                             row.prices[column.key]
                           )}

@@ -78,6 +78,7 @@ type ModelRatioVisualEditorProps = {
   savedBillingMode: string
   savedBillingExpr: string
   savedVideoPriceTiers: string
+  savedImagePriceTiers: string
   modelPrice: string
   modelRatio: string
   cacheRatio: string
@@ -89,6 +90,7 @@ type ModelRatioVisualEditorProps = {
   billingMode: string
   billingExpr: string
   videoPriceTiers: string
+  imagePriceTiers: string
   candidateModelNames?: string[]
   candidateModelsLoading?: boolean
   filterMode?: 'all' | 'unset'
@@ -119,6 +121,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     savedBillingMode,
     savedBillingExpr,
     savedVideoPriceTiers,
+    savedImagePriceTiers,
     modelPrice,
     modelRatio,
     cacheRatio,
@@ -130,6 +133,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     billingMode,
     billingExpr,
     videoPriceTiers,
+    imagePriceTiers,
     candidateModelNames,
     candidateModelsLoading,
     filterMode = 'all',
@@ -205,6 +209,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode: savedBillingMode,
       billingExpr: savedBillingExpr,
       videoPriceTiers: savedVideoPriceTiers,
+      imagePriceTiers: savedImagePriceTiers,
     })
     const draftRows = buildModelSnapshots({
       modelPrice,
@@ -218,6 +223,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode,
       billingExpr,
       videoPriceTiers,
+      imagePriceTiers,
     })
 
     const savedByName = new Map(savedRows.map((row) => [row.name, row]))
@@ -262,6 +268,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     savedBillingMode,
     savedBillingExpr,
     savedVideoPriceTiers,
+    savedImagePriceTiers,
     modelPrice,
     modelRatio,
     cacheRatio,
@@ -273,6 +280,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
     billingMode,
     billingExpr,
     videoPriceTiers,
+    imagePriceTiers,
   ])
 
   const modeCounts = useMemo(
@@ -319,6 +327,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         billingExpr: editableModel.billingExpr,
         requestRuleExpr: editableModel.requestRuleExpr,
         videoPriceTiers: editableModel.videoPriceTiers,
+        imagePriceTiers: editableModel.imagePriceTiers,
       })
       setEditorOpen(true)
       if (isMobile) setSheetOpen(true)
@@ -393,6 +402,10 @@ const ModelRatioVisualEditorComponent = forwardRef<
         videoPriceTiers,
         { fallback: {}, silent: true }
       )
+      const imagePriceMap = safeJsonParse<Record<string, unknown>>(
+        imagePriceTiers,
+        { fallback: {}, silent: true }
+      )
 
       delete priceMap[name]
       delete ratioMap[name]
@@ -405,6 +418,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       delete billingModeMap[name]
       delete billingExprMap[name]
       delete videoPriceMap[name]
+      delete imagePriceMap[name]
 
       onChange('ModelPrice', JSON.stringify(priceMap, null, 2))
       onChange('ModelRatio', JSON.stringify(ratioMap, null, 2))
@@ -426,6 +440,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         JSON.stringify(billingExprMap, null, 2)
       )
       onChange('VideoPriceTiers', JSON.stringify(videoPriceMap, null, 2))
+      onChange('ImagePriceTiers', JSON.stringify(imagePriceMap, null, 2))
 
       if (editData?.name === name) {
         setEditData(null)
@@ -445,6 +460,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode,
       billingExpr,
       videoPriceTiers,
+      imagePriceTiers,
       onChange,
       editData,
     ]
@@ -540,8 +556,18 @@ const ModelRatioVisualEditorComponent = forwardRef<
         videoPriceTiers,
         { fallback: {}, silent: true }
       )
+      const imagePriceMap = safeJsonParse<Record<string, unknown>>(
+        imagePriceTiers,
+        { fallback: {}, silent: true }
+      )
       const videoPriceEntry = data.videoPriceTiers
         ? safeJsonParse<unknown>(data.videoPriceTiers, {
+            fallback: null,
+            silent: true,
+          })
+        : null
+      const imagePriceEntry = data.imagePriceTiers
+        ? safeJsonParse<unknown>(data.imagePriceTiers, {
             fallback: null,
             silent: true,
           })
@@ -570,6 +596,8 @@ const ModelRatioVisualEditorComponent = forwardRef<
         delete billingExprMap[name]
         delete videoPriceMap[name]
         if (videoPriceEntry) videoPriceMap[name] = videoPriceEntry
+        delete imagePriceMap[name]
+        if (imagePriceEntry) imagePriceMap[name] = imagePriceEntry
 
         if (data.billingMode === 'tiered_expr') {
           const combined = combineBillingExpr(
@@ -625,6 +653,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         JSON.stringify(billingExprMap, null, 2)
       )
       onChange('VideoPriceTiers', JSON.stringify(videoPriceMap, null, 2))
+      onChange('ImagePriceTiers', JSON.stringify(imagePriceMap, null, 2))
     },
     [
       modelPrice,
@@ -638,6 +667,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
       billingMode,
       billingExpr,
       videoPriceTiers,
+      imagePriceTiers,
       onChange,
     ]
   )
@@ -872,6 +902,7 @@ export const ModelRatioVisualEditor = memo(
       prevProps.savedBillingMode === nextProps.savedBillingMode &&
       prevProps.savedBillingExpr === nextProps.savedBillingExpr &&
       prevProps.savedVideoPriceTiers === nextProps.savedVideoPriceTiers &&
+      prevProps.savedImagePriceTiers === nextProps.savedImagePriceTiers &&
       prevProps.modelPrice === nextProps.modelPrice &&
       prevProps.modelRatio === nextProps.modelRatio &&
       prevProps.cacheRatio === nextProps.cacheRatio &&
@@ -883,6 +914,7 @@ export const ModelRatioVisualEditor = memo(
       prevProps.billingMode === nextProps.billingMode &&
       prevProps.billingExpr === nextProps.billingExpr &&
       prevProps.videoPriceTiers === nextProps.videoPriceTiers &&
+      prevProps.imagePriceTiers === nextProps.imagePriceTiers &&
       prevProps.candidateModelNames === nextProps.candidateModelNames &&
       prevProps.candidateModelsLoading === nextProps.candidateModelsLoading &&
       prevProps.filterMode === nextProps.filterMode &&

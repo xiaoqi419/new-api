@@ -6080,6 +6080,21 @@
     "Zero retention": "零數據保留",
     "Zhipu": "智譜",
     "Zhipu V4": "智譜 V4",
-    "Zoom": "縮放"
+    "Zoom": "縮放",
+    "Image tier pricing": "圖片分檔定價",
+    "Charge image models differently by output size or quality.": "依輸出尺寸或品質為圖片模型分檔計價。",
+    "Base tier size": "基準檔尺寸",
+    "The output size the fixed price above already covers.": "上方固定價格所對應的輸出尺寸。",
+    "Output size": "輸出尺寸",
+    "Any size": "任意尺寸",
+    "Any quality": "任意品質",
+    "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.": "每個價格都是該尺寸與品質組合的最終單價，單位與上方固定價格一致。",
+    "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.": "尺寸可填 2K 這類檔位名稱，也可填 2048x2048 這類具體尺寸。尺寸或品質留空表示為表中未列出的情況定價。",
+    "Every image tier price must be greater than 0.": "圖片分檔單價必須大於 0。",
+    "Image tier sizes must be written like 2K or 2048x2048.": "圖片分檔尺寸需寫成 2K 或 2048x2048 這類格式。",
+    "Two image tiers use the same size and quality.": "有兩檔圖片價格的尺寸與品質相同。",
+    "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.": "依尺寸分檔前，請先填寫基準檔尺寸，例如 2K 或 1024x1024。",
+    "Set the fixed price before pricing image tiers.": "請先設定固定價格，再設定圖片分檔。",
+    "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.": "模型對應圖片分檔價格的 JSON 映射：包含基準檔尺寸與其錨定的固定價格，以及每個輸出尺寸/品質組合的最終單價。"
   }
 }

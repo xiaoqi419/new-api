@@ -60,6 +60,7 @@ type ModelFormValues = {
   BillingMode: string
   BillingExpr: string
   VideoPriceTiers: string
+  ImagePriceTiers: string
 }
 
 type ModelRatioFormProps = {
@@ -82,6 +83,7 @@ type ModelJsonFieldName =
   | 'AudioRatio'
   | 'AudioCompletionRatio'
   | 'VideoPriceTiers'
+  | 'ImagePriceTiers'
 
 const modelJsonFields: Array<{
   name: ModelJsonFieldName
@@ -137,6 +139,12 @@ const modelJsonFields: Array<{
     labelKey: 'Video tier pricing',
     descriptionKey:
       'JSON map of model → the model input price it is anchored to, plus the final unit price of each resolution / video input / audio output combination.',
+  },
+  {
+    name: 'ImagePriceTiers',
+    labelKey: 'Image tier pricing',
+    descriptionKey:
+      'JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.',
   },
 ]
 
@@ -284,6 +292,7 @@ export const ModelRatioForm = memo(function ModelRatioForm({
               savedBillingMode={savedValues.BillingMode}
               savedBillingExpr={savedValues.BillingExpr}
               savedVideoPriceTiers={savedValues.VideoPriceTiers}
+              savedImagePriceTiers={savedValues.ImagePriceTiers}
               modelPrice={form.watch('ModelPrice')}
               modelRatio={form.watch('ModelRatio')}
               cacheRatio={form.watch('CacheRatio')}
@@ -295,6 +304,7 @@ export const ModelRatioForm = memo(function ModelRatioForm({
               billingMode={form.watch('BillingMode')}
               billingExpr={form.watch('BillingExpr')}
               videoPriceTiers={form.watch('VideoPriceTiers')}
+              imagePriceTiers={form.watch('ImagePriceTiers')}
               candidateModelNames={
                 isUnsetVariant ? enabledModelsQuery.data?.data : undefined
               }

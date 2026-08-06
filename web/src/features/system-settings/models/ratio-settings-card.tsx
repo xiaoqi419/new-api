@@ -118,6 +118,7 @@ const createModelSchema = (t: Translate) =>
     BillingMode: createJsonStringField(t),
     BillingExpr: createJsonStringField(t),
     VideoPriceTiers: createJsonStringField(t),
+    ImagePriceTiers: createJsonStringField(t),
   })
 
 const createGroupSchema = (t: Translate) =>
@@ -197,6 +198,7 @@ export function RatioSettingsCard({
     BillingMode: normalizeJsonString(modelDefaults.BillingMode),
     BillingExpr: normalizeJsonString(modelDefaults.BillingExpr),
     VideoPriceTiers: normalizeJsonString(modelDefaults.VideoPriceTiers),
+    ImagePriceTiers: normalizeJsonString(modelDefaults.ImagePriceTiers),
   })
   const [savedModelValues, setSavedModelValues] = useState(
     modelNormalizedDefaults.current
@@ -235,6 +237,7 @@ export function RatioSettingsCard({
       BillingMode: formatJsonForTextarea(modelDefaults.BillingMode),
       BillingExpr: formatJsonForTextarea(modelDefaults.BillingExpr),
       VideoPriceTiers: formatJsonForTextarea(modelDefaults.VideoPriceTiers),
+      ImagePriceTiers: formatJsonForTextarea(modelDefaults.ImagePriceTiers),
     },
   })
 
@@ -270,6 +273,7 @@ export function RatioSettingsCard({
       BillingMode: normalizeJsonString(modelDefaults.BillingMode),
       BillingExpr: normalizeJsonString(modelDefaults.BillingExpr),
       VideoPriceTiers: normalizeJsonString(modelDefaults.VideoPriceTiers),
+      ImagePriceTiers: normalizeJsonString(modelDefaults.ImagePriceTiers),
     }
     setSavedModelValues(modelNormalizedDefaults.current)
 
@@ -288,6 +292,7 @@ export function RatioSettingsCard({
       BillingMode: formatJsonForTextarea(modelDefaults.BillingMode),
       BillingExpr: formatJsonForTextarea(modelDefaults.BillingExpr),
       VideoPriceTiers: formatJsonForTextarea(modelDefaults.VideoPriceTiers),
+      ImagePriceTiers: formatJsonForTextarea(modelDefaults.ImagePriceTiers),
     })
   }, [modelDefaults, modelForm])
 
@@ -333,6 +338,7 @@ export function RatioSettingsCard({
         BillingMode: normalizeJsonString(values.BillingMode),
         BillingExpr: normalizeJsonString(values.BillingExpr),
         VideoPriceTiers: normalizeJsonString(values.VideoPriceTiers),
+        ImagePriceTiers: normalizeJsonString(values.ImagePriceTiers),
       }
 
       const apiKeyMap: Record<string, string> = {

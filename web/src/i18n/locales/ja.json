@@ -6080,6 +6080,21 @@
     "Zero retention": "データ保持なし",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "Image tier pricing": "画像の段階別価格",
+    "Charge image models differently by output size or quality.": "出力サイズや品質に応じて画像モデルの価格を分けます。",
+    "Base tier size": "基準段階のサイズ",
+    "The output size the fixed price above already covers.": "上記の固定価格が対象とする出力サイズ。",
+    "Output size": "出力サイズ",
+    "Any size": "すべてのサイズ",
+    "Any quality": "すべての品質",
+    "Every price is the final unit price for that size and quality, in the same unit as the fixed price above.": "各価格はそのサイズと品質の最終単価で、単位は上記の固定価格と同じです。",
+    "Sizes accept a tier name such as 2K or an exact size such as 2048x2048. Leave size or quality blank to price everything the table does not list.": "サイズには 2K のような段階名、または 2048x2048 のような具体的なサイズを指定できます。サイズまたは品質を空欄にすると、表に載っていない場合の価格になります。",
+    "Every image tier price must be greater than 0.": "画像の段階別単価は 0 より大きい必要があります。",
+    "Image tier sizes must be written like 2K or 2048x2048.": "段階のサイズは 2K または 2048x2048 の形式で入力してください。",
+    "Two image tiers use the same size and quality.": "サイズと品質が同じ段階が 2 つあります。",
+    "Set the base tier size, such as 2K or 1024x1024, before pricing image tiers by size.": "サイズで段階分けする前に、基準段階のサイズ（例：2K や 1024x1024）を入力してください。",
+    "Set the fixed price before pricing image tiers.": "画像の段階を設定する前に固定価格を設定してください。",
+    "JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.": "モデルごとの画像段階別価格の JSON マップ：基準段階のサイズと基準となる固定価格、および各出力サイズ / 品質の組み合わせの最終単価。"
   }
 }
