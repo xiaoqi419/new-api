@@ -113,6 +113,8 @@ func OpenaiImageStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp 
 	usage := &dto.Usage{}
 	var lastStreamData []byte
 	var completedImages int64
+	var partialSucceededImages int64
+	var reportedGeneratedImages int64
 
 	helper.StreamScannerHandler(c, resp, info, func(data string, sr *helper.StreamResult) {
 		raw := common.StringToByteSlice(data)
@@ -131,9 +133,15 @@ func OpenaiImageStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp 
 			if service.ValidUsage(&chunk.Usage) {
 				usage = &chunk.Usage
 			}
-			if chunk.Type == "image_generation.completed" || chunk.Type == "image_edit.completed" {
+			switch chunk.Type {
+			case "image_generation.completed", "image_edit.completed":
 				completedImages++
+			case "image_generation.partial_succeeded":
+				partialSucceededImages++
 			}
+		}
+		if n := gjson.GetBytes(raw, "usage.generated_images").Int(); n > reportedGeneratedImages {
+			reportedGeneratedImages = n
 		}
 		if err := writeOpenaiImageStreamChunk(c, raw); err != nil {
 			sr.Stop(err)
@@ -147,12 +155,25 @@ func OpenaiImageStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp 
 	}
 
 	applyUsagePostProcessing(info, usage, lastStreamData)
-	// Only trust completedImages when upstream finished the stream (done/eof).
+	// OpenAI emits one "completed" event per image, while Ark (火山方舟 Seedream) emits
+	// one "partial_succeeded" per image and a single "completed" summary for the whole
+	// stream — counting "completed" alone would bill an Ark 组图 of N images as 1.
+	// Ark's usage.generated_images is its own billing basis (failed images excluded),
+	// so prefer it; otherwise take the larger counter, which is correct under both
+	// event vocabularies.
+	billedImages := reportedGeneratedImages
+	if billedImages <= 0 {
+		billedImages = completedImages
+		if partialSucceededImages > billedImages {
+			billedImages = partialSucceededImages
+		}
+	}
+	// Only trust billedImages when upstream finished the stream (done/eof).
 	// On client-side aborts (client_gone, or handler_stop from a failed client
 	// write) the counter undercounts what upstream actually generated and
 	// charged, so keep the requested n — otherwise a client could pay for one
-	// image by disconnecting right after the first completed event. The abort
-	// guard only blocks lowering the charge: if completed events already
+	// image by disconnecting right after the first per-image event. The abort
+	// guard only blocks lowering the charge: if the counted images already
 	// exceed the recorded n, bill the higher actual count regardless.
 	if info.StreamStatus != nil {
 		upstreamFinished := info.StreamStatus.EndReason == relaycommon.StreamEndReasonDone ||
@@ -161,8 +182,8 @@ func OpenaiImageStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp 
 		if n, ok := info.PriceData.OtherRatios()["n"]; ok {
 			requestedN = n
 		}
-		if upstreamFinished || float64(completedImages) > requestedN {
-			updateOpenAIImageCount(info, completedImages)
+		if upstreamFinished || float64(billedImages) > requestedN {
+			updateOpenAIImageCount(info, billedImages)
 		}
 	}
 	return usage, nil

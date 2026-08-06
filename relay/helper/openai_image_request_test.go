@@ -158,3 +158,61 @@ func TestGetAndValidOpenAIImageRequestNBounds(t *testing.T) {
 		require.Contains(t, err.Error(), boundErr)
 	})
 }
+
+// TestGetAndValidOpenAIImageRequestSequentialImageBounds guards the second
+// billing-multiplier path: 火山方舟 Seedream 组图 charges per generated image and
+// takes its count from sequential_image_generation_options.max_images rather than
+// from n, so that field needs its own bound.
+func TestGetAndValidOpenAIImageRequestSequentialImageBounds(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	boundErr := fmt.Sprintf("sequential_image_generation_options.max_images must be an integer between 1 and %d", dto.MaxSequentialImages)
+
+	tests := []struct {
+		name          string
+		body          string
+		wantErr       string
+		wantMaxImages int
+	}{
+		{
+			name:    "max_images above upstream limit is rejected",
+			body:    fmt.Sprintf(`{"model":"doubao-seedream-5-0-260128","prompt":"a cat","sequential_image_generation":"auto","sequential_image_generation_options":{"max_images":%d}}`, dto.MaxSequentialImages+1),
+			wantErr: boundErr,
+		},
+		{
+			name:    "negative max_images is rejected",
+			body:    `{"model":"doubao-seedream-5-0-260128","prompt":"a cat","sequential_image_generation":"auto","sequential_image_generation_options":{"max_images":-3}}`,
+			wantErr: boundErr,
+		},
+		{
+			name:          "max_images at upstream limit is accepted",
+			body:          fmt.Sprintf(`{"model":"doubao-seedream-5-0-260128","prompt":"a cat","sequential_image_generation":"auto","sequential_image_generation_options":{"max_images":%d}}`, dto.MaxSequentialImages),
+			wantMaxImages: dto.MaxSequentialImages,
+		},
+		{
+			name:          "explicit max_images is accepted",
+			body:          `{"model":"doubao-seedream-5-0-260128","prompt":"a cat","sequential_image_generation":"auto","sequential_image_generation_options":{"max_images":4}}`,
+			wantMaxImages: 4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewBufferString(tt.body))
+			c.Request.Header.Set("Content-Type", "application/json")
+
+			req, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesGenerations)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, "auto", req.SequentialImageGeneration)
+			require.NotNil(t, req.SequentialImageGenerationOptions)
+			require.NotNil(t, req.SequentialImageGenerationOptions.MaxImages)
+			require.Equal(t, tt.wantMaxImages, *req.SequentialImageGenerationOptions.MaxImages)
+		})
+	}
+}

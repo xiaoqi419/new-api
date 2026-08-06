@@ -14,6 +14,10 @@ import (
 // wrapped-negative n overflows quota calculation into a negative charge.
 const MaxImageN = 128
 
+// MaxSequentialImages caps 火山方舟 Seedream 组图单次出图张数（上游取值范围 [1, 15]）。
+// 这是独立于 n 的第二条计费乘数通路，不设界等于绕过 MaxImageN。
+const MaxSequentialImages = 15
+
 type ImageRequest struct {
 	Model             string          `json:"model"`
 	Prompt            string          `json:"prompt" binding:"required"`
@@ -38,8 +42,19 @@ type ImageRequest struct {
 	WatermarkEnabled json.RawMessage `json:"watermark_enabled,omitempty"`
 	UserId           json.RawMessage `json:"user_id,omitempty"`
 	Image            json.RawMessage `json:"image,omitempty"`
+	// 火山方舟 Seedream。MarshalJSON 不会把 Extra 平铺回上游，所以这些参数必须显式声明，
+	// 否则会被静默丢弃。SequentialImageGenerationOptions 用具名结构体而非透传，是因为
+	// 其中的 max_images 直接充当按张计费的乘数，校验层必须能读到它。
+	SequentialImageGeneration        string                            `json:"sequential_image_generation,omitempty"`
+	SequentialImageGenerationOptions *SequentialImageGenerationOptions `json:"sequential_image_generation_options,omitempty"`
+	OptimizePromptOptions            json.RawMessage                   `json:"optimize_prompt_options,omitempty"`
+	Tools                            json.RawMessage                   `json:"tools,omitempty"`
 	// 用匿名参数接收额外参数
 	Extra map[string]json.RawMessage `json:"-"`
+}
+
+type SequentialImageGenerationOptions struct {
+	MaxImages *int `json:"max_images,omitempty"`
 }
 
 func (i *ImageRequest) UnmarshalJSON(data []byte) error {

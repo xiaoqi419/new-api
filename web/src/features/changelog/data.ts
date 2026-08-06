@@ -29,6 +29,28 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '火山方舟渠道补齐 Seedream 生图模型:5.0 pro、5.0 lite、4.5 三代都已内置。新建渠道会自动带上,已有渠道在「模型」里补选即可。价格需自行在模型定价里按模型配置(四代分辨率档位和能力不同,建议分开定价)。',
+          'Seedream 5.0 pro 的交互编辑现已可用:在提示词里用 <point>、<bbox> 归一化坐标(0-999)指定位置,配合参考图实现局部替换、跨图搬运等精细编辑。',
+          '补齐 Seedream 组图参数 sequential_image_generation 及其 max_images(最多 15 张)。此前这两个参数会被网关静默丢弃,导致组图请求只返回一张图。',
+          '补齐提示词优化模式 optimize_prompt_options(5.0 pro 与 4.0 支持 fast 极速模式)与联网搜索 tools(5.0 lite 支持)。',
+          '模型价格页现在会给 Seedream 模型正确标注「图片生成」端点,此前只显示对话端点。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修正火山方舟流式生图的计费张数。方舟每生成一张图发一个 partial_succeeded 事件,整个流只发一个 completed 汇总事件;此前按 completed 事件个数计张数,会把组图的 N 张算成 1 张(按张计价时最多少收 15 倍)。现在优先采用方舟返回的实际生成张数,生成失败的图不计费。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260805-7f9e9aaaf',
     date: '2026-08-05',
     changes: [

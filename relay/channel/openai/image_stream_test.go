@@ -139,6 +139,79 @@ func TestOpenaiImageStreamHandlerUsesCompletedEventCount(t *testing.T) {
 	require.Equal(t, 2.0, info.PriceData.OtherRatios()["n"])
 }
 
+// TestOpenaiImageStreamHandlerBillsArkGeneratedImages covers 火山方舟 Seedream 组图:
+// Ark emits one partial_succeeded per image and a single completed summary for the
+// whole stream, so counting completed events alone would bill N images as 1. The
+// authoritative count is usage.generated_images from the completed event.
+func TestOpenaiImageStreamHandlerBillsArkGeneratedImages(t *testing.T) {
+	oldMode := gin.Mode()
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() { gin.SetMode(oldMode) })
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+
+	body := strings.Join([]string{
+		`data: {"type":"image_generation.partial_succeeded","image_index":0,"url":"https://a","size":"2048x2048"}`,
+		``,
+		`data: {"type":"image_generation.partial_succeeded","image_index":1,"url":"https://b","size":"2048x2048"}`,
+		``,
+		`data: {"type":"image_generation.partial_succeeded","image_index":2,"url":"https://c","size":"2048x2048"}`,
+		``,
+		`data: {"type":"image_generation.completed","model":"doubao-seedream-5-0-260128","usage":{"generated_images":3,"output_tokens":48,"total_tokens":48}}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+
+	c, _, resp, info := newImageTestContext(t, body, "text/event-stream", true)
+	info.PriceData.UsePrice = true
+	info.PriceData.AddOtherRatio("n", 1)
+
+	usage, err := OpenaiImageStreamHandler(c, info, resp)
+
+	require.Nil(t, err)
+	require.Equal(t, 48, usage.TotalTokens)
+	require.Equal(t, 3.0, info.PriceData.OtherRatios()["n"], "Ark 组图 must bill every generated image, not the single completed event")
+}
+
+// TestOpenaiImageStreamHandlerCountsOnlyArkSucceededImages exercises the fallback
+// used when upstream reports no usage.generated_images: per-image success events
+// are counted while partial_failed is not, matching Ark's rule that only
+// successfully generated images are charged.
+func TestOpenaiImageStreamHandlerCountsOnlyArkSucceededImages(t *testing.T) {
+	oldMode := gin.Mode()
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() { gin.SetMode(oldMode) })
+
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+
+	body := strings.Join([]string{
+		`data: {"type":"image_generation.partial_succeeded","image_index":0,"url":"https://a"}`,
+		``,
+		`data: {"type":"image_generation.partial_succeeded","image_index":1,"url":"https://b"}`,
+		``,
+		`data: {"type":"image_generation.partial_failed","image_index":2,"error":{"code":"OutputImageSensitiveContentDetected","message":"blocked"}}`,
+		``,
+		`data: {"type":"image_generation.completed","model":"doubao-seedream-5-0-260128"}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+
+	c, _, resp, info := newImageTestContext(t, body, "text/event-stream", true)
+	info.PriceData.UsePrice = true
+	info.PriceData.AddOtherRatio("n", 3)
+
+	_, err := OpenaiImageStreamHandler(c, info, resp)
+
+	require.Nil(t, err)
+	require.Equal(t, 2.0, info.PriceData.OtherRatios()["n"], "failed images must not be billed")
+}
+
 // blockingBody serves one SSE chunk, then blocks until Close (the scanner's
 // cleanup) and returns EOF — keeping the upstream "open" while the client-side
 // disconnect is simulated elsewhere.
