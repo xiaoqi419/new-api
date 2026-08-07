@@ -128,10 +128,10 @@ function GenericMark() {
 }
 
 const WORDMARK_SPARKS = [
-  { id: 'a', cx: 12, cy: 12, r: 4.2, delay: '0s', dur: '3.4s' },
-  { id: 'b', cx: 108, cy: 14, r: 3.2, delay: '0.7s', dur: '4.2s' },
-  { id: 'c', cx: 112, cy: 40, r: 4, delay: '1.2s', dur: '3.8s' },
-  { id: 'd', cx: 9, cy: 42, r: 3, delay: '1.8s', dur: '4.6s' },
+  { id: 'a', cx: 13, cy: 13, r: 4.6, delay: '0s', dur: '3.4s' },
+  { id: 'b', cx: 127, cy: 15, r: 3.4, delay: '0.7s', dur: '4.2s' },
+  { id: 'c', cx: 131, cy: 43, r: 4.2, delay: '1.2s', dur: '3.8s' },
+  { id: 'd', cx: 10, cy: 45, r: 3.2, delay: '1.8s', dur: '4.6s' },
 ]
 
 /**
@@ -146,7 +146,7 @@ export function SystemWordmark({ text }: { text: string }) {
       <span className='lit-ripple lit-ripple-2' />
       <span className='lit-ripple lit-ripple-3' />
       <svg
-        viewBox='0 0 120 54'
+        viewBox='0 0 140 56'
         className='lit-logo-svg lit-breathe'
         role='img'
         aria-label={text}
@@ -175,16 +175,16 @@ export function SystemWordmark({ text }: { text: string }) {
         ))}
         <text
           className='lit-wordmark-outline'
-          x='60'
-          y='38'
+          x='70'
+          y='41'
           textAnchor='middle'
         >
           {text}
         </text>
         <text
           className='lit-wordmark-fill'
-          x='60'
-          y='38'
+          x='70'
+          y='41'
           textAnchor='middle'
           fill='url(#lit-wordmark-grad)'
         >

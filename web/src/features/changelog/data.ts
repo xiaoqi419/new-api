@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-08',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '首页字标放大约一倍,并且和下方工具图标一样会重复播放——之前滚到工具页再滚回首页,字标是静止的,现在每次回到首页都会重新逐笔描一遍。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260808-fa67e431a',
     date: '2026-08-08',
     changes: [

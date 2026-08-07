@@ -191,8 +191,12 @@ export function CliQuickstart({
         <section className='literary-section relative items-center text-center'>
           <div className='mx-auto flex max-w-3xl flex-col items-center'>
             {initials ? (
-              <AnimateInView animation='scale-in' className='mb-6 w-full'>
-                <div className='mx-auto aspect-[120/54] h-[clamp(3.5rem,12vh,7rem)]'>
+              <AnimateInView
+                animation='scale-in'
+                once={false}
+                className='mb-6 w-full'
+              >
+                <div className='mx-auto aspect-[5/2] h-[clamp(4.5rem,20vh,12rem)]'>
                   <SystemWordmark text={initials} />
                 </div>
               </AnimateInView>

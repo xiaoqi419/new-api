@@ -242,7 +242,7 @@ For commercial licensing, please contact support@quantumnous.com
 .lit-wordmark-outline,
 .lit-wordmark-fill {
   font-family: var(--font-serif, ui-serif, Georgia, serif);
-  font-size: 38px;
+  font-size: 42px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -250,10 +250,10 @@ For commercial licensing, please contact support@quantumnous.com
 .lit-wordmark-outline {
   fill: none;
   stroke: url(#lit-wordmark-grad);
-  stroke-width: 0.9;
+  stroke-width: 1;
   stroke-linejoin: round;
-  stroke-dasharray: 340;
-  stroke-dashoffset: 340;
+  stroke-dasharray: 380;
+  stroke-dashoffset: 380;
   opacity: 0;
 }
 
@@ -267,8 +267,9 @@ For commercial licensing, please contact support@quantumnous.com
  * property centers independently of the `transform: scale()` the ripple
  * keyframes animate. */
 .lit-wordmark .lit-ripple {
-  width: 34%;
-  height: 76%;
+  /* Container aspect is 5:2, so width% x 2.5 == height% keeps the ring round. */
+  width: 28%;
+  height: 70%;
   margin: 0;
   translate: -50% -50%;
 }
