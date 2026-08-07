@@ -61,6 +61,24 @@ describe('authentication redirect validation', () => {
     assert.equal(sanitizeAuthRedirect('/dashboard', 'not-an-origin'), null)
     assert.equal(sanitizeAuthRedirect('/dashboard', 'file:///tmp/app'), null)
   })
+
+  test('rejects error and auth screens so signing in never loops back to them', () => {
+    for (const target of [
+      '/403',
+      '/403/',
+      '/404',
+      '/500',
+      '/sign-in',
+      '/sign-up',
+      '/otp',
+    ]) {
+      assert.equal(sanitizeAuthRedirect(target, origin), null)
+    }
+    assert.equal(
+      sanitizeAuthRedirect('/groupbuy/detail?no=GB1', origin),
+      '/groupbuy/detail?no=GB1'
+    )
+  })
 })
 
 describe('saved authentication language', () => {

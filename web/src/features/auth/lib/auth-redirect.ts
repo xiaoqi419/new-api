@@ -20,6 +20,18 @@ import type { AuthUser } from '@/stores/auth-store'
 
 const allowedRedirectProtocols = new Set(['http:', 'https:'])
 
+// Bouncing back to an error or auth screen after signing in either loops the
+// user straight back out or strands them on a dead end.
+const rejectedRedirectPaths = new Set([
+  '/403',
+  '/404',
+  '/500',
+  '/503',
+  '/sign-in',
+  '/sign-up',
+  '/otp',
+])
+
 export function getSavedLanguage(user: AuthUser): string | undefined {
   if (typeof user.language === 'string') {
     return user.language
@@ -73,6 +85,9 @@ export function sanitizeAuthRedirect(
     !allowedRedirectProtocols.has(redirectURL.protocol) ||
     redirectURL.origin !== trustedOrigin.origin
   ) {
+    return null
+  }
+  if (rejectedRedirectPaths.has(redirectURL.pathname.replace(/\/+$/, ''))) {
     return null
   }
 

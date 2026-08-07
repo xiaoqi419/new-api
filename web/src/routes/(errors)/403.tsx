@@ -16,10 +16,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { ForbiddenError } from '@/features/errors/forbidden'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 export const Route = createFileRoute('/(errors)/403')({
+  beforeLoad: () => {
+    const { auth } = useAuthStore.getState()
+    // Every guarded route that lands here needs a role a regular member cannot
+    // obtain, so the page is a dead end for them. Signing in and being dropped
+    // on it is the common way to get here: the pre-login destination was an
+    // admin page. Send them to the workbench instead.
+    if (auth.user && auth.user.role < ROLE.ADMIN) {
+      throw redirect({ to: '/workbench', replace: true })
+    }
+  },
   component: ForbiddenError,
 })
