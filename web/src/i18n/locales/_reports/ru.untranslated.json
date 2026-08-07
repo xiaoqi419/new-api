@@ -95,5 +95,6 @@
   "WeChat payment QR code": "WeChat payment QR code",
   "When {{count}} people join, each gets": "When {{count}} people join, each gets",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
-  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"
+  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends",
+  "AppSecret": "AppSecret"
 }

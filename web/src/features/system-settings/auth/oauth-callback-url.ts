@@ -32,3 +32,15 @@ export function buildOAuthCallbackUrl(
   const siteUrl = resolveOAuthSiteUrl(serverAddress, fallback)
   return `${siteUrl}/oauth/${callbackPath.replace(/^\/+/, '')}`
 }
+
+/**
+ * Server URL an admin pastes into the WeChat Official Account console. This is
+ * the built-in message callback (`WeChatMpVerify` / `WeChatMpMessage`), not an
+ * OAuth redirect, so it does not live under `/oauth/`.
+ */
+export function buildWeChatMpCallbackUrl(
+  serverAddress: string,
+  fallback: string
+): string {
+  return `${resolveOAuthSiteUrl(serverAddress, fallback)}/api/wechat/callback`
+}

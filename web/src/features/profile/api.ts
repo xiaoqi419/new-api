@@ -16,7 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { CaptchaQuery } from '@/features/auth/types'
+import type {
+  CaptchaQuery,
+  WeChatMpCode,
+  WeChatMpPendingStatus,
+} from '@/features/auth/types'
 import { api } from '@/lib/api'
 import type { LoginSession } from '@/stores/auth-store'
 
@@ -134,6 +138,29 @@ export async function bindWeChat(code: string): Promise<ApiResponse> {
     { code },
     { skipBusinessError: true, skipErrorHandler: true }
   )
+  return res.data
+}
+
+// Built-in Official Account flow: the site issues the code, the user sends it
+// to the Official Account, and polling picks up the resulting openid.
+export async function requestWeChatMpBindCode(): Promise<
+  ApiResponse<WeChatMpCode>
+> {
+  const res = await api.get('/api/user/wechat/mp/bind/code', {
+    skipBusinessError: true,
+  })
+  return res.data
+}
+
+export async function checkWeChatMpBind(
+  code: string
+): Promise<ApiResponse<WeChatMpPendingStatus>> {
+  const res = await api.get('/api/user/wechat/mp/bind/check', {
+    params: { code },
+    disableDuplicate: true,
+    skipBusinessError: true,
+    skipErrorHandler: true,
+  })
   return res.data
 }
 

@@ -32,6 +32,8 @@ import type {
   TwoFAPayload,
   RegisterPayload,
   ApiResponse,
+  WeChatMpCode,
+  WeChatMpPendingStatus,
 } from './types'
 
 // ============================================================================
@@ -168,6 +170,31 @@ export async function createOAuthFlow(
 // WeChat login by authorization code
 export async function wechatLoginByCode(code: string): Promise<ApiResponse> {
   const res = await api.get('/api/oauth/wechat', { params: { code } })
+  return res.data
+}
+
+// Built-in Official Account flow: the site mints the code, the user sends it to
+// the Official Account, and the backend pairs it with their openid.
+export async function requestWeChatMpLoginCode(): Promise<
+  ApiResponse<WeChatMpCode>
+> {
+  const res = await api.get('/api/wechat/mp/login/code', {
+    skipAuthRefresh: true,
+    skipBusinessError: true,
+  })
+  return res.data
+}
+
+export async function checkWeChatMpLogin(
+  code: string
+): Promise<ApiResponse<WeChatMpPendingStatus | unknown>> {
+  const res = await api.get('/api/wechat/mp/login/check', {
+    params: { code },
+    disableDuplicate: true,
+    skipAuthRefresh: true,
+    skipBusinessError: true,
+    skipErrorHandler: true,
+  })
   return res.data
 }
 

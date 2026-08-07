@@ -44,6 +44,7 @@ import { Label } from '@/components/ui/label'
 import { login, wechatLoginByCode } from '@/features/auth/api'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
+import { WeChatMpLoginDialog } from '@/features/auth/components/wechat-mp-login-dialog'
 import { loginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
@@ -113,6 +114,9 @@ export function UserAuthForm({
     !passkeySupported ||
     (requiresLegalConsent && !agreedToLegal)
   const hasWeChatLogin = Boolean(status?.wechat_login)
+  // Built-in Official Account flow: the site issues the code and polls. The
+  // legacy external wechat-server flow makes the user type in a code instead.
+  const usesWeChatMpFlow = Boolean(status?.wechat_mp ?? status?.data?.wechat_mp)
   const hasOAuthLogin = Boolean(
     status?.github_oauth ||
     status?.discord_oauth ||
@@ -452,7 +456,15 @@ export function UserAuthForm({
         {!hasAlternativeLogin && alternativeLoginMethods}
       </form>
 
-      {hasWeChatLogin && (
+      {hasWeChatLogin && usesWeChatMpFlow && (
+        <WeChatMpLoginDialog
+          open={isWeChatDialogOpen}
+          redirectTo={redirectTo}
+          onOpenChange={handleWeChatDialogChange}
+        />
+      )}
+
+      {hasWeChatLogin && !usesWeChatMpFlow && (
         <Dialog
           open={isWeChatDialogOpen}
           onOpenChange={handleWeChatDialogChange}

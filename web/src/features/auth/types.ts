@@ -88,6 +88,26 @@ export interface ApiResponse<T = unknown> {
 }
 
 // ============================================================================
+// WeChat Official Account verification
+// ============================================================================
+
+export interface WeChatMpCode {
+  code: string
+  qrcode: string
+  /** Code lifetime in seconds. */
+  expire: number
+}
+
+/**
+ * Poll payload while the user has not replied yet. Once the Official Account
+ * receives the code, the same endpoint answers with the login bundle (sign-in)
+ * or `{ status: 'bound' }` (account binding) instead.
+ */
+export interface WeChatMpPendingStatus {
+  status: 'pending' | 'expired' | 'bound'
+}
+
+// ============================================================================
 // System Status
 // ============================================================================
 
@@ -114,6 +134,7 @@ export interface SystemStatus {
     telegram_bot_name?: string
     passkey_login?: boolean
     wechat_login?: boolean
+    wechat_mp?: boolean
     wechat_qrcode?: string
     wechat_qr_code?: string
     wechat_qrcode_image_url?: string
@@ -164,6 +185,7 @@ export interface SystemStatus {
   telegram_bot_name?: string
   passkey_login?: boolean
   wechat_login?: boolean
+  wechat_mp?: boolean
   wechat_qrcode?: string
   wechat_qr_code?: string
   wechat_qrcode_image_url?: string

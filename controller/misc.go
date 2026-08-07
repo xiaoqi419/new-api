@@ -72,6 +72,7 @@ func GetStatus(c *gin.Context) {
 		"promo_banner_config":         common.OptionMap["PromoBannerConfig"],
 		"wechat_qrcode":               common.WeChatAccountQRCodeImageURL,
 		"wechat_login":                common.WeChatAuthEnabled,
+		"wechat_mp":                   wechatMpLoginEnabled(),
 		"server_address":              system_setting.ServerAddress,
 		"turnstile_check":             common.TurnstileCheckEnabled,
 		"click_captcha_enabled":       common.ClickCaptchaEnabled,
