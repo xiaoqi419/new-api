@@ -34,7 +34,7 @@ import type {
   CliRoadmapStatus,
   CliToolCard,
 } from '../types'
-import { ToolIcon } from './cli-quickstart-icons'
+import { SystemWordmark, ToolIcon } from './cli-quickstart-icons'
 import { getDefaultCliContent, mergeCliContent } from './defaults'
 
 import './cli-quickstart.css'
@@ -167,6 +167,12 @@ export function CliQuickstart({
   )
   const baseUrl = resolveBaseUrl()
   const systemName = getSystemName() || 'New API'
+  // Letters and digits from the site name, capped at three so the hero
+  // wordmark stays readable; a name with neither renders no mark at all.
+  const initials = (systemName.match(/[a-z0-9]/gi) ?? [])
+    .slice(0, 3)
+    .join('')
+    .toUpperCase()
 
   const statusMeta: Record<
     CliRoadmapStatus,
@@ -184,6 +190,13 @@ export function CliQuickstart({
         {/* Hero */}
         <section className='literary-section relative items-center text-center'>
           <div className='mx-auto flex max-w-3xl flex-col items-center'>
+            {initials ? (
+              <AnimateInView animation='scale-in' className='mb-6 w-full'>
+                <div className='mx-auto aspect-[120/54] h-[clamp(3.5rem,12vh,7rem)]'>
+                  <SystemWordmark text={initials} />
+                </div>
+              </AnimateInView>
+            ) : null}
             <AnimateInView animation='fade-up'>
               <span className='border-primary/30 text-primary inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium'>
                 <span className='relative flex size-1.5'>

@@ -115,7 +115,8 @@ For commercial licensing, please contact support@quantumnous.com
 
 .literary-card:hover {
   border-color: color-mix(in oklch, var(--primary) 45%, transparent);
-  box-shadow: 0 10px 40px -20px color-mix(in oklch, var(--primary) 40%, transparent);
+  box-shadow: 0 10px 40px -20px
+    color-mix(in oklch, var(--primary) 40%, transparent);
   transform: translateY(-2px);
 }
 
@@ -221,6 +222,65 @@ For commercial licensing, please contact support@quantumnous.com
 .lit-rotate {
   transform-box: fill-box;
   transform-origin: center;
+}
+
+/* Hero wordmark: same draw → fill → ripple → breathe treatment as the tool
+ * marks, but on live text so it follows whatever the site is named. Text has no
+ * pathLength, so the dash length is a fixed value chosen to cover three glyphs
+ * of outline; a longer name simply starts its wipe further along. */
+.lit-wordmark-outline,
+.lit-wordmark-fill {
+  font-family: var(--font-serif, ui-serif, Georgia, serif);
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.lit-wordmark-outline {
+  fill: none;
+  stroke: url(#lit-wordmark-grad);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-dasharray: 340;
+  stroke-dashoffset: 340;
+  opacity: 0;
+}
+
+.lit-wordmark-fill {
+  opacity: 0;
+}
+
+/* The square tool marks center their ripples with negative margins, which
+ * cannot work here: percentage margins resolve against the container's WIDTH,
+ * so on a wide mark the vertical offset overshoots badly. The `translate`
+ * property centers independently of the `transform: scale()` the ripple
+ * keyframes animate. */
+.lit-wordmark .lit-ripple {
+  width: 34%;
+  height: 76%;
+  margin: 0;
+  translate: -50% -50%;
+}
+
+.literary .landing-animate-scale-in .lit-wordmark-outline {
+  animation: lit-wordmark-draw 1.5s ease-in forwards;
+}
+.literary .landing-animate-scale-in .lit-wordmark-fill {
+  animation: lit-fill 0.7s ease-out 1.2s both;
+}
+
+@keyframes lit-wordmark-draw {
+  0% {
+    stroke-dashoffset: 340;
+    opacity: 0.35;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
 }
 
 /* Twinkling Gemini sparkles. */
@@ -385,14 +445,20 @@ For commercial licensing, please contact support@quantumnous.com
   .literary .landing-animate-scale-in .lit-rotate,
   .literary .landing-animate-scale-in .lit-ripple-1,
   .literary .landing-animate-scale-in .lit-ripple-2,
-  .literary .landing-animate-scale-in .lit-ripple-3 {
+  .literary .landing-animate-scale-in .lit-ripple-3,
+  .literary .landing-animate-scale-in .lit-wordmark-outline,
+  .literary .landing-animate-scale-in .lit-wordmark-fill {
     animation: none;
   }
   .lit-outline {
     stroke-dashoffset: 0;
     opacity: 1;
   }
-  .lit-fill {
+  .lit-fill,
+  .lit-wordmark-fill {
     opacity: 1;
+  }
+  .lit-wordmark-outline {
+    opacity: 0;
   }
 }

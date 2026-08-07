@@ -127,6 +127,74 @@ function GenericMark() {
   )
 }
 
+const WORDMARK_SPARKS = [
+  { id: 'a', cx: 12, cy: 12, r: 4.2, delay: '0s', dur: '3.4s' },
+  { id: 'b', cx: 108, cy: 14, r: 3.2, delay: '0.7s', dur: '4.2s' },
+  { id: 'c', cx: 112, cy: 40, r: 4, delay: '1.2s', dur: '3.8s' },
+  { id: 'd', cx: 9, cy: 42, r: 3, delay: '1.8s', dur: '4.6s' },
+]
+
+/**
+ * Hero wordmark carrying the same treatment as the tool marks further down the
+ * page: stroke draw, gradient fill reveal, expanding ripples and a slow
+ * breathe. Uses the theme's own chart/primary ramp rather than a brand palette.
+ */
+export function SystemWordmark({ text }: { text: string }) {
+  return (
+    <div className='lit-logo lit-wordmark'>
+      <span className='lit-ripple lit-ripple-1' />
+      <span className='lit-ripple lit-ripple-2' />
+      <span className='lit-ripple lit-ripple-3' />
+      <svg
+        viewBox='0 0 120 54'
+        className='lit-logo-svg lit-breathe'
+        role='img'
+        aria-label={text}
+      >
+        <defs>
+          <linearGradient
+            id='lit-wordmark-grad'
+            x1='0%'
+            y1='0%'
+            x2='100%'
+            y2='100%'
+          >
+            <stop offset='0%' stopColor='var(--chart-1)' />
+            <stop offset='50%' stopColor='var(--chart-4)' />
+            <stop offset='100%' stopColor='var(--primary)' />
+          </linearGradient>
+        </defs>
+        {WORDMARK_SPARKS.map((s) => (
+          <path
+            key={s.id}
+            className='tool-twinkle'
+            style={{ animationDelay: s.delay, animationDuration: s.dur }}
+            d={sparkPath(s.cx, s.cy, s.r)}
+            fill='url(#lit-wordmark-grad)'
+          />
+        ))}
+        <text
+          className='lit-wordmark-outline'
+          x='60'
+          y='38'
+          textAnchor='middle'
+        >
+          {text}
+        </text>
+        <text
+          className='lit-wordmark-fill'
+          x='60'
+          y='38'
+          textAnchor='middle'
+          fill='url(#lit-wordmark-grad)'
+        >
+          {text}
+        </text>
+      </svg>
+    </div>
+  )
+}
+
 /** Renders the animated mark for a tool icon key, defaulting to a generic spark. */
 export function ToolIcon({ icon }: { icon?: string }) {
   switch ((icon || '').toLowerCase()) {
