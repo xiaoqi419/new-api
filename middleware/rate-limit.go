@@ -191,6 +191,17 @@ func CriticalRateLimit() func(c *gin.Context) {
 	return defNext
 }
 
+func UserCriticalRateLimit(scope string) func(c *gin.Context) {
+	if !common.CriticalRateLimitEnable {
+		return defNext
+	}
+	return userRateLimitFactory(
+		common.CriticalRateLimitNum,
+		common.CriticalRateLimitDuration,
+		"UC:"+scope,
+	)
+}
+
 func CaptchaRateLimit() func(c *gin.Context) {
 	return rateLimitFactory(common.CaptchaRateLimitNum, common.CaptchaRateLimitDuration, "CP")
 }
