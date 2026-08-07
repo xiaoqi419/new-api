@@ -6123,6 +6123,9 @@
     "This code has expired. Get a new one to continue.": "このコードは期限切れです。新しいコードを取得してください。",
     "Upload image": "画像をアップロード",
     "Waiting for confirmation…": "確認を待っています…",
-    "WeChat Official Account setup": "WeChat 公式アカウントの設定"
+    "WeChat Official Account setup": "WeChat 公式アカウントの設定",
+    "Scan to pay with Alipay": "Alipay でスキャンして支払う",
+    "Alipay payment QR code": "Alipay 決済 QR コード",
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Alipay で QR コードを読み取って支払ってください。支払い後、残高は自動的に更新されます。"
   }
 }

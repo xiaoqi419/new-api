@@ -6123,6 +6123,9 @@
     "This code has expired. Get a new one to continue.": "Mã này đã hết hạn. Hãy lấy mã mới để tiếp tục.",
     "Upload image": "Tải ảnh lên",
     "Waiting for confirmation…": "Đang chờ xác nhận…",
-    "WeChat Official Account setup": "Thiết lập tài khoản chính thức WeChat"
+    "WeChat Official Account setup": "Thiết lập tài khoản chính thức WeChat",
+    "Scan to pay with Alipay": "Quét mã QR để thanh toán bằng Alipay",
+    "Alipay payment QR code": "Mã QR thanh toán Alipay",
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Quét mã QR bằng Alipay để thanh toán. Số dư sẽ tự động cập nhật sau khi thanh toán."
   }
 }

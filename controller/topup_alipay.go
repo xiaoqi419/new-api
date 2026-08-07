@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,7 +19,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	qrcode "github.com/skip2/go-qrcode"
 	"github.com/smartwalle/alipay/v3"
+)
+
+const (
+	// 当面付（alipay.trade.precreate）。电脑网站支付需要单独签约「电脑网站支付」
+	// 产品，未签约时支付宝只会把用户带到 insufficient-isv-permissions 错误页。
+	alipayProductCode = "FACE_TO_FACE_PAYMENT"
+	// 二维码有效期，逾期支付宝自动关单。
+	alipayQRTimeout = "15m"
 )
 
 var (
@@ -61,7 +72,39 @@ func ensureAlipay() (*alipay.Client, error) {
 	return client, nil
 }
 
-// RequestAlipay 创建支付宝电脑网站支付订单，返回跳转 URL。
+// alipayPreCreateQR 走当面付预下单，返回可直接渲染的二维码 data URL。
+func alipayPreCreateQR(ctx context.Context, client *alipay.Client, tradeNo, subject, totalAmount string) (string, error) {
+	var p = alipay.TradePreCreate{}
+	p.NotifyURL = service.GetCallbackAddress() + "/api/user/alipay/notify"
+	p.Subject = subject
+	p.OutTradeNo = tradeNo
+	p.TotalAmount = totalAmount
+	p.ProductCode = alipayProductCode
+	p.TimeoutExpress = alipayQRTimeout
+
+	rsp, err := client.TradePreCreate(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	if rsp == nil {
+		return "", errors.New("支付宝未返回预下单结果")
+	}
+	// 业务失败（未签约、金额非法等）不一定体现在 err 上，漏判会渲染出一张空二维码。
+	if rsp.IsFailure() {
+		return "", fmt.Errorf("预下单被拒绝 code=%s sub_code=%s sub_msg=%s", rsp.Code, rsp.SubCode, rsp.SubMsg)
+	}
+	if rsp.QRCode == "" {
+		return "", errors.New("支付宝未返回二维码")
+	}
+
+	png, err := qrcode.Encode(rsp.QRCode, qrcode.Medium, 256)
+	if err != nil {
+		return "", fmt.Errorf("生成二维码失败: %w", err)
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(png), nil
+}
+
+// RequestAlipay 创建支付宝当面付订单，返回扫码用的二维码。
 func RequestAlipay(c *gin.Context) {
 	var req EpayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -97,15 +140,8 @@ func RequestAlipay(c *gin.Context) {
 	}
 
 	tradeNo := fmt.Sprintf("USR%dNO%s%d", id, common.GetRandomString(4), time.Now().Unix())
-	var p = alipay.TradePagePay{}
-	p.NotifyURL = service.GetCallbackAddress() + "/api/user/alipay/notify"
-	p.ReturnURL = paymentReturnPath("/console/log?show_history=true")
-	p.Subject = fmt.Sprintf("TUC%d", req.Amount)
-	p.OutTradeNo = tradeNo
-	p.TotalAmount = strconv.FormatFloat(payMoney, 'f', 2, 64)
-	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
-
-	payURL, err := client.TradePagePay(p)
+	qrCode, err := alipayPreCreateQR(c.Request.Context(), client, tradeNo,
+		fmt.Sprintf("TUC%d", req.Amount), strconv.FormatFloat(payMoney, 'f', 2, 64))
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("支付宝 下单失败 user_id=%d trade_no=%s error=%q", id, tradeNo, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
@@ -135,7 +171,7 @@ func RequestAlipay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "success",
 		"data": gin.H{
-			"pay_url":  payURL.String(),
+			"qr_code":  qrCode,
 			"trade_no": tradeNo,
 		},
 	})

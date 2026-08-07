@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -19,7 +20,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/skip2/go-qrcode"
-	"github.com/smartwalle/alipay/v3"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/h5"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
@@ -273,12 +273,12 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 	case model.PaymentMethodWechatPay:
 		return groupBuyWechatPay(c, tradeNo, payMoney, scene)
 	case model.PaymentMethodAlipay:
-		payURL, err := groupBuyAlipay(tradeNo, payMoney)
+		data, err := groupBuyAlipay(ctx, tradeNo, payMoney)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("拼团 支付宝下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
 			return nil, fmt.Errorf("拉起支付失败")
 		}
-		return gin.H{"pay_url": payURL, "trade_no": tradeNo}, nil
+		return data, nil
 	default:
 		payURL, params, err := groupBuyEpay(tradeNo, payMoney, paymentMethod)
 		if err != nil {
@@ -346,23 +346,20 @@ func groupBuyWechatPay(c *gin.Context, tradeNo string, payMoney float64, scene s
 	}, nil
 }
 
-func groupBuyAlipay(tradeNo string, payMoney float64) (string, error) {
+func groupBuyAlipay(ctx context.Context, tradeNo string, payMoney float64) (gin.H, error) {
 	client, err := ensureAlipay()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	var p = alipay.TradePagePay{}
-	p.NotifyURL = service.GetCallbackAddress() + "/api/user/alipay/notify"
-	p.ReturnURL = paymentReturnPath("/console/log?show_history=true")
-	p.Subject = groupBuyPayDesc
-	p.OutTradeNo = tradeNo
-	p.TotalAmount = decimal.NewFromFloat(payMoney).StringFixed(2)
-	p.ProductCode = "FAST_INSTANT_TRADE_PAY"
-	payURL, err := client.TradePagePay(p)
+	qrCode, err := alipayPreCreateQR(ctx, client, tradeNo, groupBuyPayDesc,
+		decimal.NewFromFloat(payMoney).StringFixed(2))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return payURL.String(), nil
+	return gin.H{
+		"qr_code":  qrCode,
+		"trade_no": tradeNo,
+	}, nil
 }
 
 func groupBuyEpay(tradeNo string, payMoney float64, paymentMethod string) (string, map[string]string, error) {

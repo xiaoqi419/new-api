@@ -30,6 +30,7 @@ import type {
   PaymentResponse,
   StripePaymentResponse,
   AlipayPaymentResponse,
+  TradeStatusResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
   BillingHistoryResponse,
@@ -143,6 +144,22 @@ export async function requestAlipayPayment(
   const res = await api.post('/api/user/alipay/pay', request, {
     skipBusinessError: true,
   } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Poll a scan-to-pay order (WeChat Native / Alipay face-to-face) by trade number.
+ */
+export async function getTradeStatus(
+  tradeNo: string
+): Promise<TradeStatusResponse> {
+  const res = await api.get(
+    `/api/user/topup/status?trade_no=${encodeURIComponent(tradeNo)}`,
+    { skipBusinessError: true, skipErrorHandler: true } as Record<
+      string,
+      unknown
+    >
+  )
   return res.data
 }
 

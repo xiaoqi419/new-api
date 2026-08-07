@@ -21,20 +21,23 @@ import i18next from 'i18next'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+import type { PaymentQrProvider } from '@/features/wallet/components/dialogs/payment-qr-dialog'
+
 import { createGroupBuy, getPayInfo, joinGroupBuy } from '../api'
 import { NON_EPAY_PAY_METHODS, PAY_ALIPAY, PAY_WECHAT } from '../constants'
 import { isSafeHttpUrl } from '../lib'
 import type { GroupBuyPayMethod, PaymentResultData } from '../types'
 
-interface WechatState {
+interface QrPayState {
   open: boolean
   qr: string
   tradeNo: string
+  provider: PaymentQrProvider
   groupNo?: string
 }
 
 interface UseGroupBuyPaymentOptions {
-  /** Called after a WeChat payment is confirmed successful. */
+  /** Called after a scan-to-pay order is confirmed successful. */
   onPaid?: (groupNo?: string) => void
   /** When true, navigate to the group detail after opening an external pay page. */
   redirectAfterPay?: boolean
@@ -66,10 +69,11 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   const [enableOnline, setEnableOnline] = useState(false)
   const [payMethods, setPayMethods] = useState<GroupBuyPayMethod[]>([])
   const [submittingId, setSubmittingId] = useState<string | number | null>(null)
-  const [wechat, setWechat] = useState<WechatState>({
+  const [qrPay, setQrPay] = useState<QrPayState>({
     open: false,
     qr: '',
     tradeNo: '',
+    provider: 'wechat',
   })
 
   useEffect(() => {
@@ -110,10 +114,11 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   const handlePayData = useCallback(
     (data: PaymentResultData, groupNo?: string) => {
       if (data.qr_code) {
-        setWechat({
+        setQrPay({
           open: true,
           qr: data.qr_code,
           tradeNo: data.trade_no ?? '',
+          provider: payWay === PAY_ALIPAY ? 'alipay' : 'wechat',
           groupNo,
         })
         return
@@ -130,7 +135,7 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
       }
       toast.error(i18next.t('Payment request failed'))
     },
-    [goDetail, redirectAfterPay]
+    [goDetail, redirectAfterPay, payWay]
   )
 
   const detectScene = useCallback(() => {
@@ -212,14 +217,14 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     [payWay, detectScene, handlePayData]
   )
 
-  const closeWechat = useCallback(
+  const closeQrPay = useCallback(
     (paid: boolean) => {
-      const groupNo = wechat.groupNo
-      setWechat((prev) => ({ ...prev, open: false }))
+      const groupNo = qrPay.groupNo
+      setQrPay((prev) => ({ ...prev, open: false }))
       if (paid) onPaid?.(groupNo)
       else if (redirectAfterPay) goDetail(groupNo)
     },
-    [wechat.groupNo, onPaid, redirectAfterPay, goDetail]
+    [qrPay.groupNo, onPaid, redirectAfterPay, goDetail]
   )
 
   const payOptions: { value: string; label: string }[] = []
@@ -243,7 +248,7 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     submittingId,
     create,
     join,
-    wechat,
-    closeWechat,
+    qrPay,
+    closeQrPay,
   }
 }

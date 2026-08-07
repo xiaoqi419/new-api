@@ -27,7 +27,6 @@ import type {
   JoinGroupBuyRequest,
   PayInfo,
   PaymentResultData,
-  TradeStatusData,
 } from './types'
 
 // ============================================================================
@@ -84,16 +83,5 @@ export async function joinGroupBuy(
   const res = await api.post('/api/user/groupbuy/join', req, {
     skipBusinessError: true,
   })
-  return res.data
-}
-
-/** Poll a WeChat/Alipay trade status by trade number. */
-export async function getTradeStatus(
-  tradeNo: string
-): Promise<ApiResponse<TradeStatusData>> {
-  const res = await api.get(
-    `/api/user/topup/status?trade_no=${encodeURIComponent(tradeNo)}`,
-    { skipBusinessError: true, skipErrorHandler: true }
-  )
   return res.data
 }

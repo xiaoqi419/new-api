@@ -1,8 +1,3 @@
-import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -21,27 +16,43 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 import { Loader2 } from '@/components/icons'
 
-import { getTradeStatus } from '../api'
-import { POLL_INTERVAL_MS, POLL_MAX_SECONDS } from '../constants'
+import { getTradeStatus } from '../../api'
+import { POLL_INTERVAL_MS, POLL_MAX_SECONDS } from '../../constants'
 
-interface WechatPayDialogProps {
+export type PaymentQrProvider = 'wechat' | 'alipay'
+
+interface PaymentQrDialogProps {
   open: boolean
   qrCode: string
   tradeNo: string
+  provider: PaymentQrProvider
   onClose: (paid: boolean) => void
 }
 
-export function WechatPayDialog({
+/**
+ * Scan-to-pay dialog for the two providers that hand back a QR instead of a
+ * checkout URL: WeChat Pay Native and Alipay face-to-face. Both settle through
+ * the provider's async webhook, so the order status is polled server-side.
+ */
+export function PaymentQrDialog({
   open,
   qrCode,
   tradeNo,
+  provider,
   onClose,
-}: WechatPayDialogProps) {
+}: PaymentQrDialogProps) {
   const { t } = useTranslation()
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -79,29 +90,41 @@ export function WechatPayDialog({
     return stop
   }, [open, tradeNo, t])
 
+  const isAlipay = provider === 'alipay'
+
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose(false)
+      onOpenChange={(next) => {
+        if (!next) onClose(false)
       }}
-      title={t('Scan to pay with WeChat')}
+      title={
+        isAlipay ? t('Scan to pay with Alipay') : t('Scan to pay with WeChat')
+      }
       contentClassName='sm:max-w-sm'
     >
       <div className='flex flex-col items-center gap-3 py-2'>
         {qrCode ? (
           <img
             src={qrCode}
-            alt={t('WeChat payment QR code')}
+            alt={
+              isAlipay
+                ? t('Alipay payment QR code')
+                : t('WeChat payment QR code')
+            }
             className='size-56 rounded-md'
           />
         ) : (
           <Loader2 className='text-primary size-10 animate-spin' />
         )}
         <p className='text-muted-foreground text-center text-sm'>
-          {t(
-            'Scan the QR code with WeChat to pay. Your balance updates automatically after payment.'
-          )}
+          {isAlipay
+            ? t(
+                'Scan the QR code with Alipay to pay. Your balance updates automatically after payment.'
+              )
+            : t(
+                'Scan the QR code with WeChat to pay. Your balance updates automatically after payment.'
+              )}
         </p>
       </div>
     </Dialog>

@@ -30,11 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TitledCard } from '@/components/ui/titled-card'
+import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 
 import { useGroupBuyLaunch } from '../hooks/use-group-buy-launch'
 import { useGroupBuyPayment } from '../hooks/use-group-buy-payment'
 import { formatShare, packageInfo } from '../lib'
-import { WechatPayDialog } from './wechat-pay-dialog'
 
 export function GroupBuyLaunchCard() {
   const { t } = useTranslation()
@@ -45,8 +45,8 @@ export function GroupBuyLaunchCard() {
     payOptions,
     submittingId,
     create,
-    wechat,
-    closeWechat,
+    qrPay,
+    closeQrPay,
   } = useGroupBuyPayment({ redirectAfterPay: true })
 
   if (!enabled || packages.length === 0) return null
@@ -142,11 +142,12 @@ export function GroupBuyLaunchCard() {
         </div>
       </TitledCard>
 
-      <WechatPayDialog
-        open={wechat.open}
-        qrCode={wechat.qr}
-        tradeNo={wechat.tradeNo}
-        onClose={closeWechat}
+      <PaymentQrDialog
+        open={qrPay.open}
+        qrCode={qrPay.qr}
+        tradeNo={qrPay.tradeNo}
+        provider={qrPay.provider}
+        onClose={closeQrPay}
       />
     </>
   )

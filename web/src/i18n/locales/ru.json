@@ -6123,6 +6123,9 @@
     "This code has expired. Get a new one to continue.": "Код истёк. Получите новый, чтобы продолжить.",
     "Upload image": "Загрузить изображение",
     "Waiting for confirmation…": "Ожидание подтверждения…",
-    "WeChat Official Account setup": "Настройка официального аккаунта WeChat"
+    "WeChat Official Account setup": "Настройка официального аккаунта WeChat",
+    "Scan to pay with Alipay": "Оплата по QR-коду Alipay",
+    "Alipay payment QR code": "QR-код оплаты Alipay",
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Отсканируйте QR-код в Alipay, чтобы оплатить. Баланс обновится автоматически после оплаты."
   }
 }

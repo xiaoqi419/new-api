@@ -23,10 +23,6 @@ For commercial licensing, please contact support@quantumnous.com
 /** Hall page size. */
 export const PAGE_SIZE = 12
 
-/** WeChat pay polling: interval and max duration (seconds). */
-export const POLL_INTERVAL_MS = 3000
-export const POLL_MAX_SECONDS = 300
-
 export const PAY_WECHAT = 'wechatpay'
 export const PAY_ALIPAY = 'alipay_direct'
 

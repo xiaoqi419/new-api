@@ -26,9 +26,11 @@ export default function WechatPayModal({
   visible,
   qrCode,
   tradeNo,
+  provider = 'wechat',
   onSuccess,
   onCancel,
 }) {
+  const isAlipay = provider === 'alipay';
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function WechatPayModal({
 
   return (
     <Modal
-      title={t('微信扫码支付')}
+      title={isAlipay ? t('支付宝扫码支付') : t('微信扫码支付')}
       visible={visible}
       footer={null}
       onCancel={onCancel}
@@ -80,14 +82,16 @@ export default function WechatPayModal({
         {qrCode ? (
           <img
             src={qrCode}
-            alt='wechat pay qr'
+            alt={isAlipay ? 'alipay qr' : 'wechat pay qr'}
             style={{ width: 220, height: 220 }}
           />
         ) : (
           <Spin size='large' />
         )}
         <Typography.Text type='tertiary'>
-          {t('请使用微信扫描二维码完成支付，支付后将自动到账')}
+          {isAlipay
+            ? t('请使用支付宝扫描二维码完成支付，支付后将自动到账')
+            : t('请使用微信扫描二维码完成支付，支付后将自动到账')}
         </Typography.Text>
       </div>
     </Modal>

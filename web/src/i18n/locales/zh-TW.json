@@ -6123,6 +6123,9 @@
     "This code has expired. Get a new one to continue.": "驗證碼已過期，請重新取得。",
     "Upload image": "上傳圖片",
     "Waiting for confirmation…": "等待確認…",
-    "WeChat Official Account setup": "微信訂閱號設定指引"
+    "WeChat Official Account setup": "微信訂閱號設定指引",
+    "Scan to pay with Alipay": "支付寶掃碼支付",
+    "Alipay payment QR code": "支付寶支付二維碼",
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "請使用支付寶掃描二維碼完成支付，支付後將自動到帳。"
   }
 }

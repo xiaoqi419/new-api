@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-07',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '支付宝商户直连改用「当面付」下单,钱包和拼团页现在弹出二维码、扫码付完自动到账。此前走的是「电脑网站支付」,没单独签约这个产品的商户只会被支付宝带到「ISV权限不足」错误页,根本付不了。',
+          '支付宝预下单失败(未签约、金额非法等)现在会当成错误处理并记进日志。支付宝这类业务失败不体现在网络错误上,漏判会直接渲染出一张空白二维码。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260807-1e2424cda',
     date: '2026-08-07',
     changes: [

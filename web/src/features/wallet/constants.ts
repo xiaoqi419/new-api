@@ -86,3 +86,10 @@ export const DEFAULT_DISCOUNT_RATE = 1.0
  * Default minimum topup amount
  */
 export const DEFAULT_MIN_TOPUP = 1
+
+/**
+ * Scan-to-pay polling cadence. Both WeChat Native and Alipay face-to-face
+ * settle through an async webhook, so the browser watches the order instead.
+ */
+export const POLL_INTERVAL_MS = 3000
+export const POLL_MAX_SECONDS = 300

@@ -22,27 +22,37 @@ import { toast } from 'sonner'
 
 import { requestAlipayPayment, isApiSuccess } from '../api'
 import { PAYMENT_TYPES } from '../constants'
-import { isSafePaymentRedirectUrl } from '../lib'
 
-export function getAlipayPayUrl(data: unknown): string | null {
+interface AlipayQrOrder {
+  qrCode: string
+  tradeNo: string
+}
+
+export function getAlipayQrOrder(data: unknown): AlipayQrOrder | null {
   if (!data || typeof data !== 'object') {
     return null
   }
-  if ('pay_url' in data && typeof data.pay_url === 'string') {
-    return data.pay_url
+  if (!('qr_code' in data) || typeof data.qr_code !== 'string') {
+    return null
   }
-  return null
+  if (!data.qr_code) {
+    return null
+  }
+  const tradeNo =
+    'trade_no' in data && typeof data.trade_no === 'string' ? data.trade_no : ''
+  return { qrCode: data.qr_code, tradeNo }
 }
 
 /**
  * Hook for the direct Alipay merchant flow (POST /api/user/alipay/pay).
  *
- * The backend answers with a signed alipay.com page-pay URL instead of the
- * epay form params used by PAYMENT_TYPES.ALIPAY, so this cannot reuse the
- * generic payment processor.
+ * The backend places a face-to-face (alipay.trade.precreate) order and answers
+ * with a QR image, so this cannot reuse the generic epay processor and there is
+ * no checkout page to redirect to.
  */
 export function useAlipayPayment() {
   const [processing, setProcessing] = useState(false)
+  const [qrOrder, setQrOrder] = useState<AlipayQrOrder | null>(null)
 
   const processAlipayPayment = useCallback(async (topupAmount: number) => {
     setProcessing(true)
@@ -54,14 +64,9 @@ export function useAlipayPayment() {
       })
 
       if (isApiSuccess(response)) {
-        const payUrl = getAlipayPayUrl(response.data)
-        if (payUrl) {
-          if (!isSafePaymentRedirectUrl(payUrl)) {
-            toast.error(i18next.t('Invalid payment redirect URL'))
-            return false
-          }
-          window.open(payUrl, '_blank')
-          toast.success(i18next.t('Redirecting to payment page...'))
+        const order = getAlipayQrOrder(response.data)
+        if (order) {
+          setQrOrder(order)
           return true
         }
       }
@@ -81,5 +86,7 @@ export function useAlipayPayment() {
     }
   }, [])
 
-  return { processing, processAlipayPayment }
+  const closeAlipayQr = useCallback(() => setQrOrder(null), [])
+
+  return { processing, processAlipayPayment, qrOrder, closeAlipayQr }
 }

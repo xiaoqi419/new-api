@@ -31,13 +31,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
+import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 import { formatTimestampToDate } from '@/lib/format'
 
 import { GroupBuyCountdown } from './components/group-buy-countdown'
 import { JoinPanel } from './components/join-panel'
 import { MembersList } from './components/members-list'
 import { TierLadder } from './components/tier-ladder'
-import { WechatPayDialog } from './components/wechat-pay-dialog'
 import { useGroupBuyDetail } from './hooks/use-group-buy-detail'
 import { useGroupBuyPayment } from './hooks/use-group-buy-payment'
 import { formatShare, resolveTiers } from './lib'
@@ -89,8 +89,8 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
     payOptions,
     submittingId,
     join,
-    wechat,
-    closeWechat,
+    qrPay,
+    closeQrPay,
   } = useGroupBuyPayment({ onPaid })
 
   const tiers = resolveTiers(detail)
@@ -265,11 +265,12 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
         <MembersList participants={detail.participants ?? []} />
       </TitledCard>
 
-      <WechatPayDialog
-        open={wechat.open}
-        qrCode={wechat.qr}
-        tradeNo={wechat.tradeNo}
-        onClose={closeWechat}
+      <PaymentQrDialog
+        open={qrPay.open}
+        qrCode={qrPay.qr}
+        tradeNo={qrPay.tradeNo}
+        provider={qrPay.provider}
+        onClose={closeQrPay}
       />
     </>
   )

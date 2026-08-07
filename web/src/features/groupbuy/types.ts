@@ -138,10 +138,6 @@ export interface PaymentResultData {
   group_no?: string
 }
 
-export interface TradeStatusData {
-  status?: string
-}
-
 // ============================================================================
 // Admin Types
 // ============================================================================

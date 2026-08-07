@@ -92,6 +92,9 @@ const TopUp = () => {
   const [wechatPayOpen, setWechatPayOpen] = useState(false);
   const [wechatPayQr, setWechatPayQr] = useState('');
   const [wechatPayTradeNo, setWechatPayTradeNo] = useState('');
+  const [alipayOpen, setAlipayOpen] = useState(false);
+  const [alipayQr, setAlipayQr] = useState('');
+  const [alipayTradeNo, setAlipayTradeNo] = useState('');
 
   // Creem 相关状态
   const [creemProducts, setCreemProducts] = useState([]);
@@ -371,12 +374,10 @@ const TopUp = () => {
           payment_method: 'alipay_direct',
         });
         const { message, data } = res.data;
-        if (message === 'success' && data?.pay_url) {
-          if (isSafeHttpCheckoutUrl(data.pay_url)) {
-            window.open(data.pay_url, '_blank');
-          } else {
-            showError(t('支付跳转地址不安全'));
-          }
+        if (message === 'success' && data?.qr_code) {
+          setAlipayQr(data.qr_code);
+          setAlipayTradeNo(data.trade_no || '');
+          setAlipayOpen(true);
         } else {
           const errorMsg =
             typeof data === 'string' ? data : message || t('支付失败');
@@ -1081,6 +1082,20 @@ const TopUp = () => {
           getUserQuota().then();
         }}
         onCancel={() => setWechatPayOpen(false)}
+      />
+
+      {/* 支付宝当面付扫码模态框 */}
+      <WechatPayModal
+        t={t}
+        provider='alipay'
+        visible={alipayOpen}
+        qrCode={alipayQr}
+        tradeNo={alipayTradeNo}
+        onSuccess={() => {
+          setAlipayOpen(false);
+          getUserQuota().then();
+        }}
+        onCancel={() => setAlipayOpen(false)}
       />
 
       {/* Creem 充值确认模态框 */}

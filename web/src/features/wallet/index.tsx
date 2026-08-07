@@ -26,6 +26,7 @@ import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
+import { PaymentQrDialog } from './components/dialogs/payment-qr-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
@@ -106,8 +107,12 @@ export function Wallet(props: WalletProps) {
   const { processing: waffoProcessing, processWaffoPayment } = useWaffoPayment()
   const { processing: pancakeProcessing, processWaffoPancakePayment } =
     useWaffoPancakePayment()
-  const { processing: alipayProcessing, processAlipayPayment } =
-    useAlipayPayment()
+  const {
+    processing: alipayProcessing,
+    processAlipayPayment,
+    qrOrder: alipayQrOrder,
+    closeAlipayQr,
+  } = useAlipayPayment()
 
   // Fetch and refresh user data
   const fetchUser = useCallback(async () => {
@@ -380,6 +385,17 @@ export function Wallet(props: WalletProps) {
         onConfirm={handleCreemConfirm}
         product={selectedCreemProduct}
         processing={creemProcessing}
+      />
+
+      <PaymentQrDialog
+        open={alipayQrOrder !== null}
+        qrCode={alipayQrOrder?.qrCode ?? ''}
+        tradeNo={alipayQrOrder?.tradeNo ?? ''}
+        provider='alipay'
+        onClose={(paid) => {
+          closeAlipayQr()
+          if (paid) void fetchUser()
+        }}
       />
     </>
   )
