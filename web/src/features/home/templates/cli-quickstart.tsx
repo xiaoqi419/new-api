@@ -26,7 +26,7 @@ import { ArrowRight, ChevronDown } from '@/components/icons'
 import { Footer } from '@/components/layout/components/footer'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
-import { getSystemName } from '@/stores/system-config-store'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import type {
   CliCodeStep,
@@ -166,7 +166,11 @@ export function CliQuickstart({
     content as Partial<CliQuickstartContent> | undefined
   )
   const baseUrl = resolveBaseUrl()
-  const systemName = getSystemName() || 'New API'
+  // Subscribed rather than read once via getSystemName(): the config store
+  // rehydrates from localStorage after first paint, and a one-shot read leaves
+  // both the heading and the wordmark stuck on the built-in default name.
+  const systemName =
+    useSystemConfigStore((s) => s.config.systemName) || 'New API'
   // Letters and digits from the site name, capped at three so the hero
   // wordmark stays readable; a name with neither renders no mark at all.
   const initials = (systemName.match(/[a-z0-9]/gi) ?? [])

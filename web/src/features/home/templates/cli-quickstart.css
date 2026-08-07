@@ -252,12 +252,19 @@ For commercial licensing, please contact support@quantumnous.com
   stroke: url(#lit-wordmark-grad);
   stroke-width: 1;
   stroke-linejoin: round;
-  stroke-dasharray: 380;
-  stroke-dashoffset: 380;
+}
+
+/* Animated per glyph rather than on the whole word, so the mark builds up one
+ * letter at a time the way the tool marks trace their outline. Text has no
+ * pathLength, so the dash length is a fixed value comfortably longer than any
+ * single glyph's outline; each glyph is its own subpath and restarts the dash. */
+.lit-wordmark-outline tspan {
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
   opacity: 0;
 }
 
-.lit-wordmark-fill {
+.lit-wordmark-fill tspan {
   opacity: 0;
 }
 
@@ -274,16 +281,17 @@ For commercial licensing, please contact support@quantumnous.com
   translate: -50% -50%;
 }
 
-.literary .landing-animate-scale-in .lit-wordmark-outline {
-  animation: lit-wordmark-draw 1.5s ease-in forwards;
+/* Delays are per-glyph and set inline by SystemWordmark. */
+.literary .landing-animate-scale-in .lit-wordmark-outline tspan {
+  animation: lit-wordmark-draw 1.15s ease-in forwards;
 }
-.literary .landing-animate-scale-in .lit-wordmark-fill {
-  animation: lit-fill 0.7s ease-out 1.2s both;
+.literary .landing-animate-scale-in .lit-wordmark-fill tspan {
+  animation: lit-fill 0.55s ease-out both;
 }
 
 @keyframes lit-wordmark-draw {
   0% {
-    stroke-dashoffset: 340;
+    stroke-dashoffset: 240;
     opacity: 0.35;
   }
   12% {
@@ -458,8 +466,8 @@ For commercial licensing, please contact support@quantumnous.com
   .literary .landing-animate-scale-in .lit-ripple-1,
   .literary .landing-animate-scale-in .lit-ripple-2,
   .literary .landing-animate-scale-in .lit-ripple-3,
-  .literary .landing-animate-scale-in .lit-wordmark-outline,
-  .literary .landing-animate-scale-in .lit-wordmark-fill {
+  .literary .landing-animate-scale-in .lit-wordmark-outline tspan,
+  .literary .landing-animate-scale-in .lit-wordmark-fill tspan {
     animation: none;
   }
   .lit-outline {
@@ -467,10 +475,10 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 1;
   }
   .lit-fill,
-  .lit-wordmark-fill {
+  .lit-wordmark-fill tspan {
     opacity: 1;
   }
-  .lit-wordmark-outline {
+  .lit-wordmark-outline tspan {
     opacity: 0;
   }
 }

@@ -134,12 +134,24 @@ const WORDMARK_SPARKS = [
   { id: 'd', cx: 10, cy: 45, r: 3.2, delay: '1.8s', dur: '4.6s' },
 ]
 
+/** Gap between one glyph starting to draw and the next, so the word builds up
+ * letter by letter instead of all at once. */
+const WORDMARK_GLYPH_STAGGER_MS = 320
+
+/** How long after a glyph starts drawing its gradient fill appears; slightly
+ * shorter than the draw so the outline is still closing as the colour lands. */
+const WORDMARK_FILL_DELAY_MS = 900
+
 /**
  * Hero wordmark carrying the same treatment as the tool marks further down the
  * page: stroke draw, gradient fill reveal, expanding ripples and a slow
  * breathe. Its warm peach → coral → magenta ramp lives in cli-quickstart.css.
  */
 export function SystemWordmark({ text }: { text: string }) {
+  const glyphs = [...text].map((ch, i) => ({
+    ch,
+    delay: i * WORDMARK_GLYPH_STAGGER_MS,
+  }))
   return (
     <div className='lit-logo lit-wordmark'>
       <span className='lit-ripple lit-ripple-1' />
@@ -152,12 +164,16 @@ export function SystemWordmark({ text }: { text: string }) {
         aria-label={text}
       >
         <defs>
+          {/* userSpaceOnUse, not the default objectBoundingBox: the glyphs are
+              individually animated tspans, and a bounding-box gradient would
+              restart the whole ramp inside every single letter. */}
           <linearGradient
             id='lit-wordmark-grad'
-            x1='0%'
-            y1='0%'
-            x2='100%'
-            y2='30%'
+            gradientUnits='userSpaceOnUse'
+            x1='16'
+            y1='10'
+            x2='124'
+            y2='46'
           >
             <stop offset='0%' stopColor='var(--wordmark-from)' />
             <stop offset='50%' stopColor='var(--wordmark-via)' />
@@ -179,7 +195,11 @@ export function SystemWordmark({ text }: { text: string }) {
           y='41'
           textAnchor='middle'
         >
-          {text}
+          {glyphs.map((g) => (
+            <tspan key={g.delay} style={{ animationDelay: `${g.delay}ms` }}>
+              {g.ch}
+            </tspan>
+          ))}
         </text>
         <text
           className='lit-wordmark-fill'
@@ -188,7 +208,16 @@ export function SystemWordmark({ text }: { text: string }) {
           textAnchor='middle'
           fill='url(#lit-wordmark-grad)'
         >
-          {text}
+          {glyphs.map((g) => (
+            <tspan
+              key={g.delay}
+              style={{
+                animationDelay: `${g.delay + WORDMARK_FILL_DELAY_MS}ms`,
+              }}
+            >
+              {g.ch}
+            </tspan>
+          ))}
         </text>
       </svg>
     </div>
