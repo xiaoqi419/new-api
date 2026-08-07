@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-07',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '拼团总开关补进「拼团管理」页顶部。此前这个开关只存在于旧版界面的「运营设置 → 额度设置」,新版界面配好套餐、套餐也显示已启用,用户端拼团大厅照样提示「未由管理员开启」,因为总开关默认是关的且新界面根本没有入口。',
+          '充值返现总开关同样补进「返现」页顶部,之前也是只有旧版界面能开,比例配了但不生效。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260807-bb697a9bd',
     date: '2026-08-07',
     changes: [

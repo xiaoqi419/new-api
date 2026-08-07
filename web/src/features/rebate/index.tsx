@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FeatureToggleCard } from '@/features/system-settings/components/feature-toggle-card'
 
 import { InviteRankingPanel } from './components/invite-ranking-panel'
 import { RebateRatiosPanel } from './components/rebate-ratios-panel'
@@ -32,24 +33,33 @@ export function RebateAdmin() {
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('Rebate')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
-        <Tabs defaultValue='records' className='w-full'>
-          <TabsList>
-            <TabsTrigger value='records'>{t('Rebate Records')}</TabsTrigger>
-            <TabsTrigger value='ratios'>
-              {t('Rebate Ratio Settings')}
-            </TabsTrigger>
-            <TabsTrigger value='ranking'>{t('Invite Ranking')}</TabsTrigger>
-          </TabsList>
-          <TabsContent value='records' className='pt-4'>
-            <RebateRecordsPanel />
-          </TabsContent>
-          <TabsContent value='ratios' className='pt-4'>
-            <RebateRatiosPanel />
-          </TabsContent>
-          <TabsContent value='ranking' className='pt-4'>
-            <InviteRankingPanel />
-          </TabsContent>
-        </Tabs>
+        <div className='space-y-4'>
+          <FeatureToggleCard
+            optionKey='RebateEnabled'
+            label={t('Enable top-up rebate')}
+            description={t(
+              'Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.'
+            )}
+          />
+          <Tabs defaultValue='records' className='w-full'>
+            <TabsList>
+              <TabsTrigger value='records'>{t('Rebate Records')}</TabsTrigger>
+              <TabsTrigger value='ratios'>
+                {t('Rebate Ratio Settings')}
+              </TabsTrigger>
+              <TabsTrigger value='ranking'>{t('Invite Ranking')}</TabsTrigger>
+            </TabsList>
+            <TabsContent value='records' className='pt-4'>
+              <RebateRecordsPanel />
+            </TabsContent>
+            <TabsContent value='ratios' className='pt-4'>
+              <RebateRatiosPanel />
+            </TabsContent>
+            <TabsContent value='ranking' className='pt-4'>
+              <InviteRankingPanel />
+            </TabsContent>
+          </Tabs>
+        </div>
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )

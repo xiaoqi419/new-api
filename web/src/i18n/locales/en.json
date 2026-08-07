@@ -6126,6 +6126,10 @@
     "WeChat Official Account setup": "WeChat Official Account setup",
     "Scan to pay with Alipay": "Scan to pay with Alipay",
     "Alipay payment QR code": "Alipay payment QR code",
-    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Scan the QR code with Alipay to pay. Your balance updates automatically after payment."
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.",
+    "Enable group buy top-up": "Enable group buy top-up",
+    "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.",
+    "Enable top-up rebate": "Enable top-up rebate",
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here."
   }
 }

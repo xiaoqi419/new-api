@@ -6126,6 +6126,10 @@
     "WeChat Official Account setup": "WeChat 公式アカウントの設定",
     "Scan to pay with Alipay": "Alipay でスキャンして支払う",
     "Alipay payment QR code": "Alipay 決済 QR コード",
-    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Alipay で QR コードを読み取って支払ってください。支払い後、残高は自動的に更新されます。"
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Alipay で QR コードを読み取って支払ってください。支払い後、残高は自動的に更新されます。",
+    "Enable group buy top-up": "共同購入チャージを有効にする",
+    "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "機能全体のマスタースイッチです。オフの間は、ここでいくつプランを有効にしても共同購入ホールは空のままです。",
+    "Enable top-up rebate": "チャージキャッシュバックを有効にする",
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "機能全体のマスタースイッチです。オフの間は、ここで還元率を設定してもキャッシュバックは記録されません。"
   }
 }

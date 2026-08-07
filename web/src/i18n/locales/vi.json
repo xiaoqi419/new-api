@@ -6126,6 +6126,10 @@
     "WeChat Official Account setup": "Thiết lập tài khoản chính thức WeChat",
     "Scan to pay with Alipay": "Quét mã QR để thanh toán bằng Alipay",
     "Alipay payment QR code": "Mã QR thanh toán Alipay",
-    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Quét mã QR bằng Alipay để thanh toán. Số dư sẽ tự động cập nhật sau khi thanh toán."
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "Quét mã QR bằng Alipay để thanh toán. Số dư sẽ tự động cập nhật sau khi thanh toán.",
+    "Enable group buy top-up": "Bật nạp tiền theo nhóm",
+    "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sảnh mua chung vẫn trống dù đã bật bao nhiêu gói ở đây.",
+    "Enable top-up rebate": "Bật hoàn tiền khi nạp",
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sẽ không có khoản hoàn tiền nào được ghi nhận, dù đã cấu hình tỷ lệ ở đây."
   }
 }

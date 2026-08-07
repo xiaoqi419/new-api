@@ -6126,6 +6126,10 @@
     "WeChat Official Account setup": "微信订阅号配置指引",
     "Scan to pay with Alipay": "支付宝扫码支付",
     "Alipay payment QR code": "支付宝支付二维码",
-    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "请使用支付宝扫描二维码完成支付，支付后将自动到账。"
+    "Scan the QR code with Alipay to pay. Your balance updates automatically after payment.": "请使用支付宝扫描二维码完成支付，支付后将自动到账。",
+    "Enable group buy top-up": "开启拼团充值",
+    "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "整个功能的总开关。关闭时，无论这里启用了多少套餐，用户端的拼团大厅都是空的。",
+    "Enable top-up rebate": "开启充值返现",
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "整个功能的总开关。关闭时，无论这里配了什么返现比例，都不会产生返现记录。"
   }
 }
