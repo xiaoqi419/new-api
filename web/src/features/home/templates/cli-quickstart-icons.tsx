@@ -137,7 +137,7 @@ const WORDMARK_SPARKS = [
 /**
  * Hero wordmark carrying the same treatment as the tool marks further down the
  * page: stroke draw, gradient fill reveal, expanding ripples and a slow
- * breathe. Uses the theme's own chart/primary ramp rather than a brand palette.
+ * breathe. Its warm peach → coral → magenta ramp lives in cli-quickstart.css.
  */
 export function SystemWordmark({ text }: { text: string }) {
   return (
@@ -157,11 +157,11 @@ export function SystemWordmark({ text }: { text: string }) {
             x1='0%'
             y1='0%'
             x2='100%'
-            y2='100%'
+            y2='30%'
           >
-            <stop offset='0%' stopColor='var(--chart-1)' />
-            <stop offset='50%' stopColor='var(--chart-4)' />
-            <stop offset='100%' stopColor='var(--primary)' />
+            <stop offset='0%' stopColor='var(--wordmark-from)' />
+            <stop offset='50%' stopColor='var(--wordmark-via)' />
+            <stop offset='100%' stopColor='var(--wordmark-to)' />
           </linearGradient>
         </defs>
         {WORDMARK_SPARKS.map((s) => (

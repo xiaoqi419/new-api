@@ -228,6 +228,17 @@ For commercial licensing, please contact support@quantumnous.com
  * marks, but on live text so it follows whatever the site is named. Text has no
  * pathLength, so the dash length is a fixed value chosen to cover three glyphs
  * of outline; a longer name simply starts its wipe further along. */
+/* Warm peach → coral → magenta, sampled from the brand letter mark. Kept as
+ * custom properties so a retheme only has to touch these three values. */
+.lit-wordmark {
+  --wordmark-from: #f89f5a;
+  --wordmark-via: #f7758f;
+  --wordmark-to: #f072d3;
+  /* Ripple borders are drawn with currentColor; without this they fall back to
+   * the inherited body text colour and read as grey rings. */
+  color: var(--wordmark-via);
+}
+
 .lit-wordmark-outline,
 .lit-wordmark-fill {
   font-family: var(--font-serif, ui-serif, Georgia, serif);
