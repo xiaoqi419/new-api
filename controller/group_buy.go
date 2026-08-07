@@ -53,6 +53,10 @@ type groupBuyJoinRequest struct {
 	Scene         string `json:"scene"`
 }
 
+type groupBuyCancelRequest struct {
+	TradeNo string `json:"trade_no"`
+}
+
 // resolveGroupBuyProvider 校验并返回支付方式对应的支付网关标识。
 func resolveGroupBuyProvider(paymentMethod string) (string, error) {
 	switch paymentMethod {
@@ -158,6 +162,20 @@ func JoinGroupBuy(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
 }
 
+// CancelGroupBuyPayment 用户关闭收银台放弃支付，立即释放名额预占。
+func CancelGroupBuyPayment(c *gin.Context) {
+	var req groupBuyCancelRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.TradeNo == "" {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	if err := model.ReleaseGroupBuyReservation(c.GetInt("id"), req.TradeNo); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
 // GetGroupBuyDetail 返回拼团详情与进度（登录用户）。
 func GetGroupBuyDetail(c *gin.Context) {
 	groupNo := c.Query("no")
@@ -171,14 +189,23 @@ func GetGroupBuyDetail(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
+	if groupBuy.Status == model.GroupBuyStatusDraft && groupBuy.InitiatorId != userId {
+		common.ApiErrorMsg(c, "拼团不存在") // 发起人未付款，对外等同于不存在
+		return
+	}
+	now := common.GetTimestamp()
 	joined := false
 	memberViews := make([]gin.H, 0, len(participants))
 	for _, p := range participants {
-		if p.PayStatus == model.GroupBuyParticipantPending && p.ReserveExpireTime < common.GetTimestamp() {
-			continue // 已过期的未支付预占不展示
-		}
-		if p.UserId == userId {
+		// joined 判定的是"是否占着名额"，与后端参团校验同口径：已支付，或预占未过期的待支付。
+		// 否则用户放弃支付后按钮会立刻恢复可点，点下去却被"你已在该拼团中"拦住。
+		if p.UserId == userId && (p.PayStatus == model.GroupBuyParticipantPaid ||
+			(p.PayStatus == model.GroupBuyParticipantPending && p.ReserveExpireTime > now)) {
 			joined = true
+		}
+		// 名单只列已支付成员，与成团进度（paid_count）保持同一口径。
+		if p.PayStatus != model.GroupBuyParticipantPaid {
+			continue
 		}
 		memberViews = append(memberViews, gin.H{
 			"username":   maskUsername(p.Username),

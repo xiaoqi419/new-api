@@ -6130,6 +6130,8 @@
     "Enable group buy top-up": "Activer la recharge groupée",
     "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "Interrupteur principal de la fonctionnalité. Tant qu’il est désactivé, le hall des achats groupés reste vide, quel que soit le nombre de forfaits activés ici.",
     "Enable top-up rebate": "Activer le remboursement de recharge",
-    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Interrupteur principal de la fonctionnalité. Tant qu’il est désactivé, aucun remboursement n’est enregistré, quels que soient les taux configurés ici."
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Interrupteur principal de la fonctionnalité. Tant qu’il est désactivé, aucun remboursement n’est enregistré, quels que soient les taux configurés ici.",
+    "Awaiting your payment": "En attente de votre paiement",
+    "This group starts once you pay. Until then nobody else can see or join it.": "Le groupe démarre dès votre paiement. Avant cela, personne d’autre ne peut le voir ni le rejoindre."
   }
 }

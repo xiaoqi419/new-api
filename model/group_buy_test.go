@@ -136,6 +136,9 @@ func TestGroupBuyOversell(t *testing.T) {
 	assert.InDelta(t, 5.0, gb.PerSharePrice, 0.001)
 	assert.Equal(t, int64(20), gb.TotalAmount)
 
+	// 发起人付款后拼团才上架，其余人方可参团
+	require.NoError(t, DB.Model(&GroupBuy{}).Where("id = ?", gb.Id).Update("status", GroupBuyStatusPending).Error)
+
 	_, err = JoinGroupBuyOrder(2, "b", gb.GroupNo, "TNB", PaymentProviderWechatPay, PaymentMethodWechatPay)
 	require.NoError(t, err)
 
@@ -316,4 +319,140 @@ func TestGroupBuyMarkFailed(t *testing.T) {
 	paid2, err := MarkGroupBuyFailed(gb.Id)
 	require.NoError(t, err)
 	assert.Len(t, paid2, 0)
+}
+
+// TestGroupBuyDraftStaysHidden 校验发起人未付款的拼团处于 draft：
+// 不进大厅、不可参团、不进"我的拼团"，发起人付款后才转 pending 上架。
+func TestGroupBuyDraftStaysHidden(t *testing.T) {
+	setupGroupBuyTest(t)
+	initiator := &User{Username: "gbdraft1", Quota: 0, AffCode: "gbdraftaff1"}
+	joiner := &User{Username: "gbdraft2", Quota: 0, AffCode: "gbdraftaff2"}
+	require.NoError(t, DB.Create(initiator).Error)
+	require.NoError(t, DB.Create(joiner).Error)
+
+	pkg := &GroupBuyPackage{Name: "draft-pkg", RequiredCount: 2, TotalAmount: 20, TotalPrice: 10, DurationUnit: SubscriptionDurationHour, DurationValue: 1, Enabled: true}
+	require.NoError(t, pkg.Insert())
+
+	gb, err := CreateGroupBuyOrder(initiator.Id, initiator.Username, pkg, "GBDRAFTA", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.NoError(t, err)
+	assert.Equal(t, GroupBuyStatusDraft, gb.Status)
+
+	// 大厅不展示未付款的团
+	halls, total, err := GetActiveGroupBuysForHall(common.GetTimestamp(), &common.PageInfo{})
+	require.NoError(t, err)
+	assert.Zero(t, total)
+	assert.Empty(t, halls)
+
+	// 他人拿到链接也参不了团
+	_, err = JoinGroupBuyOrder(joiner.Id, joiner.Username, gb.GroupNo, "GBDRAFTB", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.Error(t, err)
+	assert.Equal(t, "拼团不存在", err.Error())
+
+	// 发起人自己的"我的拼团"也不列草稿
+	mine, mineTotal, err := GetUserGroupBuys(initiator.Id, &common.PageInfo{})
+	require.NoError(t, err)
+	assert.Zero(t, mineTotal)
+	assert.Empty(t, mine)
+
+	// 发起人付款到账后正式上架
+	handled, err := TrySettleGroupBuyOrder("GBDRAFTA", PaymentProviderWechatPay, "ip")
+	require.True(t, handled)
+	require.NoError(t, err)
+
+	var activated GroupBuy
+	require.NoError(t, DB.First(&activated, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusPending, activated.Status)
+	assert.Equal(t, 1, activated.PaidCount)
+
+	_, total, err = GetActiveGroupBuysForHall(common.GetTimestamp(), &common.PageInfo{})
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total)
+
+	// 上架后他人可正常参团
+	_, err = JoinGroupBuyOrder(joiner.Id, joiner.Username, gb.GroupNo, "GBDRAFTB", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.NoError(t, err)
+}
+
+// TestGroupBuyDraftExpiryIsCollected 校验一直没付款的草稿团到期能被清理任务收走并置为失败。
+func TestGroupBuyDraftExpiryIsCollected(t *testing.T) {
+	setupGroupBuyTest(t)
+	now := common.GetTimestamp()
+	gb := &GroupBuy{
+		GroupNo:        "GBDRAFTEXP",
+		Status:         GroupBuyStatusDraft,
+		RequiredCount:  2,
+		PerShareAmount: 10,
+		PerSharePrice:  5,
+		ExpireTime:     now - 10,
+		CreateTime:     now - 3600,
+	}
+	require.NoError(t, DB.Create(gb).Error)
+
+	ids, err := GetExpiredPendingGroupBuyIds(now, 10)
+	require.NoError(t, err)
+	assert.Contains(t, ids, gb.Id)
+
+	settled, err := SettleExpiredGroupBuyIfEligible(gb.Id)
+	require.NoError(t, err)
+	assert.False(t, settled, "草稿团无人付款，不应成团")
+
+	paid, err := MarkGroupBuyFailed(gb.Id)
+	require.NoError(t, err)
+	assert.Empty(t, paid, "草稿团没有已支付成员，无需退款")
+
+	var failed GroupBuy
+	require.NoError(t, DB.First(&failed, gb.Id).Error)
+	assert.Equal(t, GroupBuyStatusFailed, failed.Status)
+}
+
+// TestReleaseGroupBuyReservation 校验放弃支付后名额立即释放、本人可立刻重新参团，
+// 且迟到的付款回调仍能正常入账。
+func TestReleaseGroupBuyReservation(t *testing.T) {
+	setupGroupBuyTest(t)
+	u1 := &User{Username: "gbrel1", Quota: 0, AffCode: "gbrelaff1"}
+	u2 := &User{Username: "gbrel2", Quota: 0, AffCode: "gbrelaff2"}
+	require.NoError(t, DB.Create(u1).Error)
+	require.NoError(t, DB.Create(u2).Error)
+
+	now := common.GetTimestamp()
+	gb := &GroupBuy{
+		GroupNo:        "GBREL",
+		Status:         GroupBuyStatusPending,
+		RequiredCount:  1,
+		TargetCount:    1,
+		PerShareAmount: 10,
+		PerSharePrice:  5,
+		ExpireTime:     now + 3600,
+		CreateTime:     now,
+	}
+	require.NoError(t, DB.Create(gb).Error)
+	seedGroupBuyMember(t, gb.Id, u1.Id, "GBRELA")
+
+	// 名额被 u1 预占：u2 参不进来
+	_, err := JoinGroupBuyOrder(u2.Id, u2.Username, gb.GroupNo, "GBRELB", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.Error(t, err)
+	assert.Equal(t, "拼团人数已满", err.Error())
+
+	// 他人不能替 u1 释放预占
+	require.NoError(t, ReleaseGroupBuyReservation(u2.Id, "GBRELA"))
+	_, err = JoinGroupBuyOrder(u2.Id, u2.Username, gb.GroupNo, "GBRELB", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.Error(t, err)
+
+	// u1 关闭收银台：名额立即释放
+	require.NoError(t, ReleaseGroupBuyReservation(u1.Id, "GBRELA"))
+	var released GroupBuyParticipant
+	require.NoError(t, DB.Where("trade_no = ?", "GBRELA").First(&released).Error)
+	assert.LessOrEqual(t, released.ReserveExpireTime, common.GetTimestamp())
+
+	// 释放后 u2 可以参团
+	_, err = JoinGroupBuyOrder(u2.Id, u2.Username, gb.GroupNo, "GBRELB", PaymentProviderWechatPay, PaymentMethodWechatPay)
+	require.NoError(t, err)
+
+	// 迟到的付款回调仍应入账，不能因为释放过预占就丢单
+	handled, err := TrySettleGroupBuyOrder("GBRELA", PaymentProviderWechatPay, "ip")
+	require.True(t, handled)
+	require.NoError(t, err)
+	var latePaid GroupBuyParticipant
+	require.NoError(t, DB.Where("trade_no = ?", "GBRELA").First(&latePaid).Error)
+	assert.Equal(t, GroupBuyParticipantPaid, latePaid.PayStatus)
 }

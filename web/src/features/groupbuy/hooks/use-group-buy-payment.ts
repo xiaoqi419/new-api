@@ -23,7 +23,12 @@ import { toast } from 'sonner'
 
 import type { PaymentQrProvider } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 
-import { createGroupBuy, getPayInfo, joinGroupBuy } from '../api'
+import {
+  cancelGroupBuyPayment,
+  createGroupBuy,
+  getPayInfo,
+  joinGroupBuy,
+} from '../api'
 import { NON_EPAY_PAY_METHODS, PAY_ALIPAY, PAY_WECHAT } from '../constants'
 import { isSafeHttpUrl } from '../lib'
 import type { GroupBuyPayMethod, PaymentResultData } from '../types'
@@ -41,6 +46,35 @@ interface UseGroupBuyPaymentOptions {
   onPaid?: (groupNo?: string) => void
   /** When true, navigate to the group detail after opening an external pay page. */
   redirectAfterPay?: boolean
+}
+
+/** What must happen after the scan-to-pay dialog closes. */
+export interface CheckoutCloseAction {
+  /** Trade number whose seat reservation should be released, if any. */
+  releaseTradeNo: string | null
+  /** Group to navigate into, if any. */
+  navigateToGroup: string | null
+}
+
+/**
+ * Abandoning checkout must never navigate into the group: the user cancelled,
+ * so nothing happened. Landing on the group page reads as "I got joined anyway".
+ * Navigation belongs to the paid branch only.
+ */
+export function resolveCheckoutClose(params: {
+  paid: boolean
+  tradeNo: string
+  groupNo?: string
+  redirectAfterPay?: boolean
+}): CheckoutCloseAction {
+  const { paid, tradeNo, groupNo, redirectAfterPay } = params
+  if (paid) {
+    return {
+      releaseTradeNo: null,
+      navigateToGroup: redirectAfterPay ? (groupNo ?? null) : null,
+    }
+  }
+  return { releaseTradeNo: tradeNo || null, navigateToGroup: null }
 }
 
 function submitEpayForm(action: string, params: Record<string, string>) {
@@ -219,12 +253,22 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
 
   const closeQrPay = useCallback(
     (paid: boolean) => {
-      const groupNo = qrPay.groupNo
+      const action = resolveCheckoutClose({
+        paid,
+        tradeNo: qrPay.tradeNo,
+        groupNo: qrPay.groupNo,
+        redirectAfterPay,
+      })
       setQrPay((prev) => ({ ...prev, open: false }))
-      if (paid) onPaid?.(groupNo)
-      else if (redirectAfterPay) goDetail(groupNo)
+      if (paid) onPaid?.(qrPay.groupNo)
+      if (action.releaseTradeNo) {
+        void cancelGroupBuyPayment(action.releaseTradeNo).catch(() => {
+          /* reservation still expires on its own */
+        })
+      }
+      if (action.navigateToGroup) goDetail(action.navigateToGroup)
     },
-    [qrPay.groupNo, onPaid, redirectAfterPay, goDetail]
+    [qrPay, onPaid, redirectAfterPay, goDetail]
   )
 
   const payOptions: { value: string; label: string }[] = []

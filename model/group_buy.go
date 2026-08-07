@@ -15,6 +15,9 @@ import (
 )
 
 const (
+	// GroupBuyStatusDraft 发起人尚未付款的拼团：不进大厅、不可参团、详情仅发起人可见，
+	// 发起人付款成功后才转为 pending 正式上架。
+	GroupBuyStatusDraft   = "draft"
 	GroupBuyStatusPending = "pending"
 	GroupBuyStatusSuccess = "success"
 	GroupBuyStatusFailed  = "failed"
@@ -359,7 +362,7 @@ func CreateGroupBuyOrder(initiatorId int, username string, pkg *GroupBuyPackage,
 		PackageId:                pkg.Id,
 		PackageName:              pkg.Name,
 		InitiatorId:              initiatorId,
-		Status:                   GroupBuyStatusPending,
+		Status:                   GroupBuyStatusDraft,
 		RequiredCount:            minCount,
 		TargetCount:              maxCount,
 		PaidCount:                0,
@@ -416,6 +419,9 @@ func JoinGroupBuyOrder(userId int, username, groupNo, tradeNo, provider, payment
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		if err := lockForUpdate(tx).Where("group_no = ?", groupNo).First(groupBuy).Error; err != nil {
 			return errors.New("拼团不存在")
+		}
+		if groupBuy.Status == GroupBuyStatusDraft {
+			return errors.New("拼团不存在") // 发起人未付款，对外等同于不存在
 		}
 		if groupBuy.Status != GroupBuyStatusPending {
 			return errors.New("该拼团已结束")
@@ -537,6 +543,10 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 		groupBuy := &GroupBuy{}
 		if err := lockForUpdate(tx).Where("id = ?", participant.GroupBuyId).First(groupBuy).Error; err != nil {
 			return errors.New("拼团不存在")
+		}
+		if groupBuy.Status == GroupBuyStatusDraft {
+			// 发起人付款到账，草稿团正式上架。
+			groupBuy.Status = GroupBuyStatusPending
 		}
 		if groupBuy.Status != GroupBuyStatusPending {
 			return nil // 拼团已结束（成功/失败），仅保留该成员已支付状态
@@ -694,11 +704,13 @@ func SettleExpiredGroupBuyIfEligible(groupBuyId int) (settled bool, err error) {
 
 // ===== 失败 / 过期 =====
 
-// GetExpiredPendingGroupBuyIds 返回已过期但仍处于 pending 的拼团 id。
+// GetExpiredPendingGroupBuyIds 返回已过期且仍可收尾的拼团 id。
+// 含 draft：发起人一直没付款的草稿团同样要到期收尾，否则会永远留在库里。
 func GetExpiredPendingGroupBuyIds(now int64, limit int) ([]int, error) {
 	var ids []int
 	err := DB.Model(&GroupBuy{}).
-		Where("status = ? AND expire_time < ?", GroupBuyStatusPending, now).
+		Where("status IN (?) AND expire_time < ?",
+			[]string{GroupBuyStatusPending, GroupBuyStatusDraft}, now).
 		Order("id asc").Limit(limit).Pluck("id", &ids).Error
 	return ids, err
 }
@@ -711,7 +723,8 @@ func MarkGroupBuyFailed(groupBuyId int) ([]GroupBuyParticipant, error) {
 		if err := lockForUpdate(tx).Where("id = ?", groupBuyId).First(groupBuy).Error; err != nil {
 			return err
 		}
-		if groupBuy.Status != GroupBuyStatusPending {
+		// draft 同样可置失败：草稿团只可能有发起人一条未支付记录，退款列表为空。
+		if groupBuy.Status != GroupBuyStatusPending && groupBuy.Status != GroupBuyStatusDraft {
 			return nil // 幂等
 		}
 		groupBuy.Status = GroupBuyStatusFailed
@@ -722,6 +735,17 @@ func MarkGroupBuyFailed(groupBuyId int) ([]GroupBuyParticipant, error) {
 		return tx.Where("group_buy_id = ? AND pay_status = ?", groupBuyId, GroupBuyParticipantPaid).Find(&paidParticipants).Error
 	})
 	return paidParticipants, err
+}
+
+// ReleaseGroupBuyReservation 用户放弃支付时立即释放名额预占，让名额可被他人占用、
+// 本人也能立刻重新参团，而不必干等 groupBuyReserveTTLSeconds。
+//
+// 只动 reserve_expire_time，不碰充值订单：结算路径不看这个字段，因此用户若在关闭
+// 收银台后仍完成付款，回调照样把该记录标记为已支付并计入成团进度，不会丢单。
+func ReleaseGroupBuyReservation(userId int, tradeNo string) error {
+	return DB.Model(&GroupBuyParticipant{}).
+		Where("trade_no = ? AND user_id = ? AND pay_status = ?", tradeNo, userId, GroupBuyParticipantPending).
+		Update("reserve_expire_time", common.GetTimestamp()).Error
 }
 
 // MarkParticipantRefundResult 标记参团记录的退款结果（refunded / refund_pending），幂等。
@@ -759,12 +783,14 @@ func GetActiveGroupBuysForHall(now int64, pageInfo *common.PageInfo) ([]*GroupBu
 }
 
 // GetUserGroupBuys 返回某用户参与过的拼团（按参团记录倒序）。
+// 不含 draft：发起后未付款的草稿团对用户也不该出现在"我的拼团"里。
 func GetUserGroupBuys(userId int, pageInfo *common.PageInfo) ([]*GroupBuy, int64, error) {
 	var groupBuyIds []int
 	if err := DB.Model(&GroupBuyParticipant{}).
-		Where("user_id = ?", userId).
-		Order("id desc").
-		Pluck("group_buy_id", &groupBuyIds).Error; err != nil {
+		Joins("JOIN group_buys ON group_buys.id = group_buy_participants.group_buy_id").
+		Where("group_buy_participants.user_id = ? AND group_buys.status <> ?", userId, GroupBuyStatusDraft).
+		Order("group_buy_participants.id desc").
+		Pluck("group_buy_participants.group_buy_id", &groupBuyIds).Error; err != nil {
 		return nil, 0, err
 	}
 	// 去重并保持顺序

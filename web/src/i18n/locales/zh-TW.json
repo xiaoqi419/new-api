@@ -6130,6 +6130,8 @@
     "Enable group buy top-up": "開啟拼團充值",
     "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "整個功能的總開關。關閉時，無論這裡啟用了多少套餐，使用者端的拼團大廳都是空的。",
     "Enable top-up rebate": "開啟充值返現",
-    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "整個功能的總開關。關閉時，無論這裡設定了什麼返現比例，都不會產生返現紀錄。"
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "整個功能的總開關。關閉時，無論這裡設定了什麼返現比例，都不會產生返現紀錄。",
+    "Awaiting your payment": "待你付款",
+    "This group starts once you pay. Until then nobody else can see or join it.": "付款完成後拼團才會開始，在那之前其他人看不到、也參加不了。"
   }
 }

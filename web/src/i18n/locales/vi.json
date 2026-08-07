@@ -6130,6 +6130,8 @@
     "Enable group buy top-up": "Bật nạp tiền theo nhóm",
     "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sảnh mua chung vẫn trống dù đã bật bao nhiêu gói ở đây.",
     "Enable top-up rebate": "Bật hoàn tiền khi nạp",
-    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sẽ không có khoản hoàn tiền nào được ghi nhận, dù đã cấu hình tỷ lệ ở đây."
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sẽ không có khoản hoàn tiền nào được ghi nhận, dù đã cấu hình tỷ lệ ở đây.",
+    "Awaiting your payment": "Chờ bạn thanh toán",
+    "This group starts once you pay. Until then nobody else can see or join it.": "Nhóm sẽ bắt đầu sau khi bạn thanh toán. Trước đó không ai khác thấy hoặc tham gia được."
   }
 }

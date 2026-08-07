@@ -108,6 +108,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
   const price = Number(detail.per_share_price).toFixed(2)
   const subscriptionReward = (detail.reward_subscription_plan_id ?? 0) > 0
   const statusLabels: Record<string, string> = {
+    draft: t('Awaiting your payment'),
     success: t('Formed'),
     failed: t('Failed'),
   }
@@ -189,6 +190,13 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
                         count: remaining,
                       })
                     : t('Full, waiting for settlement')}
+                </p>
+              )}
+              {detail.status === 'draft' && (
+                <p className='text-muted-foreground mt-2 text-sm'>
+                  {t(
+                    'This group starts once you pay. Until then nobody else can see or join it.'
+                  )}
                 </p>
               )}
               <div className='mt-4 flex items-center justify-between'>

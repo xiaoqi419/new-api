@@ -85,3 +85,19 @@ export async function joinGroupBuy(
   })
   return res.data
 }
+
+/**
+ * Release the seat reservation held by an unpaid order after the user walks
+ * away from checkout. Fire-and-forget: the reservation also expires on its own,
+ * so a failure here is not worth interrupting the user for.
+ */
+export async function cancelGroupBuyPayment(
+  tradeNo: string
+): Promise<ApiResponse<null>> {
+  const res = await api.post(
+    '/api/user/groupbuy/cancel',
+    { trade_no: tradeNo },
+    { skipBusinessError: true }
+  )
+  return res.data
+}

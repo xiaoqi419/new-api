@@ -6130,6 +6130,8 @@
     "Enable group buy top-up": "Включить групповое пополнение",
     "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "Главный переключатель всей функции. Пока он выключен, зал групповых покупок остаётся пустым, сколько бы пакетов здесь ни было включено.",
     "Enable top-up rebate": "Включить кэшбэк за пополнение",
-    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Главный переключатель всей функции. Пока он выключен, кэшбэк не начисляется, какие бы ставки здесь ни были заданы."
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Главный переключатель всей функции. Пока он выключен, кэшбэк не начисляется, какие бы ставки здесь ни были заданы.",
+    "Awaiting your payment": "Ожидает вашей оплаты",
+    "This group starts once you pay. Until then nobody else can see or join it.": "Группа начнётся после вашей оплаты. До этого её никто не видит и не может присоединиться."
   }
 }

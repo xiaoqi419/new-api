@@ -6130,6 +6130,8 @@
     "Enable group buy top-up": "共同購入チャージを有効にする",
     "Master switch for the whole feature. While it is off the group buy hall stays empty no matter how many packages are enabled here.": "機能全体のマスタースイッチです。オフの間は、ここでいくつプランを有効にしても共同購入ホールは空のままです。",
     "Enable top-up rebate": "チャージキャッシュバックを有効にする",
-    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "機能全体のマスタースイッチです。オフの間は、ここで還元率を設定してもキャッシュバックは記録されません。"
+    "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "機能全体のマスタースイッチです。オフの間は、ここで還元率を設定してもキャッシュバックは記録されません。",
+    "Awaiting your payment": "お支払い待ち",
+    "This group starts once you pay. Until then nobody else can see or join it.": "支払いが完了すると共同購入が始まります。それまでは他の人には表示されず、参加もできません。"
   }
 }

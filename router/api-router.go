@@ -155,6 +155,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/groupbuy/detail", controller.GetGroupBuyDetail)
 				selfRoute.POST("/groupbuy/create", middleware.CriticalRateLimit(), controller.CreateGroupBuy)
 				selfRoute.POST("/groupbuy/join", middleware.CriticalRateLimit(), controller.JoinGroupBuy)
+				selfRoute.POST("/groupbuy/cancel", middleware.CriticalRateLimit(), controller.CancelGroupBuyPayment)
 
 				// 2FA routes
 				selfRoute.GET("/2fa/status", controller.Get2FAStatus)

@@ -140,17 +140,19 @@ export function JoinPanel({
         </div>
       )}
 
-      <div className='border-border mt-1 flex items-center gap-2 border-t pt-3'>
-        <span className='text-muted-foreground min-w-0 flex-1 truncate text-sm'>
-          {shareLink}
-        </span>
-        <CopyButton
-          value={shareLink}
-          variant='outline'
-          tooltip={t('Copy link')}
-          aria-label={t('Copy link')}
-        />
-      </div>
+      {detail.status !== 'draft' && (
+        <div className='border-border mt-1 flex items-center gap-2 border-t pt-3'>
+          <span className='text-muted-foreground min-w-0 flex-1 truncate text-sm'>
+            {shareLink}
+          </span>
+          <CopyButton
+            value={shareLink}
+            variant='outline'
+            tooltip={t('Copy link')}
+            aria-label={t('Copy link')}
+          />
+        </div>
+      )}
     </div>
   )
 }
