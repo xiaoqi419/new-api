@@ -69,10 +69,37 @@ export function submitPaymentForm(
 }
 
 /**
+ * Reject non-navigable schemes (e.g. javascript:, data:) and relative URLs.
+ * Only http/https are allowed for backend-provided redirect targets.
+ */
+export function isSafePaymentRedirectUrl(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return false
+  }
+  try {
+    const url = new URL(trimmed)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Check if payment method is Stripe
  */
 export function isStripePayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.STRIPE
+}
+
+/**
+ * Check if payment method is the direct Alipay merchant integration.
+ *
+ * Distinct from PAYMENT_TYPES.ALIPAY, which is the Alipay channel offered by
+ * an epay aggregator and goes through the generic /api/user/pay form flow.
+ */
+export function isAlipayDirectPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.ALIPAY_DIRECT
 }
 
 /**
@@ -97,6 +124,7 @@ export interface PaymentProcessors {
   regular: (topupAmount: number, paymentType: string) => Promise<boolean>
   waffo: (topupAmount: number, payMethodIndex: number) => Promise<boolean>
   waffoPancake: (topupAmount: number) => Promise<boolean>
+  alipay: (topupAmount: number) => Promise<boolean>
 }
 
 export async function dispatchSelectedPayment(
@@ -114,6 +142,10 @@ export async function dispatchSelectedPayment(
 
   if (isWaffoPancakePayment(paymentMethod.type)) {
     return processors.waffoPancake(topupAmount)
+  }
+
+  if (isAlipayDirectPayment(paymentMethod.type)) {
+    return processors.alipay(topupAmount)
   }
 
   return processors.regular(topupAmount, paymentMethod.type)
@@ -144,6 +176,10 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
     return PAYMENT_TYPES.WAFFO_PANCAKE
   }
 
+  if (topupInfo.enable_alipay_topup) {
+    return PAYMENT_TYPES.ALIPAY_DIRECT
+  }
+
   return DEFAULT_PAYMENT_TYPE
 }
 
@@ -169,6 +205,13 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
 
   if (topupInfo.enable_waffo_pancake_topup) {
     return topupInfo.waffo_pancake_min_topup || DEFAULT_MIN_TOPUP
+  }
+
+  // Direct Alipay is validated server-side against the global minimum, not
+  // alipay_min_topup — that one is advertised per method and enforced by the
+  // per-button floor.
+  if (topupInfo.enable_alipay_topup) {
+    return topupInfo.min_topup || DEFAULT_MIN_TOPUP
   }
 
   return DEFAULT_MIN_TOPUP

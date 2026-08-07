@@ -30,13 +30,34 @@ export const DEFAULT_PRESET_MULTIPLIERS = [1, 5, 10, 30, 50, 100, 300, 500]
  * Payment method types
  */
 export const PAYMENT_TYPES = {
+  /** Alipay channel exposed through an epay aggregator */
   ALIPAY: 'alipay',
+  /** Alipay merchant account wired directly to this deployment */
+  ALIPAY_DIRECT: 'alipay_direct',
+  /** WeChat Pay channel exposed through an epay aggregator */
   WECHAT: 'wxpay',
+  /** WeChat Pay merchant account wired directly to this deployment */
+  WECHAT_DIRECT: 'wechatpay',
   STRIPE: 'stripe',
   CREEM: 'creem',
   WAFFO: 'waffo',
   WAFFO_PANCAKE: 'waffo_pancake',
 } as const
+
+/**
+ * Payment types that the backend appends to `pay_methods` but that are not
+ * epay (易支付) channels. `/api/subscription/epay/pay` validates its
+ * `payment_method` against the configured epay channel list, so submitting any
+ * of these there is rejected with "支付方式不存在".
+ */
+export const NON_EPAY_PAYMENT_TYPES = new Set<string>([
+  PAYMENT_TYPES.STRIPE,
+  PAYMENT_TYPES.CREEM,
+  PAYMENT_TYPES.WAFFO,
+  PAYMENT_TYPES.WAFFO_PANCAKE,
+  PAYMENT_TYPES.ALIPAY_DIRECT,
+  PAYMENT_TYPES.WECHAT_DIRECT,
+])
 
 /**
  * Default payment type
@@ -48,6 +69,7 @@ export const DEFAULT_PAYMENT_TYPE = PAYMENT_TYPES.ALIPAY
  */
 export const PAYMENT_ICON_COLORS = {
   [PAYMENT_TYPES.ALIPAY]: '#1677FF',
+  [PAYMENT_TYPES.ALIPAY_DIRECT]: '#1677FF',
   [PAYMENT_TYPES.WECHAT]: '#07C160',
   [PAYMENT_TYPES.STRIPE]: '#635BFF',
   [PAYMENT_TYPES.CREEM]: '#6366F1',

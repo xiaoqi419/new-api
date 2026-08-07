@@ -29,6 +29,20 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-07',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复只开启支付宝(商户直连)时,钱包「添加资金」不显示金额与支付方式、只提示「未开启在线充值」的问题。此前充值区的显示条件漏了支付宝与微信支付直连,只认易支付/Stripe/Waffo。',
+          '钱包的支付宝直连按钮现在会正确请求支付宝下单接口并跳转收银台,此前会被当成易支付通道提交而失败;按钮图标也不再退化为通用银行卡图标。',
+          '订阅套餐的易支付方式列表不再混入支付宝、微信支付直连与 Waffo,这些通道没有对应的订阅下单接口,选中后只会报「支付方式不存在」。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260806-c66ba7886',
     date: '2026-08-06',
     changes: [
