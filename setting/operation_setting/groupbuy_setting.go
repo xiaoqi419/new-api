@@ -11,9 +11,10 @@ type GroupBuySetting struct {
 
 var groupBuySetting = GroupBuySetting{
 	EarlySettleWhenFull: true,
-	ModelsHint:          "拼团成功后额度即时到账，全系模型均可调用。",
+	ModelsHint:          "成团后额度到账，全系模型均可调用。",
 	Notes: []string{
-		"支付成功即锁定名额，拼团成功后额度立即到账。",
+		"支付成功即锁定名额。",
+		"额度在成团截止时按当时解锁的最高档一次性发放；提前拼满全部名额则立即到账。",
 		"拼团有效期内人数越多，每人到账额度越高。",
 		"未达最低成团人数则拼团失败，已支付款项将自动原路退回。",
 		"额度有效期以套餐说明为准。",

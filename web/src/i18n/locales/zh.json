@@ -6132,6 +6132,12 @@
     "Enable top-up rebate": "开启充值返现",
     "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "整个功能的总开关。关闭时，无论这里配了什么返现比例，都不会产生返现记录。",
     "Awaiting your payment": "待你支付",
-    "This group starts once you pay. Until then nobody else can see or join it.": "支付完成后拼团才会开始，在那之前其他人看不到、也参加不了。"
+    "This group starts once you pay. Until then nobody else can see or join it.": "支付完成后拼团才会开始，在那之前其他人看不到、也参加不了。",
+    "Credited on settlement": "成团后到账",
+    "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.": "已达成团线。额度将于 {{time}} 按当时解锁的档位发放。",
+    "Payment locks your slot right away.": "支付成功即锁定名额。",
+    "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.": "额度在成团截止时按当时解锁的最高档一次性发放；提前拼满全部名额则立即到账。",
+    "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded": "还差 {{count}} 人达到成团线，否则拼团失败并全额退款",
+    "{{count}} more fills the group and credits the top amount right away": "再来 {{count}} 人即可满团，立即到账最高额度"
   }
 }

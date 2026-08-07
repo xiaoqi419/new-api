@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-07',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '拼团详情页说清楚额度什么时候到账。阶梯团达到最低成团人数并不会立刻发放,而是等到成团截止时按当时解锁的最高档一次性发放,提前拼满全部名额才立即到账——之前页面只显示进度和打勾,看上去像已经成团却迟迟不到账。现在会直接写明结算时间,以及还差几人可以立即拿到最高档。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260807-0493a3797',
     date: '2026-08-07',
     changes: [

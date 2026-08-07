@@ -6132,6 +6132,12 @@
     "Enable top-up rebate": "Enable top-up rebate",
     "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.",
     "Awaiting your payment": "Awaiting your payment",
-    "This group starts once you pay. Until then nobody else can see or join it.": "This group starts once you pay. Until then nobody else can see or join it."
+    "This group starts once you pay. Until then nobody else can see or join it.": "This group starts once you pay. Until then nobody else can see or join it.",
+    "Credited on settlement": "Credited on settlement",
+    "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.": "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.",
+    "Payment locks your slot right away.": "Payment locks your slot right away.",
+    "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.": "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.",
+    "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded": "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded",
+    "{{count}} more fills the group and credits the top amount right away": "{{count}} more fills the group and credits the top amount right away"
   }
 }

@@ -99,6 +99,11 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
   const bestAmount = last.per_share_amount
   const cap = detail.target_count || maxCount || 1
   const paid = detail.paid_count ?? 0
+  // Tiers are stored strictly ascending, so the first one is the minimum that
+  // keeps the group from failing. Reaching it does not settle: a tiered group
+  // waits for the deadline so latecomers can still unlock a higher tier.
+  const minCount = detail.required_count || tiers[0].count
+  const minCountReached = paid >= minCount
   const remaining = Math.max(0, cap - paid)
   const percent = Math.min(100, Math.round((paid / cap) * 100))
   const expired = detail.expire_time * 1000 < Date.now()
@@ -118,8 +123,9 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
     detail.notes && detail.notes.length > 0
       ? detail.notes
       : [
+          t('Payment locks your slot right away.'),
           t(
-            'Payment locks your slot; quota is credited immediately once the group succeeds.'
+            'Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.'
           ),
           t(
             'The more members within the validity window, the higher the amount everyone receives.'
@@ -158,7 +164,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
           </div>
           <div className='flex flex-wrap gap-2 md:max-w-[240px] md:justify-end'>
             <span className='inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-sm'>
-              <Zap className='size-4' /> {t('Instant credit')}
+              <Zap className='size-4' /> {t('Credited on settlement')}
             </span>
             <span className='inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-sm'>
               <Users className='size-4' /> {t('Better with more')}
@@ -184,13 +190,31 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
               </div>
               <Progress value={percent} className='mt-2 h-2' />
               {detail.status === 'pending' && (
-                <p className='text-muted-foreground mt-2 text-sm'>
-                  {remaining > 0
-                    ? t('{{count}} more to fill the group for the best rate', {
-                        count: remaining,
-                      })
-                    : t('Full, waiting for settlement')}
-                </p>
+                <div className='mt-2 flex flex-col gap-1 text-sm'>
+                  {minCountReached ? (
+                    <p className='text-primary font-medium'>
+                      {t(
+                        'Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.',
+                        { time: formatTimestampToDate(detail.expire_time) }
+                      )}
+                    </p>
+                  ) : (
+                    <p className='text-muted-foreground'>
+                      {t(
+                        '{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded',
+                        { count: minCount - paid }
+                      )}
+                    </p>
+                  )}
+                  <p className='text-muted-foreground'>
+                    {remaining > 0
+                      ? t(
+                          '{{count}} more fills the group and credits the top amount right away',
+                          { count: remaining }
+                        )
+                      : t('Full, waiting for settlement')}
+                  </p>
+                </div>
               )}
               {detail.status === 'draft' && (
                 <p className='text-muted-foreground mt-2 text-sm'>

@@ -6132,6 +6132,12 @@
     "Enable top-up rebate": "Activer le remboursement de recharge",
     "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Interrupteur principal de la fonctionnalité. Tant qu’il est désactivé, aucun remboursement n’est enregistré, quels que soient les taux configurés ici.",
     "Awaiting your payment": "En attente de votre paiement",
-    "This group starts once you pay. Until then nobody else can see or join it.": "Le groupe démarre dès votre paiement. Avant cela, personne d’autre ne peut le voir ni le rejoindre."
+    "This group starts once you pay. Until then nobody else can see or join it.": "Le groupe démarre dès votre paiement. Avant cela, personne d’autre ne peut le voir ni le rejoindre.",
+    "Credited on settlement": "Crédité à la clôture",
+    "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.": "Minimum atteint. Le quota sera crédité le {{time}} selon le palier débloqué à ce moment-là.",
+    "Payment locks your slot right away.": "Le paiement réserve immédiatement votre place.",
+    "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.": "Le quota est crédité à l’échéance selon le palier le plus élevé alors débloqué ; si toutes les places sont prises avant, il est crédité immédiatement.",
+    "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded": "Encore {{count}} pour atteindre le minimum, sinon le groupe échoue et tout est remboursé",
+    "{{count}} more fills the group and credits the top amount right away": "Encore {{count}} pour remplir le groupe et créditer aussitôt le montant maximal"
   }
 }

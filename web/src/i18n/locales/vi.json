@@ -6132,6 +6132,12 @@
     "Enable top-up rebate": "Bật hoàn tiền khi nạp",
     "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Công tắc tổng của toàn bộ tính năng. Khi tắt, sẽ không có khoản hoàn tiền nào được ghi nhận, dù đã cấu hình tỷ lệ ở đây.",
     "Awaiting your payment": "Chờ bạn thanh toán",
-    "This group starts once you pay. Until then nobody else can see or join it.": "Nhóm sẽ bắt đầu sau khi bạn thanh toán. Trước đó không ai khác thấy hoặc tham gia được."
+    "This group starts once you pay. Until then nobody else can see or join it.": "Nhóm sẽ bắt đầu sau khi bạn thanh toán. Trước đó không ai khác thấy hoặc tham gia được.",
+    "Credited on settlement": "Cộng khi chốt nhóm",
+    "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.": "Đã đạt mức tối thiểu. Hạn mức sẽ được cộng vào {{time}} theo bậc mở khoá tại thời điểm đó.",
+    "Payment locks your slot right away.": "Thanh toán xong là giữ chỗ ngay.",
+    "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.": "Hạn mức được cộng vào lúc hết hạn theo bậc cao nhất đã mở khoá; nếu đủ toàn bộ chỗ sớm hơn thì cộng ngay.",
+    "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded": "Còn {{count}} người nữa để đạt mức tối thiểu, nếu không nhóm sẽ huỷ và hoàn tiền",
+    "{{count}} more fills the group and credits the top amount right away": "Thêm {{count}} người là đầy nhóm và được cộng mức cao nhất ngay"
   }
 }

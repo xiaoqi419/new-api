@@ -6132,6 +6132,12 @@
     "Enable top-up rebate": "Включить кэшбэк за пополнение",
     "Master switch for the whole feature. While it is off no rebate is recorded, whatever ratios are configured here.": "Главный переключатель всей функции. Пока он выключен, кэшбэк не начисляется, какие бы ставки здесь ни были заданы.",
     "Awaiting your payment": "Ожидает вашей оплаты",
-    "This group starts once you pay. Until then nobody else can see or join it.": "Группа начнётся после вашей оплаты. До этого её никто не видит и не может присоединиться."
+    "This group starts once you pay. Until then nobody else can see or join it.": "Группа начнётся после вашей оплаты. До этого её никто не видит и не может присоединиться.",
+    "Credited on settlement": "Начисление при закрытии",
+    "Minimum reached. Quota is credited at {{time}} based on the tier unlocked by then.": "Минимум достигнут. Квота будет начислена {{time}} по уровню, разблокированному к этому моменту.",
+    "Payment locks your slot right away.": "Оплата сразу закрепляет за вами место.",
+    "Quota is credited at the deadline, based on the highest tier unlocked by then; filling every slot credits it immediately.": "Квота начисляется в момент дедлайна по наивысшему разблокированному уровню; если все места займут раньше, начисление произойдёт сразу.",
+    "{{count}} more to reach the minimum, otherwise the group fails and everyone is refunded": "Ещё {{count}} до минимума, иначе группа не состоится и деньги вернут",
+    "{{count}} more fills the group and credits the top amount right away": "Ещё {{count}} — группа заполнится и максимальная сумма начислится сразу"
   }
 }
