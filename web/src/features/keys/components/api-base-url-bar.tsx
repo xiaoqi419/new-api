@@ -29,7 +29,9 @@ export function ApiBaseUrlBar() {
   const { items } = useApiInfo()
   const { copyToClipboard, copiedText } = useCopyToClipboard()
 
-  const baseUrl = normalizeApiBaseUrl(items[0]?.url)
+  // Clients are configured with the site root and append the OpenAI path
+  // themselves, so the `/v1` suffix is dropped from what users copy here.
+  const baseUrl = normalizeApiBaseUrl(items[0]?.url).replace(/\/v1$/, '')
   const copied = copiedText === baseUrl
 
   return (
@@ -38,12 +40,14 @@ export function ApiBaseUrlBar() {
       <span className='text-muted-foreground shrink-0 text-sm font-medium'>
         {t('API Base URL')}
       </span>
-      <code
-        className='min-w-0 flex-1 truncate font-mono text-sm'
+      <button
+        type='button'
+        className='hover:text-primary min-w-0 flex-1 cursor-pointer text-left transition-colors'
         title={baseUrl}
+        onClick={() => void copyToClipboard(baseUrl)}
       >
-        {baseUrl}
-      </code>
+        <code className='block truncate font-mono text-sm'>{baseUrl}</code>
+      </button>
       <Button
         variant='ghost'
         size='icon'

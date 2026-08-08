@@ -39,7 +39,6 @@ type OAuthProvidersProps = {
   disabled?: boolean
   className?: string
   onWeChatLogin?: () => void
-  isWeChatLoading?: boolean
   redirectTo?: string
 }
 
@@ -63,7 +62,6 @@ export function OAuthProviders({
   disabled = false,
   className,
   onWeChatLogin,
-  isWeChatLoading = false,
   redirectTo,
 }: OAuthProvidersProps) {
   const { t } = useTranslation()
@@ -92,7 +90,6 @@ export function OAuthProviders({
       shortLabel: t('WeChat'),
       onClick: onWeChatLogin,
       icon: <IconWeChat className='size-[19px]' />,
-      disabled: isWeChatLoading,
     })
   }
 

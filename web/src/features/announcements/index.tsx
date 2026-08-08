@@ -1,17 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
 import { StatusBadge } from '@/components/status-badge'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Markdown } from '@/components/ui/markdown'
 import { Skeleton } from '@/components/ui/skeleton'
+import { usePublicAnnouncements } from '@/hooks/use-public-announcements'
 import { formatTimestampToDate } from '@/lib/format'
 
-import { getPublicAnnouncements } from './api'
 import {
   ANNOUNCEMENT_TYPE_LABEL_KEYS,
   ANNOUNCEMENT_TYPE_VARIANTS,
@@ -24,15 +23,8 @@ export function AnnouncementCenter() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<TabValue>('all')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['announcements-public'],
-    queryFn: async () => {
-      const res = await getPublicAnnouncements()
-      return res.success ? (res.data ?? []) : []
-    },
-  })
-
-  const items = useMemo(() => data ?? [], [data])
+  // Shared with the header notification bell so both read one cache entry.
+  const { items, loading: isLoading } = usePublicAnnouncements()
 
   const counts = useMemo(() => {
     const c: Record<TabValue, number> = {

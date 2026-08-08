@@ -22,6 +22,11 @@ import { CopyButton } from '@/components/copy-button'
 import { RefreshCw } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import type { WeChatMpPhase } from '../hooks/use-wechat-mp-code'
 
@@ -91,6 +96,23 @@ export function WeChatMpCodePanel(props: WeChatMpCodePanelProps) {
             tooltip={t('Copy code')}
             aria-label={t('Copy code')}
           />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  className='size-8 shrink-0'
+                  onClick={props.onRefresh}
+                  aria-label={t('Get a new code')}
+                >
+                  <RefreshCw className='size-4' />
+                </Button>
+              }
+            />
+            <TooltipContent>{t('Get a new code')}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
