@@ -16,8 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link, useSearch } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
+import { useSearch } from '@tanstack/react-router'
 
 import { useStatus } from '@/hooks/use-status'
 
@@ -27,7 +26,6 @@ import { TermsFooter } from '../components/terms-footer'
 import { UserAuthForm } from './components/user-auth-form'
 
 export function SignIn() {
-  const { t } = useTranslation()
   const { redirect } = useSearch({ from: '/(auth)/sign-in' })
   const { status } = useStatus()
 
@@ -35,19 +33,6 @@ export function SignIn() {
     <AuthLayout showMobileBrandMark={false}>
       <AuthCard>
         <UserAuthForm redirectTo={redirect} />
-
-        {!status?.self_use_mode_enabled &&
-          status?.register_enabled !== false && (
-            <p className='text-muted-foreground mt-[14px] text-center text-sm'>
-              {t("Don't have an account?")}
-              <Link
-                to='/sign-up'
-                className='text-primary ms-1.5 font-bold hover:underline'
-              >
-                {t('Sign up')}
-              </Link>
-            </p>
-          )}
 
         <TermsFooter
           variant='sign-in'

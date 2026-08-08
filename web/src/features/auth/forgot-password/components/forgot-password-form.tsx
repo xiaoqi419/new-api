@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { ClickCaptcha } from '@/components/click-captcha'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
 import { ArrowRight, Loader2 } from '@/components/icons'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
@@ -38,11 +38,19 @@ import {
 import { Input } from '@/components/ui/input'
 import { sendPasswordResetEmail } from '@/features/auth/api'
 import {
+  authInputClassName,
+  authSubmitClassName,
+} from '@/features/auth/components/auth-card'
+import {
   forgotPasswordFormSchema,
   PASSWORD_RESET_COUNTDOWN,
 } from '@/features/auth/constants'
-import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
+import {
+  toCaptchaQuery,
+  useClickCaptchaEnabled,
+} from '@/features/auth/hooks/use-click-captcha'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
+import type { ClickCaptchaSolution } from '@/features/auth/types'
 import { useCountdown } from '@/hooks/use-countdown'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +60,7 @@ export function ForgotPasswordForm({
 }: React.HTMLAttributes<HTMLFormElement>) {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
+  const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
 
   const {
     isTurnstileEnabled,
@@ -60,14 +69,7 @@ export function ForgotPasswordForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
-  const {
-    isClickCaptchaEnabled,
-    setSolution: setCaptchaSolution,
-    resetSignal: captchaResetSignal,
-    resetClickCaptcha,
-    validateClickCaptcha,
-    captchaQuery,
-  } = useClickCaptcha()
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
   const {
     secondsLeft,
     isActive,
@@ -80,40 +82,55 @@ export function ForgotPasswordForm({
   })
   const turnstileReady = !isTurnstileEnabled || Boolean(turnstileToken)
 
-  async function onSubmit(data: z.infer<typeof forgotPasswordFormSchema>) {
-    if (!validateTurnstile()) return
-    if (!validateClickCaptcha()) return
-
+  async function sendResetEmail(
+    data: z.infer<typeof forgotPasswordFormSchema>,
+    captchaSolution: ClickCaptchaSolution | null
+  ) {
     setIsLoading(true)
-    // One check spends the challenge, so a rejected request needs a new image.
-    let captchaAccepted = false
     try {
       const res = await sendPasswordResetEmail(
         data.email,
         turnstileToken,
-        captchaQuery
+        toCaptchaQuery(captchaSolution)
       )
       if (res?.success) {
-        captchaAccepted = true
         form.reset()
         startCountdown()
         toast.success(t('Reset email sent, please check your inbox'))
       } else {
         toast.error(res?.message || t('Failed to send reset email'))
       }
-    } catch (_error) {
+    } catch {
       // Errors are handled by global interceptor
     } finally {
       setIsLoading(false)
-      if (!captchaAccepted) resetClickCaptcha()
     }
+  }
+
+  function onSubmit(data: z.infer<typeof forgotPasswordFormSchema>) {
+    if (!validateTurnstile()) return
+
+    // The captcha is asked for last: a challenge is spent on the first check
+    // either way, so it is only worth showing once the form is otherwise ready.
+    if (isClickCaptchaEnabled) {
+      setIsCaptchaDialogOpen(true)
+      return
+    }
+    void sendResetEmail(data, null)
+  }
+
+  // Closing the dialog unmounts the puzzle, so a rejected request gets a fresh
+  // image on the next attempt without any explicit reset.
+  const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
+    setIsCaptchaDialogOpen(false)
+    void form.handleSubmit((data) => sendResetEmail(data, solution))()
   }
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-2', className)}
+        className={cn('grid gap-[18px]', className)}
         {...props}
       >
         <FormField
@@ -121,26 +138,22 @@ export function ForgotPasswordForm({
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('Email')}</FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <Input
+                  placeholder={t('name@example.com')}
+                  className={authInputClassName}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {isClickCaptchaEnabled && (
-          <ClickCaptcha
-            onSolvedChange={setCaptchaSolution}
-            resetSignal={captchaResetSignal}
-            className='mt-1'
-          />
-        )}
-
         <Button
           type='submit'
-          className='mt-2'
+          className={authSubmitClassName}
           disabled={isLoading || isActive || !turnstileReady}
         >
           {isActive
@@ -158,6 +171,14 @@ export function ForgotPasswordForm({
           </div>
         )}
       </form>
+
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={isCaptchaDialogOpen}
+          onOpenChange={setIsCaptchaDialogOpen}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
     </Form>
   )
 }

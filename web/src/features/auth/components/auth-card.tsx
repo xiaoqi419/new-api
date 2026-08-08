@@ -48,9 +48,14 @@ export function AuthDivider({ children }: { children: React.ReactNode }) {
 
 export function AuthCard({
   children,
+  title,
+  description,
   className,
 }: {
   children: React.ReactNode
+  /** Pages without the sign-in/sign-up tab strip name themselves here instead. */
+  title?: React.ReactNode
+  description?: React.ReactNode
   className?: string
 }) {
   const { t } = useTranslation()
@@ -84,6 +89,19 @@ export function AuthCard({
           </h1>
         )}
       </Link>
+
+      {(title || description) && (
+        <div className='mb-[22px] space-y-1.5 text-center'>
+          {title && (
+            <h2 className='text-xl font-semibold tracking-tight'>{title}</h2>
+          )}
+          {description && (
+            <p className='text-muted-foreground text-sm leading-relaxed'>
+              {description}
+            </p>
+          )}
+        </div>
+      )}
 
       {children}
     </div>

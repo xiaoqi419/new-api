@@ -29,8 +29,14 @@ import { Label } from '@/components/ui/label'
 import { useCountdown } from '@/hooks/use-countdown'
 import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import { cn } from '@/lib/utils'
 
 import { AuthLayout } from '../auth-layout'
+import {
+  authInputClassName,
+  authSubmitClassName,
+  AuthCard,
+} from '../components/auth-card'
 
 export type ResetPasswordSearchParams = {
   email?: string
@@ -105,21 +111,24 @@ export function ResetPasswordConfirm({
     }
   }
 
-  return (
-    <AuthLayout>
-      <div className='w-full space-y-8'>
-        <div className='space-y-2'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Reset password')}
-          </h2>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {newPassword
-              ? t('auth.resetPasswordConfirm.success')
-              : t('auth.resetPasswordConfirm.description')}
-          </p>
-        </div>
+  let submitLabel = t('auth.resetPasswordConfirm.confirm')
+  if (newPassword) {
+    submitLabel = t('auth.resetPasswordConfirm.backToLogin')
+  } else if (isActive) {
+    submitLabel = t('auth.resetPasswordConfirm.retry', { seconds: secondsLeft })
+  }
 
-        <div className='space-y-4'>
+  return (
+    <AuthLayout showMobileBrandMark={false}>
+      <AuthCard
+        title={t('Reset password')}
+        description={
+          newPassword
+            ? t('auth.resetPasswordConfirm.success')
+            : t('auth.resetPasswordConfirm.description')
+        }
+      >
+        <div className='space-y-[18px]'>
           {!isValidResetLink && (
             <Alert variant='destructive'>
               <AlertDescription>
@@ -136,6 +145,7 @@ export function ResetPasswordConfirm({
               value={email || ''}
               disabled
               placeholder={t('Waiting for email...')}
+              className={authInputClassName}
             />
           </div>
 
@@ -147,12 +157,13 @@ export function ResetPasswordConfirm({
                   id='password'
                   value={newPassword}
                   disabled
-                  className='font-mono'
+                  className={cn('font-mono', authInputClassName)}
                 />
                 <Button
                   type='button'
                   size='icon'
                   variant='outline'
+                  className='size-[39px] rounded-[9px]'
                   onClick={handleCopy}
                 >
                   {copied ? (
@@ -169,7 +180,7 @@ export function ResetPasswordConfirm({
           )}
 
           <Button
-            className='w-full'
+            className={cn('w-full', authSubmitClassName)}
             onClick={
               newPassword
                 ? () => navigate({ to: '/sign-in', replace: true })
@@ -179,13 +190,7 @@ export function ResetPasswordConfirm({
               newPassword ? false : loading || isActive || !isValidResetLink
             }
           >
-            {newPassword
-              ? t('auth.resetPasswordConfirm.backToLogin')
-              : isActive
-                ? t('auth.resetPasswordConfirm.retry', {
-                    seconds: secondsLeft,
-                  })
-                : t('auth.resetPasswordConfirm.confirm')}
+            {submitLabel}
           </Button>
 
           {!newPassword && (
@@ -198,7 +203,7 @@ export function ResetPasswordConfirm({
             </Button>
           )}
         </div>
-      </div>
+      </AuthCard>
     </AuthLayout>
   )
 }

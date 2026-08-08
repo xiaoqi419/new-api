@@ -43,7 +43,9 @@ export function AuthTabs({
 
   const canRegister =
     !status?.self_use_mode_enabled && status?.register_enabled !== false
-  if (!canRegister) return null
+  // Still shown on the sign-up page when registration is closed, otherwise a
+  // direct visit to /sign-up would have no way back to signing in.
+  if (!canRegister && active === 'sign-in') return null
 
   return (
     <div

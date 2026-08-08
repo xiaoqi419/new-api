@@ -16,9 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
-
 import { useStatus } from '@/hooks/use-status'
 
 import { AuthLayout } from '../auth-layout'
@@ -27,23 +24,12 @@ import { TermsFooter } from '../components/terms-footer'
 import { SignUpForm } from './components/sign-up-form'
 
 export function SignUp() {
-  const { t } = useTranslation()
   const { status } = useStatus()
 
   return (
     <AuthLayout showMobileBrandMark={false}>
       <AuthCard>
         <SignUpForm />
-
-        <p className='text-muted-foreground mt-[14px] text-center text-sm'>
-          {t('Already have an account?')}
-          <Link
-            to='/sign-in'
-            className='text-primary ms-1.5 font-bold hover:underline'
-          >
-            {t('Sign in')}
-          </Link>
-        </p>
 
         <TermsFooter
           variant='sign-up'

@@ -43,6 +43,10 @@ import {
 } from '@/components/ui/input-otp'
 import { login2fa } from '@/features/auth/api'
 import {
+  authInputClassName,
+  authSubmitClassName,
+} from '@/features/auth/components/auth-card'
+import {
   otpFormSchema,
   OTP_LENGTH,
   BACKUP_CODE_LENGTH,
@@ -134,10 +138,6 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
     form.setValue('otp', '')
   }
 
-  function handleBackToLogin() {
-    redirectToLogin()
-  }
-
   const isFormValid = useBackupCode
     ? otp.length >= BACKUP_CODE_LENGTH
     : otp.length >= OTP_LENGTH
@@ -164,7 +164,7 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
                     {...field}
                     maxLength={BACKUP_CODE_LENGTH}
                     autoComplete='off'
-                    className='font-mono uppercase'
+                    className={cn('font-mono uppercase', authInputClassName)}
                     onChange={(e) => {
                       const formatted = formatBackupCode(e.target.value)
                       field.onChange(formatted)
@@ -174,7 +174,7 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
                   <InputOTP
                     maxLength={OTP_LENGTH}
                     {...field}
-                    containerClassName='justify-between sm:[&>[data-slot="input-otp-group"]>div]:w-12'
+                    containerClassName='justify-between [&_[data-slot="input-otp-slot"]]:h-[39px] sm:[&>[data-slot="input-otp-group"]>div]:w-12'
                   >
                     <InputOTPGroup>
                       <InputOTPSlot index={0} />
@@ -205,14 +205,14 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
 
         <Button
           type='submit'
-          className='mt-2 w-full'
+          className={cn('w-full', authSubmitClassName)}
           disabled={!isFormValid || isLoading}
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
           {t('Verify and Sign In')}
         </Button>
 
-        <div className='flex items-center justify-center gap-2 text-sm'>
+        <div className='flex items-center justify-center text-sm'>
           <Button
             type='button'
             variant='link'
@@ -221,16 +221,6 @@ export function OtpForm({ className, ...props }: OtpFormProps) {
             onClick={handleToggleMode}
           >
             {useBackupCode ? t('Use authenticator code') : t('Use backup code')}
-          </Button>
-          <span className='text-muted-foreground'>·</span>
-          <Button
-            type='button'
-            variant='link'
-            size='sm'
-            className='text-primary h-auto p-0'
-            onClick={handleBackToLogin}
-          >
-            {t('Back to login')}
           </Button>
         </div>
       </form>
