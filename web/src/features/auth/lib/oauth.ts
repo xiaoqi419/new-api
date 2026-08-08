@@ -88,7 +88,9 @@ export function getAvailableOAuthProviders(
 }
 
 /**
- * Check if any OAuth provider is available
+ * Check if any OAuth provider is available. Must stay in step with the tiles the
+ * OAuthProviders component builds, since pages use this to decide whether the
+ * divider below them has anything to sit under.
  */
 export function hasOAuthProviders(status: SystemStatus | null): boolean {
   if (!status) return false
@@ -98,6 +100,7 @@ export function hasOAuthProviders(status: SystemStatus | null): boolean {
     status.oidc_enabled ||
     status.linuxdo_oauth ||
     status.telegram_oauth ||
-    status.wechat_login
+    status.wechat_login ||
+    status.custom_oauth_providers?.length
   )
 }

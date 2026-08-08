@@ -193,6 +193,11 @@ For commercial licensing, please contact support@quantumnous.com
   --table-disabled: oklch(0.962 0.016 350);
   --table-disabled-hover: oklch(0.95 0.02 350);
   --table-disabled-border: oklch(0.9 0.028 350);
+  /* 暖桃 → 珊瑚 → 洋红，按饱和度采样自品牌字母标。不随亮暗色切换，
+   * 因为这是品牌固有色而非主题派生色；首页字标与登录卡字标共用这一组。 */
+  --brand-wordmark-from: #f89f5a;
+  --brand-wordmark-via: #f7758f;
+  --brand-wordmark-to: #f072d3;
 }
 
 .dark {

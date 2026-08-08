@@ -29,6 +29,8 @@ import { parseLoginPageConfig } from './lib/login-page-config'
 
 type AuthLayoutProps = {
   children: React.ReactNode
+  /** Off for pages whose card already carries a centred brand mark. */
+  showMobileBrandMark?: boolean
 }
 
 function BrandMark({ className }: { className?: string }) {
@@ -63,7 +65,10 @@ function BrandMark({ className }: { className?: string }) {
   )
 }
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({
+  children,
+  showMobileBrandMark = true,
+}: AuthLayoutProps) {
   const { systemName } = useSystemConfig()
   const { status } = useStatus()
 
@@ -136,10 +141,12 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
       {/* Form panel */}
       <div className='relative flex flex-col'>
-        <div className='p-4 sm:p-6 lg:hidden'>
-          <BrandMark className='w-fit' />
-        </div>
-        <div className='flex flex-1 items-center justify-center px-4 pb-12 sm:px-8'>
+        {showMobileBrandMark && (
+          <div className='p-4 sm:p-6 lg:hidden'>
+            <BrandMark className='w-fit' />
+          </div>
+        )}
+        <div className='flex flex-1 items-center justify-center px-4 py-12 sm:px-8'>
           <div className='w-full max-w-[400px]'>{children}</div>
         </div>
       </div>

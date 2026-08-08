@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { ClickCaptcha } from '@/components/click-captcha'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
 import { Dialog } from '@/components/dialog'
 import { Loader2, LogIn, KeyRound } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
@@ -42,15 +42,25 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { login, wechatLoginByCode } from '@/features/auth/api'
-import { LegalConsent } from '@/features/auth/components/legal-consent'
+import {
+  AuthDivider,
+  authInputClassName,
+  authSecondaryButtonClassName,
+  authSubmitClassName,
+} from '@/features/auth/components/auth-card'
+import { AuthTabs } from '@/features/auth/components/auth-tabs'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { WeChatMpLoginDialog } from '@/features/auth/components/wechat-mp-login-dialog'
 import { loginFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
-import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
+import {
+  toCaptchaQuery,
+  useClickCaptchaEnabled,
+} from '@/features/auth/hooks/use-click-captcha'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
+import { hasOAuthProviders } from '@/features/auth/lib/oauth'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
-import type { AuthFormProps } from '@/features/auth/types'
+import type { AuthFormProps, ClickCaptchaSolution } from '@/features/auth/types'
 import { useStatus } from '@/hooks/use-status'
 import { isAuthBundle } from '@/lib/api'
 import {
@@ -70,12 +80,11 @@ export function UserAuthForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [wechatCode, setWeChatCode] = useState('')
-  const [agreedToLegal, setAgreedToLegal] = useState(false)
   const [passkeySupported, setPasskeySupported] = useState(false)
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
   const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
-  const legalConsentErrorMessage = t('Please agree to the legal terms first')
+  const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
   const loginFailedMessage = t('Login failed')
 
   const { status } = useStatus()
@@ -93,48 +102,18 @@ export function UserAuthForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
-  const {
-    isClickCaptchaEnabled,
-    setSolution: setCaptchaSolution,
-    resetSignal: captchaResetSignal,
-    resetClickCaptcha,
-    validateClickCaptcha,
-    captchaQuery,
-  } = useClickCaptcha()
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
   const { handleLoginSuccess, redirectTo2FA } = useAuthRedirect()
   const setPending2FAFlowToken = useAuthStore(
     (state) => state.auth.setPending2FAFlowToken
   )
 
-  const hasUserAgreement = Boolean(status?.user_agreement_enabled)
-  const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
-  const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
-  const passkeyButtonDisabled =
-    isPasskeyLoading ||
-    !passkeySupported ||
-    (requiresLegalConsent && !agreedToLegal)
+  const passkeyButtonDisabled = isPasskeyLoading || !passkeySupported
   const hasWeChatLogin = Boolean(status?.wechat_login)
   // Built-in Official Account flow: the site issues the code and polls. The
   // legacy external wechat-server flow makes the user type in a code instead.
   const usesWeChatMpFlow = Boolean(status?.wechat_mp ?? status?.data?.wechat_mp)
-  const hasOAuthLogin = Boolean(
-    status?.github_oauth ||
-    status?.discord_oauth ||
-    status?.oidc_enabled ||
-    status?.linuxdo_oauth ||
-    status?.telegram_oauth ||
-    (status?.custom_oauth_providers?.length ?? 0) > 0
-  )
-  const hasAlternativeLogin =
-    passkeyLoginEnabled || hasWeChatLogin || hasOAuthLogin
-
-  useEffect(() => {
-    if (requiresLegalConsent) {
-      setAgreedToLegal(false)
-    } else {
-      setAgreedToLegal(true)
-    }
-  }, [requiresLegalConsent])
+  const hasAlternativeLogin = passkeyLoginEnabled || hasOAuthProviders(status)
 
   useEffect(() => {
     detectPasskeySupport()
@@ -164,25 +143,17 @@ export function UserAuthForm({
     )
   }, [status])
 
-  async function onSubmit(data: z.infer<typeof loginFormSchema>) {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
-    if (!validateTurnstile()) return
-    if (!validateClickCaptcha()) return
-
+  async function submitLogin(
+    data: z.infer<typeof loginFormSchema>,
+    captchaSolution: ClickCaptchaSolution | null
+  ) {
     setIsLoading(true)
-    // A click captcha is spent on the first check, so anything short of a
-    // successful sign-in has to start over with a fresh image.
-    let captchaAccepted = false
     try {
       const res = await login({
         username: data.username,
         password: data.password,
         turnstile: turnstileToken,
-        captcha: captchaQuery,
+        captcha: toCaptchaQuery(captchaSolution),
       })
 
       if (res.success) {
@@ -191,7 +162,6 @@ export function UserAuthForm({
             throw new Error(t('Login flow expired. Please sign in again.'))
           }
           setPending2FAFlowToken(res.data.flow_token)
-          captchaAccepted = true
           redirectTo2FA()
           return
         }
@@ -200,7 +170,6 @@ export function UserAuthForm({
           throw new Error(t('Login failed'))
         }
         await handleLoginSuccess(res.data, redirectTo)
-        captchaAccepted = true
         toast.success(t('Welcome back!'))
       }
     } catch (error: unknown) {
@@ -208,17 +177,26 @@ export function UserAuthForm({
       toast.error(error instanceof Error ? error.message : loginFailedMessage)
     } finally {
       setIsLoading(false)
-      if (!captchaAccepted) resetClickCaptcha()
     }
   }
 
-  const handleOpenWeChatDialog = () => {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
+  function onSubmit(data: z.infer<typeof loginFormSchema>) {
+    if (!validateTurnstile()) return
+
+    // The captcha is asked for last: a challenge is spent on the first check
+    // either way, so it is only worth showing once the form is otherwise ready.
+    if (isClickCaptchaEnabled) {
+      setIsCaptchaDialogOpen(true)
       return
     }
+    void submitLogin(data, null)
+  }
 
-    setIsWeChatDialogOpen(true)
+  // Closing the dialog unmounts the puzzle, so a rejected sign-in gets a fresh
+  // image on the next attempt without any explicit reset.
+  const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
+    setIsCaptchaDialogOpen(false)
+    void form.handleSubmit((data) => submitLogin(data, solution))()
   }
 
   const handleWeChatDialogChange = (open: boolean) => {
@@ -255,11 +233,6 @@ export function UserAuthForm({
   }
 
   async function handlePasskeyLogin() {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
     if (!passkeySupported) {
       toast.error(t('Passkey is not supported on this device'))
       return
@@ -326,54 +299,55 @@ export function UserAuthForm({
     }
   }
 
-  const alternativeLoginMethods = (
-    <>
-      {passkeyLoginEnabled && (
-        <div className='mt-2 space-y-1'>
-          <Button
-            type='button'
-            variant='outline'
-            disabled={passkeyButtonDisabled}
-            onClick={handlePasskeyLogin}
-            className='h-11 w-full justify-center gap-2 rounded-lg'
-          >
-            {isPasskeyLoading ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
-            ) : (
-              <KeyRound className='h-4 w-4' />
-            )}
-            {t('Sign in with Passkey')}
-          </Button>
-          {!passkeySupported && (
-            <p className='text-muted-foreground text-xs'>
-              {t('Passkey is not supported on this device.')}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* OAuth Providers */}
-      <OAuthProviders
-        status={status}
-        redirectTo={redirectTo}
-        disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
-        onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
-        isWeChatLoading={isWeChatSubmitting}
-      />
-    </>
-  )
-
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('grid gap-[18px]', className)}
         {...props}
       >
-        {hasAlternativeLogin && alternativeLoginMethods}
+        {passkeyLoginEnabled && (
+          <div className='space-y-1'>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={passkeyButtonDisabled}
+              onClick={handlePasskeyLogin}
+              className={cn(authSecondaryButtonClassName, 'w-full')}
+            >
+              {isPasskeyLoading ? (
+                <Loader2 className='size-[19px] animate-spin' />
+              ) : (
+                <KeyRound className='size-[19px]' />
+              )}
+              {t('Sign in with Passkey')}
+            </Button>
+            {!passkeySupported && (
+              <p className='text-muted-foreground text-xs'>
+                {t('Passkey is not supported on this device.')}
+              </p>
+            )}
+          </div>
+        )}
+
+        <OAuthProviders
+          status={status}
+          redirectTo={redirectTo}
+          disabled={isLoading}
+          onWeChatLogin={
+            hasWeChatLogin ? () => setIsWeChatDialogOpen(true) : undefined
+          }
+          isWeChatLoading={isWeChatSubmitting}
+        />
 
         {passwordLoginEnabled && (
           <>
+            {hasAlternativeLogin && (
+              <AuthDivider>{t('Or sign in with your account')}</AuthDivider>
+            )}
+
+            <AuthTabs active='sign-in' />
+
             {/* Username Field */}
             <FormField
               control={form.control}
@@ -384,6 +358,7 @@ export function UserAuthForm({
                   <FormControl>
                     <Input
                       placeholder={t('Enter your username or email')}
+                      className={authInputClassName}
                       {...field}
                     />
                   </FormControl>
@@ -402,6 +377,7 @@ export function UserAuthForm({
                   <FormControl>
                     <PasswordInput
                       placeholder={t('Enter password')}
+                      className={authInputClassName}
                       {...field}
                     />
                   </FormControl>
@@ -416,19 +392,11 @@ export function UserAuthForm({
               )}
             />
 
-            {isClickCaptchaEnabled && (
-              <ClickCaptcha
-                onSolvedChange={setCaptchaSolution}
-                resetSignal={captchaResetSignal}
-                className='mt-1'
-              />
-            )}
-
             {/* Submit Button */}
             <Button
               type='submit'
-              className='mt-2 w-full justify-center gap-2'
-              disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
+              className={authSubmitClassName}
+              disabled={isLoading}
             >
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
               {t('Sign in')}
@@ -436,25 +404,22 @@ export function UserAuthForm({
 
             {/* Turnstile */}
             {isTurnstileEnabled && (
-              <div className='mt-2'>
-                <Turnstile
-                  siteKey={turnstileSiteKey}
-                  onVerify={setTurnstileToken}
-                />
-              </div>
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                onVerify={setTurnstileToken}
+              />
             )}
           </>
         )}
-
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
-        />
-
-        {!hasAlternativeLogin && alternativeLoginMethods}
       </form>
+
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={isCaptchaDialogOpen}
+          onOpenChange={setIsCaptchaDialogOpen}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
 
       {hasWeChatLogin && usesWeChatMpFlow && (
         <WeChatMpLoginDialog
@@ -489,11 +454,7 @@ export function UserAuthForm({
               <Button
                 type='button'
                 onClick={handleWeChatLogin}
-                disabled={
-                  isWeChatSubmitting ||
-                  !wechatCode.trim() ||
-                  (requiresLegalConsent && !agreedToLegal)
-                }
+                disabled={isWeChatSubmitting || !wechatCode.trim()}
                 className='gap-2'
               >
                 {isWeChatSubmitting ? (

@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { ClickCaptcha } from '@/components/click-captcha'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
 import { Dialog } from '@/components/dialog'
 import { Loader2 } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
@@ -40,17 +40,28 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { register, wechatLoginByCode } from '@/features/auth/api'
-import { LegalConsent } from '@/features/auth/components/legal-consent'
+import {
+  AuthDivider,
+  authInputClassName,
+  authSecondaryButtonClassName,
+  authSubmitClassName,
+} from '@/features/auth/components/auth-card'
+import { AuthTabs } from '@/features/auth/components/auth-tabs'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
-import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
+import {
+  toCaptchaQuery,
+  useClickCaptchaEnabled,
+} from '@/features/auth/hooks/use-click-captcha'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
+import { hasOAuthProviders } from '@/features/auth/lib/oauth'
 import {
   getAffiliateCode,
   saveAffiliateCode,
 } from '@/features/auth/lib/storage'
+import type { ClickCaptchaSolution } from '@/features/auth/types'
 import { useStatus } from '@/hooks/use-status'
 import { isAuthBundle } from '@/lib/api'
 import { getServerErrorMessageKey } from '@/lib/server-error-message'
@@ -63,12 +74,11 @@ export function SignUpForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
-  const [agreedToLegal, setAgreedToLegal] = useState(false)
   const [wechatCode, setWeChatCode] = useState('')
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
   const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
+  const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
-  const legalConsentErrorMessage = t('Please agree to the legal terms first')
 
   const { status } = useStatus()
   const {
@@ -78,14 +88,7 @@ export function SignUpForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
-  const {
-    isClickCaptchaEnabled,
-    setSolution: setCaptchaSolution,
-    resetSignal: captchaResetSignal,
-    resetClickCaptcha,
-    validateClickCaptcha,
-    captchaQuery,
-  } = useClickCaptcha()
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
   const { redirectToLogin, handleLoginSuccess } = useAuthRedirect()
   const {
     isSending: isSendingCode,
@@ -109,9 +112,6 @@ export function SignUpForm({
 
   const emailValue = form.watch('email')
   const emailVerificationRequired = !!status?.email_verification
-  const hasUserAgreement = Boolean(status?.user_agreement_enabled)
-  const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
-  const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
   const oauthRegisterEnabled =
     status?.oauth_register_enabled ??
     status?.data?.oauth_register_enabled ??
@@ -134,26 +134,42 @@ export function SignUpForm({
   }, [status])
 
   useEffect(() => {
-    if (requiresLegalConsent) {
-      setAgreedToLegal(false)
-    } else {
-      setAgreedToLegal(true)
-    }
-  }, [requiresLegalConsent])
-
-  useEffect(() => {
     const aff = new URLSearchParams(window.location.search).get('aff')?.trim()
     if (aff) {
       saveAffiliateCode(aff)
     }
   }, [])
 
-  async function onSubmit(data: z.infer<typeof registerFormSchema>) {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
+  async function submitRegistration(
+    data: z.infer<typeof registerFormSchema>,
+    captchaSolution: ClickCaptchaSolution | null
+  ) {
+    setIsLoading(true)
+    try {
+      const res = await register({
+        username: data.username,
+        password: data.password,
+        email: data.email || undefined,
+        verification_code: verificationCode || undefined,
+        aff_code: getAffiliateCode(),
+        turnstile: turnstileToken,
+        captcha: toCaptchaQuery(captchaSolution),
+      })
 
+      if (res?.success) {
+        toast.success(t('Account created! Please sign in'))
+        redirectToLogin()
+      } else {
+        toast.error(res?.message || t('Failed to create account'))
+      }
+    } catch {
+      // Errors are handled by global interceptor
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function onSubmit(data: z.infer<typeof registerFormSchema>) {
     // Validate email verification if required
     if (emailVerificationRequired) {
       if (!data.email) {
@@ -167,36 +183,21 @@ export function SignUpForm({
     }
 
     if (!validateTurnstile()) return
-    if (!validateClickCaptcha()) return
 
-    setIsLoading(true)
-    // The server spends a click captcha on the first check, so a rejected
-    // registration needs a fresh image rather than the solved one.
-    let captchaAccepted = false
-    try {
-      const res = await register({
-        username: data.username,
-        password: data.password,
-        email: data.email || undefined,
-        verification_code: verificationCode || undefined,
-        aff_code: getAffiliateCode(),
-        turnstile: turnstileToken,
-        captcha: captchaQuery,
-      })
-
-      if (res?.success) {
-        captchaAccepted = true
-        toast.success(t('Account created! Please sign in'))
-        redirectToLogin()
-      } else {
-        toast.error(res?.message || t('Failed to create account'))
-      }
-    } catch {
-      // Errors are handled by global interceptor
-    } finally {
-      setIsLoading(false)
-      if (!captchaAccepted) resetClickCaptcha()
+    // The captcha is asked for last: a challenge is spent on the first check
+    // either way, so it is only worth showing once the form is otherwise ready.
+    if (isClickCaptchaEnabled) {
+      setIsCaptchaDialogOpen(true)
+      return
     }
+    void submitRegistration(data, null)
+  }
+
+  // Closing the dialog unmounts the puzzle, so a rejected registration gets a
+  // fresh image on the next attempt without any explicit reset.
+  const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
+    setIsCaptchaDialogOpen(false)
+    void form.handleSubmit((data) => submitRegistration(data, solution))()
   }
 
   async function handleSendVerificationCode() {
@@ -204,15 +205,6 @@ export function SignUpForm({
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
     }
-  }
-
-  const handleOpenWeChatDialog = () => {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
-    setIsWeChatDialogOpen(true)
   }
 
   const handleWeChatDialogChange = (open: boolean) => {
@@ -261,9 +253,27 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('grid gap-[18px]', className)}
         {...props}
       >
+        {oauthRegisterEnabled && (
+          <>
+            <OAuthProviders
+              status={status}
+              disabled={isLoading}
+              onWeChatLogin={
+                hasWeChatLogin ? () => setIsWeChatDialogOpen(true) : undefined
+              }
+              isWeChatLoading={isWeChatSubmitting}
+            />
+            {hasOAuthProviders(status) && (
+              <AuthDivider>{t('Or sign up with your account')}</AuthDivider>
+            )}
+          </>
+        )}
+
+        <AuthTabs active='sign-up' />
+
         {/* Username Field */}
         <FormField
           control={form.control}
@@ -272,40 +282,11 @@ export function SignUpForm({
             <FormItem>
               <FormLabel>{t('Username')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('Enter your username')} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Password Field */}
-        <FormField
-          control={form.control}
-          name='password'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('Password')}</FormLabel>
-              <FormControl>
-                <PasswordInput
-                  placeholder={t('Enter password (8-20 characters)')}
+                <Input
+                  placeholder={t('Enter your username')}
+                  className={authInputClassName}
                   {...field}
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Confirm Password Field */}
-        <FormField
-          control={form.control}
-          name='confirmPassword'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('Confirm password')}</FormLabel>
-              <FormControl>
-                <PasswordInput placeholder={t('Confirm password')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -328,6 +309,7 @@ export function SignUpForm({
                     <Input
                       placeholder={t('name@example.com')}
                       type='email'
+                      className={authInputClassName}
                       {...field}
                     />
                   </FormControl>
@@ -343,6 +325,7 @@ export function SignUpForm({
                   placeholder={t('Verification code')}
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
+                  className={authInputClassName}
                 />
               </div>
               <Button
@@ -356,6 +339,7 @@ export function SignUpForm({
                   !turnstileReady
                 }
                 onClick={handleSendVerificationCode}
+                className={cn(authSecondaryButtonClassName, 'px-[14px]')}
               >
                 {verificationCodeAction}
               </Button>
@@ -363,56 +347,71 @@ export function SignUpForm({
           </>
         )}
 
-        {/* Turnstile */}
-        {isTurnstileEnabled && (
-          <div className='mt-2'>
-            <Turnstile
-              key={turnstileWidgetKey}
-              siteKey={turnstileSiteKey}
-              onVerify={setTurnstileToken}
-            />
-          </div>
-        )}
-
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
+        {/* Password Field */}
+        <FormField
+          control={form.control}
+          name='password'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Password')}</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder={t('Enter password (8-20 characters)')}
+                  className={authInputClassName}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
 
-        {isClickCaptchaEnabled && (
-          <ClickCaptcha
-            onSolvedChange={setCaptchaSolution}
-            resetSignal={captchaResetSignal}
-            className='mt-1'
+        {/* Confirm Password Field */}
+        <FormField
+          control={form.control}
+          name='confirmPassword'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Confirm password')}</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder={t('Confirm password')}
+                  className={authInputClassName}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Turnstile */}
+        {isTurnstileEnabled && (
+          <Turnstile
+            key={turnstileWidgetKey}
+            siteKey={turnstileSiteKey}
+            onVerify={setTurnstileToken}
           />
         )}
 
         {/* Submit Button */}
         <Button
           type='submit'
-          className='mt-2 w-full justify-center gap-2'
-          disabled={
-            isLoading ||
-            (requiresLegalConsent && !agreedToLegal) ||
-            !turnstileReady
-          }
+          className={authSubmitClassName}
+          disabled={isLoading || !turnstileReady}
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
           {t('Create account')}
         </Button>
-
-        {oauthRegisterEnabled && (
-          <OAuthProviders
-            status={status}
-            disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
-            onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
-            isWeChatLoading={isWeChatSubmitting}
-            className='pt-2'
-          />
-        )}
       </form>
+
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={isCaptchaDialogOpen}
+          onOpenChange={setIsCaptchaDialogOpen}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
 
       {hasWeChatLogin && (
         <Dialog
@@ -439,11 +438,7 @@ export function SignUpForm({
               <Button
                 type='button'
                 onClick={handleWeChatLogin}
-                disabled={
-                  isWeChatSubmitting ||
-                  !wechatCode.trim() ||
-                  (requiresLegalConsent && !agreedToLegal)
-                }
+                disabled={isWeChatSubmitting || !wechatCode.trim()}
                 className='gap-2'
               >
                 {isWeChatSubmitting ? (

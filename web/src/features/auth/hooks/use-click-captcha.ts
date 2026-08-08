@@ -20,19 +20,33 @@ import i18next from 'i18next'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { ClickCaptchaSolution } from '@/features/auth/types'
+import type { CaptchaQuery, ClickCaptchaSolution } from '@/features/auth/types'
 import { useStatus } from '@/hooks/use-status'
+
+/** The query shape every captcha-guarded endpoint expects for a solved challenge. */
+export function toCaptchaQuery(
+  solution: ClickCaptchaSolution | null
+): CaptchaQuery {
+  return solution
+    ? { captcha_id: solution.id, captcha_points: solution.points }
+    : {}
+}
+
+export function useClickCaptchaEnabled(): boolean {
+  const { status } = useStatus()
+  return status?.click_captcha_enabled === true
+}
 
 /**
  * State for the self-hosted click captcha, shaped like useTurnstile so a form can
- * carry both without special cases.
+ * carry both without special cases. Forms that ask for the captcha in a dialog
+ * only need `useClickCaptchaEnabled` plus `toCaptchaQuery`.
  */
 export function useClickCaptcha() {
-  const { status } = useStatus()
   const [solution, setSolution] = useState<ClickCaptchaSolution | null>(null)
   const [resetSignal, setResetSignal] = useState(0)
 
-  const isClickCaptchaEnabled = status?.click_captcha_enabled === true
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
 
   const validateClickCaptcha = (): boolean => {
     if (isClickCaptchaEnabled && !solution) {
@@ -51,9 +65,7 @@ export function useClickCaptcha() {
     setResetSignal((value) => value + 1)
   }, [])
 
-  const captchaQuery = solution
-    ? { captcha_id: solution.id, captcha_points: solution.points }
-    : {}
+  const captchaQuery = toCaptchaQuery(solution)
 
   return {
     isClickCaptchaEnabled,

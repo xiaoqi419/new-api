@@ -40,11 +40,13 @@ export function PasswordInput({
   const [showPassword, setShowPassword] = React.useState(false)
 
   return (
-    <div className={cn('relative rounded-md', className)}>
+    <div className='relative'>
       <Input
         type={showPassword ? 'text' : 'password'}
         ref={ref}
         disabled={disabled}
+        // Trailing padding last so the value never runs under the toggle.
+        className={cn(className, 'pe-9')}
         {...props}
       />
       <Button
