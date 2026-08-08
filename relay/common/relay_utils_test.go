@@ -140,3 +140,32 @@ func TestTaskDurationBounds(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateTaskDurationBoundsAcceptsAutoSentinel(t *testing.T) {
+	cases := []struct {
+		name    string
+		req     TaskSubmitReq
+		wantErr bool
+	}{
+		{"auto via duration", TaskSubmitReq{Duration: AutoTaskDurationSeconds}, false},
+		{"auto via seconds", TaskSubmitReq{Seconds: "-1"}, false},
+		{"unset", TaskSubmitReq{}, false},
+		{"positive", TaskSubmitReq{Duration: 30}, false},
+		{"upper bound", TaskSubmitReq{Duration: MaxTaskDurationSeconds}, false},
+		{"other negative", TaskSubmitReq{Duration: -2}, true},
+		{"other negative via seconds", TaskSubmitReq{Seconds: "-5"}, true},
+		{"above upper bound", TaskSubmitReq{Duration: MaxTaskDurationSeconds + 1}, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskErr := validateTaskDurationBounds(tc.req)
+			if tc.wantErr {
+				require.NotNil(t, taskErr)
+				assert.Equal(t, "invalid_seconds", taskErr.Code)
+				return
+			}
+			assert.Nil(t, taskErr)
+		})
+	}
+}

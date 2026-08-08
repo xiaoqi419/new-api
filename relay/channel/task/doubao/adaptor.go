@@ -277,7 +277,7 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		return nil, errors.Wrap(err, "unmarshal metadata failed")
 	}
 
-	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
+	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 || sec == relaycommon.AutoTaskDurationSeconds {
 		r.Duration = lo.ToPtr(dto.IntValue(sec))
 	}
 
@@ -319,6 +319,15 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		taskResult.Status = model.TaskStatusFailure
 		taskResult.Progress = "100%"
 		taskResult.Reason = resTask.Error.Message
+	case "cancelled", "expired":
+		// Both are terminal upstream; without them the poller keeps asking until
+		// the global task timeout and the refund is delayed by up to a day.
+		taskResult.Status = model.TaskStatusFailure
+		taskResult.Progress = "100%"
+		taskResult.Reason = resTask.Error.Message
+		if taskResult.Reason == "" {
+			taskResult.Reason = "task " + resTask.Status
+		}
 	default:
 		// Unknown status, treat as processing
 		taskResult.Status = model.TaskStatusInProgress

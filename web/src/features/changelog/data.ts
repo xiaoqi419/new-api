@@ -29,6 +29,25 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-08',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '豆包视频渠道的模型清单里补上了 Seedance 2.5(doubao-seedance-2-5-260628),新建渠道时可以直接勾选,不用再手打模型名。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复视频时长填 -1 被拒的问题。-1 的意思是「让模型自己决定多长」,Seedance 2.5 默认就是这个值,它的改视频功能更是只认这个值,之前会直接报「时长必须在 1 到 3600 之间」,等于这些用法在本站完全用不了。',
+          '修复火山任务被取消或超时作废后一直空转的问题。这两种结果之前认不出来,会被当成「还在生成」继续轮询,直到撞上系统默认的 24 小时超时才判失败退款;现在拿到回执就立刻判失败并退款。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260808-4e9995e53',
     date: '2026-08-08',
     changes: [
