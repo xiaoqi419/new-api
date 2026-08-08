@@ -153,10 +153,10 @@ export async function requestWeChatMpBindCode(): Promise<
 }
 
 export async function checkWeChatMpBind(
-  code: string
+  token: string
 ): Promise<ApiResponse<WeChatMpPendingStatus>> {
   const res = await api.get('/api/user/wechat/mp/bind/check', {
-    params: { code },
+    params: { token },
     disableDuplicate: true,
     skipBusinessError: true,
     skipErrorHandler: true,

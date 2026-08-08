@@ -36,10 +36,11 @@ type WeChatMpCodeOptions = {
   active: boolean
   requestCode: () => Promise<WeChatMpCodeResponse>
   /**
-   * One poll tick. Return `true` once the verification completed so polling
-   * stops; the caller owns whatever happens next (sign-in, refetch, toast).
+   * One poll tick, keyed by the opaque poll token rather than the six-digit
+   * code. Return `true` once the verification completed so polling stops; the
+   * caller owns whatever happens next (sign-in, refetch, toast).
    */
-  checkOnce: (code: string) => Promise<boolean>
+  checkOnce: (token: string) => Promise<boolean>
 }
 
 /**
@@ -97,7 +98,8 @@ export function useWeChatMpCode(options: WeChatMpCodeOptions) {
       if (cancelled) return
 
       const issued = response.data?.code
-      if (!response.success || !issued) {
+      const pollToken = response.data?.token
+      if (!response.success || !issued || !pollToken) {
         setErrorMessage(response.message || '')
         setPhase('error')
         return
@@ -118,7 +120,7 @@ export function useWeChatMpCode(options: WeChatMpCodeOptions) {
       timer = setInterval(async () => {
         let done = false
         try {
-          done = await checkOnceRef.current(issued)
+          done = await checkOnceRef.current(pollToken)
         } catch {
           return
         }

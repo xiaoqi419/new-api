@@ -407,9 +407,10 @@ const PersonalSetting = () => {
     }
   };
 
-  const pollWeChatBind = async (code) => {
+  // 轮询用后端签发的令牌，六位验证码只用于手动发给公众号。
+  const pollWeChatBind = async (token) => {
     try {
-      const res = await API.get(`/api/user/wechat/mp/bind/check?code=${code}`);
+      const res = await API.get(`/api/user/wechat/mp/bind/check?token=${token}`);
       const { success, message, data } = res.data;
       if (!success) {
         stopWeChatBindPoll();
@@ -441,9 +442,9 @@ const PersonalSetting = () => {
       const { success, message, data } = res.data;
       if (success) {
         setWechatBindCode(data.code);
-        const code = data.code;
+        const token = data.token;
         wechatBindPollRef.current = setInterval(
-          () => pollWeChatBind(code),
+          () => pollWeChatBind(token),
           2500,
         );
       } else {

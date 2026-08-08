@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -28,6 +28,9 @@ import { checkWeChatMpLogin, requestWeChatMpLoginCode } from '../api'
 import { useAuthRedirect } from '../hooks/use-auth-redirect'
 import { useWeChatMpCode } from '../hooks/use-wechat-mp-code'
 import { WeChatMpCodePanel } from './wechat-mp-code-panel'
+import { WeChatMpUnboundPanel } from './wechat-mp-unbound-panel'
+
+type UnboundState = { token: string; registerEnabled: boolean }
 
 type WeChatMpLoginDialogProps = {
   open: boolean
@@ -38,10 +41,28 @@ type WeChatMpLoginDialogProps = {
 export function WeChatMpLoginDialog(props: WeChatMpLoginDialogProps) {
   const { t } = useTranslation()
   const { handleLoginSuccess } = useAuthRedirect()
+  const [unbound, setUnbound] = useState<UnboundState | null>(null)
+
+  useEffect(() => {
+    if (!props.open) setUnbound(null)
+  }, [props.open])
+
+  const finishSignIn = useCallback(
+    async (data: unknown) => {
+      if (!isAuthBundle(data)) {
+        toast.error(t('Sign in failed'))
+        return
+      }
+      await handleLoginSuccess(data, props.redirectTo)
+      toast.success(t('Signed in via WeChat'))
+      props.onOpenChange(false)
+    },
+    [handleLoginSuccess, props, t]
+  )
 
   const checkOnce = useCallback(
-    async (code: string) => {
-      const response = await checkWeChatMpLogin(code)
+    async (token: string) => {
+      const response = await checkWeChatMpLogin(token)
       if (!response?.success) {
         // A failed poll is terminal: the backend only answers with an error for
         // banned users, disabled registration, or a disabled integration.
@@ -49,15 +70,23 @@ export function WeChatMpLoginDialog(props: WeChatMpLoginDialogProps) {
         props.onOpenChange(false)
         return true
       }
+      const status = (response.data as { status?: string } | undefined)?.status
+      if (status === 'unbound') {
+        setUnbound({
+          token,
+          registerEnabled:
+            (response.data as { register_enabled?: boolean })
+              .register_enabled !== false,
+        })
+        return true
+      }
       if (!isAuthBundle(response.data)) {
         return false
       }
-      await handleLoginSuccess(response.data, props.redirectTo)
-      toast.success(t('Signed in via WeChat'))
-      props.onOpenChange(false)
+      await finishSignIn(response.data)
       return true
     },
-    [handleLoginSuccess, props, t]
+    [finishSignIn, props, t]
   )
 
   const mpCode = useWeChatMpCode({
@@ -71,9 +100,13 @@ export function WeChatMpLoginDialog(props: WeChatMpLoginDialogProps) {
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={t('Sign in with WeChat')}
-      description={t(
-        'Scan the QR code to follow the Official Account, then send it the code below.'
-      )}
+      description={
+        unbound
+          ? t('One more step before we sign you in.')
+          : t(
+              'Scan the QR code to follow the Official Account, then send it the code below.'
+            )
+      }
       contentClassName='max-w-sm'
       headerClassName='text-left'
       contentHeight='auto'
@@ -88,13 +121,21 @@ export function WeChatMpLoginDialog(props: WeChatMpLoginDialogProps) {
         </Button>
       }
     >
-      <WeChatMpCodePanel
-        phase={mpCode.phase}
-        code={mpCode.code}
-        qrCodeUrl={mpCode.qrCodeUrl}
-        errorMessage={mpCode.errorMessage}
-        onRefresh={mpCode.refresh}
-      />
+      {unbound ? (
+        <WeChatMpUnboundPanel
+          token={unbound.token}
+          registerEnabled={unbound.registerEnabled}
+          onAuthenticated={finishSignIn}
+        />
+      ) : (
+        <WeChatMpCodePanel
+          phase={mpCode.phase}
+          code={mpCode.code}
+          qrCodeUrl={mpCode.qrCodeUrl}
+          errorMessage={mpCode.errorMessage}
+          onRefresh={mpCode.refresh}
+        />
+      )}
     </Dialog>
   )
 }

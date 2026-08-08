@@ -192,17 +192,35 @@ const LoginForm = () => {
     navigate('/');
   };
 
-  const pollWeChatLogin = async (code) => {
+  // 轮询用后端签发的令牌，六位验证码只用于手动发给公众号。
+  const pollWeChatLogin = async (token) => {
     try {
-      const res = await API.get(`/api/wechat/mp/login/check?code=${code}`);
+      const res = await API.get(`/api/wechat/mp/login/check?token=${token}`);
       const { success, message, data } = res.data;
       if (!success) {
         stopWeChatPoll();
         showError(message);
         return;
       }
-      if (data && data.id) {
+      // 后端返回的是登录态整包（access_token / session / user），不是裸用户对象，
+      // 与下面密码登录走的是同一个 payload 形状。
+      if (data && data.user) {
         handleWeChatLoginSuccess(data);
+      } else if (data && data.status === 'unbound') {
+        // 经典界面不提供「绑定已有账号 / 新建账号」的选择弹窗，沿用原有的直接建号。
+        stopWeChatPoll();
+        try {
+          const registerRes = await API.post('/api/wechat/mp/login/register', {
+            token,
+          });
+          if (registerRes.data.success) {
+            handleWeChatLoginSuccess(registerRes.data.data);
+          } else {
+            showError(registerRes.data.message);
+          }
+        } catch {
+          showError(t('登录失败，请重试'));
+        }
       } else if (data && data.status === 'expired') {
         stopWeChatPoll();
         setWechatCode('');
@@ -223,8 +241,8 @@ const LoginForm = () => {
       const { success, message, data } = res.data;
       if (success) {
         setWechatCode(data.code);
-        const code = data.code;
-        wechatPollRef.current = setInterval(() => pollWeChatLogin(code), 2500);
+        const token = data.token;
+        wechatPollRef.current = setInterval(() => pollWeChatLogin(token), 2500);
       } else {
         showError(message);
       }

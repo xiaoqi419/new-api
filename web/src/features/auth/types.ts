@@ -93,6 +93,12 @@ export interface ApiResponse<T = unknown> {
 
 export interface WeChatMpCode {
   code: string
+  /**
+   * Opaque handle the browser polls with. Kept separate from `code` because
+   * `code` is only six digits and is meant to be typed into WeChat by hand;
+   * polling on it would let anyone brute-force their way into a session.
+   */
+  token: string
   qrcode: string
   /** Code lifetime in seconds. */
   expire: number
@@ -100,11 +106,14 @@ export interface WeChatMpCode {
 
 /**
  * Poll payload while the user has not replied yet. Once the Official Account
- * receives the code, the same endpoint answers with the login bundle (sign-in)
- * or `{ status: 'bound' }` (account binding) instead.
+ * receives the code, the same endpoint answers with the login bundle (sign-in),
+ * `{ status: 'bound' }` (account binding), or `{ status: 'unbound' }` when the
+ * openid belongs to nobody yet and the user still has to pick what to do.
  */
 export interface WeChatMpPendingStatus {
-  status: 'pending' | 'expired' | 'bound'
+  status: 'pending' | 'expired' | 'bound' | 'unbound'
+  /** Only present on `unbound`: whether new sign-ups are allowed at all. */
+  register_enabled?: boolean
 }
 
 // ============================================================================

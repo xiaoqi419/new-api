@@ -16,6 +16,9 @@ type verificationValue struct {
 const (
 	EmailVerificationPurpose = "v"
 	PasswordResetPurpose     = "r"
+	// WeChatBindPurpose 用于「微信首次登录时绑定到已有账号」的邮箱验证码。与注册
+	// 用的 EmailVerificationPurpose 分开，避免注册流程拿到的码被用来绑定他人账号。
+	WeChatBindPurpose = "wb"
 )
 
 var verificationMutex sync.Mutex

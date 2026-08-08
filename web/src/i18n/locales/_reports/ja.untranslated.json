@@ -1,6 +1,7 @@
 {
   "Add Tier": "Add Tier",
   "All models": "All models",
+  "AppSecret": "AppSecret",
   "Are you sure you want to delete this package? This cannot be undone.": "Are you sure you want to delete this package? This cannot be undone.",
   "Awaiting payment": "Awaiting payment",
   "Better with more": "Better with more",
@@ -95,6 +96,5 @@
   "WeChat payment QR code": "WeChat payment QR code",
   "When {{count}} people join, each gets": "When {{count}} people join, each gets",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
-  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends",
-  "AppSecret": "AppSecret"
+  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"
 }

@@ -60,7 +60,13 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/wechat/mp", controller.WeChatMpVerify)
 		apiRouter.POST("/wechat/mp", anonymousRequestBodyLimit, controller.WeChatMpMessage)
 		apiRouter.GET("/wechat/mp/login/code", middleware.CriticalRateLimit(), controller.WeChatMpLoginCode)
+		// login/check 由浏览器高频轮询，不能套 CriticalRateLimit，否则正常登录会被
+		// 自己的轮询打成 429；防爆破靠的是 128 位轮询令牌而不是限流。下面三个都是
+		// 一次性动作，按关键接口限流。
 		apiRouter.GET("/wechat/mp/login/check", controller.WeChatMpLoginCheck)
+		apiRouter.POST("/wechat/mp/login/register", middleware.CriticalRateLimit(), controller.WeChatMpLoginRegister)
+		apiRouter.GET("/wechat/mp/login/bind/verification", middleware.EmailVerificationRateLimit(), controller.WeChatMpLoginBindVerification)
+		apiRouter.POST("/wechat/mp/login/bind", middleware.CriticalRateLimit(), controller.WeChatMpLoginBind)
 		apiRouter.GET("/oauth/telegram/login", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.TelegramLogin)
 		apiRouter.POST("/oauth/telegram/bind/start", middleware.UserAuth(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.TelegramBindStart)
 		apiRouter.GET("/oauth/telegram/bind/:flow_token", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.TelegramBind)

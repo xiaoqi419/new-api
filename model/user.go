@@ -1188,6 +1188,25 @@ func IsWeChatIdAlreadyTaken(wechatId string) bool {
 	return DB.Unscoped().Where("wechat_id = ?", wechatId).Find(&User{}).RowsAffected == 1
 }
 
+// BindWeChatIdToUser 只写 wechat_id 一列，不回写整条用户快照，避免把并发发生的
+// 额度变动等改动覆盖掉。WHERE 里带上「当前未绑定」，两个请求同时绑同一账号时
+// 后到的一个会 RowsAffected==0 而不是静默顶替。
+func BindWeChatIdToUser(id int, wechatId string) error {
+	if id == 0 || wechatId == "" {
+		return errors.New("参数为空！")
+	}
+	result := DB.Model(&User{}).
+		Where("id = ? AND (wechat_id IS NULL OR wechat_id = ?)", id, "").
+		Update("wechat_id", wechatId)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("该账号已绑定其他微信，请先在个人中心解绑")
+	}
+	return nil
+}
+
 func IsGitHubIdAlreadyTaken(githubId string) bool {
 	return DB.Unscoped().Where("github_id = ?", githubId).Find(&User{}).RowsAffected == 1
 }

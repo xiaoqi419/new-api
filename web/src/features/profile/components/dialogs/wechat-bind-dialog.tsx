@@ -58,8 +58,8 @@ function WeChatMpBindDialog(props: WeChatBindDialogProps) {
   const { t } = useTranslation()
 
   const checkOnce = useCallback(
-    async (code: string) => {
-      const response = await checkWeChatMpBind(code)
+    async (token: string) => {
+      const response = await checkWeChatMpBind(token)
       if (!response?.success) {
         toast.error(response?.message || t('Request failed'))
         props.onOpenChange(false)

@@ -186,15 +186,54 @@ export async function requestWeChatMpLoginCode(): Promise<
 }
 
 export async function checkWeChatMpLogin(
-  code: string
+  token: string
 ): Promise<ApiResponse<WeChatMpPendingStatus | unknown>> {
   const res = await api.get('/api/wechat/mp/login/check', {
-    params: { code },
+    params: { token },
     disableDuplicate: true,
     skipAuthRefresh: true,
     skipBusinessError: true,
     skipErrorHandler: true,
   })
+  return res.data
+}
+
+/** Create a brand new account for the scanned openid. */
+export async function registerWeChatMpAccount(
+  token: string
+): Promise<ApiResponse> {
+  const res = await api.post(
+    '/api/wechat/mp/login/register',
+    { token },
+    { skipAuthRefresh: true, skipBusinessError: true }
+  )
+  return res.data
+}
+
+/** Mail a one-time code to the account the user wants to attach WeChat to. */
+export async function sendWeChatMpBindVerification(
+  token: string,
+  email: string
+): Promise<ApiResponse> {
+  const res = await api.get('/api/wechat/mp/login/bind/verification', {
+    params: { token, email },
+    skipAuthRefresh: true,
+    skipBusinessError: true,
+  })
+  return res.data
+}
+
+/** Attach the scanned openid to an existing account and sign in as it. */
+export async function bindWeChatMpToAccount(
+  token: string,
+  email: string,
+  code: string
+): Promise<ApiResponse> {
+  const res = await api.post(
+    '/api/wechat/mp/login/bind',
+    { token, email, code },
+    { skipAuthRefresh: true, skipBusinessError: true }
+  )
   return res.data
 }
 
