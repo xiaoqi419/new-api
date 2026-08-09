@@ -171,6 +171,65 @@ describe('authentication session coordination', () => {
     assert.equal(transientCount, 1)
   })
 
+  test('a rate limited refresh asks for a cooldown so retries stop amplifying', async () => {
+    const cooldowns: Array<number | undefined> = []
+    const runtime: AuthRefreshRuntime = {
+      request: async () => ({ status: 429, retryAfterSeconds: 120 }),
+      getExpectedSID: () => bundle.session.sid,
+      parseBundle: () => null,
+      acceptBundle: () => undefined,
+      clear: () => undefined,
+      markTransient: (retryAfterSeconds) => {
+        cooldowns.push(retryAfterSeconds)
+      },
+      wait: async () => undefined,
+    }
+
+    await createRefreshRunner(runtime)()
+
+    // 续期失败不会清登录态，而路由切换会一直重试；不带冷却就会自己把限流窗口顶满。
+    assert.deepEqual(cooldowns, [120])
+  })
+
+  test('a rate limited refresh without Retry-After still cools down', async () => {
+    const cooldowns: Array<number | undefined> = []
+    const runtime: AuthRefreshRuntime = {
+      request: async () => ({ status: 429 }),
+      getExpectedSID: () => bundle.session.sid,
+      parseBundle: () => null,
+      acceptBundle: () => undefined,
+      clear: () => undefined,
+      markTransient: (retryAfterSeconds) => {
+        cooldowns.push(retryAfterSeconds)
+      },
+      wait: async () => undefined,
+    }
+
+    await createRefreshRunner(runtime)()
+
+    assert.equal(cooldowns.length, 1)
+    assert.ok((cooldowns[0] ?? 0) > 0)
+  })
+
+  test('a server error is retryable immediately and does not cool down', async () => {
+    const cooldowns: Array<number | undefined> = []
+    const runtime: AuthRefreshRuntime = {
+      request: async () => ({ status: 503 }),
+      getExpectedSID: () => bundle.session.sid,
+      parseBundle: () => null,
+      acceptBundle: () => undefined,
+      clear: () => undefined,
+      markTransient: (retryAfterSeconds) => {
+        cooldowns.push(retryAfterSeconds)
+      },
+      wait: async () => undefined,
+    }
+
+    await createRefreshRunner(runtime)()
+
+    assert.deepEqual(cooldowns, [undefined])
+  })
+
   test('an exhausted refresh race clears the unusable local session', async () => {
     const requestedDelays: number[] = []
     const clears: Array<[boolean, string | undefined]> = []

@@ -44,6 +44,7 @@ import {
 } from './hooks'
 import {
   getDefaultPaymentType,
+  getMaxTopupAmount,
   getMinTopupAmount,
   dispatchSelectedPayment,
 } from './lib'
@@ -184,6 +185,12 @@ export function Wallet(props: WalletProps) {
       // Validate minimum topup
       const minTopup = getMinTopupAmount(topupInfo)
       if (topupAmount < minTopup) {
+        return
+      }
+      // 上限同样兜一层：支付按钮在超限时已置灰，这里防的是预设金额刚被管理员调低、
+      // 页面还没刷新的情况。
+      const maxTopup = getMaxTopupAmount(topupInfo)
+      if (maxTopup !== null && topupAmount > maxTopup) {
         return
       }
 

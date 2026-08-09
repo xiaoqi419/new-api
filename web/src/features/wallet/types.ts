@@ -139,6 +139,8 @@ export interface TopupInfo {
   stripe_min_topup: number
   /** Preset amount options */
   amount_options: number[]
+  /** Maximum amount for a single topup, derived server-side from the highest preset */
+  max_topup?: number
   /** Discount rates by amount */
   discount: Record<number, number>
   /** Optional topup link for purchasing codes */

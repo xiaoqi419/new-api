@@ -30,6 +30,9 @@ import { Label } from '@/components/ui/label'
 
 import { getAgentApplyStatus, submitAgentApply } from './api'
 
+// 与后端 model.AgentNameMaxRunes 保持一致，避免提交后才被拒。
+const AGENT_NAME_MAX_LENGTH = 32
+
 const AGENT_STATUS_ACTIVE = 1
 const AGENT_STATUS_DISABLED = 2
 
@@ -121,7 +124,13 @@ export function AgentApply() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t('e.g. My AI Store')}
+                maxLength={AGENT_NAME_MAX_LENGTH}
               />
+              <p className='text-muted-foreground text-xs'>
+                {t('Up to {{count}} characters', {
+                  count: AGENT_NAME_MAX_LENGTH,
+                })}
+              </p>
             </div>
             <div className='space-y-1'>
               <Label>{t('Desired Prepay Amount')}</Label>

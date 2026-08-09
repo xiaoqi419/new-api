@@ -155,8 +155,7 @@ func RequestWechatPay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "管理员未开启微信支付"})
 		return
 	}
-	if req.Amount < getMinTopup(0) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(0))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
 		return
 	}
 
@@ -310,8 +309,7 @@ func PrepareWechatJSAPI(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "未配置服务号 AppSecret"})
 		return
 	}
-	if req.Amount < getMinTopup(0) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(0))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
 		return
 	}
 	id := c.GetInt("id")

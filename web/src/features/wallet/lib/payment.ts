@@ -218,6 +218,25 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
 }
 
 /**
+ * Get the maximum amount allowed for a single topup.
+ *
+ * The server caps a single topup at the highest configured preset; mirroring that
+ * here keeps the user from typing an amount the payment gateway will only reject
+ * with an opaque failure. Falls back to the highest preset when the server is
+ * older than this field, and to no cap at all when neither is available.
+ */
+export function getMaxTopupAmount(topupInfo: TopupInfo | null): number | null {
+  if (!topupInfo) {
+    return null
+  }
+  if (typeof topupInfo.max_topup === 'number' && topupInfo.max_topup > 0) {
+    return topupInfo.max_topup
+  }
+  const highestPreset = Math.max(0, ...(topupInfo.amount_options || []))
+  return highestPreset > 0 ? highestPreset : null
+}
+
+/**
  * Generate preset amounts based on minimum topup
  */
 export function generatePresetAmounts(minAmount: number): PresetAmount[] {

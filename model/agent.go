@@ -2,7 +2,10 @@ package model
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 
@@ -60,6 +63,27 @@ func (agent *Agent) Insert() error {
 	agent.CreatedTime = now
 	agent.UpdatedTime = now
 	return DB.Create(agent).Error
+}
+
+// AgentNameMaxRunes 代理名称长度上限。名称会显示在白标站点的品牌位置，留够
+// 一个店铺名的余量即可。
+const AgentNameMaxRunes = 32
+
+// agentRemarkMaxRunes 对齐 Remark 列的 varchar(255)。
+const agentRemarkMaxRunes = 255
+
+// BeforeSave 收敛名称与备注长度。三条写入路径（自助申请、管理员新建、管理员改名）
+// 都会经过这里，否则任一入口漏掉校验就会由 PostgreSQL 直接抛出
+// "value too long for type character varying(128)"，把库表细节暴露给用户。
+func (agent *Agent) BeforeSave(tx *gorm.DB) error {
+	agent.Name = strings.TrimSpace(agent.Name)
+	if utf8.RuneCountInString(agent.Name) > AgentNameMaxRunes {
+		return fmt.Errorf("代理名称最多 %d 个字", AgentNameMaxRunes)
+	}
+	if utf8.RuneCountInString(agent.Remark) > agentRemarkMaxRunes {
+		return fmt.Errorf("备注最多 %d 个字", agentRemarkMaxRunes)
+	}
+	return nil
 }
 
 func (agent *Agent) Update() error {

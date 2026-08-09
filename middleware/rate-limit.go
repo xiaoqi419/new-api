@@ -191,6 +191,16 @@ func CriticalRateLimit() func(c *gin.Context) {
 	return defNext
 }
 
+// AuthRefreshRateLimit 给静默续期单独一个桶，不与登录/注册/支付共用额度。
+// 续期请求必须带着签过名的 refresh cookie 才有任何效果，滥用价值远低于登录，
+// 所以额度可以放宽；共用桶的代价则是同一出口 IP 下的用户互相把对方挤下线。
+func AuthRefreshRateLimit() func(c *gin.Context) {
+	if common.CriticalRateLimitEnable {
+		return rateLimitFactory(common.AuthRefreshRateLimitNum, common.AuthRefreshRateLimitDuration, "AR")
+	}
+	return defNext
+}
+
 func UserCriticalRateLimit(scope string) func(c *gin.Context) {
 	if !common.CriticalRateLimitEnable {
 		return defNext

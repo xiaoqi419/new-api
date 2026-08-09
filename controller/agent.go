@@ -273,7 +273,9 @@ func AgentApply(c *gin.Context) {
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		name = user.Username
+		// 用户名可以比代理名称上限更长，这里截断而不是让写入被拦下——申请人没填名字
+		// 不该被一个他看不见的长度限制挡住。
+		name = string([]rune(user.Username)[:min(len([]rune(user.Username)), model.AgentNameMaxRunes)])
 	}
 	remark := ""
 	if req.PrepayAmount > 0 {

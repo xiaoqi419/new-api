@@ -115,8 +115,7 @@ func RequestAlipay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "管理员未开启支付宝"})
 		return
 	}
-	if req.Amount < getMinTopup(0) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(0))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
 		return
 	}
 

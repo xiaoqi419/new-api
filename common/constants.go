@@ -243,6 +243,15 @@ var (
 	DownloadRateLimitNum            = 10
 	DownloadRateLimitDuration int64 = 60
 
+	// Token refresh gets its own bucket. The browser silently renews a 15-minute
+	// access token behind a 30-day session, so one active user spends a handful of
+	// these per hour. Sharing the login bucket makes that fatal: a few users behind
+	// one egress IP (mobile carrier NAT, an office, a campus) drain the 20 slots,
+	// and once refresh starts collecting 429s the user cannot sign back in either,
+	// because signing in spends the very same budget.
+	AuthRefreshRateLimitNum            = 120
+	AuthRefreshRateLimitDuration int64 = 20 * 60
+
 	// Click captcha images get their own bucket: they share an IP with the login
 	// bucket otherwise, so every refresh would eat one of the user's sign-in
 	// attempts. Issuing an image is cheap, a wrong answer forces a new one.

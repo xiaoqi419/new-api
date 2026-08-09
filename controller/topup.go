@@ -163,11 +163,15 @@ func GetTopUpInfo(c *gin.Context) {
 		"waffo_min_topup":         setting.WaffoMinTopUp,
 		"waffo_pancake_min_topup": setting.WaffoPancakeMinTopUp,
 		"amount_options":          operation_setting.GetPaymentSetting().AmountOptions,
+		"max_topup":               GetMaxTopup(int64(operation_setting.MinTopUp)),
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
 	}
 	common.ApiSuccess(c, data)
 }
+
+// defaultMaxTopupAmount 预设金额被清空时的兜底上限，取内置默认预设的最高档。
+const defaultMaxTopupAmount = 500
 
 type EpayRequest struct {
 	Amount        int64  `json:"amount"`
@@ -246,6 +250,43 @@ func getMinTopup(minTopupOverride int) int64 {
 	return int64(minTopup)
 }
 
+// GetMaxTopup 返回单笔充值上限，取管理员配置的预设金额里的最高一档。
+// 预设被清空时回退到内置默认档位的最高值：完全不设上限时用户能填出天文数字，
+// 支付网关只会回一个没有信息量的下单失败，而金额本身还会一路进到配额计算里。
+// 上限不会低于该渠道的最小充值门槛，否则会出现无论填什么都通不过的死区。
+func GetMaxTopup(minTopup int64) int64 {
+	maxOption := 0
+	for _, option := range operation_setting.GetPaymentSetting().AmountOptions {
+		if option > maxOption {
+			maxOption = option
+		}
+	}
+	if maxOption <= 0 {
+		maxOption = defaultMaxTopupAmount
+	}
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		dMaxOption := decimal.NewFromInt(int64(maxOption))
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		maxOption = int(dMaxOption.Mul(dQuotaPerUnit).IntPart())
+	}
+	return max(int64(maxOption), minTopup)
+}
+
+// validateTopupRange 统一校验单笔充值金额区间，不通过时自己写响应。
+// 各支付渠道的下限设置不同，故由调用方传入；上限对所有渠道一致。
+// 金额是用户可控的计费乘数，只拦下限等于没拦。
+func validateTopupRange(c *gin.Context, amount int64, minTopup int64) bool {
+	if amount < minTopup {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", minTopup)})
+		return false
+	}
+	if maxTopup := GetMaxTopup(minTopup); amount > maxTopup {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("单笔充值不能大于 %d", maxTopup)})
+		return false
+	}
+	return true
+}
+
 func RequestEpay(c *gin.Context) {
 	var req EpayRequest
 	err := c.ShouldBindJSON(&req)
@@ -258,8 +299,7 @@ func RequestEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前站点未配置支付信息"})
 		return
 	}
-	if req.Amount < getMinTopup(epayCfg.MinTopup) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(epayCfg.MinTopup))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(epayCfg.MinTopup)) {
 		return
 	}
 

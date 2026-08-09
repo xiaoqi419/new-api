@@ -45,8 +45,7 @@ type StripeAdaptor struct {
 
 func (*StripeAdaptor) RequestAmount(c *gin.Context, req *StripePayRequest) {
 	cfg := resolveStripeConfig(c)
-	if req.Amount < getStripeMinTopup(cfg.MinTopup) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup(cfg.MinTopup))})
+	if !validateTopupRange(c, req.Amount, getStripeMinTopup(cfg.MinTopup)) {
 		return
 	}
 	id := c.GetInt("id")
@@ -77,8 +76,8 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("充值数量不能小于 %d", getStripeMinTopup(cfg.MinTopup)), "data": 10})
 		return
 	}
-	if req.Amount > 10000 {
-		c.JSON(http.StatusOK, gin.H{"message": "充值数量不能大于 10000", "data": 10})
+	if maxTopup := GetMaxTopup(getStripeMinTopup(cfg.MinTopup)); req.Amount > maxTopup {
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("单笔充值不能大于 %d", maxTopup), "data": 10})
 		return
 	}
 
