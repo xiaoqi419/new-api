@@ -17,10 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2 } from 'lucide-react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import * as z from 'zod'
 
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -35,6 +39,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 
+import { sendTestEmail } from '../api'
 import {
   SettingsForm,
   SettingsSwitchContent,
@@ -90,12 +95,33 @@ export function EmailSettingsSection({
   const updateOption = useUpdateOption()
   const emailSchema = createEmailSchema(t)
 
+  const [testRecipient, setTestRecipient] = useState('')
+  const [isSendingTest, setIsSendingTest] = useState(false)
+
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
     defaultValues,
   })
 
   useResetForm(form, defaultValues)
+
+  const handleSendTestEmail = async () => {
+    setIsSendingTest(true)
+    try {
+      const res = await sendTestEmail(testRecipient.trim())
+      if (res.success) {
+        toast.success(t('Test email sent'))
+        return
+      }
+      // The raw SMTP error is the whole point of the button, so it is shown
+      // verbatim instead of a generic failure message.
+      toast.error(res.message || t('Failed to send test email'))
+    } catch {
+      // Errors are handled by global interceptor
+    } finally {
+      setIsSendingTest(false)
+    }
+  }
 
   const onSubmit = async (values: EmailFormValues) => {
     const securityMode = getSmtpSecurityMode(values)
@@ -405,6 +431,42 @@ export function EmailSettingsSection({
               </FormItem>
             )}
           />
+
+          <div className='border-border/60 space-y-3 rounded-lg border p-4'>
+            <div className='space-y-1'>
+              <Label>{t('Test delivery')}</Label>
+              <p className='text-muted-foreground text-sm'>
+                {t(
+                  'Sends a message using the saved settings, so save your changes first.'
+                )}
+              </p>
+            </div>
+            <div className='flex flex-col gap-2 sm:flex-row'>
+              <Input
+                type='email'
+                autoComplete='off'
+                placeholder={t('Leave blank to send to your own email')}
+                value={testRecipient}
+                onChange={(event) => setTestRecipient(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  // Otherwise Enter would submit the settings form instead.
+                  event.preventDefault()
+                  if (!isSendingTest) void handleSendTestEmail()
+                }}
+              />
+              <Button
+                type='button'
+                variant='outline'
+                disabled={isSendingTest}
+                onClick={() => void handleSendTestEmail()}
+                className='sm:w-auto'
+              >
+                {isSendingTest && <Loader2 className='size-4 animate-spin' />}
+                {t('Send test email')}
+              </Button>
+            </div>
+          </div>
         </SettingsForm>
       </Form>
     </SettingsSection>

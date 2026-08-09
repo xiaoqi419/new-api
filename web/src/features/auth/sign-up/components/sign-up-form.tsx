@@ -72,7 +72,11 @@ export function SignUpForm({
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
-  const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
+  // One dialog serves both the submit and the send-code button, so the
+  // pending action has to be remembered while the puzzle is on screen.
+  const [captchaAction, setCaptchaAction] = useState<
+    'register' | 'send-code' | null
+  >(null)
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
 
   const { status } = useStatus()
@@ -168,24 +172,41 @@ export function SignUpForm({
     // The captcha is asked for last: a challenge is spent on the first check
     // either way, so it is only worth showing once the form is otherwise ready.
     if (isClickCaptchaEnabled) {
-      setIsCaptchaDialogOpen(true)
+      setCaptchaAction('register')
       return
     }
     void submitRegistration(data, null)
   }
 
-  // Closing the dialog unmounts the puzzle, so a rejected registration gets a
-  // fresh image on the next attempt without any explicit reset.
+  // Closing the dialog unmounts the puzzle, so a rejected attempt gets a
+  // fresh image on the next try without any explicit reset.
   const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
-    setIsCaptchaDialogOpen(false)
+    const action = captchaAction
+    setCaptchaAction(null)
+    if (action === 'send-code') {
+      void sendVerificationCode(solution)
+      return
+    }
     void form.handleSubmit((data) => submitRegistration(data, solution))()
   }
 
-  async function handleSendVerificationCode() {
-    if (await sendCode(emailValue || '')) {
+  async function sendVerificationCode(captcha: ClickCaptchaSolution | null) {
+    if (await sendCode(emailValue || '', captcha)) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
     }
+  }
+
+  function handleSendVerificationCode() {
+    if (!emailValue) {
+      toast.error(t('Please enter your email first'))
+      return
+    }
+    if (isClickCaptchaEnabled) {
+      setCaptchaAction('send-code')
+      return
+    }
+    void sendVerificationCode(null)
   }
 
   let verificationCodeAction: ReactNode = t('Send code')
@@ -354,8 +375,10 @@ export function SignUpForm({
 
       {isClickCaptchaEnabled && (
         <ClickCaptchaDialog
-          open={isCaptchaDialogOpen}
-          onOpenChange={setIsCaptchaDialogOpen}
+          open={captchaAction !== null}
+          onOpenChange={(open) => {
+            if (!open) setCaptchaAction(null)
+          }}
           onSolved={handleCaptchaSolved}
         />
       )}

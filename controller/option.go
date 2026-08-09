@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -403,6 +404,53 @@ func UpdateOption(c *gin.Context) {
 	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
 	recordManageAudit(c, "option.update", map[string]interface{}{
 		"key": option.Key,
+	})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+// SendTestEmail 用当前生效的 SMTP 配置发一封测试邮件，让管理员保存后立刻知道配置是否可用。
+// 收件人留空时寄给操作者本人，省去手打邮箱。
+func SendTestEmail(c *gin.Context) {
+	var req struct {
+		To string `json:"to"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+
+	receiver := strings.TrimSpace(req.To)
+	if receiver == "" {
+		user, err := model.GetUserById(c.GetInt("id"), false)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		receiver = strings.TrimSpace(user.Email)
+	}
+	if receiver == "" {
+		common.ApiErrorMsg(c, "请填写收件邮箱，或先为当前账号绑定邮箱")
+		return
+	}
+	if !common.IsValidEmail(receiver) {
+		common.ApiErrorMsg(c, "收件邮箱格式不正确")
+		return
+	}
+
+	subject := fmt.Sprintf("%s SMTP 测试邮件", common.SystemName)
+	content := fmt.Sprintf("<p>这是一封来自 %s 的测试邮件。</p>"+
+		"<p>您能收到它，说明当前保存的 SMTP 配置可以正常发信。</p>"+
+		"<p>发送时间：%s</p>", common.SystemName, time.Now().Format("2006-01-02 15:04:05"))
+	if err := common.SendEmail(subject, receiver, content); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	recordManageAudit(c, "option.test_email", map[string]interface{}{
+		"receiver": receiver,
 	})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

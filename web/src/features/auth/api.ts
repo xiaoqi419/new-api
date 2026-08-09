@@ -150,13 +150,14 @@ export async function githubOAuthStart(clientId: string, state: string) {
 // Get OAuth state for CSRF protection
 export async function createOAuthFlow(
   provider: string,
-  intent: 'login' | 'bind'
+  intent: 'login' | 'bind',
+  captcha?: CaptchaQuery
 ): Promise<string> {
   const aff = intent === 'login' ? getAffiliateCode() : ''
   const res = await api.post(
     '/api/oauth/state',
     { provider, intent, aff: aff || undefined },
-    { skipAuthRefresh: intent === 'login' }
+    { params: { ...captcha }, skipAuthRefresh: intent === 'login' }
   )
   if (res.data?.success) {
     if (typeof res.data.data === 'string') return res.data.data
@@ -265,10 +266,11 @@ export async function register(payload: RegisterPayload): Promise<ApiResponse> {
 // Send email verification code
 export async function sendEmailVerification(
   email: string,
-  turnstile?: string
+  turnstile?: string,
+  captcha?: CaptchaQuery
 ): Promise<ApiResponse> {
   const res = await api.get('/api/verification', {
-    params: { email, turnstile },
+    params: { email, turnstile, ...captcha },
   })
   return res.data
 }

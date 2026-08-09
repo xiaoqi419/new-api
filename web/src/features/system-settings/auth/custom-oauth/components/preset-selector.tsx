@@ -72,8 +72,9 @@ export function PresetSelector(props: PresetSelectorProps) {
       shouldDirty: true,
     })
 
-    // Apply base URL if already entered
-    if (baseUrl) {
+    // A hosted provider ships absolute endpoints, so it is ready right away;
+    // a self-hosted one has to wait for the base URL.
+    if (!preset.needsBaseUrl || baseUrl) {
       applyEndpoints(preset, baseUrl)
     }
   }
@@ -92,21 +93,25 @@ export function PresetSelector(props: PresetSelectorProps) {
     preset: (typeof OAUTH_PRESETS)[number],
     url: string
   ) => {
-    const cleanUrl = url.replace(/\/+$/, '')
+    const prefix = preset.needsBaseUrl ? url.replace(/\/+$/, '') : ''
     props.form.setValue(
       'authorization_endpoint',
-      cleanUrl + preset.authorization_endpoint,
+      prefix + preset.authorization_endpoint,
       { shouldDirty: true }
     )
-    props.form.setValue('token_endpoint', cleanUrl + preset.token_endpoint, {
+    props.form.setValue('token_endpoint', prefix + preset.token_endpoint, {
       shouldDirty: true,
     })
     props.form.setValue(
       'user_info_endpoint',
-      cleanUrl + preset.user_info_endpoint,
+      prefix + preset.user_info_endpoint,
       { shouldDirty: true }
     )
   }
+
+  const needsBaseUrl =
+    !selectedPreset ||
+    (OAUTH_PRESETS.find((p) => p.key === selectedPreset)?.needsBaseUrl ?? true)
 
   return (
     <SettingsControlGroup className='space-y-3 border-dashed'>
@@ -139,8 +144,13 @@ export function PresetSelector(props: PresetSelectorProps) {
         <div className='space-y-1.5'>
           <Label>{t('Base URL')}</Label>
           <Input
-            placeholder={t('https://your-server.example.com')}
-            value={baseUrl}
+            placeholder={
+              needsBaseUrl
+                ? t('https://your-server.example.com')
+                : t('Not needed for this provider')
+            }
+            disabled={!needsBaseUrl}
+            value={needsBaseUrl ? baseUrl : ''}
             onChange={(e) => handleBaseUrlChange(e.target.value)}
           />
         </div>

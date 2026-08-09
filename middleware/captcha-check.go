@@ -10,38 +10,47 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// VerifyClickCaptchaQuery checks the click-captcha answer carried on the query
+// string, writing the failure response itself and reporting whether the caller
+// may continue. Handlers that need the guard on only some code paths call it
+// directly so the wording stays identical to the middleware.
+func VerifyClickCaptchaQuery(c *gin.Context) bool {
+	if !common.ClickCaptchaEnabled {
+		return true
+	}
+
+	id := c.Query("captcha_id")
+	points, err := parseCaptchaPoints(c.Query("captcha_points"))
+	if err != nil || id == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "请先完成图形验证",
+		})
+		return false
+	}
+
+	if !captcha.Verify(id, points) {
+		// The challenge is spent either way, so the client has to fetch a
+		// new image; saying so avoids a confusing silent retry.
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "图形验证失败，请重新验证",
+		})
+		return false
+	}
+
+	return true
+}
+
 // ClickCaptchaCheck guards an endpoint with the self-hosted click captcha.
 // It runs alongside TurnstileCheck rather than replacing it, so a deployment
 // can enable either, both, or neither.
 func ClickCaptchaCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !common.ClickCaptchaEnabled {
-			c.Next()
-			return
-		}
-
-		id := c.Query("captcha_id")
-		points, err := parseCaptchaPoints(c.Query("captcha_points"))
-		if err != nil || id == "" {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "请先完成图形验证",
-			})
+		if !VerifyClickCaptchaQuery(c) {
 			c.Abort()
 			return
 		}
-
-		if !captcha.Verify(id, points) {
-			// The challenge is spent either way, so the client has to fetch a
-			// new image; saying so avoids a confusing silent retry.
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "图形验证失败，请重新验证",
-			})
-			c.Abort()
-			return
-		}
-
 		c.Next()
 	}
 }

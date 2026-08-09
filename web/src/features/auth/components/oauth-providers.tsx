@@ -26,6 +26,7 @@ import {
   IconTelegram,
   IconWeChat,
 } from '@/assets/brand-icons'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -79,6 +80,10 @@ export function OAuthProviders({
     isTelegramPending,
     handleTelegramAuthorization,
     setIsTelegramDialogOpen,
+    isClickCaptchaEnabled,
+    isCaptchaDialogOpen,
+    setIsCaptchaDialogOpen,
+    handleCaptchaSolved,
   } = useOAuthLogin(status, redirectTo)
 
   const providerButtons: ProviderButton[] = []
@@ -194,6 +199,14 @@ export function OAuthProviders({
           )
         )}
       </div>
+
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={isCaptchaDialogOpen}
+          onOpenChange={setIsCaptchaDialogOpen}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
 
       <TelegramLoginDialog
         open={isTelegramDialogOpen}

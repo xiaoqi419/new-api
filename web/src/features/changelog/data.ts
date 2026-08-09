@@ -29,6 +29,26 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'unreleased',
+    date: '2026-08-09',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'SMTP 设置里加了「发信测试」:填个收件邮箱点一下就能收到测试信,留空则寄给你自己。发不出去时会把邮件服务器返回的原始报错直接显示出来,不用再去翻后台日志猜哪里填错了。',
+          '自定义 OAuth 的预设模板里加了 Google,选中后三个接口地址和字段映射会自动填好,你只需要贴上 Client ID 和密钥。选到这类现成的服务商时,「API 地址」会自动置灰,因为它不需要填。',
+        ],
+      },
+      {
+        kind: 'improvement',
+        items: [
+          '第三方登录(GitHub、Discord、OIDC、LinuxDO、自定义)现在也要过图形验证码了:点按钮后先出验证图,答对才跳转到对方网站。只在开启了图形验证码时生效,已登录用户去个人中心绑定账号不受影响。',
+          '注册页的「发送验证码」按钮补上了图形验证码。之前这个发邮件的接口只有 Turnstile 挡着,没开 Turnstile 的站点等于敞开,可能被人拿去刷爆邮件发送额度。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260809-602943927',
     date: '2026-08-09',
     changes: [

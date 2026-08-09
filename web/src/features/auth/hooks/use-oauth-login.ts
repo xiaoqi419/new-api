@@ -30,8 +30,13 @@ import {
   buildLinuxDOOAuthUrl,
 } from '../lib/oauth'
 import { pickTelegramAuthorization } from '../lib/telegram-login'
-import type { SystemStatus, CustomOAuthProviderInfo } from '../types'
+import type {
+  SystemStatus,
+  CustomOAuthProviderInfo,
+  ClickCaptchaSolution,
+} from '../types'
 import { useAuthRedirect } from './use-auth-redirect'
+import { toCaptchaQuery, useClickCaptchaEnabled } from './use-click-captcha'
 
 /**
  * Hook for managing OAuth login
@@ -48,6 +53,13 @@ export function useOAuthLogin(
   const [githubButtonText, setGithubButtonText] = useState('')
   const [githubButtonDisabled, setGithubButtonDisabled] = useState(false)
   const githubTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
+  const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
+  // A one-shot continuation, so a ref rather than state: keeping a function in
+  // state would need the awkward setState(() => fn) form and buys nothing here.
+  const pendingLoginRef = useRef<
+    ((captcha: ClickCaptchaSolution | null) => Promise<void>) | null
+  >(null)
 
   useEffect(() => {
     setGithubButtonText(t('Continue with GitHub'))
@@ -67,7 +79,29 @@ export function useOAuthLogin(
     clearAuthentication()
   }
 
-  const handleGitHubLogin = async () => {
+  /**
+   * Every provider redirect starts by asking the server for a state token, so
+   * the challenge is raised once here instead of in each provider handler.
+   */
+  const withCaptcha = (
+    start: (captcha: ClickCaptchaSolution | null) => Promise<void>
+  ) => {
+    if (!isClickCaptchaEnabled) {
+      void start(null)
+      return
+    }
+    pendingLoginRef.current = start
+    setIsCaptchaDialogOpen(true)
+  }
+
+  const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
+    setIsCaptchaDialogOpen(false)
+    const start = pendingLoginRef.current
+    pendingLoginRef.current = null
+    if (start) void start(solution)
+  }
+
+  const startGitHubLogin = async (captcha: ClickCaptchaSolution | null) => {
     if (!status?.github_client_id) return
     if (githubButtonDisabled) return
 
@@ -89,7 +123,11 @@ export function useOAuthLogin(
 
     try {
       await resetSession()
-      const state = await createOAuthFlow('github', 'login')
+      const state = await createOAuthFlow(
+        'github',
+        'login',
+        toCaptchaQuery(captcha)
+      )
 
       const url = buildGitHubOAuthUrl(status.github_client_id, state)
       window.open(url, '_self')
@@ -104,13 +142,17 @@ export function useOAuthLogin(
     }
   }
 
-  const handleDiscordLogin = async () => {
+  const startDiscordLogin = async (captcha: ClickCaptchaSolution | null) => {
     if (!status?.discord_client_id) return
 
     setIsLoading(true)
     try {
       await resetSession()
-      const state = await createOAuthFlow('discord', 'login')
+      const state = await createOAuthFlow(
+        'discord',
+        'login',
+        toCaptchaQuery(captcha)
+      )
 
       const url = buildDiscordOAuthUrl(status.discord_client_id, state)
       window.open(url, '_self')
@@ -121,13 +163,17 @@ export function useOAuthLogin(
     }
   }
 
-  const handleOIDCLogin = async () => {
+  const startOIDCLogin = async (captcha: ClickCaptchaSolution | null) => {
     if (!status?.oidc_authorization_endpoint || !status?.oidc_client_id) return
 
     setIsLoading(true)
     try {
       await resetSession()
-      const state = await createOAuthFlow('oidc', 'login')
+      const state = await createOAuthFlow(
+        'oidc',
+        'login',
+        toCaptchaQuery(captcha)
+      )
 
       const url = buildOIDCOAuthUrl(
         status.oidc_authorization_endpoint,
@@ -142,13 +188,17 @@ export function useOAuthLogin(
     }
   }
 
-  const handleLinuxDOLogin = async () => {
+  const startLinuxDOLogin = async (captcha: ClickCaptchaSolution | null) => {
     if (!status?.linuxdo_client_id) return
 
     setIsLoading(true)
     try {
       await resetSession()
-      const state = await createOAuthFlow('linuxdo', 'login')
+      const state = await createOAuthFlow(
+        'linuxdo',
+        'login',
+        toCaptchaQuery(captcha)
+      )
 
       const url = buildLinuxDOOAuthUrl(status.linuxdo_client_id, state)
       window.open(url, '_self')
@@ -203,13 +253,20 @@ export function useOAuthLogin(
     }
   }
 
-  const handleCustomOAuthLogin = async (provider: CustomOAuthProviderInfo) => {
+  const startCustomOAuthLogin = async (
+    provider: CustomOAuthProviderInfo,
+    captcha: ClickCaptchaSolution | null
+  ) => {
     if (!provider.authorization_endpoint || !provider.client_id) return
 
     setIsLoading(true)
     try {
       await resetSession()
-      const state = await createOAuthFlow(provider.slug, 'login')
+      const state = await createOAuthFlow(
+        provider.slug,
+        'login',
+        toCaptchaQuery(captcha)
+      )
 
       const redirectUri = `${window.location.origin}/oauth/${provider.slug}`
       const url = new URL(provider.authorization_endpoint)
@@ -237,13 +294,18 @@ export function useOAuthLogin(
     githubButtonDisabled,
     isTelegramDialogOpen,
     isTelegramPending,
-    handleGitHubLogin,
-    handleDiscordLogin,
-    handleOIDCLogin,
-    handleLinuxDOLogin,
+    isClickCaptchaEnabled,
+    isCaptchaDialogOpen,
+    setIsCaptchaDialogOpen,
+    handleCaptchaSolved,
+    handleGitHubLogin: () => withCaptcha(startGitHubLogin),
+    handleDiscordLogin: () => withCaptcha(startDiscordLogin),
+    handleOIDCLogin: () => withCaptcha(startOIDCLogin),
+    handleLinuxDOLogin: () => withCaptcha(startLinuxDOLogin),
     handleTelegramLogin,
     handleTelegramAuthorization,
     setIsTelegramDialogOpen,
-    handleCustomOAuthLogin,
+    handleCustomOAuthLogin: (provider: CustomOAuthProviderInfo) =>
+      withCaptcha((captcha) => startCustomOAuthLogin(provider, captcha)),
   }
 }
