@@ -22,7 +22,12 @@ import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
-import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -37,6 +42,7 @@ import { getRebateUsers } from '../api'
 import { REBATE_PAGE_SIZE } from '../constants'
 import { formatRebateRatio } from '../lib'
 import type { RebateUser } from '../types'
+import { GlobalRebateRatioCard } from './global-rebate-ratio-card'
 import { RebateRatioDialog } from './rebate-ratio-dialog'
 
 export function RebateRatiosPanel() {
@@ -61,12 +67,19 @@ export function RebateRatiosPanel() {
 
   return (
     <div className='flex flex-col gap-4'>
+      <GlobalRebateRatioCard />
+
       {isLoading && <Skeleton className='h-64 w-full rounded-xl' />}
 
       {!isLoading && users.length === 0 && (
         <Empty className='min-h-64 border'>
           <EmptyHeader>
-            <EmptyTitle>{t('No inviters yet')}</EmptyTitle>
+            <EmptyTitle>{t('No one has invited a friend yet')}</EmptyTitle>
+            <EmptyDescription>
+              {t(
+                'Once someone invites a friend they show up here, where you can give them a ratio that overrides the global default.'
+              )}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

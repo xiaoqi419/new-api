@@ -17,11 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import DOMPurify from 'dompurify'
-import * as katex from 'katex'
-
-import 'katex/dist/katex.min.css'
 import { Marked, Renderer, type MarkedExtension, type Tokens } from 'marked'
-import { useMemo } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -180,8 +177,47 @@ function normalizeMathSource(source: string): string {
     .replace(/\\\]$/, '')
 }
 
+// KaTeX plus its stylesheet is ~585KB, and most markdown on this site has no
+// formulas at all, so it is fetched the first time a math token shows up. Until
+// it lands the raw LaTeX is shown, then mounted `Markdown` instances re-render.
+let katex: (typeof import('katex'))['default'] | null = null
+let katexRequest: Promise<void> | null = null
+const katexListeners = new Set<() => void>()
+
+function loadKatex(): Promise<void> {
+  katexRequest ??= Promise.all([
+    import('katex'),
+    import('katex/dist/katex.min.css'),
+  ])
+    .then(([module]) => {
+      katex = module.default
+    })
+    .catch(() => {
+      // Leaving `katex` null keeps the raw LaTeX visible rather than blanking it.
+    })
+    .finally(() => {
+      for (const notify of katexListeners) notify()
+    })
+  return katexRequest
+}
+
+function subscribeToKatex(onChange: () => void): () => void {
+  katexListeners.add(onChange)
+  return () => katexListeners.delete(onChange)
+}
+
+function isKatexLoaded(): boolean {
+  return katex !== null
+}
+
 function renderMath(source: string, displayMode: boolean): string {
-  return katex.renderToString(normalizeMathSource(source), {
+  const normalized = normalizeMathSource(source)
+  if (!katex) {
+    void loadKatex()
+    return escapeHtml(normalized)
+  }
+
+  return katex.renderToString(normalized, {
     displayMode,
     output: 'htmlAndMathml',
     throwOnError: false,
@@ -745,9 +781,18 @@ function renderMarkdown(markdown: string, breaks = false): string {
 }
 
 export function Markdown(props: MarkdownProps) {
+  const katexLoaded = useSyncExternalStore(
+    subscribeToKatex,
+    isKatexLoaded,
+    isKatexLoaded
+  )
   const html = useMemo(
     () => renderMarkdown(props.children, props.breaks),
-    [props.breaks, props.children]
+    // `katexLoaded` is not read inside, but it flips when the formula renderer
+    // finishes loading, which is what re-runs the parse and turns the raw LaTeX
+    // placeholder into typeset math.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.breaks, props.children, katexLoaded]
   )
 
   return (

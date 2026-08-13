@@ -64,6 +64,10 @@ export function convertDetectedLanguage(value: string): string {
   const lower = value.trim().replaceAll('_', '-').toLowerCase()
   if (!lower.startsWith('zh')) return value
   if (
+    // `zhtw` is our own persisted code coming back from the localStorage
+    // detector; without it a reader who picked 繁體中文 silently gets 简体中文
+    // on their next visit.
+    lower === 'zhtw' ||
     lower === 'zh-tw' ||
     lower === 'zh-hk' ||
     lower === 'zh-mo' ||

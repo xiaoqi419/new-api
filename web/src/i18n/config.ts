@@ -16,35 +16,59 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import i18n from 'i18next'
+import i18n, { type BackendModule, type ReadCallback } from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
 import { convertDetectedLanguage } from './languages'
-import en from './locales/en.json'
-import fr from './locales/fr.json'
-import ja from './locales/ja.json'
-import ru from './locales/ru.json'
-import vi from './locales/vi.json'
-import zhTW from './locales/zh-TW.json'
-import zhCN from './locales/zh.json'
 
-export const resources = {
-  en,
-  zhCN,
-  fr,
-  ru,
-  ja,
-  vi,
-  zhTW,
-} as const
+// Statically bundling all seven locales made translations ~82% of the entry
+// chunk even though a visitor only ever reads one of them, so each locale is
+// fetched as its own async chunk through i18next's backend interface.
+const localeLoaders: Record<
+  string,
+  () => Promise<{ translation?: Record<string, string> }>
+> = {
+  en: async () => (await import('./locales/en.json')).default,
+  zhCN: async () => (await import('./locales/zh.json')).default,
+  zhTW: async () => (await import('./locales/zh-TW.json')).default,
+  fr: async () => (await import('./locales/fr.json')).default,
+  ru: async () => (await import('./locales/ru.json')).default,
+  ja: async () => (await import('./locales/ja.json')).default,
+  vi: async () => (await import('./locales/vi.json')).default,
+}
 
-i18n
+const lazyLocaleBackend: BackendModule = {
+  type: 'backend',
+  init: () => {},
+  read: async (
+    language: string,
+    _namespace: string,
+    callback: ReadCallback
+  ) => {
+    const load = localeLoaders[language]
+    if (!load) {
+      callback(null, {})
+      return
+    }
+    try {
+      const bundle = await load()
+      callback(null, bundle.translation ?? {})
+    } catch (error) {
+      callback(error as Error, false)
+    }
+  },
+}
+
+export const i18nReady = i18n
+  .use(lazyLocaleBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources,
-    fallbackLng: 'en',
+    // Keys are the English source strings, so an untranslated key already
+    // renders correct English. Keeping `en` as the fallback would make every
+    // non-English visitor download a second locale for no visible gain.
+    fallbackLng: false,
     supportedLngs: ['en', 'zhCN', 'fr', 'ru', 'ja', 'vi', 'zhTW'],
     load: 'currentOnly',
     nsSeparator: false, // Allow literal colons in keys (e.g., URLs, labels)
@@ -52,6 +76,10 @@ i18n
     interpolation: {
       escapeValue: false, // not needed for react as it escapes by default
     },
+    // Locales now resolve asynchronously. `main.tsx` waits for the first one
+    // before rendering and `changeLanguage` only settles once the new bundle is
+    // in, so no component needs its own Suspense boundary.
+    react: { useSuspense: false },
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],

@@ -54,6 +54,24 @@ export default defineConfig(({ envMode }) => {
           priority: 0,
           enforce: true,
         },
+        // Only the markdown renderer and the code viewer pull these in, and both
+        // are route-level lazy. Left to the default heuristics they get merged
+        // into the shared vendor chunk that first paint already needs, which put
+        // ~2.4MB of editor and formula code on the critical path.
+        'lib-codemirror': {
+          test: /node_modules[\\/]@codemirror[\\/]/,
+          name: 'lib-codemirror',
+          chunks: 'all',
+          priority: 10,
+          enforce: true,
+        },
+        'lib-katex': {
+          test: /node_modules[\\/]katex[\\/]/,
+          name: 'lib-katex',
+          chunks: 'all',
+          priority: 10,
+          enforce: true,
+        },
       },
     },
     source: {
