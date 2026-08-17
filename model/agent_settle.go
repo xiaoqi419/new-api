@@ -35,7 +35,10 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 	}
 
 	// 结算扣款额度 = 用户到账额度 × cost_ratio（int32 饱和，绝不产生负扣款）
-	settleQuota := common.QuotaRound(float64(quotaToAdd) * agent.CostRatio)
+	settleQuota, quotaErr := common.QuotaRoundStrict(float64(quotaToAdd) * agent.CostRatio)
+	if quotaErr != nil {
+		return false, quotaErr
+	}
 	if settleQuota < 0 {
 		settleQuota = 0
 	}
@@ -178,7 +181,11 @@ func TryCompleteAgentPrepay(tradeNo, expectedProvider, callerIp string) (handled
 		}
 
 		// 预充 1:1，钱包入账额度 = 订单额度 × QuotaPerUnit（int32 饱和保护）
-		creditQuota = common.QuotaFromFloat(float64(locked.Amount) * common.QuotaPerUnit)
+		var quotaErr error
+		creditQuota, quotaErr = common.QuotaFromFloatStrict(float64(locked.Amount) * common.QuotaPerUnit)
+		if quotaErr != nil {
+			return quotaErr
+		}
 		if creditQuota <= 0 {
 			return errors.New("无效的预充额度")
 		}
@@ -243,7 +250,10 @@ func PreCheckAgentWalletForTopup(agentId int, quotaToAdd int) (ok bool, err erro
 	if agent.Status != AgentStatusActive {
 		return false, errors.New("代理未开通或已停用")
 	}
-	settleQuota := common.QuotaRound(float64(quotaToAdd) * agent.CostRatio)
+	settleQuota, quotaErr := common.QuotaRoundStrict(float64(quotaToAdd) * agent.CostRatio)
+	if quotaErr != nil {
+		return false, quotaErr
+	}
 	if settleQuota < 0 {
 		settleQuota = 0
 	}

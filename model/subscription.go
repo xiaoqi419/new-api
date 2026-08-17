@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -770,17 +771,23 @@ func AdminBindSubscription(userId int, planId int, sourceNote string) (string, e
 }
 
 func calcSubscriptionBalanceQuota(priceAmount float64) (int, error) {
+	if math.IsNaN(priceAmount) || math.IsInf(priceAmount, 0) {
+		return 0, errors.New("套餐价格必须为有限数")
+	}
 	if priceAmount <= 0 {
 		return 0, nil
 	}
-	if common.QuotaPerUnit <= 0 {
+	if math.IsNaN(common.QuotaPerUnit) || math.IsInf(common.QuotaPerUnit, 0) || common.QuotaPerUnit <= 0 {
 		return 0, errors.New("额度单位配置错误")
 	}
-	quota := decimal.NewFromFloat(priceAmount).
+	quotaDecimal := decimal.NewFromFloat(priceAmount).
 		Mul(decimal.NewFromFloat(common.QuotaPerUnit)).
-		Ceil().
-		IntPart()
-	return int(quota), nil
+		Ceil()
+	quota, clamp := common.QuotaFromDecimalChecked(quotaDecimal)
+	if clamp != nil {
+		return 0, clamp
+	}
+	return quota, nil
 }
 
 // PurchaseSubscriptionWithBalance creates a subscription by deducting the user's wallet quota.
