@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const maxTopUpAmount int64 = 1<<63 - 1
+
 func TestCalcSubscriptionBalanceQuotaRejectsNonFiniteAndOverflow(t *testing.T) {
 	oldQuotaPerUnit := common.QuotaPerUnit
 	t.Cleanup(func() { common.QuotaPerUnit = oldQuotaPerUnit })
 	common.QuotaPerUnit = 500000
-	const maxTopUpAmount int64 = 1<<63 - 1
 
 	quota, err := calcSubscriptionBalanceQuota(math.NaN())
 	require.Error(t, err)
