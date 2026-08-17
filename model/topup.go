@@ -149,7 +149,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		return gerr
 	}
 
-	var quota float64
+	var quotaToAdd int
 	topUp := &TopUp{}
 
 	refCol := "`trade_no`"
@@ -177,9 +177,16 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 			return err
 		}
 
-		quota = topUp.Money * common.QuotaPerUnit
+		var quotaClamp *common.QuotaClamp
+		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(
+			decimal.NewFromFloat(topUp.Money).
+				Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0),
+		)
+		if quotaClamp != nil {
+			return errors.New("无效的充值额度")
+		}
 		var e error
-		credited, e = CompletePaidTopupTx(tx, topUp, int(quota))
+		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e
 	})
 
@@ -191,11 +198,11 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		return nil // 代理钱包不足，已挂单，待代理补足后自动补发
 	}
 
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
-	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
-	GrantTopupLotteryCards(topUp.UserId, int(quota))
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(quotaToAdd), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
+	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
+	GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 	if OnTopUpSuccess != nil {
-		OnTopUpSuccess(topUp, int(quota))
+		OnTopUpSuccess(topUp, quotaToAdd)
 	}
 
 	return nil
@@ -402,11 +409,19 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
 		if topUp.PaymentProvider == PaymentProviderStripe {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
+			var quotaClamp *common.QuotaClamp
+			quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).Truncate(0))
+			if quotaClamp != nil {
+				return errors.New("无效的充值额度")
+			}
 		} else {
 			dAmount := decimal.NewFromInt(topUp.Amount)
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			var quotaClamp *common.QuotaClamp
+			quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+			if quotaClamp != nil {
+				return errors.New("无效的充值额度")
+			}
 		}
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
@@ -449,7 +464,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		return gerr
 	}
 
-	var quota int64
+	var quota int
 	var credited bool
 	topUp := &TopUp{}
 
@@ -472,8 +487,12 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 			return errors.New("充值订单状态错误")
 		}
 
-		// Creem 直接使用 Amount 作为充值额度（整数）
-		quota = topUp.Amount
+		// Creem 直接使用 Amount 作为充值额度（整数），仍需经过 quota 饱和检查。
+		var quotaClamp *common.QuotaClamp
+		quota, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromInt(topUp.Amount))
+		if quotaClamp != nil || quota <= 0 {
+			return errors.New("无效的充值额度")
+		}
 
 		// 如果有客户邮箱且用户邮箱为空，则更新为支付时使用的邮箱（不含额度）
 		if customerEmail != "" {
@@ -489,7 +508,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		}
 
 		var e error
-		credited, e = CompletePaidTopupTx(tx, topUp, int(quota))
+		credited, e = CompletePaidTopupTx(tx, topUp, quota)
 		return e
 	})
 
@@ -502,10 +521,10 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	}
 
 	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
-	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, int(quota))
-	GrantTopupLotteryCards(topUp.UserId, int(quota))
+	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quota)
+	GrantTopupLotteryCards(topUp.UserId, quota)
 	if OnTopUpSuccess != nil {
-		OnTopUpSuccess(topUp, int(quota))
+		OnTopUpSuccess(topUp, quota)
 	}
 
 	return nil
@@ -549,7 +568,11 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 
 		dAmount := decimal.NewFromInt(topUp.Amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		var quotaClamp *common.QuotaClamp
+		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+		if quotaClamp != nil {
+			return errors.New("无效的充值额度")
+		}
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
 		}
@@ -598,7 +621,7 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 	}
 
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+		if err := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
 			return errors.New("充值订单不存在")
 		}
 
@@ -616,7 +639,11 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 
 		dAmount := decimal.NewFromInt(topUp.Amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		var quotaClamp *common.QuotaClamp
+		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+		if quotaClamp != nil {
+			return errors.New("无效的充值额度")
+		}
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
 		}
@@ -680,7 +707,11 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return errors.New("充值订单状态错误")
 		}
 
-		quotaToAdd = int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+		var quotaClamp *common.QuotaClamp
+		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0))
+		if quotaClamp != nil {
+			return errors.New("无效的充值额度")
+		}
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
 		}

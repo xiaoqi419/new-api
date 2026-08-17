@@ -17,7 +17,6 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 	"github.com/stripe/stripe-go/v81"
 	stripeclient "github.com/stripe/stripe-go/v81/client"
 	"github.com/stripe/stripe-go/v81/webhook"
@@ -96,7 +95,12 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	chargedMoney := GetChargedAmount(float64(req.Amount), *user)
 
 	// 代理用户下单前预检代理钱包，不足则提示，避免支付后挂单(S12)。
-	projectedQuota := int(decimal.NewFromFloat(chargedMoney).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	projectedQuota, quotaErr := common.QuotaFromFloatStrict(chargedMoney * common.QuotaPerUnit)
+	if quotaErr != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("Stripe 预计充值额度超出安全范围 user_id=%d amount=%d charged_money=%g error=%q", id, req.Amount, chargedMoney, quotaErr.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
+	}
 	if ok, msg := precheckAgentWalletForUser(c, projectedQuota); !ok {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
 		return

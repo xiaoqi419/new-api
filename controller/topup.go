@@ -236,6 +236,20 @@ func getPayMoney(amount int64, group string, unitPrice float64) float64 {
 	return payMoney.InexactFloat64()
 }
 
+// topupQuotaFromAmount converts a stored top-up amount (USD-equivalent units)
+// into the quota credited to the account. A top-up amount is user-controlled at
+// the payment boundary, so a saturated conversion must fail instead of
+// allowing a wrapped value to reach settlement.
+func topupQuotaFromAmount(amount int64) (int, error) {
+	quota, clamp := common.QuotaFromDecimalChecked(
+		decimal.NewFromInt(amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0),
+	)
+	if clamp != nil {
+		return 0, clamp
+	}
+	return quota, nil
+}
+
 // getMinTopup 返回最小充值门槛。minTopupOverride>0 时使用代理自定义值，否则回退平台全局。
 func getMinTopup(minTopupOverride int) int64 {
 	minTopup := operation_setting.MinTopUp
@@ -351,7 +365,12 @@ func RequestEpay(c *gin.Context) {
 		amount = dAmount.Div(dQuotaPerUnit).IntPart()
 	}
 	// 代理用户下单前预检代理钱包，不足则提示，避免支付后挂单
-	projectedQuota := int(decimal.NewFromInt(int64(amount)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	projectedQuota, quotaErr := topupQuotaFromAmount(amount)
+	if quotaErr != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 预计充值额度超出安全范围 user_id=%d amount=%d error=%q", id, amount, quotaErr.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
+	}
 	if ok, msg := precheckAgentWalletForUser(c, projectedQuota); !ok {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
 		return
@@ -395,8 +414,7 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "平台未配置支付信息"})
 		return
 	}
-	if req.Amount < getMinTopup(0) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(0))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
 		return
 	}
 	id := c.GetInt("id")
@@ -438,6 +456,11 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		dAmount := decimal.NewFromInt(int64(amount))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		amount = dAmount.Div(dQuotaPerUnit).IntPart()
+	}
+	if _, err := topupQuotaFromAmount(amount); err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("代理预充额度超出安全范围 agent_id=%d amount=%d error=%q", agentId, amount, err.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
 	}
 	topUp := &model.TopUp{
 		UserId:          id,
@@ -604,9 +627,15 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 				logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 实际支付方式与订单不同 trade_no=%s order_payment_method=%s actual_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentMethod, verifyInfo.Type, c.ClientIP()))
 				paymentMethodOverride = verifyInfo.Type
 			}
-			dAmount := decimal.NewFromInt(int64(topUp.Amount))
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			quotaToAdd, quotaErr := topupQuotaFromAmount(topUp.Amount)
+			if quotaErr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 充值额度超出安全范围 trade_no=%s user_id=%d amount=%d error=%q", topUp.TradeNo, topUp.UserId, topUp.Amount, quotaErr.Error()))
+				return
+			}
+			if quotaToAdd <= 0 {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 充值额度无效 trade_no=%s user_id=%d amount=%d quota_to_add=%d", topUp.TradeNo, topUp.UserId, topUp.Amount, quotaToAdd))
+				return
+			}
 			// 原子完成到账/挂单（代理用户按 cost_ratio 从代理钱包结算，钱包不足则挂单）
 			credited, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, paymentMethodOverride, quotaToAdd)
 			if err != nil {
@@ -639,8 +668,7 @@ func RequestAmount(c *gin.Context) {
 	}
 
 	epayCfg := resolveEpayConfig(c)
-	if req.Amount < getMinTopup(epayCfg.MinTopup) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(epayCfg.MinTopup))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(epayCfg.MinTopup)) {
 		return
 	}
 	id := c.GetInt("id")
