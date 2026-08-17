@@ -13,6 +13,7 @@ func TestCalcSubscriptionBalanceQuotaRejectsNonFiniteAndOverflow(t *testing.T) {
 	oldQuotaPerUnit := common.QuotaPerUnit
 	t.Cleanup(func() { common.QuotaPerUnit = oldQuotaPerUnit })
 	common.QuotaPerUnit = 500000
+	const maxTopUpAmount int64 = 1<<63 - 1
 
 	quota, err := calcSubscriptionBalanceQuota(math.NaN())
 	require.Error(t, err)
@@ -40,7 +41,7 @@ func TestTryCompleteAgentPrepayRejectsQuotaOverflow(t *testing.T) {
 	require.NoError(t, DB.Create(&TopUp{
 		Id:              103,
 		UserId:          owner.Id,
-		Amount:          math.MaxInt64,
+		Amount:          maxTopUpAmount,
 		TradeNo:         "AGP5OVERFLOW",
 		PaymentProvider: PaymentProviderEpay,
 		AgentPrepayId:   agent.Id,
