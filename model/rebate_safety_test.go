@@ -29,6 +29,7 @@ func setupCreateInviterRebateTest(t *testing.T, rebateRatio float64) (*User, *Us
 		Username: "rebate-safety-inviter",
 		Password: "password",
 		Status:   common.UserStatusEnabled,
+		AffCode:  "rebate-safety-inviter",
 	}
 	require.NoError(t, DB.Create(inviter).Error)
 
@@ -37,6 +38,7 @@ func setupCreateInviterRebateTest(t *testing.T, rebateRatio float64) (*User, *Us
 		Password:  "password",
 		Status:    common.UserStatusEnabled,
 		InviterId: inviter.Id,
+		AffCode:   "rebate-safety-invitee",
 	}
 	require.NoError(t, DB.Create(invitee).Error)
 	return inviter, invitee
