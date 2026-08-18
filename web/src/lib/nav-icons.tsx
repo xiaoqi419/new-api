@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import * as Icons from '@/components/icons'
-import { type LucideIcon } from '@/components/icons'
+import type { LucideIcon } from '@/components/icons'
 
 /**
  * All selectable icon names exposed by the shared icon adapter
