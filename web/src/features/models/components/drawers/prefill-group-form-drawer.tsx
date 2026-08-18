@@ -107,15 +107,16 @@ export function PrefillGroupFormDrawer({
   useEffect(() => {
     if (open) {
       if (isEdit && currentGroup) {
+        const items =
+          currentGroup.type === 'endpoint'
+            ? serializeEndpointItems(currentGroup.items)
+            : parseStringItems(currentGroup.items)
         form.reset({
           id: currentGroup.id,
           name: currentGroup.name,
           description: currentGroup.description || '',
           type: currentGroup.type,
-          items:
-            currentGroup.type === 'endpoint'
-              ? serializeEndpointItems(currentGroup.items)
-              : parseStringItems(currentGroup.items),
+          items,
         })
       } else {
         form.reset(DEFAULT_FORM_VALUES)
@@ -143,24 +144,25 @@ export function PrefillGroupFormDrawer({
 
   const handleSubmit = async (values: PrefillGroupFormValues) => {
     setIsSaving(true)
+    let items: string | string[]
+    if (values.type === 'endpoint') {
+      items = typeof values.items === 'string' ? values.items : ''
+    } else if (Array.isArray(values.items)) {
+      items = values.items
+    } else {
+      items = []
+    }
     const payload = {
       name: values.name.trim(),
       type: values.type,
       description: values.description?.trim() || '',
-      items:
-        values.type === 'endpoint'
-          ? typeof values.items === 'string'
-            ? values.items
-            : ''
-          : Array.isArray(values.items)
-            ? values.items
-            : [],
+      items,
     }
 
     try {
       const response = isEdit
         ? await updatePrefillGroup({
-            id: currentGroup!.id,
+            id: currentGroup?.id ?? 0,
             ...payload,
           })
         : await createPrefillGroup(payload)
@@ -185,6 +187,12 @@ export function PrefillGroupFormDrawer({
 
   const meta =
     PREFILL_GROUP_TYPE_META[selectedType] || PREFILL_GROUP_TYPE_META.model
+  let submitLabel = t('Create')
+  if (isSaving) {
+    submitLabel = t('Saving...')
+  } else if (isEdit) {
+    submitLabel = t('Save changes')
+  }
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -277,22 +285,20 @@ export function PrefillGroupFormDrawer({
                   <FormItem>
                     <FormLabel>Group Type</FormLabel>
                     <Select
-                      items={[
-                        ...PREFILL_GROUP_TYPES.map((type) => ({
-                          value: type.value,
-                          label: (
-                            <div className='flex flex-col text-left'>
-                              <span className='font-medium'>{type.label}</span>
-                              <span
-                                data-prefill-description
-                                className='text-muted-foreground text-xs'
-                              >
-                                {type.description}
-                              </span>
-                            </div>
-                          ),
-                        })),
-                      ]}
+                      items={PREFILL_GROUP_TYPES.map((type) => ({
+                        value: type.value,
+                        label: (
+                          <div className='flex flex-col text-left'>
+                            <span className='font-medium'>{type.label}</span>
+                            <span
+                              data-prefill-description
+                              className='text-muted-foreground text-xs'
+                            >
+                              {type.description}
+                            </span>
+                          </div>
+                        ),
+                      }))}
                       value={field.value}
                       onValueChange={(value) =>
                         value !== null &&
@@ -399,11 +405,7 @@ export function PrefillGroupFormDrawer({
           </SheetClose>
           <Button type='submit' form='prefill-group-form' disabled={isSaving}>
             {isSaving && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-            {isSaving
-              ? t('Saving...')
-              : isEdit
-                ? t('Save changes')
-                : t('Create')}
+            {submitLabel}
           </Button>
         </SheetFooter>
       </SheetContent>

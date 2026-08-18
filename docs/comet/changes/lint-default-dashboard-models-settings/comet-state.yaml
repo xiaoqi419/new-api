@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-dashboard-models-settings
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -39,7 +39,64 @@ acceptance:
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含 lint 配置、package/lock、依赖或 disable 变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: bc0d1816-276f-4edc-bd6d-a3818d8c1797
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:58870e54-15b2-4b4a-909b-1f427d5e7c54
+  iteration: 1
+  summary:
+    text: Cleared all owned dashboard, home, models, and system-settings oxlint
+      errors with behavior-preserving structural fixes and stable list
+      identities; request, save, pricing, and module contracts remain unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned-path oxlint
+        truncated: false
+      result: passed
+      note:
+        text: oxlint 1.74.0 returned 0 errors and 34 warning-only findings across the
+          four owned feature directories.
+        truncated: false
+    - name:
+        text: relevant existing tests
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun test passed 85 assertions across six existing dashboard and
+          model-pricing test files.
+        truncated: false
+    - name:
+        text: frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; all 32 source changes remain under the four
+          approved owned feature directories.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Existing focused tests do not directly exercise DOM identity for the
+        tiered-pricing editor; the stable-ID add, edit, and remove paths were
+        reviewed manually and are covered by typecheck and final integration
+        gates.
+      truncated: false
+    - text: The 34 warning-only findings remain intentionally outside the approved
+        errors-only scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T11:00:51.283Z
 blockers: []
 verification: null
 history: []
