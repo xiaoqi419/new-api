@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-common-pages
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 7
+state_version: 8
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 2
   iteration: 2
   attempt: 0
@@ -22,241 +22,92 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：同步已包含四文件单规则 iframe override 的 Supervisor 目标分支后，权威 oxlint 对全部 owned
       paths 返回 0 errors。
-    result: passed
-    reason:
-      text: Runtime's authoritative Oxlint 1.74.0 check covers all 59 owned Classic
-        sources with zero errors; 221 warning-only diagnostics are outside this
-        errors-only gate. The integrated candidate is based on the Supervisor
-        branch containing the approved trusted-iframe override.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：Hooks、Promise、array key、component export
       与机械性修复保持认证、导航、响应式布局、首页数据、Playground 请求/流式状态、看板与 setup 行为；Chat、About、Home
       iframe 的 src、allow、sandbox 与 Home postMessage 行为保持不变；相关既有测试通过，或明确报告无测试。
-    result: failed
-    reason:
-      text: "Independent gpt-5.6-luna/max source review found three reproducible
-        behavior regressions. MessageContent.jsx keys image siblings only by URL
-        even though the supported request path permits duplicate URLs; Home
-        CodeHighlight keys lines only by line text while the current default
-        Python sample contains repeated blank lines; both produce duplicate
-        React keys. Home's displayHomePageContent callback/effect now depends on
-        actualTheme and i18n.language, changing the previous mount-only
-        /api/home_page_content fetch into refetches on theme or language changes
-        and altering Home content/onload scheduling. Repair only
-        MessageContent.jsx and Home/index.jsx: use deterministic
-        value-plus-occurrence identities, and restore mount-only Home fetch
-        semantics while preserving exact iframe src/attributes and postMessage
-        payload/target. Other reviewed auth, layout, dashboard, setup,
-        Playground request/SSE/state, GroupBuy, iframe attributes, and
-        postMessage values preserve behavior."
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含配置、package/lock、依赖、disable、受保护品牌或其他
       child 领域变化。
-    result: passed
-    reason:
-      text: The target-relative candidate contains exactly 59 approved Classic source
-        files plus two child formal artifacts. git diff --check passes; there
-        are no package/lock, dependency, lint/prettier config, backend, default
-        frontend, i18n, changelog, cross-child, or added suppression changes.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: 581c32cc-a062-4611-9375-7ea4ad1204e8
+  candidate_id: 796482cb-d999-422c-b1e9-7cbaa4f12e1c
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:ec3b98f0-f05c-4627-93ca-1c9fbcd44b84
-  iteration: 1
+  builder_execution_ref: skill-coordinated:builder:6c039d8d-570c-4a05-b7a0-d9db7913a8b1
+  iteration: 2
   summary:
-    text: Commit c67d097b repairs the approved 59 Classic common-page source files,
-      and merge d0be90e2 synchronizes the Supervisor branch containing the exact
-      trusted-iframe override. The integrated candidate now has zero Oxlint
-      errors across all owned paths while preserving the approved iframe
-      behavior and ownership boundaries.
+    text: "Commit 82f119a21 repairs all iteration-1 A2 findings within
+      MessageContent.jsx and Home/index.jsx: duplicate image URLs and duplicate
+      code lines now use deterministic value-plus-occurrence keys, while Home
+      captures the initial theme/language in refs so the stable callback
+      preserves the original mount-only content fetch and exact iframe
+      postMessage contract."
     truncated: false
   addressed_acceptance_ids:
-    - A1
     - A2
-    - A3
   checks:
     - name:
-        text: Owned-path Oxlint 1.74.0
+        text: Focused repair Oxlint 1.74.0
         truncated: false
       result: passed
       note:
-        text: All 59 owned Classic source files completed with 0 errors and 221
+        text: MessageContent.jsx and Home/index.jsx completed with 0 errors and 15
           warning-only diagnostics.
+        truncated: false
+    - name:
+        text: All owned Classic sources Oxlint 1.74.0
+        truncated: false
+      result: passed
+      note:
+        text: All 59 target-relative owned sources completed with 0 errors and 220
+          warning-only diagnostics.
+        truncated: false
+    - name:
+        text: Repair scope and whitespace
+        truncated: false
+      result: passed
+      note:
+        text: The repair changed exactly the two approved source files and git diff
+          --check passed; no config, dependency, package/lock, disable, i18n,
+          changelog, backend, default frontend, or Comet artifact was modified
+          by the repair agent.
         truncated: false
     - name:
         text: Classic direct tests
         truncated: false
       result: not-run
       note:
-        text: web/classic/package.json has no test script and web/classic/src contains
-          no .test, .spec, or __tests__ paths.
-        truncated: false
-    - name:
-        text: Scope and whitespace invariants
-        truncated: false
-      result: passed
-      note:
-        text: git diff --check passed; the target-relative diff contains 59 approved
-          source files plus two child formal artifacts, with no package/lock,
-          lint config, dependency, disable, backend, default frontend, or
-          cross-child paths.
+        text: Classic has no test script or direct test files, and no test dependency or
+          synthetic test was added.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: Classic has no direct automated tests for these paths; the final Classic
+    - text: Duplicate-key and mount-only fetch behavior have no direct Classic test
+        harness and were verified by source review plus lint; full Classic
         production build remains reserved for lint-final-gates.
       truncated: false
-    - text: The 221 warning-only diagnostics are outside this errors-only child scope.
+    - text: The 220 warning-only diagnostics remain outside this errors-only child
+        scope.
       truncated: false
-    - text: The approved trusted-administrator iframe residual risk remains unchanged
-        and documented.
+    - text: The approved trusted-administrator iframe residual risk remains unchanged.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-08-18T18:48:38.484Z
+  submitted_at: 2026-08-18T19:16:07.528Z
 blockers: []
-verification:
-  candidate_id: 581c32cc-a062-4611-9375-7ea4ad1204e8
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:6649358a-929a-406c-9419-db8699368843
-  iteration: 1
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks:
-    - id: owned-classic-common-oxlint
-      name:
-        text: Owned Classic common-page Oxlint 1.74.0
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: $ErrorActionPreference='Stop'; $owned=@(git -C .. diff --name-only
-            codex/p1-lint-debt...HEAD -- web/classic/src); if ($owned.Count -ne
-            59) { throw "Expected 59 owned source files, got $($owned.Count)" };
-            $paths=@($owned | ForEach-Object { $_.Substring(4) });
-            $oxlint='E:\code\torch-ai\web\node_modules\.bin\oxlint.exe'; if ((&
-            $oxlint --version) -notmatch '1\.74\.0') { throw 'Expected oxlint
-            1.74.0' }; & $oxlint -c .oxlintrc.json @paths; exit $LASTEXITCODE
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 661
-    - id: trusted-iframe-rule
-      name:
-        text: Trusted iframe paths have no sandbox-rule diagnostic
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: $oxlint='E:\code\torch-ai\web\node_modules\.bin\oxlint.exe'; & $oxlint -c
-            .oxlintrc.json -A all -D react/iframe-missing-sandbox
-            'src/routes/_authenticated/chat/$chatId.tsx'
-            classic/src/pages/Chat/index.jsx classic/src/pages/About/index.jsx
-            classic/src/pages/Home/index.jsx; exit $LASTEXITCODE
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 308
-    - id: classic-test-availability
-      name:
-        text: Classic direct test availability
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: "$pkg=Get-Content -Raw classic/package.json | ConvertFrom-Json; if
-            (@($pkg.scripts.PSObject.Properties.Name) -contains 'test') { throw
-            'Unexpected Classic test script now exists; run it before
-            verification' }; $tests=@(rg --files classic/src | rg
-            '(__tests__|\\.test\\.|\\.spec\\.)'); if ($LASTEXITCODE -notin
-            @(0,1)) { exit $LASTEXITCODE }; if ($tests.Count -ne 0) { throw
-            ('Direct Classic tests exist but were not run: ' + ($tests -join ',
-            ')) }; exit 0"
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 378
-    - id: classic-common-scope-invariants
-      name:
-        text: Classic common-page scope and diff invariants
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: "$target='codex/p1-lint-debt'; git diff --check \"$target...HEAD\"; if
-            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $changed=@(git diff
-            --name-only \"$target...HEAD\");
-            $allowed='^(docs/comet/changes/lint-classic-common-pages/|web/class\
-            ic/src/App\\.jsx$|web/classic/src/constants/|web/classic/src/servic\
-            es/|web/classic/src/components/(auth|common|dashboard|groupbuy|layo\
-            ut|playground|setup)/|web/classic/src/hooks/(chat|common|dashboard|\
-            playground)/|web/classic/src/pages/(About|AssetLibrary|Chat|Chat2Li\
-            nk|Dashboard|Docs|Forbidden|GroupBuy|GroupBuyAdmin|GroupBuyHall|Gro\
-            upMonitor|Home|Invitation|InviteRanking|NotFound|Playground|Privacy\
-            Policy|Rebate|Setup|UserAgreement|VideoGeneration)/)';
-            $unexpected=@($changed | Where-Object { $_ -notmatch $allowed }); if
-            ($unexpected.Count -ne 0) { throw ('Out-of-scope paths: ' +
-            ($unexpected -join ', ')) }; $owned=@($changed | Where-Object { $_
-            -like 'web/classic/src/*' }); if ($owned.Count -ne 59) { throw
-            \"Expected 59 owned source files, got $($owned.Count)\" };
-            $package=@($changed | Where-Object { $_ -match
-            '(^|/)(package\\.json|bun\\.lockb?|package-lock\\.json|pnpm-lock\\.\
-            yaml|yarn\\.lock)$' }); if ($package.Count -ne 0) { throw ('Package
-            or lock changes: ' + ($package -join ', ')) }; $config=@($changed |
-            Where-Object { $_ -match
-            '(^|/)(\\.oxlintrc\\.json|\\.prettierrc\\.mjs)$' }); if
-            ($config.Count -ne 0) { throw ('Lint or formatter config changes: '
-            + ($config -join ', ')) }; $disable=@(git diff -U0
-            \"$target...HEAD\" -- web/classic/src | Select-String
-            '^\\+.*(?:eslint-disable|oxlint-disable|@ts-ignore|@ts-nocheck)');
-            if ($disable.Count -ne 0) { throw 'Added lint or TypeScript
-            suppression' }; exit 0"
-          truncated: false
-      argv_truncated: false
-      cwd_ref: .
-      status: passed
-      exit_code: 0
-      duration_ms: 454
-  summary:
-    text: Independent gpt-5.6-luna/max read-only verification passes A1 and A3 but
-      fails A2 due to two duplicate-key cases and a Home effect dependency
-      change that refetches content after theme/language changes.
-    truncated: false
-  risks:
-    - text: Classic has no direct test script or test files for these paths; the full
-        Classic production build remains reserved for lint-final-gates.
-      truncated: false
-    - text: The approved trusted-administrator iframe residual risk remains unchanged;
-        the candidate does not alter iframe attributes or postMessage payload
-        values.
-      truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T19:06:38.983Z
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -289,7 +140,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T12:02:30.596Z
