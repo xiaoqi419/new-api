@@ -1,0 +1,60 @@
+---
+generated_from_state_version: 20
+---
+
+# Verification
+
+## Current result
+
+- Result: **Passed**
+- Assurance: **skill-coordinated**
+- Goal cycle: 2
+- Iteration: 2
+- Verifier attempt: 1
+- Completed: 2026-08-18T08:44:36.142Z
+- Summary: Independent read-only verification passes A1-A7 for goal_cycle 2, iteration 2, attempt 1. The documentation synchronization removes stale Build/Verify wording, records the stable prior independent A1-A7 pass, delegates final archive state to Runtime-managed artifacts, and retains the approved full-lint, live-payment, and WeChat-login boundaries. No implementation, test, acceptance criterion, or product scope changed after the previous passing verification.
+
+## Acceptance
+
+| ID | Result | Source | Criterion | Reason |
+| --- | --- | --- | --- | --- |
+| A1 | passed | brief.md | A1：root module 与 `relaykit` 均通过 `go vet`；`go build ./...` 和 `cd relaykit; GOWORK=off go build ./...` 均通过，且 root embed 所需的三个 dist 目录在干净 checkout 中有明确来源或 placeholder。 | Iteration 2 is documented by Runtime as a documentation-only synchronization with no implementation, test, acceptance, or scope change. The preceding independent Verify records A1-A7 passed, and the maintenance record retains the three embed placeholders and completed root/relaykit vet/build/test status. |
+| A2 | passed | brief.md | A2：`make test`（root 子包与 relaykit）通过，或对任何无法运行的检查记录可复现的环境阻塞和线上/CI替代验证方式。 | No test code or A2 criterion changed in this iteration. Runtime history records the prior independent A1-A7 pass, and the durable maintenance record states root and independent relaykit full tests passed after the channel-affinity cache-isolation repair. |
+| A3 | passed | brief.md | A3：具备 Bun 的环境中 `web` 的 `bun run typecheck`、`bun run build`、`bun test` 和 `bun run i18n:sync` 通过；当前 change 修改或直接影响的 default 前端文件定向 lint 通过。全量 `bun run lint` 的 1,400 errors / 383 files 作为历史 lint debt 拆入独立后续 change，不作为本 change 的通过条件，也不得声称全量 lint 已通过。 | No frontend implementation or validation scope changed after the prior pass. The brief and maintenance document consistently record typecheck, test, build, and i18n sync as passed while explicitly preserving full oxlint as 1,400 errors across 383 files assigned to a separate lint-debt change, without claiming full-lint success. |
+| A4 | passed | brief.md | A4：i18n 同步报告中所有 locale 的 `missingCount` 与 `extrasCount` 为 0；`en`/`zh` 覆盖全部新增用户可见键，其他语言继续按既有 fallback 规则，不扩大本轮翻译范围。 | The current candidate only updates phase/status wording and does not alter locales, i18n source, or A4 acceptance. The preceding independent Runtime Verify passed all A1-A7 and retained the i18n synchronization evidence. |
+| A5 | passed | brief.md | A5：路由矩阵可观察地证明 `/docs` 可公开访问；钱包、拼团、返现、视频、素材库、渠道监控要求登录；返现/拼团管理端与支付配置要求管理员；支付回调仅公开放行到处理器验签；模块开关关闭时前后端均不提供可用业务路径。 | No router, middleware, controller, feature-switch, or permission code changed in iteration 2. The prior independent Verify covered the route and permission chains and passed A1-A7; the unchanged A5 boundary remains specified in brief.md. |
+| A6 | passed | brief.md | A6：钱包支付分类/跳转安全/WeChat Native-H5-JSAPI、返现、拼团、认证、视频/素材引用和渠道监控已有测试集通过，新增或修复的真实回归有针对性测试保护。 | No wallet, payment, rebate, group-buy, auth, video/material, or channel-monitor implementation/test changed in iteration 2. The prior independent Verify records A1-A7 passed after reviewing regression chains and the repeated channel-affinity test. |
+| A7 | passed | brief.md | A7：维护状态文档明确区分“本地代码验收通过”“待线上验收”和“暂时搁置”，并列出管理员凭据配置、公网回调和真实支付验收步骤。 | The maintenance document now records the durable fact that A1-A7 passed one independent Verify and delegates final archive status to Runtime-managed comet-state.yaml and verification.md, rather than claiming Build repair iteration 2 or an unpassed Verify. It preserves the full-lint debt split, online-only merchant payment boundary, paused WeChat-login decision, and the administrator/public callback/settlement checklist. |
+
+## Checks
+
+| Check | Command | Working directory | Status | Exit | Duration |
+| --- | --- | --- | --- | ---: | ---: |
+| maintenance status and brief phase synchronization | -NoProfile -Command git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $paths = @('docs/torch-ai-maintenance-status.md','docs/comet/changes/p1-quality-regression/brief.md'); $text = [string]::Join([Environment]::NewLine, ($paths \| ForEach-Object { Get-Content -Raw $_ })); foreach ($stale in @('Build repair iteration 2','尚未进入 Verify pass','尚未 Verify pass')) { if ($text -match [regex]::Escape($stale)) { throw "Stale phase wording remains: $stale" } }; foreach ($needle in @('A1-A7','独立 Verify','comet-state.yaml','verification.md','1,400 errors / 383 files','独立后续 change','微信登录继续搁置')) { if ($text -notmatch [regex]::Escape($needle)) { throw "Required durable status wording missing: $needle" } } | . | passed | 0 | 423 ms |
+
+## Blockers
+
+_None._
+
+## Risks and skipped work
+
+- The Runtime is at stateVersion 17 in Verify with verification_result pending until this result is accepted; verification.md is generated by Runtime after acceptance.
+- The full frontend lint baseline remains non-green at 1,400 errors across 383 files and must remain a separately scoped lint-debt change; this result does not claim full-lint success.
+- Real WeChat/Alipay merchant credentials, public HTTPS callbacks, client authorization, and settlement remain online-only acceptance work; WeChat-login expansion remains paused.
+- The earlier implementation changes remain uncommitted in the worktree; Runtime history and the iteration-2 handoff show this candidate only synchronized documentation after the previous passing verification.
+
+## Previous iterations
+
+| Goal cycle | Iteration | Attempt | Outcome | Unresolved | Summary | Completed |
+| ---: | ---: | ---: | --- | --- | --- | --- |
+| 1 | 1 | 1 | blocked | A2, A3 | Verification cannot be completed as an independent pass. The CI embed fix and most targeted checks are evidenced, but root Go baseline failures, full frontend lint baseline failures, and unavailable independent verifier capacity keep A2/A3 blocked. Keep the change active and do not Archive. | 2026-08-18T06:11:01.597Z |
+| 1 | 1 | 2 | blocked | A2, A3 | Verification remains blocked. The CI embed fix and targeted quality checks are evidenced, but a reproducible root Go test-isolation defect and broad pre-existing frontend lint failures keep A2/A3 blocked. Return to Build for the test isolation fix, then decide whether full lint cleanup is in scope. | 2026-08-18T06:23:02.371Z |
+| 1 | 1 | 2 | recovery | — | 根据用户继续指示，将 Verify 返回 Build；先修复 channel-affinity 测试的时间键缓存污染并补充回归验证，保留全量前端 lint 历史基线为单独未决项。 | 2026-08-18T06:23:24.746Z |
+| 1 | 2 | 0 | recovery | — | Native confirmed acceptance criteria changed | 2026-08-18T08:20:19.436Z |
+| 2 | 1 | 1 | pass | — | Independent read-only verification passed A1-A7 after reviewing the Native artifacts, current diff, modified files, CI/cache/route/regression chains, Runtime checks, and an independent repeated channel-affinity test. Full-lint debt and real merchant acceptance remain explicitly outside this candidate's local-pass claim. | 2026-08-18T08:34:57.387Z |
+| 2 | 1 | 1 | recovery | — | Verifier passed A1-A7 but identified stale maintenance phase wording that still says Build repair iteration 2. Return to Build to synchronize the durable maintenance status with the accepted Verify result before requesting Archive confirmation; no product scope or acceptance criteria change. | 2026-08-18T08:35:54.713Z |
+| 2 | 2 | 1 | pass | — | Independent read-only verification passes A1-A7 for goal_cycle 2, iteration 2, attempt 1. The documentation synchronization removes stale Build/Verify wording, records the stable prior independent A1-A7 pass, delegates final archive state to Runtime-managed artifacts, and retains the approved full-lint, live-payment, and WeChat-login boundaries. No implementation, test, acceptance criterion, or product scope changed after the previous passing verification. | 2026-08-18T08:44:36.142Z |
+
+## Conclusion
+
+Independent read-only verification passes A1-A7 for goal_cycle 2, iteration 2, attempt 1. The documentation synchronization removes stale Build/Verify wording, records the stable prior independent A1-A7 pass, delegates final archive state to Runtime-managed artifacts, and retains the approved full-lint, live-payment, and WeChat-login boundaries. No implementation, test, acceptance criterion, or product scope changed after the previous passing verification.
