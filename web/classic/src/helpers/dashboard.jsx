@@ -100,7 +100,6 @@ export const updateChartSpec = (
 };
 
 export const getTrendSpec = (data, color) => ({
-  background: 'transparent',
   type: 'line',
   data: [{ id: 'trend', values: data.map((val, idx) => ({ x: idx, y: val })) }],
   xField: 'x',
@@ -366,17 +365,16 @@ export const generateChartTimePoints = (
   data,
   dataExportDefaultTime,
 ) => {
-  let chartTimePoints = Array.from(
-    new Set([...aggregatedData.values()].map((d) => d.time)),
-  );
+  let chartTimePoints = [
+    ...new Set([...aggregatedData.values()].map((d) => d.time)),
+  ];
 
   if (chartTimePoints.length < DEFAULTS.MAX_TREND_POINTS) {
     const lastTime = Math.max(...data.map((item) => item.created_at));
     const interval = getTimeInterval(dataExportDefaultTime, true);
 
     // 生成时间点数组，用于检查是否跨年
-    const generatedTimestamps = Array.from(
-      { length: DEFAULTS.MAX_TREND_POINTS },
+    const generatedTimestamps = [...Array(DEFAULTS.MAX_TREND_POINTS)].map(
       (_, i) => lastTime - (6 - i) * interval,
     );
     const showYear = isDataCrossYear(generatedTimestamps);
@@ -397,7 +395,7 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10) => {
     userQuotaTotal.set(item.username, prev + item.quota);
   });
 
-  const sorted = Array.from(userQuotaTotal.entries()).sort(
+  const sorted = [...userQuotaTotal.entries()].sort(
     (a, b) => b[1] - a[1],
   );
   const topUsers = sorted.slice(0, limit).map(([u]) => u);
@@ -427,7 +425,7 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10) => {
     timeUserMap.set(key, { quota: prev.quota + item.quota });
   });
 
-  const sortedTimePoints = Array.from(allTimePoints).sort();
+  const sortedTimePoints = [...allTimePoints].sort();
   const trendData = [];
   sortedTimePoints.forEach((time) => {
     topUsers.forEach((user) => {

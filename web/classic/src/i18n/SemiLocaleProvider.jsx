@@ -17,18 +17,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-export * from './history';
-export * from './auth';
-export * from './authHeader';
-export * from './utils';
-export * from './base64';
-export * from './api';
-export * from './render';
-export * from './log';
-export * from './data';
-export * from './token';
-export * from './boolean';
-export * from './dashboard';
-export * from './passkey';
-export * from './statusCodeRules';
-export * from './frontendTheme';
+import { LocaleProvider } from '@douyinfe/semi-ui';
+import zh_CN from '@douyinfe/semi-ui/lib/es/locale/source/zh_CN';
+import en_GB from '@douyinfe/semi-ui/lib/es/locale/source/en_GB';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
+
+const SemiLocaleProvider = ({ children }) => {
+  const { i18n } = useTranslation();
+  const semiLocale = useMemo(
+    () => ({ zh: zh_CN, en: en_GB })[i18n.language] || zh_CN,
+    [i18n.language],
+  );
+  return <LocaleProvider locale={semiLocale}>{children}</LocaleProvider>;
+};
+
+export default SemiLocaleProvider;

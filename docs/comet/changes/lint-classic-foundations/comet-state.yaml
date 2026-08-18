@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-foundations
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 4
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,16 +12,16 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
-  attempt: 0
+  attempt: 1
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: await-verifier-result
 acceptance:
   - id: A1
     source: brief.md
@@ -41,7 +41,65 @@ acceptance:
       配置、package/lock、依赖或 disable 变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 3e1d490d-2526-4296-93bd-5e709b91591e
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:258778d0-2a50-40e1-8135-ad03c11d2d1b
+  iteration: 1
+  summary:
+    text: Cleared all 117 foundation oxlint errors while preserving helper barrel
+      exports, Theme/User/Status provider initialization, i18n entry behavior,
+      and Playground context fallback behavior.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: Foundation targeted oxlint
+        truncated: false
+      result: passed
+      note:
+        text: "web/node_modules/.bin/oxlint.exe 1.74.0 with web/.oxlintrc.json: 0
+          errors, 140 pre-existing or non-goal warnings."
+        truncated: false
+    - name:
+        text: Necessary import-only targeted oxlint
+        truncated: false
+      result: failed
+      note:
+        text: 2 pre-existing react-hooks/exhaustive-deps errors in
+          classic/src/pages/Playground/index.jsx:342 and :374; import paths
+          parsed with no import-resolution diagnostic. 18 warnings were also
+          reported.
+        truncated: false
+    - name:
+        text: Existing focused tests
+        truncated: false
+      result: not-run
+      note:
+        text: No classic test/spec files were found by repository search; classic
+          package.json has no test script.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Bun is unavailable on PATH, so no Bun module/runtime check was run.
+      truncated: false
+    - text: No broad classic build was run by task constraint.
+      truncated: false
+    - text: Import-only file lint remains nonzero solely because of the two
+        out-of-scope existing hook-dependency errors described above.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T10:48:16.342Z
 blockers: []
 verification: null
 history: []

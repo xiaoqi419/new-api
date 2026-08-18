@@ -17,18 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-export * from './history';
-export * from './auth';
-export * from './authHeader';
-export * from './utils';
-export * from './base64';
-export * from './api';
-export * from './render';
-export * from './log';
-export * from './data';
-export * from './token';
-export * from './boolean';
-export * from './dashboard';
-export * from './passkey';
-export * from './statusCodeRules';
-export * from './frontendTheme';
+export function authHeader() {
+  // return authorization header with jwt token
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (user && user.token) {
+    return { Authorization: `Bearer ${user.token}` };
+  }
+
+  return {};
+}
