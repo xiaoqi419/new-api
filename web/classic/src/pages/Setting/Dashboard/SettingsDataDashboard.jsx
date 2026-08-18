@@ -44,7 +44,16 @@ export default function DataDashboard(props) {
   });
   const refForm = useRef();
   const inputKeys = useRef(Object.keys(inputs));
+  const optionsSnapshotRef = useRef(props.options);
+  const dataExportDefaultTimeSnapshotRef = useRef(
+    inputs.DataExportDefaultTime,
+  );
   const [inputsRow, setInputsRow] = useState(inputs);
+
+  if (optionsSnapshotRef.current !== props.options) {
+    optionsSnapshotRef.current = props.options;
+    dataExportDefaultTimeSnapshotRef.current = inputs.DataExportDefaultTime;
+  }
 
   function onSubmit() {
     const updateArray = compareObjects(inputs, inputsRow);
@@ -94,7 +103,7 @@ export default function DataDashboard(props) {
     refForm.current.setValues(currentInputs);
     localStorage.setItem(
       'data_export_default_time',
-      String(currentInputs.DataExportDefaultTime),
+      String(dataExportDefaultTimeSnapshotRef.current),
     );
   }, [props.options]);
 

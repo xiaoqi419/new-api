@@ -41,7 +41,14 @@ export default function SettingsDrawing(props) {
   });
   const refForm = useRef();
   const inputKeys = useRef(Object.keys(inputs));
+  const optionsSnapshotRef = useRef(props.options);
+  const mjNotifyEnabledSnapshotRef = useRef(inputs.MjNotifyEnabled);
   const [inputsRow, setInputsRow] = useState(inputs);
+
+  if (optionsSnapshotRef.current !== props.options) {
+    optionsSnapshotRef.current = props.options;
+    mjNotifyEnabledSnapshotRef.current = inputs.MjNotifyEnabled;
+  }
 
   function onSubmit() {
     const updateArray = compareObjects(inputs, inputsRow);
@@ -89,7 +96,10 @@ export default function SettingsDrawing(props) {
     setInputs(currentInputs);
     setInputsRow(structuredClone(currentInputs));
     refForm.current.setValues(currentInputs);
-    localStorage.setItem('mj_notify_enabled', String(currentInputs.MjNotifyEnabled));
+    localStorage.setItem(
+      'mj_notify_enabled',
+      String(mjNotifyEnabledSnapshotRef.current),
+    );
   }, [props.options]);
 
   return (

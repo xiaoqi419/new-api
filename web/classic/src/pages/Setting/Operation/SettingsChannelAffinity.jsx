@@ -535,47 +535,74 @@ export default function SettingsChannelAffinity(props) {
     {
       title: t('模型正则'),
       dataIndex: 'model_regex',
-      render: (list, record) =>
-        (list || []).length > 0
-          ? [...new Set(list || [])].slice(0, 3).map((v) => (
-              <Tag key={`${record.id}-model-${v}`} style={{ marginRight: 4 }}>
-                {v}
-              </Tag>
-            ))
-          : '-',
+      render: (list, record) => {
+        const values = (list || []).slice(0, 3);
+        if (values.length === 0) return '-';
+        const occurrences = new Map();
+        return values.map((value) => {
+          const identity = String(value);
+          const occurrence = occurrences.get(identity) || 0;
+          occurrences.set(identity, occurrence + 1);
+          return (
+            <Tag
+              key={JSON.stringify([record?.id, identity, occurrence])}
+              style={{ marginRight: 4 }}
+            >
+              {value}
+            </Tag>
+          );
+        });
+      },
     },
     {
       title: t('路径正则'),
       dataIndex: 'path_regex',
-      render: (list, record) =>
-        (list || []).length > 0
-          ? [...new Set(list || [])].slice(0, 2).map((v) => (
-              <Tag key={`${record.id}-path-${v}`} style={{ marginRight: 4 }}>
-                {v}
-              </Tag>
-            ))
-          : '-',
+      render: (list, record) => {
+        const values = (list || []).slice(0, 2);
+        if (values.length === 0) return '-';
+        const occurrences = new Map();
+        return values.map((value) => {
+          const identity = String(value);
+          const occurrence = occurrences.get(identity) || 0;
+          occurrences.set(identity, occurrence + 1);
+          return (
+            <Tag
+              key={JSON.stringify([record?.id, identity, occurrence])}
+              style={{ marginRight: 4 }}
+            >
+              {value}
+            </Tag>
+          );
+        });
+      },
     },
     {
       title: t('Key 来源'),
       dataIndex: 'key_sources',
-      render: (list) => {
-        const xs = list || [];
+      render: (list, record) => {
+        const xs = (list || []).slice(0, 3);
         if (xs.length === 0) return '-';
-        const uniqueSources = new Map(
-          xs.map((src) => {
-            const normalizedSource = normalizeKeySource(src);
-            return [
-              `${normalizedSource.type}:${normalizedSource.key}:${normalizedSource.path}`,
-              normalizedSource,
-            ];
-          }),
-        );
-        return [...uniqueSources.entries()].slice(0, 3).map(([key, s]) => {
-          const detail = s.type === 'gjson' ? s.path : s.key;
+        const occurrences = new Map();
+        return xs.map((source) => {
+          const normalizedSource = normalizeKeySource(source);
+          const sourceIdentity = {
+            type: normalizedSource.type,
+            key: normalizedSource.key,
+            path: normalizedSource.path,
+          };
+          const identity = JSON.stringify(sourceIdentity);
+          const occurrence = occurrences.get(identity) || 0;
+          occurrences.set(identity, occurrence + 1);
+          const detail =
+            normalizedSource.type === 'gjson'
+              ? normalizedSource.path
+              : normalizedSource.key;
           return (
-            <Tag key={key} style={{ marginRight: 4 }}>
-              {s.type}:{detail}
+            <Tag
+              key={JSON.stringify([record?.id, sourceIdentity, occurrence])}
+              style={{ marginRight: 4 }}
+            >
+              {normalizedSource.type}:{detail}
             </Tag>
           );
         });
