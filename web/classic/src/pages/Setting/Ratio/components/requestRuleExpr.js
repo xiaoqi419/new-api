@@ -109,11 +109,12 @@ export function getRequestRuleMatchOptions(source, t) {
 // ---------------------------------------------------------------------------
 
 export function normalizeCondition(cond) {
-  const source = cond?.source === SOURCE_TIME
-    ? SOURCE_TIME
-    : cond?.source === SOURCE_HEADER
-      ? SOURCE_HEADER
-      : SOURCE_PARAM;
+  let source = SOURCE_PARAM;
+  if (cond?.source === SOURCE_TIME) {
+    source = SOURCE_TIME;
+  } else if (cond?.source === SOURCE_HEADER) {
+    source = SOURCE_HEADER;
+  }
 
   if (source === SOURCE_TIME) {
     const timeFunc = TIME_FUNCS.includes(cond?.timeFunc) ? cond.timeFunc : 'hour';

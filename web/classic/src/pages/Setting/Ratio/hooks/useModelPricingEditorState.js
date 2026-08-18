@@ -88,6 +88,14 @@ const toNormalizedNumber = (value) => {
   return formatted === '' ? null : Number(formatted);
 };
 
+const formatTieredExprPreview = (expr, tierCount, t) => {
+  const shortenedExpr = expr.length > 60 ? `${expr.slice(0, 60)}...` : expr;
+  if (tierCount > 0) {
+    return `${tierCount} ${t('档')} — ${shortenedExpr}`;
+  }
+  return shortenedExpr;
+};
+
 const parseOptionJSON = (rawValue) => {
   if (!rawValue || rawValue.trim() === '') {
     return {};
@@ -360,7 +368,6 @@ const serializeModel = (model, t) => {
   const imagePrice = toNumberOrNull(model.imagePrice);
   const audioInputPrice = toNumberOrNull(model.audioInputPrice);
   const audioOutputPrice = toNumberOrNull(model.audioOutputPrice);
-
   const hasDependentPrice = [
     completionPrice,
     cachePrice,
@@ -472,16 +479,7 @@ export const buildPreviewRows = (model, t) => {
       rows.push({
         key: 'BillingExpr',
         label: 'ModelBillingExpr',
-        value:
-          tierCount > 0
-            ? `${tierCount} ${t('档')} — ${
-                finalBillingExpr.length > 60
-                  ? finalBillingExpr.slice(0, 60) + '...'
-                  : finalBillingExpr
-              }`
-            : finalBillingExpr.length > 60
-              ? finalBillingExpr.slice(0, 60) + '...'
-              : finalBillingExpr,
+        value: formatTieredExprPreview(finalBillingExpr, tierCount, t),
       });
     }
     return rows;
@@ -560,6 +558,12 @@ export const buildPreviewRows = (model, t) => {
   const imagePrice = toNumberOrNull(model.imagePrice);
   const audioInputPrice = toNumberOrNull(model.audioInputPrice);
   const audioOutputPrice = toNumberOrNull(model.audioOutputPrice);
+  let completionRatioPreview = t('空');
+  if (model.completionRatioLocked) {
+    completionRatioPreview = `${model.lockedCompletionRatio || t('空')} (${t('后端固定')})`;
+  } else if (completionPrice !== null) {
+    completionRatioPreview = formatNumber(completionPrice / inputPrice);
+  }
 
   const rows = [
     {
@@ -570,11 +574,7 @@ export const buildPreviewRows = (model, t) => {
     {
       key: 'CompletionRatio',
       label: 'CompletionRatio',
-      value: model.completionRatioLocked
-        ? `${model.lockedCompletionRatio || t('空')} (${t('后端固定')})`
-        : completionPrice !== null
-          ? formatNumber(completionPrice / inputPrice)
-          : t('空'),
+      value: completionRatioPreview,
     },
     {
       key: 'CacheRatio',
@@ -665,7 +665,7 @@ export function useModelPricingEditorState({
       ...Object.keys(sourceMaps.ModelBillingExpr),
     ]);
 
-    const nextModels = Array.from(names)
+    const nextModels = [...names]
       .map((name) => buildModelState(name, sourceMaps))
       .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -817,15 +817,26 @@ export function useModelPricingEditorState({
       return model;
     }
 
+    let completionPrice = model.completionPrice;
+    if (
+      model.completionRatioLocked &&
+      hasValue(model.lockedCompletionRatio)
+    ) {
+      completionPrice = formatNumber(
+        baseNumber * Number(model.lockedCompletionRatio),
+      );
+    } else if (
+      !hasValue(model.completionPrice) &&
+      hasValue(model.rawRatios.completionRatio)
+    ) {
+      completionPrice = formatNumber(
+        baseNumber * Number(model.rawRatios.completionRatio),
+      );
+    }
+
     return {
       ...model,
-      completionPrice:
-        model.completionRatioLocked && hasValue(model.lockedCompletionRatio)
-          ? formatNumber(baseNumber * Number(model.lockedCompletionRatio))
-          : !hasValue(model.completionPrice) &&
-              hasValue(model.rawRatios.completionRatio)
-            ? formatNumber(baseNumber * Number(model.rawRatios.completionRatio))
-            : model.completionPrice,
+      completionPrice,
       cachePrice:
         !hasValue(model.cachePrice) && hasValue(model.rawRatios.cacheRatio)
           ? formatNumber(baseNumber * Number(model.rawRatios.cacheRatio))
