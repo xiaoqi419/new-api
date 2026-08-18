@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-shared
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 5
+state_version: 6
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 1
   iteration: 2
   attempt: 0
@@ -22,88 +22,59 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：新增的四文件单规则 override 生效后，权威 oxlint 1.74.0 对全部 23 个 owned files 返回 0
       errors，且四个管理员外部 iframe 文件不再产生 `react/iframe-missing-sandbox`
       error；warnings 数量如实记录。
-    result: passed
-    reason:
-      text: Oxlint 1.74.0 returned 0 errors and 3 warning-only diagnostics on all 23
-        owned files, and the isolated four-file rule check produced no
-        react/iframe-missing-sandbox diagnostic.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：搜索/command menu import cycle 被真实拆除；Promise rejection、passkey 编解码、URL
       table state、HTTP status rules、列表 identity、主题与确认对话框行为保持；相关既有测试与 frontend
       typecheck 通过。
-    result: failed
-    reason:
-      text: PromptInput returns the blob-conversion Promise from a React form event
-        handler, whose return value is not consumed, so conversion rejection
-        remains unhandled. RiskAcknowledgementDialog keys repeated static text
-        by text alone, and WebPreviewConsole keys same-millisecond same-level
-        same-message logs by content alone; both accepted prop inputs can
-        therefore produce duplicate React keys. Repair only these three owned
-        components and add direct regression coverage without public API
-        expansion, random keys, raw array-index keys, empty catches, or silent
-        rejection swallowing.
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准的 owned files、`web/.oxlintrc.json` 的四文件单规则
       override、直接相关测试与本 child 正式产物；不含 classic 实现、backend、其他
       config/package/lock/dependency/i18n/changelog/disable/ignore 变化。
-    result: passed
-    reason:
-      text: The candidate diff contains only approved owned source files, the exact
-        four-path single-rule override, and child formal artifacts. Canvas is
-        unchanged, and no Classic implementation, backend,
-        package/lock/dependency, i18n/changelog, disable, or ignore change
-        exists.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: d9a4ebe4-4919-431e-9a74-d6e0efd3577d
+  candidate_id: 3ea5019a-775e-4cdc-a166-c63d16be127e
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:980b1c68-6458-40c8-92ce-f914108de0e8
-  iteration: 1
+  builder_execution_ref: skill-coordinated:builder:fdf7fa5c-630f-4e7c-95e2-1bc9d15725d7
+  iteration: 2
   summary:
-    text: Commit 53b8d4c84 repairs all 51 Default Shared lint errors across the 23
-      owned files, breaks the SearchProvider/CommandMenu import cycle by passing
-      controlled open state as props, preserves Promise and table/navigation
-      behavior, removes allow-same-origin only from unused WebPreviewBody, and
-      adds exactly one four-file react/iframe-missing-sandbox override while
-      preserving the existing Canvas override.
+    text: "Commit 6f64674ce repairs iteration-1 A2 findings: PromptInput now
+      explicitly handles blob-conversion and submission failures without
+      clearing attachments or invoking submission on conversion failure, while
+      RiskAcknowledgementDialog and WebPreviewConsole use deterministic
+      value-plus-occurrence identities for valid duplicate entries. Three direct
+      regression tests cover these cases."
     truncated: false
   addressed_acceptance_ids:
-    - A1
     - A2
-    - A3
   checks:
     - name:
-        text: Oxlint 1.74.0 on all 23 owned files
+        text: Focused regression tests
         truncated: false
       result: passed
       note:
-        text: 0 errors and 3 warning-only diagnostics.
+        text: "Three new Bun/React DOM tests passed: conversion rejection and two
+          duplicate-key inputs."
         truncated: false
     - name:
-        text: Iframe rule check on four approved files
+        text: Frontend test suite
         truncated: false
       result: passed
       note:
-        text: 0 react/iframe-missing-sandbox diagnostics; untouched Classic About/Home
-          retain unrelated errors for their separate child.
-        truncated: false
-    - name:
-        text: Frontend tests
-        truncated: false
-      result: passed
-      note:
-        text: "npx --yes bun test: 278 passed, 0 failed across 42 files."
+        text: "npx --yes bun test: 281 passed, 0 failed across 45 files."
         truncated: false
     - name:
         text: Frontend typecheck
@@ -113,200 +84,34 @@ builder_handoff:
         text: npx --yes bun run typecheck completed successfully.
         truncated: false
     - name:
-        text: Scope, config, disable, package and whitespace checks
+        text: Focused Oxlint 1.74.0
         truncated: false
       result: passed
       note:
-        text: Exactly 23 approved changed files; one exact four-path/single-rule
-          override added; Canvas unchanged; no package/lock or added disable
-          lines; git diff --check passed.
+        text: 0 errors and 5 warnings across the three repaired sources and three tests.
         truncated: false
     - name:
-        text: Full frontend and Classic builds
+        text: Scope and whitespace checks
         truncated: false
-      result: not-run
+      result: passed
       note:
-        text: Reserved for lint-final-gates after all code children merge.
+        text: Exactly three approved sources plus three direct tests; git diff --check
+          passed; no lint or TypeScript suppressions added.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: Three existing warning-only diagnostics remain in owned files and are
-        outside this change's warning non-goal.
+    - text: Three new no-console warning-only diagnostics record previously silent
+        submission/conversion failures; warnings are outside this change's
+        completion gate.
       truncated: false
-    - text: The trusted administrator iframe policy retains the recorded risk that
-        compromised administrator configuration may expose URL-injected
-        credentials or iframe capabilities.
+    - text: Full frontend and Classic builds remain reserved for lint-final-gates.
       truncated: false
-    - text: Full web lint/build and Classic build remain final integration-gate work.
+    - text: The approved trusted-administrator iframe residual risk is unchanged.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-08-18T17:52:31.067Z
+  submitted_at: 2026-08-18T18:26:38.669Z
 blockers: []
-verification:
-  candidate_id: d9a4ebe4-4919-431e-9a74-d6e0efd3577d
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:10fb4d4e-76e0-47bb-a56f-d12bda6b91b8
-  iteration: 1
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks:
-    - id: owned-default-shared-oxlint
-      name:
-        text: Owned Default Shared Oxlint 1.74.0
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: if ((& '.\node_modules\.bin\oxlint.exe' --version) -notmatch '1\.74\.0') {
-            throw 'Expected oxlint 1.74.0' }; & '.\node_modules\.bin\oxlint.exe'
-            -c .oxlintrc.json src/components/ai-elements/prompt-input.tsx
-            src/components/ai-elements/web-preview.tsx
-            src/components/command-menu.tsx src/components/confirm-dialog.tsx
-            src/components/copy-button.tsx src/components/long-text.tsx
-            src/components/multi-select.tsx src/components/page-transition.tsx
-            src/components/risk-acknowledgement-dialog.tsx
-            src/components/tag-input.tsx src/components/theme-switch.tsx
-            src/components/data-table/core/column-header.tsx
-            src/components/data-table/core/pagination.tsx
-            src/components/data-table/toolbar/bulk-actions.tsx
-            src/components/data-table/toolbar/faceted-filter.tsx
-            src/components/data-table/toolbar/view-options.tsx
-            src/context/search-provider.tsx src/hooks/use-table-url-state.ts
-            src/lib/http-status-code-rules.ts src/lib/nav-icons.tsx
-            src/lib/passkey.ts src/lib/utils.ts
-            'src/routes/_authenticated/chat/$chatId.tsx'; exit $LASTEXITCODE
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 480
-    - id: trusted-iframe-rule
-      name:
-        text: Four trusted iframe paths have no sandbox-rule diagnostic
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: "& '.\\node_modules\\.bin\\oxlint.exe' -c .oxlintrc.json -A all -D
-            react/iframe-missing-sandbox
-            'src/routes/_authenticated/chat/$chatId.tsx'
-            classic/src/pages/Chat/index.jsx classic/src/pages/About/index.jsx
-            classic/src/pages/Home/index.jsx; exit $LASTEXITCODE"
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 312
-    - id: frontend-tests
-      name:
-        text: Frontend test suite
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: npx --yes bun test; exit $LASTEXITCODE
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 5911
-    - id: frontend-typecheck
-      name:
-        text: Frontend TypeScript typecheck
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: npx --yes bun run typecheck; exit $LASTEXITCODE
-          truncated: false
-      argv_truncated: false
-      cwd_ref: web
-      status: passed
-      exit_code: 0
-      duration_ms: 5016
-    - id: scope-config-invariants
-      name:
-        text: Scope, iframe config, package and diff invariants
-        truncated: false
-      argv_display:
-        - text: -NoProfile
-          truncated: false
-        - text: -Command
-          truncated: false
-        - text: "$target='codex/p1-lint-debt'; git diff --check \"$target...HEAD\"; if
-            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $changed=@(git diff
-            --name-only \"$target...HEAD\");
-            $allowed='^(docs/comet/changes/lint-default-shared/|web/\\.oxlintrc\
-            \\.json$|web/src/components/ai-elements/(prompt-input|web-preview)\
-            \\.tsx$|web/src/components/(command-menu|confirm-dialog|copy-button\
-            |long-text|multi-select|page-transition|risk-acknowledgement-dialog\
-            |tag-input|theme-switch)\\.tsx$|web/src/components/data-table/core/\
-            (column-header|pagination)\\.tsx$|web/src/components/data-table/too\
-            lbar/(bulk-actions|faceted-filter|view-options)\\.tsx$|web/src/cont\
-            ext/search-provider\\.tsx$|web/src/hooks/use-table-url-state\\.ts$|\
-            web/src/lib/(http-status-code-rules|nav-icons|passkey|utils)\\.(ts|\
-            tsx)$)'; $unexpected=@($changed | Where-Object { $_ -notmatch
-            $allowed }); if ($unexpected.Count -ne 0) { throw ('Out-of-scope
-            paths: ' + ($unexpected -join ', ')) }; $base=(git show
-            \"${target}:web/.oxlintrc.json\" | ConvertFrom-Json);
-            $current=(Get-Content -Raw web/.oxlintrc.json | ConvertFrom-Json);
-            if ($current.overrides.Count -ne $base.overrides.Count + 1) { throw
-            'Expected exactly one added override' };
-            $added=$current.overrides[-1];
-            $current.overrides=@($current.overrides | Select-Object -First
-            ($current.overrides.Count - 1)); if (($current | ConvertTo-Json
-            -Depth 100 -Compress) -ne ($base | ConvertTo-Json -Depth 100
-            -Compress)) { throw 'Existing lint configuration or Canvas override
-            changed' };
-            $expected=@('src/routes/_authenticated/chat/$chatId.tsx','classic/s\
-            rc/pages/Chat/index.jsx','classic/src/pages/About/index.jsx','class\
-            ic/src/pages/Home/index.jsx'); if ((Compare-Object $expected
-            @($added.files)).Count -ne 0 -or @($added.files).Count -ne 4 -or
-            @($added.rules.PSObject.Properties).Count -ne 1 -or
-            $added.rules.'react/iframe-missing-sandbox' -ne 'off') { throw
-            'Trusted iframe override is not exactly four files and one disabled
-            rule' }; $packageDiff=@(git diff --name-only \"$target...HEAD\" --
-            web/package.json web/bun.lock web/bun.lockb web/package-lock.json
-            web/pnpm-lock.yaml web/yarn.lock); if ($packageDiff.Count -ne 0) {
-            throw ('Package or lock changes: ' + ($packageDiff -join ', ')) };
-            $disable=@(git diff -U0 \"$target...HEAD\" -- web | Select-String
-            '^\\+.*(?:eslint-disable|oxlint-disable|@ts-ignore|@ts-nocheck)');
-            if ($disable.Count -ne 0) { throw 'Added lint or TypeScript
-            suppression' }; exit 0"
-          truncated: false
-      argv_truncated: false
-      cwd_ref: .
-      status: passed
-      exit_code: 0
-      duration_ms: 401
-  summary:
-    text: Independent gpt-5.6-terra/xhigh read-only verification passed A1 and A3
-      but failed A2 because one event-handler Promise rejection is still
-      unhandled and two replacement key strategies are not duplicate-safe.
-    truncated: false
-  risks:
-    - text: The approved trusted-administrator iframe model retains the recorded risk
-        of URL-injected credential exposure or iframe capability abuse after
-        administrator/configuration compromise.
-      truncated: false
-    - text: The existing PromptInput onError union has no conversion-failure code; the
-        repair must handle the Promise without silently swallowing rejection or
-        expanding the public error contract without a new decision.
-      truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T18:09:29.282Z
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -330,7 +135,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T16:29:48.001Z
