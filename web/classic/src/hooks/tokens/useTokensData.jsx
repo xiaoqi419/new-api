@@ -68,6 +68,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   const [resolvedTokenKeys, setResolvedTokenKeys] = useState({});
   const [loadingTokenKeys, setLoadingTokenKeys] = useState({});
   const keyRequestsRef = useRef({});
+  const loadTokensRef = useRef(null);
 
   // Form state
   const [formApi, setFormApi] = useState(null);
@@ -117,6 +118,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
     }
     setLoading(false);
   };
+  loadTokensRef.current = loadTokens;
 
   const loadConcurrency = async () => {
     try {
@@ -126,7 +128,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
         setConcurrencyMap(data.items || {});
         setConcurrencySupported(data.supported !== false);
       }
-    } catch (_) {
+    } catch {
       // 并发统计为附加信息，失败不打断令牌列表
     }
   };
@@ -364,10 +366,9 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   // Page handlers
   const handlePageChange = (page) => {
     if (searchMode) {
-      searchTokens(page, pageSize).then();
-    } else {
-      loadTokens(page, pageSize).then();
+      return searchTokens(page, pageSize);
     }
+    return loadTokens(page, pageSize);
   };
 
   const handlePageSizeChange = async (size) => {
@@ -460,7 +461,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
 
   // Initialize data
   useEffect(() => {
-    loadTokens(1)
+    loadTokensRef.current(1)
       .then()
       .catch((reason) => {
         showError(reason);

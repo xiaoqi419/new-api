@@ -272,8 +272,8 @@ const renderAllowIps = (text, t) => {
   const displayIps = ips.slice(0, 1);
   const extraCount = ips.length - displayIps.length;
 
-  const ipTags = displayIps.map((ip, idx) => (
-    <Tag key={idx} shape='circle'>
+  const ipTags = displayIps.map((ip) => (
+    <Tag key={ip} shape='circle'>
       {ip}
     </Tag>
   ));
@@ -418,7 +418,7 @@ const renderOperations = (
         });
       }
     }
-  } catch (_) {
+  } catch {
     showError(t('聊天链接配置错误，请联系管理员'));
   }
 
