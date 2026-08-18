@@ -107,7 +107,7 @@ const DEFAULT_STATUS_CONFIG = {
 const parsePercentValue = (value) => {
   if (value === null || value === undefined) return null;
   if (typeof value === 'string') {
-    const parsed = parseFloat(value.replace(/[^0-9.+-]/g, ''));
+    const parsed = parseFloat(value.replaceAll(/[^0-9.+-]/g, ''));
     return Number.isFinite(parsed) ? parsed : null;
   }
   if (typeof value === 'number') {
@@ -196,13 +196,12 @@ const renderStatus = (status, t) => {
   );
 };
 
-// Container Name Cell Component - to properly handle React hooks
-const ContainerNameCell = ({ text, record, t }) => {
+const renderContainerNameCell = (text, record, t) => {
   const handleCopyId = async () => {
     try {
       await navigator.clipboard.writeText(record.id);
       showSuccess(t('已复制 ID 到剪贴板'));
-    } catch (err) {
+    } catch {
       showError(t('复制失败'));
     }
   };
@@ -294,9 +293,7 @@ export const getDeploymentsColumns = ({
       key: COLUMN_KEYS.container_name,
       width: 300,
       ellipsis: true,
-      render: (text, record) => (
-        <ContainerNameCell text={text} record={record} t={t} />
-      ),
+      render: (text, record) => renderContainerNameCell(text, record, t),
     },
     {
       title: t('状态'),
@@ -372,6 +369,20 @@ export const getDeploymentsColumns = ({
           record.compute_minutes_remaining !== undefined &&
           record.compute_minutes_remaining !== null &&
           percentRemaining !== null;
+        let remainingStatusTag = null;
+        if (showProgress && percentRemaining !== null) {
+          remainingStatusTag = (
+            <Tag size='small' color={theme.tagColor}>
+              {percentRemaining}%
+            </Tag>
+          );
+        } else if (statusOverride) {
+          remainingStatusTag = (
+            <Tag size='small' color='grey'>
+              {statusOverride}
+            </Tag>
+          );
+        }
 
         return (
           <div className='flex flex-col gap-1 leading-tight text-xs'>
@@ -383,15 +394,7 @@ export const getDeploymentsColumns = ({
               <Typography.Text className='text-sm font-medium text-[var(--semi-color-text-0)]'>
                 {timeDisplay}
               </Typography.Text>
-              {showProgress && percentRemaining !== null ? (
-                <Tag size='small' color={theme.tagColor}>
-                  {percentRemaining}%
-                </Tag>
-              ) : statusOverride ? (
-                <Tag size='small' color='grey'>
-                  {statusOverride}
-                </Tag>
-              ) : null}
+              {remainingStatusTag}
             </div>
             {showExtraInfo && (
               <div className='flex items-center gap-3 text-[var(--semi-color-text-2)]'>

@@ -177,19 +177,20 @@ export function PromptInputProvider({
   const openRef = useRef<() => void>(() => {})
 
   const add = useCallback((files: File[] | FileList) => {
-    const incoming = Array.from(files)
+    const incoming = [...files]
     if (incoming.length === 0) return
 
     setAttachements((prev) =>
-      prev.concat(
-        incoming.map((file) => ({
+      [
+        ...prev,
+        ...incoming.map((file) => ({
           id: nanoid(),
           type: 'file' as const,
           url: URL.createObjectURL(file),
           mediaType: file.type,
           filename: file.name,
-        }))
-      )
+        })),
+      ]
     )
   }, [])
 
@@ -509,7 +510,7 @@ export const PromptInput = ({
 
   const addLocal = useCallback(
     (fileList: File[] | FileList) => {
-      const incoming = Array.from(fileList)
+      const incoming = [...fileList]
       const accepted = incoming.filter((f) => matchesAccept(f))
       if (incoming.length && accepted.length === 0) {
         onError?.({
@@ -552,7 +553,7 @@ export const PromptInput = ({
             filename: file.name,
           })
         }
-        return prev.concat(next)
+        return [...prev, ...next]
       })
     },
     [matchesAccept, maxFiles, maxFileSize, onError, t]
@@ -726,8 +727,8 @@ export const PromptInput = ({
       form.reset()
     }
 
-    // Convert blob URLs to data URLs asynchronously
-    Promise.all(
+    // Convert blob URLs to data URLs asynchronously.
+    void Promise.all(
       files.map(async ({ id, ...item }) => {
         if (item.url && item.url.startsWith('blob:')) {
           return {
@@ -737,33 +738,41 @@ export const PromptInput = ({
         }
         return item
       })
-    ).then((convertedFiles: FileUIPart[]) => {
-      try {
-        const result = onSubmit({ text, files: convertedFiles }, event)
+    )
+      .then((convertedFiles: FileUIPart[]) => {
+        let result: void | Promise<void>
 
-        // Handle both sync and async onSubmit
+        try {
+          result = onSubmit({ text, files: convertedFiles }, event)
+        } catch (error) {
+          console.error('Prompt input submission failed:', error)
+          return
+        }
+
+        // Handle both sync and async onSubmit.
         if (result instanceof Promise) {
-          result
+          void result
             .then(() => {
               clear()
               if (usingProvider) {
                 controller.textInput.clear()
               }
             })
-            .catch(() => {
-              // Don't clear on error - user may want to retry
+            .catch((error) => {
+              console.error('Prompt input submission failed:', error)
             })
-        } else {
-          // Sync function completed without throwing, clear attachments
-          clear()
-          if (usingProvider) {
-            controller.textInput.clear()
-          }
+          return
         }
-      } catch (_error) {
-        // Don't clear on error - user may want to retry
-      }
-    })
+
+        // Sync function completed without throwing, clear attachments.
+        clear()
+        if (usingProvider) {
+          controller.textInput.clear()
+        }
+      })
+      .catch((error) => {
+        console.error('Prompt input attachment conversion failed:', error)
+      })
   }
 
   // Render with or without local provider
@@ -841,10 +850,7 @@ export const PromptInputTextarea = ({
       attachments.files.length > 0
     ) {
       e.preventDefault()
-      const lastAttachment =
-        attachments.files.length > 0
-          ? attachments.files[attachments.files.length - 1]
-          : undefined
+      const lastAttachment = attachments.files.at(-1)
       if (lastAttachment) {
         attachments.remove(lastAttachment.id)
       }
@@ -1068,6 +1074,7 @@ type SpeechRecognitionResultList = {
   readonly length: number
   item(index: number): SpeechRecognitionResult
   [index: number]: SpeechRecognitionResult
+  [Symbol.iterator](): IterableIterator<SpeechRecognitionResult>
 }
 
 type SpeechRecognitionResult = {
@@ -1138,7 +1145,7 @@ export const PromptInputSpeechButton = ({
       speechRecognition.onresult = (event) => {
         let finalTranscript = ''
 
-        const results = Array.from(event.results)
+        const results = [...event.results]
 
         for (const result of results) {
           if (result.isFinal) {

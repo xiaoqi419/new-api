@@ -53,6 +53,7 @@ const EditDeploymentModal = ({
   const [models, setModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const formRef = useRef();
+  const loadModelsRef = useRef(null);
 
   const isEdit = Boolean(editingDeployment?.id);
   const title = t('重命名部署');
@@ -103,6 +104,8 @@ const EditDeploymentModal = ({
     setLoadingModels(false);
   };
 
+  loadModelsRef.current = loadModels;
+
   // Form submission
   const handleSubmit = async (values) => {
     if (!isEdit || !editingDeployment?.id) {
@@ -137,7 +140,7 @@ const EditDeploymentModal = ({
   // Load models when modal opens
   useEffect(() => {
     if (visible) {
-      loadModels();
+      loadModelsRef.current?.();
     }
   }, [visible]);
 

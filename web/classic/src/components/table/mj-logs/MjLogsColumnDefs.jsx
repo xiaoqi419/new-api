@@ -359,9 +359,7 @@ export const getMjLogsColumns = ({
               {text}{' '}
             </Tag>
           </div>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -385,7 +383,7 @@ export const getMjLogsColumns = ({
       title: t('提交结果'),
       dataIndex: 'code',
       render: (text, record, index) => {
-        return isAdminUser ? <div>{renderCode(text, t)}</div> : <></>;
+        return isAdminUser ? <div>{renderCode(text, t)}</div> : null;
       },
     },
     {

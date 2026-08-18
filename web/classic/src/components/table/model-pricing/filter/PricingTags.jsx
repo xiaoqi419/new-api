@@ -51,7 +51,7 @@ const PricingTags = ({
       }
     });
 
-    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
   }, [allModels, models]);
 
   // 计算标签对应的模型数量
@@ -91,7 +91,7 @@ const PricingTags = ({
     });
 
     return result;
-  }, [getAllTags, getTagCount, t, models.length]);
+  }, [getAllTags, getTagCount, t]);
 
   return (
     <SelectableButtonGroup

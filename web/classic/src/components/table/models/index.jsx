@@ -82,7 +82,7 @@ const ModelsPage = () => {
         return (
           localStorage.getItem(MARKETPLACE_DISPLAY_NOTICE_STORAGE_KEY) !== '1'
         );
-      } catch (_) {
+      } catch {
         return true;
       }
     });
@@ -101,7 +101,7 @@ const ModelsPage = () => {
       onOk: () => {
         try {
           localStorage.setItem(MARKETPLACE_DISPLAY_NOTICE_STORAGE_KEY, '1');
-        } catch (_) {}
+        } catch {}
         setShowMarketplaceDisplayNotice(false);
       },
     });

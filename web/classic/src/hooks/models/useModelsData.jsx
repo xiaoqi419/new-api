@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
@@ -68,6 +68,10 @@ export const useModelsData = () => {
 
   // Form API reference
   const [formApi, setFormApi] = useState(null);
+  const loadModelsRef = useRef(null);
+  const loadVendorsRef = useRef(null);
+  const pageSizeRef = useRef(pageSize);
+  pageSizeRef.current = pageSize;
 
   // Get form values helper function
   const getFormValues = () => formApi?.getValues() || formInitValues;
@@ -114,10 +118,11 @@ export const useModelsData = () => {
         const items = res.data.data.items || res.data.data || [];
         setVendors(Array.isArray(items) ? items : []);
       }
-    } catch (_) {
+    } catch {
       // ignore
     }
   };
+  loadVendorsRef.current = loadVendors;
 
   // Load models data
   const loadModels = async (
@@ -159,6 +164,7 @@ export const useModelsData = () => {
     }
     setLoading(false);
   };
+  loadModelsRef.current = loadModels;
 
   // Refresh data
   const refresh = async (page = activePage) => {
@@ -188,7 +194,7 @@ export const useModelsData = () => {
       } else {
         showError(message || t('同步失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('同步失败'));
     }
     setSyncing(false);
@@ -207,7 +213,7 @@ export const useModelsData = () => {
       }
       showError(message || t('预览失败'));
       return { missing: [], conflicts: [] };
-    } catch (e) {
+    } catch {
       showError(t('预览失败'));
       return { missing: [], conflicts: [] };
     } finally {
@@ -242,7 +248,7 @@ export const useModelsData = () => {
       }
       showError(message || t('同步失败'));
       return false;
-    } catch (e) {
+    } catch {
       showError(t('同步失败'));
       return false;
     } finally {
@@ -335,7 +341,7 @@ export const useModelsData = () => {
 
   // Reload models when activeVendorKey changes
   useEffect(() => {
-    loadModels(1, pageSize, activeVendorKey);
+    void loadModelsRef.current(1, pageSizeRef.current, activeVendorKey);
   }, [activeVendorKey]);
 
   // Handle page size change
@@ -403,7 +409,7 @@ export const useModelsData = () => {
         setSelectedKeys([]);
         await refresh();
       }
-    } catch (error) {
+    } catch {
       showError(t('批量删除失败'));
     }
   };
@@ -421,10 +427,7 @@ export const useModelsData = () => {
 
   // Initial load
   useEffect(() => {
-    (async () => {
-      await loadVendors();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void loadVendorsRef.current();
   }, []);
 
   return {

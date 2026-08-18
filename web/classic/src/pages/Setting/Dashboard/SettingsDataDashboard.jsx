@@ -43,7 +43,17 @@ export default function DataDashboard(props) {
     DataExportDefaultTime: '',
   });
   const refForm = useRef();
+  const inputKeys = useRef(Object.keys(inputs));
+  const optionsSnapshotRef = useRef(props.options);
+  const dataExportDefaultTimeSnapshotRef = useRef(
+    inputs.DataExportDefaultTime,
+  );
   const [inputsRow, setInputsRow] = useState(inputs);
+
+  if (optionsSnapshotRef.current !== props.options) {
+    optionsSnapshotRef.current = props.options;
+    dataExportDefaultTimeSnapshotRef.current = inputs.DataExportDefaultTime;
+  }
 
   function onSubmit() {
     const updateArray = compareObjects(inputs, inputsRow);
@@ -61,13 +71,14 @@ export default function DataDashboard(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         props.refresh();
@@ -83,7 +94,7 @@ export default function DataDashboard(props) {
   useEffect(() => {
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (inputKeys.current.includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
@@ -92,13 +103,12 @@ export default function DataDashboard(props) {
     refForm.current.setValues(currentInputs);
     localStorage.setItem(
       'data_export_default_time',
-      String(inputs.DataExportDefaultTime),
+      String(dataExportDefaultTimeSnapshotRef.current),
     );
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -164,7 +174,6 @@ export default function DataDashboard(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

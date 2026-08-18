@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Modal,
   Button,
   Progress,
   Typography,
@@ -142,7 +141,7 @@ const formatUnixSeconds = (unixSeconds) => {
   if (!Number.isFinite(v) || v <= 0) return '-';
   try {
     return new Date(v * 1000).toLocaleString();
-  } catch (error) {
+  } catch {
     return String(unixSeconds);
   }
 };
@@ -150,41 +149,6 @@ const formatUnixSeconds = (unixSeconds) => {
 const getDisplayText = (value) => {
   if (value == null) return '';
   return String(value).trim();
-};
-
-const isMobileViewport = () =>
-  typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT;
-
-const getCodexUsageModalLayout = () => {
-  if (isMobileViewport()) {
-    return {
-      width: 'calc(100vw - 16px)',
-      style: {
-        top: 0,
-        maxWidth: 'calc(100vw - 16px)',
-        margin: '8px auto',
-      },
-      bodyStyle: {
-        maxHeight: 'calc(100vh - 164px)',
-        overflowY: 'auto',
-        padding: '16px 16px 12px',
-      },
-    };
-  }
-
-  return {
-    width: 900,
-    style: {
-      top: 0,
-      margin: '16px auto',
-      maxWidth: 'min(900px, 92vw)',
-    },
-    bodyStyle: {
-      maxHeight: 'calc(100vh - 188px)',
-      overflowY: 'auto',
-      padding: '20px 24px 16px',
-    },
-  };
 };
 
 const formatAccountTypeLabel = (value, t) => {
@@ -435,6 +399,24 @@ const CodexUsageView = ({ t, record, payload, onCopy, onRefresh }) => {
           item && typeof item === 'object' && Object.keys(item).length > 0,
       )
     : [];
+  const additionalRateLimitKeyCounts = new Map();
+  const additionalRateLimitEntries = additionalRateLimits.map((item) => {
+    const rateLimitIdentity = [
+      getDisplayText(item?.limit_name),
+      getDisplayText(item?.metered_feature),
+      getDisplayText(item?.rate_limit?.plan_type ?? item?.plan_type),
+      getDisplayText(item?.rate_limit?.primary_window?.limit_window_seconds),
+      getDisplayText(item?.rate_limit?.secondary_window?.limit_window_seconds),
+    ].join('\u001f');
+    const occurrence =
+      (additionalRateLimitKeyCounts.get(rateLimitIdentity) ?? 0) + 1;
+    additionalRateLimitKeyCounts.set(rateLimitIdentity, occurrence);
+
+    return {
+      item,
+      key: `additional-rate-limit-${rateLimitIdentity}-${occurrence}`,
+    };
+  });
   const upstreamStatus = payload?.upstream_status;
   const accountType = data?.plan_type ?? rateLimit?.plan_type;
   const accountTypeLabel = formatAccountTypeLabel(accountType, tt);
@@ -535,14 +517,14 @@ const CodexUsageView = ({ t, record, payload, onCopy, onRefresh }) => {
         <RateLimitWindowGrid t={tt} {...resolveRateLimitWindows(data)} />
       </div>
 
-      {additionalRateLimits.length > 0 ? (
+      {additionalRateLimitEntries.length > 0 ? (
         <div className='space-y-3'>
           <SectionHeading
             title={tt('附加额度')}
             description={tt('按模型或能力拆分的附加计费能力窗口')}
           />
           <div className='space-y-3'>
-            {additionalRateLimits.map((item, index) => {
+            {additionalRateLimitEntries.map(({ item, key }, index) => {
               const limitName =
                 getDisplayText(item?.limit_name) ||
                 getDisplayText(item?.metered_feature) ||
@@ -550,7 +532,7 @@ const CodexUsageView = ({ t, record, payload, onCopy, onRefresh }) => {
 
               return (
                 <RateLimitGroupSection
-                  key={`${limitName}-${getDisplayText(item?.metered_feature)}-${index}`}
+                  key={key}
                   t={tt}
                   title={limitName}
                   description={tt('附加计费能力')}
@@ -593,8 +575,7 @@ const CodexUsageView = ({ t, record, payload, onCopy, onRefresh }) => {
   );
 };
 
-const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
-  const tt = typeof t === 'function' ? t : (v) => v;
+export const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
   const [loading, setLoading] = useState(!initialPayload);
   const [payload, setPayload] = useState(initialPayload ?? null);
   const hasShownErrorRef = useRef(false);
@@ -616,19 +597,19 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
       setPayload(res?.data ?? null);
       if (!res?.data?.success && !hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
-        showError(tt('获取用量失败'));
+        showError(typeof t === 'function' ? t('获取用量失败') : '获取用量失败');
       }
     } catch (error) {
       if (!mountedRef.current) return;
       if (!hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
-        showError(tt('获取用量失败'));
+        showError(typeof t === 'function' ? t('获取用量失败') : '获取用量失败');
       }
       setPayload({ success: false, message: String(error) });
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [recordId, tt]);
+  }, [recordId, t]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -647,7 +628,11 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
       <>
         <CodexUsageModalStyles />
         <div className='flex items-center justify-center py-10'>
-          <Spin spinning={true} size='large' tip={tt('加载中...')} />
+          <Spin
+            spinning={true}
+            size='large'
+            tip={typeof t === 'function' ? t('加载中...') : '加载中...'}
+          />
         </div>
       </>
     );
@@ -658,7 +643,9 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
       <>
         <CodexUsageModalStyles />
         <div className='flex flex-col gap-3'>
-          <Text type='danger'>{tt('获取用量失败')}</Text>
+          <Text type='danger'>
+            {typeof t === 'function' ? t('获取用量失败') : '获取用量失败'}
+          </Text>
           <div className='flex justify-end'>
             <Button
               size='small'
@@ -666,7 +653,7 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
               theme='outline'
               onClick={fetchUsage}
             >
-              {tt('刷新')}
+              {typeof t === 'function' ? t('刷新') : '刷新'}
             </Button>
           </div>
         </div>
@@ -678,7 +665,7 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
     <>
       <CodexUsageModalStyles />
       <CodexUsageView
-        t={tt}
+        t={t}
         record={record}
         payload={payload}
         onCopy={onCopy}
@@ -686,33 +673,4 @@ const CodexUsageLoader = ({ t, record, initialPayload, onCopy }) => {
       />
     </>
   );
-};
-
-export const openCodexUsageModal = ({ t, record, payload, onCopy }) => {
-  const tt = typeof t === 'function' ? t : (v) => v;
-  const layout = getCodexUsageModalLayout();
-
-  Modal.info({
-    title: tt('Codex 帐号与用量'),
-    className: CODEX_USAGE_MODAL_CLASS_NAME,
-    centered: false,
-    width: layout.width,
-    style: layout.style,
-    bodyStyle: layout.bodyStyle,
-    content: (
-      <CodexUsageLoader
-        t={tt}
-        record={record}
-        initialPayload={payload}
-        onCopy={onCopy}
-      />
-    ),
-    footer: (
-      <div className='flex justify-end gap-2'>
-        <Button type='primary' theme='solid' onClick={() => Modal.destroyAll()}>
-          {tt('关闭')}
-        </Button>
-      </div>
-    ),
-  });
 };

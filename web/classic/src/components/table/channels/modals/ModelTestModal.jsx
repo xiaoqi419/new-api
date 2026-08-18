@@ -105,18 +105,20 @@ const ModelTestModal = ({
       showError(t('请先选择模型！'));
       return;
     }
-    copy(selectedModelKeys.join(',')).then((ok) => {
-      if (ok) {
-        showSuccess(
-          t('已复制 ${count} 个模型').replace(
-            '${count}',
-            selectedModelKeys.length,
-          ),
-        );
-      } else {
-        showError(t('复制失败，请手动复制'));
-      }
-    });
+    void copy(selectedModelKeys.join(','))
+      .then((ok) => {
+        if (ok) {
+          showSuccess(
+            t('已复制 ${count} 个模型').replace(
+              '${count}',
+              selectedModelKeys.length,
+            ),
+          );
+        } else {
+          showError(t('复制失败，请手动复制'));
+        }
+      })
+      .catch(() => showError(t('复制失败，请手动复制')));
   };
 
   const handleSelectSuccess = () => {

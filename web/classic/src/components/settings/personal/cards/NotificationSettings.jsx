@@ -148,7 +148,7 @@ const NotificationSettings = ({
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('保存失败'));
     }
     setSidebarLoading(false);
@@ -191,7 +191,7 @@ const NotificationSettings = ({
               statusState.status.SidebarModulesAdmin,
             );
             setAdminConfig(mergeAdminConfig(adminConf));
-          } catch (error) {
+          } catch {
             setAdminConfig(mergeAdminConfig(null));
           }
         } else {

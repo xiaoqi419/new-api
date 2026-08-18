@@ -18,7 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Progress, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import {
+  Avatar,
+  Progress,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from '@douyinfe/semi-ui';
 import {
   Music,
   FileText,
@@ -43,7 +50,6 @@ import {
 } from '../../../constants/common.constant';
 import { CHANNEL_OPTIONS } from '../../../constants/channel.constants';
 import { stringToColor } from '../../../helpers/render';
-import { Avatar, Space } from '@douyinfe/semi-ui';
 
 const colors = [
   'amber',
@@ -264,7 +270,7 @@ export const getTaskLogsColumns = ({
       title: t('花费时间'),
       dataIndex: 'finish_time',
       render: (finish, record) => {
-        return <>{finish ? renderDuration(record.submit_time, finish) : '-'}</>;
+        return finish ? renderDuration(record.submit_time, finish) : '-';
       },
     },
     {
@@ -285,9 +291,7 @@ export const getTaskLogsColumns = ({
               {text}
             </Tag>
           </div>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -296,7 +300,7 @@ export const getTaskLogsColumns = ({
       dataIndex: 'username',
       render: (userId, record, index) => {
         if (!isAdminUser) {
-          return <></>;
+          return null;
         }
         const displayText = String(record.username || userId || '?');
         return (

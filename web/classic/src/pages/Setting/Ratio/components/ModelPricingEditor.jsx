@@ -54,6 +54,58 @@ import TieredPricingEditor from './TieredPricingEditor';
 const { Text } = Typography;
 const EMPTY_CANDIDATE_MODEL_NAMES = [];
 
+function getBillingModeColor(mode, fallback = 'violet') {
+  if (mode === 'per-request') return 'teal';
+  if (mode === 'tiered_expr') return 'amber';
+  return fallback;
+}
+
+function getBillingModeLabel(model, getExprModeLabel, t) {
+  if (model.billingMode === 'per-request') return t('按次计费');
+  if (model.billingMode === 'tiered_expr') return getExprModeLabel(model);
+  return t('按量计费');
+}
+
+function getRowHighlight(record, selectedModelNames, selectedModelName) {
+  const isBatchSelected = selectedModelNames.includes(record.name);
+  const isCurrentModel = record.name === selectedModelName;
+  if (isBatchSelected) {
+    return {
+      background: 'var(--semi-color-success-light-default)',
+      boxShadow: 'inset 4px 0 0 var(--semi-color-success)',
+    };
+  }
+  if (isCurrentModel) {
+    return {
+      background: 'var(--semi-color-primary-light-default)',
+      boxShadow: 'inset 4px 0 0 var(--semi-color-primary)',
+    };
+  }
+  return {};
+}
+
+function getCompletionPriceExtraText(model, isOptionalFieldEnabled, t) {
+  if (model.completionRatioLocked) {
+    return t('后端固定倍率：{{ratio}}。该字段仅展示换算后的价格。', {
+      ratio: model.lockedCompletionRatio || '-',
+    });
+  }
+  if (!isOptionalFieldEnabled(model, 'completionPrice')) {
+    return t('当前未启用，需要时再打开即可。');
+  }
+  return '';
+}
+
+function getAudioOutputPriceExtraText(model, isOptionalFieldEnabled, t) {
+  if (!isOptionalFieldEnabled(model, 'audioInputPrice')) {
+    return t('请先开启并填写音频输入价格。');
+  }
+  if (!isOptionalFieldEnabled(model, 'audioOutputPrice')) {
+    return t('当前未启用，需要时再打开即可。');
+  }
+  return '';
+}
+
 const PriceInput = ({
   label,
   value,
@@ -188,19 +240,9 @@ export default function ModelPricingEditor({
         key: 'billingMode',
         render: (_, record) => (
           <Tag
-            color={
-              record.billingMode === 'per-request'
-                ? 'teal'
-                : record.billingMode === 'tiered_expr'
-                  ? 'amber'
-                  : 'violet'
-            }
+            color={getBillingModeColor(record.billingMode)}
           >
-            {record.billingMode === 'per-request'
-              ? t('按次计费')
-              : record.billingMode === 'tiered_expr'
-                ? getExprModeLabel(record)
-                : t('按量计费')}
+            {getBillingModeLabel(record, getExprModeLabel, t)}
           </Tag>
         ),
       },
@@ -352,16 +394,11 @@ export default function ModelPricingEditor({
                 }
                 onRow={(record) => ({
                   style: {
-                    background: selectedModelNames.includes(record.name)
-                      ? 'var(--semi-color-success-light-default)'
-                      : record.name === selectedModelName
-                        ? 'var(--semi-color-primary-light-default)'
-                        : undefined,
-                    boxShadow: selectedModelNames.includes(record.name)
-                      ? 'inset 4px 0 0 var(--semi-color-success)'
-                      : record.name === selectedModelName
-                        ? 'inset 4px 0 0 var(--semi-color-primary)'
-                        : undefined,
+                    ...getRowHighlight(
+                      record,
+                      selectedModelNames,
+                      selectedModelName,
+                    ),
                     transition: 'background 0.2s ease, box-shadow 0.2s ease',
                   },
                   onClick: () => setSelectedModelName(record.name),
@@ -377,19 +414,9 @@ export default function ModelPricingEditor({
             headerExtraContent={
               selectedModel ? (
                 <Tag
-                  color={
-                    selectedModel.billingMode === 'per-request'
-                      ? 'teal'
-                      : selectedModel.billingMode === 'tiered_expr'
-                        ? 'amber'
-                        : 'blue'
-                  }
+                  color={getBillingModeColor(selectedModel.billingMode, 'blue')}
                 >
-                  {selectedModel.billingMode === 'per-request'
-                    ? t('按次计费')
-                    : selectedModel.billingMode === 'tiered_expr'
-                      ? getExprModeLabel(selectedModel)
-                      : t('按量计费')}
+                  {getBillingModeLabel(selectedModel, getExprModeLabel, t)}
                 </Tag>
               ) : null
             }
@@ -440,25 +467,32 @@ export default function ModelPricingEditor({
                   </Card>
                 ) : null}
 
-                {selectedModel.billingMode === 'per-request' ? (
-                  <PriceInput
-                    label={t('固定价格')}
-                    value={selectedModel.fixedPrice}
-                    placeholder={t('输入每次调用价格')}
-                    suffix={t('$/次')}
-                    onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
-                    extraText={t('适合 MJ / 任务类等按次收费模型。')}
-                  />
-                ) : selectedModel.billingMode === 'tiered_expr' ? (
-                  <TieredPricingEditor
-                    model={selectedModel}
-                    onExprChange={handleBillingExprChange}
-                    requestRuleExpr={selectedModel.requestRuleExpr}
-                    onRequestRuleExprChange={handleRequestRuleExprChange}
-                    t={t}
-                  />
-                ) : (
-                  <>
+                {(() => {
+                  if (selectedModel.billingMode === 'per-request') {
+                    return (
+                      <PriceInput
+                        label={t('固定价格')}
+                        value={selectedModel.fixedPrice}
+                        placeholder={t('输入每次调用价格')}
+                        suffix={t('$/次')}
+                        onChange={(value) => handleNumericFieldChange('fixedPrice', value)}
+                        extraText={t('适合 MJ / 任务类等按次收费模型。')}
+                      />
+                    );
+                  }
+                  if (selectedModel.billingMode === 'tiered_expr') {
+                    return (
+                      <TieredPricingEditor
+                        model={selectedModel}
+                        onExprChange={handleBillingExprChange}
+                        requestRuleExpr={selectedModel.requestRuleExpr}
+                        onRequestRuleExprChange={handleRequestRuleExprChange}
+                        t={t}
+                      />
+                    );
+                  }
+                  return (
+                    <>
                     <Card
                       bodyStyle={{ padding: 16 }}
                       style={{
@@ -516,21 +550,11 @@ export default function ModelPricingEditor({
                           !hasValue(selectedModel.inputPrice) ||
                           selectedModel.completionRatioLocked
                         }
-                        extraText={
-                          selectedModel.completionRatioLocked
-                            ? t(
-                                '后端固定倍率：{{ratio}}。该字段仅展示换算后的价格。',
-                                {
-                                  ratio: selectedModel.lockedCompletionRatio || '-',
-                                },
-                              )
-                            : !isOptionalFieldEnabled(
-                                  selectedModel,
-                                  'completionPrice',
-                                )
-                              ? t('当前未启用，需要时再打开即可。')
-                              : ''
-                        }
+                        extraText={getCompletionPriceExtraText(
+                          selectedModel,
+                          isOptionalFieldEnabled,
+                          t,
+                        )}
                       />
                       <PriceInput
                         label={t('缓存读取价格')}
@@ -680,23 +704,16 @@ export default function ModelPricingEditor({
                           !isOptionalFieldEnabled(selectedModel, 'audioOutputPrice')
                         }
                         disabled={!hasValue(selectedModel.audioInputPrice)}
-                        extraText={
-                          !isOptionalFieldEnabled(
-                            selectedModel,
-                            'audioInputPrice',
-                          )
-                            ? t('请先开启并填写音频输入价格。')
-                            : !isOptionalFieldEnabled(
-                                  selectedModel,
-                                  'audioOutputPrice',
-                                )
-                              ? t('当前未启用，需要时再打开即可。')
-                              : ''
-                        }
+                        extraText={getAudioOutputPriceExtraText(
+                          selectedModel,
+                          isOptionalFieldEnabled,
+                          t,
+                        )}
                       />
                     </Card>
-                  </>
-                )}
+                    </>
+                  );
+                })()}
 
                 <Card
                   bodyStyle={{ padding: 16 }}

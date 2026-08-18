@@ -47,10 +47,10 @@ const packageInfo = (pkg) => {
   if (tiers.length > 0) {
     return {
       price: Number(pkg.per_share_price) || 0,
-      minCount: tiers[0].count,
-      maxCount: tiers[tiers.length - 1].count,
-      floor: tiers[0].per_share_amount,
-      best: tiers[tiers.length - 1].per_share_amount,
+      minCount: tiers.at(0).count,
+      maxCount: tiers.at(-1).count,
+      floor: tiers.at(0).per_share_amount,
+      best: tiers.at(-1).per_share_amount,
     };
   }
   const rc = pkg.required_count || 1;
@@ -83,7 +83,7 @@ const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
         setEnabled(true);
         setPackages(data.packages || []);
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -98,10 +98,12 @@ const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
   }, [enableWechatPayTopUp, enableAlipayTopUp]);
 
   const payOptions = [];
-  if (enableWechatPayTopUp)
+  if (enableWechatPayTopUp) {
     payOptions.push({ label: t('微信支付'), value: 'wechatpay' });
-  if (enableAlipayTopUp)
+  }
+  if (enableAlipayTopUp) {
     payOptions.push({ label: t('支付宝'), value: 'alipay_direct' });
+  }
 
   const handlePayData = (data, groupNo) => {
     if (data.qr_code) {
@@ -163,7 +165,7 @@ const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
           typeof data === 'string' ? data : message || t('发起拼团失败'),
         );
       }
-    } catch (e) {
+    } catch {
       showError(t('发起拼团失败'));
     } finally {
       setSubmittingId(null);
@@ -245,13 +247,15 @@ const GroupBuyCard = ({ t, enableWechatPayTopUp, enableAlipayTopUp }) => {
         tradeNo={wechatTradeNo}
         onSuccess={() => {
           setWechatOpen(false);
-          if (pendingGroupNo)
+          if (pendingGroupNo) {
             navigate(`/console/groupbuy?no=${pendingGroupNo}`);
+          }
         }}
         onCancel={() => {
           setWechatOpen(false);
-          if (pendingGroupNo)
+          if (pendingGroupNo) {
             navigate(`/console/groupbuy?no=${pendingGroupNo}`);
+          }
         }}
       />
     </Card>

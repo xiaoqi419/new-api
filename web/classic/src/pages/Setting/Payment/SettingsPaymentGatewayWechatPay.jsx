@@ -149,17 +149,18 @@ export default function SettingsPaymentGatewayWechatPay(props) {
         setOriginInputs({ ...inputs });
         props.refresh?.();
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);
   };
 
-  const callbackBase = inputs.WechatPayNotifyUrl
-    ? removeTrailingSlash(inputs.WechatPayNotifyUrl)
-    : props.options.ServerAddress
-      ? removeTrailingSlash(props.options.ServerAddress)
-      : t('网站地址');
+  let callbackBase = t('网站地址');
+  if (inputs.WechatPayNotifyUrl) {
+    callbackBase = removeTrailingSlash(inputs.WechatPayNotifyUrl);
+  } else if (props.options.ServerAddress) {
+    callbackBase = removeTrailingSlash(props.options.ServerAddress);
+  }
 
   return (
     <Spin spinning={loading}>

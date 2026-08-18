@@ -38,7 +38,13 @@ import { useTableCompactMode } from '../common/useTableCompactMode';
 import { useChannelUpstreamUpdates } from './useChannelUpstreamUpdates';
 import { parseUpstreamUpdateMeta } from './upstreamUpdateUtils';
 import { Modal, Button } from '@douyinfe/semi-ui';
-import { openCodexUsageModal } from '../../components/table/channels/modals/CodexUsageModal';
+import { openCodexUsageModal } from '../../components/table/channels/modals/codexUsageModalActions';
+
+const reportLoadChannelsError = (error) => {
+  if (!error?.config?.skipErrorHandler) {
+    showError(error);
+  }
+};
 
 export const useChannelsData = () => {
   const { t } = useTranslation();
@@ -106,7 +112,7 @@ export const useChannelsData = () => {
       if (option) {
         setGlobalPassThroughEnabled(toBoolean(option.value));
       }
-    } catch (error) {
+    } catch {
       setGlobalPassThroughEnabled(false);
     }
   };
@@ -121,6 +127,7 @@ export const useChannelsData = () => {
   // Refs
   const requestCounter = useRef(0);
   const allSelectingRef = useRef(false);
+  const initialEffectsRef = useRef(null);
   const [formApi, setFormApi] = useState(null);
 
   const formInitValues = {
@@ -158,14 +165,12 @@ export const useChannelsData = () => {
     setEnableTagMode(localEnableTagMode);
     setEnableBatchDelete(localEnableBatchDelete);
 
-    loadChannels(1, localPageSize, localIdSort, localEnableTagMode)
-      .then()
-      .catch((reason) => {
-        showError(reason);
-      });
-    fetchGroups().then();
-    loadChannelModels().then();
-    fetchGlobalPassThroughEnabled().then();
+    initialEffectsRef.current
+      .loadChannels(1, localPageSize, localIdSort, localEnableTagMode)
+      .catch(reportLoadChannelsError);
+    void initialEffectsRef.current.fetchGroups();
+    void loadChannelModels();
+    void initialEffectsRef.current.fetchGlobalPassThroughEnabled();
   }, []);
 
   // Column visibility management
@@ -195,15 +200,15 @@ export const useChannelsData = () => {
     if (savedColumns) {
       try {
         const parsed = JSON.parse(savedColumns);
-        const defaults = getDefaultColumnVisibility();
+        const defaults = initialEffectsRef.current.getDefaultColumnVisibility();
         const merged = { ...defaults, ...parsed };
         setVisibleColumns(merged);
       } catch (e) {
         console.error('Failed to parse saved column preferences', e);
-        initDefaultColumns();
+        initialEffectsRef.current.initDefaultColumns();
       }
     } else {
-      initDefaultColumns();
+      initialEffectsRef.current.initDefaultColumns();
     }
   }, []);
 
@@ -346,9 +351,16 @@ export const useChannelsData = () => {
     setLoading(true);
     const typeParam = typeKey !== 'all' ? `&type=${typeKey}` : '';
     const statusParam = statusF !== 'all' ? `&status=${statusF}` : '';
-    const res = await API.get(
-      `/api/channel/?p=${page}&page_size=${pageSize}&id_sort=${idSort}&tag_mode=${enableTagMode}${typeParam}${statusParam}`,
-    );
+    let res;
+    try {
+      res = await API.get(
+        `/api/channel/?p=${page}&page_size=${pageSize}&id_sort=${idSort}&tag_mode=${enableTagMode}${typeParam}${statusParam}`,
+        { skipErrorHandler: true },
+      );
+    } catch (error) {
+      showError(error);
+      throw error;
+    }
 
     if (res === undefined || reqId !== requestCounter.current) {
       return;
@@ -542,7 +554,9 @@ export const useChannelsData = () => {
     const { searchKeyword, searchGroup, searchModel } = getFormValues();
     setActivePage(page);
     if (searchKeyword === '' && searchGroup === '' && searchModel === '') {
-      loadChannels(page, pageSize, idSort, enableTagMode).then(() => {});
+      void loadChannels(page, pageSize, idSort, enableTagMode).catch(
+        reportLoadChannelsError,
+      );
     } else {
       searchChannels(
         enableTagMode,
@@ -561,11 +575,9 @@ export const useChannelsData = () => {
     setActivePage(1);
     const { searchKeyword, searchGroup, searchModel } = getFormValues();
     if (searchKeyword === '' && searchGroup === '' && searchModel === '') {
-      loadChannels(1, size, idSort, enableTagMode)
-        .then()
-        .catch((reason) => {
-          showError(reason);
-        });
+      void loadChannels(1, size, idSort, enableTagMode).catch(
+        reportLoadChannelsError,
+      );
     } else {
       searchChannels(
         enableTagMode,
@@ -592,6 +604,14 @@ export const useChannelsData = () => {
     } catch (error) {
       showError(error.message);
     }
+  };
+
+  initialEffectsRef.current = {
+    fetchGlobalPassThroughEnabled,
+    fetchGroups,
+    getDefaultColumnVisibility,
+    initDefaultColumns,
+    loadChannels,
   };
 
   // Copy channel

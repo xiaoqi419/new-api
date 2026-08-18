@@ -3,9 +3,9 @@ name: p1-lint-debt
 language: zh-CN
 phase: build
 status: active
-state_version: 2
+state_version: 4
 brief: brief.md
-children_contract_hash: 50f774aaae278c0f31c2a48ae14b414dbff14d079df0bfb0afa6d87e6668e4fb
+children_contract_hash: d3ca3c7cd94885262f85c4916f62588958585975bee89817cde2e0c7d489658e
 spec_changes:
   - capability: frontend-lint-quality
     operation: create
@@ -17,7 +17,7 @@ workspace:
   finish: null
 loop:
   stage: building
-  goal_cycle: 1
+  goal_cycle: 2
   iteration: 1
   attempt: 0
   retry_epoch: 0
@@ -48,8 +48,10 @@ acceptance:
     reason: null
   - id: A4
     source: brief.md
-    text: A4：最终 diff 不修改 `web/.oxlintrc.json`、package/lock 文件或依赖，不新增 disable 注释，不扩大
-      ignore，不降低规则等级，也不包含批准范围外的产品或后端变更。
+    text: A4：相对已包含 Canvas 策略的目标分支，`web/.oxlintrc.json` 最终 diff 只新增一个匹配四个管理员外部 iframe
+      文件、只关闭 `react/iframe-missing-sandbox` 的精确 override；既有 Canvas override
+      不变。package/lock 与依赖不变，不新增 disable 注释，不扩大
+      ignore，不降低其他规则等级，也不包含批准范围外的产品或后端变更。
     result: pending
     reason: null
   - id: A5
@@ -71,7 +73,9 @@ acceptance:
       `web/classic/src/**` 从初始 1,059 errors / 236 files 降为 0 errors。 - 总基线 1,400
       errors / 383 files 以 `web/node_modules/.bin/oxlint` 1.74.0 和
       `web/.oxlintrc.json` 为准。 - `web/classic/.prettierrc.mjs` 只有在当前 error
-      明确要求时可调整；其他 config/package/lock files 不在批准范围。
+      明确要求时可调整；目标分支保留一个仅针对 `src/features/canvas/index.tsx`、关闭
+      `react/iframe-missing-sandbox` 的精确 override，并新增一个只匹配四个管理员外部 iframe
+      文件、关闭同一规则的精确 override；其他 lint 配置、config/package/lock files 不在批准范围。
     result: pending
     reason: null
   - id: A8
@@ -95,10 +99,20 @@ acceptance:
     reason: null
   - id: A10
     source: specs/frontend-lint-quality/spec.md
-    text: 禁止通过配置、依赖或豁免制造绿色结果 - 不修改 oxlint rules、severity、plugins、overrides 或 ignore
-      patterns。 - 不增加 `eslint-disable`、`oxlint-disable` 或等价行内/文件级豁免。 - 不使用
-      `--fix`、`lint:fix` 或其他未审阅的批量自动改写。 - 不升级依赖、不修改 package
-      scripts/lockfile、不排除目录，也不扩张到 warning 专项、UI 重设计、功能开发、classic 迁移、后端或微信登录。
+    text: 只允许已批准的 iframe 信任模型例外 - 目标分支 `web/.oxlintrc.json` 的既有批准例外是一个只匹配
+      `src/features/canvas/index.tsx`、只关闭 `react/iframe-missing-sandbox` 的
+      override，用于落实已确认的可信同源 Canvas 模型。 - 本 change 新增的唯一配置变化是一个同时匹配
+      `src/routes/_authenticated/chat/$chatId.tsx`、`classic/src/pages/Chat/index.jsx`、`classic/src/pages/About/index.jsx`、`classic/src/pages/Home/index.jsx`，且只关闭
+      `react/iframe-missing-sandbox` 的 override，用于落实已确认的管理员受信任外部集成模型。 - 四处外部
+      iframe 保持现有脚本、同源存储、Cookie、OAuth、表单、弹窗和媒体能力；不添加会破坏现有集成契约的限制性
+      sandbox。管理员账户或配置失陷可能暴露 URL 注入的 API key 或滥用 iframe 权限，该残余风险必须留档。 - 未使用的通用
+      `WebPreviewBody` 必须从 sandbox 删除 `allow-same-origin`，同时保留
+      scripts/forms/popups/presentation，使任意 URL preview 使用 opaque origin。 -
+      除上述四文件单规则 override 外，本 change 不修改 oxlint rules、severity、plugins、overrides
+      或 ignore patterns，也不得扩大两个精确 iframe 例外。 - 不增加
+      `eslint-disable`、`oxlint-disable` 或等价行内/文件级豁免。 - 不使用 `--fix`、`lint:fix`
+      或其他未审阅的批量自动改写。 - 不升级依赖、不修改 package scripts/lockfile、不排除目录，也不扩张到 warning
+      专项、UI 重设计、功能开发、classic 迁移、后端或微信登录。
     result: pending
     reason: null
   - id: A11
@@ -106,14 +120,24 @@ acceptance:
     text: 完整发布前门禁通过并留档 - 从 `web` 运行 `npx --yes bun run lint`、`npx --yes bun
       test`、`npx --yes bun run typecheck`、`npx --yes bun run build` 全部通过，且 lint
       为 0 errors；warnings 数量如实记录。 - 从 `web/classic` 运行 `npx --yes bun run build`
-      通过。 - 验证前确认 lint config、package/lock files 与依赖未变；A1-A6 及本规格场景由独立 Verifier
-      验收。 - Verify 接受后同步维护状态文档；真实商户支付继续标记线上验收，微信登录新增开发继续搁置。
+      通过。 - 验证前确认 lint config diff 只有已批准的四文件单规则 override，既有 Canvas override
+      未变，package/lock files 与依赖未变；A1-A6 及本规格场景由独立 Verifier 验收。 - Verify
+      接受后同步维护状态文档；真实商户支付继续标记线上验收，微信登录新增开发继续搁置。
     result: pending
     reason: null
 builder_handoff: null
 blockers: []
 verification: null
-history: []
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-18T17:26:35.007Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null

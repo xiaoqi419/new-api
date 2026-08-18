@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   API,
@@ -60,6 +60,24 @@ import UserBindingManagementModal from './UserBindingManagementModal';
 
 const { Text, Title } = Typography;
 
+const getInitValues = () => ({
+  username: '',
+  display_name: '',
+  password: '',
+  github_id: '',
+  oidc_id: '',
+  discord_id: '',
+  wechat_id: '',
+  telegram_id: '',
+  linux_do_id: '',
+  email: '',
+  quota: 0,
+  quota_amount: 0,
+  group: 'default',
+  remark: '',
+  max_concurrency: 0,
+});
+
 const EditUserModal = (props) => {
   const { t } = useTranslation();
   const userId = props.editingUser.id;
@@ -79,36 +97,18 @@ const EditUserModal = (props) => {
 
   const isEdit = Boolean(userId);
 
-  const getInitValues = () => ({
-    username: '',
-    display_name: '',
-    password: '',
-    github_id: '',
-    oidc_id: '',
-    discord_id: '',
-    wechat_id: '',
-    telegram_id: '',
-    linux_do_id: '',
-    email: '',
-    quota: 0,
-    quota_amount: 0,
-    group: 'default',
-    remark: '',
-    max_concurrency: 0,
-  });
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     try {
       let res = await API.get(`/api/group/`);
       setGroupOptions(res.data.data.map((g) => ({ label: g, value: g })));
     } catch (e) {
       showError(e.message);
     }
-  };
+  }, []);
 
   const handleCancel = () => props.handleClose();
 
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     setLoading(true);
     const url = userId ? `/api/user/${userId}` : `/api/user/self`;
     const res = await API.get(url);
@@ -123,7 +123,7 @@ const EditUserModal = (props) => {
       showError(message);
     }
     setLoading(false);
-  };
+  }, [userId]);
 
   useEffect(() => {
     if (inputs && formApiRef.current) {
@@ -133,9 +133,11 @@ const EditUserModal = (props) => {
 
   useEffect(() => {
     loadUser();
-    if (userId) fetchGroups();
+    if (userId) {
+      fetchGroups();
+    }
     setBindingModalVisible(false);
-  }, [props.editingUser.id]);
+  }, [fetchGroups, loadUser, userId]);
 
   const openBindingModal = () => {
     setBindingModalVisible(true);
@@ -170,12 +172,15 @@ const EditUserModal = (props) => {
   /* --------------------- atomic quota adjust -------------------- */
   const adjustQuota = async () => {
     const quotaVal = parseInt(adjustQuotaLocal) || 0;
-    if (quotaVal <= 0 && adjustMode !== 'override') return;
+    if (quotaVal <= 0 && adjustMode !== 'override') {
+      return;
+    }
     if (
       adjustMode === 'override' &&
       (adjustQuotaLocal === '' || adjustQuotaLocal == null)
-    )
+    ) {
       return;
+    }
     setAdjustLoading(true);
     try {
       const res = await API.post('/api/user/manage', {
@@ -540,14 +545,15 @@ const EditUserModal = (props) => {
             step={0.000001}
             onChange={(val) => {
               const amount = val === '' || val == null ? '' : val;
-              setAdjustAmountLocal(amount);
-              setAdjustQuotaLocal(
-                amount === ''
-                  ? ''
-                  : adjustMode === 'override'
+              let quota = '';
+              if (amount !== '') {
+                quota =
+                  adjustMode === 'override'
                     ? displayAmountToQuota(amount)
-                    : displayAmountToQuota(Math.abs(amount)),
-              );
+                    : displayAmountToQuota(Math.abs(amount));
+              }
+              setAdjustAmountLocal(amount);
+              setAdjustQuotaLocal(quota);
             }}
             style={{ width: '100%' }}
             showClear
@@ -575,14 +581,14 @@ const EditUserModal = (props) => {
             min={adjustMode === 'override' ? undefined : 0}
             onChange={(val) => {
               const quota = val === '' || val == null ? '' : val;
+              let amount = '';
+              if (quota !== '') {
+                const displayQuota =
+                  adjustMode === 'override' ? quota : Math.abs(quota);
+                amount = Number(quotaToDisplayAmount(displayQuota).toFixed(6));
+              }
               setAdjustQuotaLocal(quota);
-              setAdjustAmountLocal(
-                quota === ''
-                  ? ''
-                  : adjustMode === 'override'
-                    ? Number(quotaToDisplayAmount(quota).toFixed(6))
-                    : Number(quotaToDisplayAmount(Math.abs(quota)).toFixed(6)),
-              );
+              setAdjustAmountLocal(amount);
             }}
             style={{ width: '100%' }}
             showClear

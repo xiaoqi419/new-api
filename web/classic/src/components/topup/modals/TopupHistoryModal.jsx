@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Modal,
   Table,
@@ -65,7 +65,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   const [keyword, setKeyword] = useState('');
   const isMobile = useIsMobile();
 
-  const loadTopups = async (currentPage, currentPageSize) => {
+  const loadTopups = useCallback(async (currentPage, currentPageSize) => {
     setLoading(true);
     try {
       const base = isAdmin() ? '/api/user/topup' : '/api/user/topup/self';
@@ -81,18 +81,18 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       } else {
         Toast.error({ content: message || t('加载失败') });
       }
-    } catch (error) {
+    } catch {
       Toast.error({ content: t('加载账单失败') });
     } finally {
       setLoading(false);
     }
-  };
+  }, [keyword, t]);
 
   useEffect(() => {
     if (visible) {
       loadTopups(page, pageSize);
     }
-  }, [visible, page, pageSize, keyword]);
+  }, [visible, page, pageSize, loadTopups]);
 
   const handlePageChange = (currentPage) => {
     setPage(currentPage);
@@ -109,7 +109,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   };
 
   // 管理员补单
-  const handleAdminComplete = async (tradeNo) => {
+  const handleAdminComplete = useCallback(async (tradeNo) => {
     try {
       const res = await API.post('/api/user/topup/complete', {
         trade_no: tradeNo,
@@ -121,21 +121,21 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       } else {
         Toast.error({ content: message || t('补单失败') });
       }
-    } catch (e) {
+    } catch {
       Toast.error({ content: t('补单失败') });
     }
-  };
+  }, [loadTopups, page, pageSize, t]);
 
-  const confirmAdminComplete = (tradeNo) => {
+  const confirmAdminComplete = useCallback((tradeNo) => {
     Modal.confirm({
       title: t('确认补单'),
       content: t('是否将该订单标记为成功并为用户入账？'),
       onOk: () => handleAdminComplete(tradeNo),
     });
-  };
+  }, [handleAdminComplete, t]);
 
   // 渲染状态徽章
-  const renderStatusBadge = (status) => {
+  const renderStatusBadge = useCallback((status) => {
     const config = STATUS_CONFIG[status] || { type: 'primary', key: status };
     return (
       <span className='flex items-center gap-2'>
@@ -143,18 +143,18 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
         <span>{t(config.key)}</span>
       </span>
     );
-  };
+  }, [t]);
 
   // 渲染支付方式
-  const renderPaymentMethod = (pm) => {
+  const renderPaymentMethod = useCallback((pm) => {
     const displayName = PAYMENT_METHOD_MAP[pm];
     return <Text>{displayName ? t(displayName) : pm || '-'}</Text>;
-  };
+  }, [t]);
 
-  const isSubscriptionTopup = (record) => {
+  const isSubscriptionTopup = useCallback((record) => {
     const tradeNo = (record?.trade_no || '').toLowerCase();
     return Number(record?.amount || 0) === 0 && tradeNo.startsWith('sub');
-  };
+  }, []);
 
   // 检查是否为管理员
   const userIsAdmin = useMemo(() => isAdmin(), []);
@@ -237,7 +237,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
               </Button>
             );
           }
-          return actions.length > 0 ? <>{actions}</> : null;
+          return actions.length > 0 ? actions : null;
         },
       });
     }
@@ -250,7 +250,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     });
 
     return baseColumns;
-  }, [t, userIsAdmin]);
+  }, [t, userIsAdmin, renderPaymentMethod, isSubscriptionTopup, renderStatusBadge, confirmAdminComplete]);
 
   return (
     <Modal

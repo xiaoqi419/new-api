@@ -69,14 +69,9 @@ const LogsTable = (logsData) => {
     billingDisplayMode,
   ]);
 
-  // Filter columns based on visibility settings
-  const getVisibleColumns = () => {
-    return allColumns.filter((column) => visibleColumns[column.key]);
-  };
-
   const visibleColumnsList = useMemo(() => {
-    return getVisibleColumns();
-  }, [visibleColumns, allColumns]);
+    return allColumns.filter((column) => visibleColumns[column.key]);
+  }, [allColumns, visibleColumns]);
 
   const tableColumns = useMemo(() => {
     return compactMode

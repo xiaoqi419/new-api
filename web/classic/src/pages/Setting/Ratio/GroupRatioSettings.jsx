@@ -32,8 +32,11 @@ import {
   Tabs,
   Typography,
 } from '@douyinfe/semi-ui';
-import { IconChevronDown, IconChevronUp } from '@douyinfe/semi-icons';
-import { IconHelpCircle } from '@douyinfe/semi-icons';
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconHelpCircle,
+} from '@douyinfe/semi-icons';
 import {
   compareObjects,
   API,
@@ -66,6 +69,56 @@ function parseJSONSafe(str, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function GuideSection({ title, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 16 }}>
+      <Button
+        theme='borderless'
+        size='small'
+        icon={open ? <IconChevronUp /> : <IconChevronDown />}
+        onClick={() => setOpen(!open)}
+        style={{ padding: '4px 0', color: 'var(--semi-color-primary)' }}
+      >
+        {title}
+      </Button>
+      <Collapsible isOpen={open} keepDOM>
+        <div
+          style={{
+            background: 'var(--semi-color-fill-0)',
+            padding: '12px 16px',
+            borderRadius: 8,
+            marginTop: 8,
+          }}
+        >
+          {children}
+        </div>
+      </Collapsible>
+    </div>
+  );
+}
+
+function CodeBlock({ children }) {
+  return (
+    <pre
+      style={{
+        background: 'var(--semi-color-bg-2)',
+        border: '1px solid var(--semi-color-border)',
+        padding: '10px 14px',
+        borderRadius: 6,
+        fontFamily: 'monospace',
+        fontSize: 13,
+        margin: '8px 0',
+        whiteSpace: 'pre-wrap',
+        lineHeight: 1.6,
+        overflowX: 'auto',
+      }}
+    >
+      {children}
+    </pre>
+  );
 }
 
 export default function GroupRatioSettings(props) {
@@ -257,7 +310,7 @@ export default function GroupRatioSettings(props) {
     if (editMode === 'manual' && refForm.current) {
       refForm.current.setValues(inputs);
     }
-  }, [editMode]);
+  }, [editMode, inputs]);
 
   const renderManualMode = () => (
     <Form
@@ -418,54 +471,6 @@ export default function GroupRatioSettings(props) {
         </Row>
       </Form.Section>
     </Form>
-  );
-
-  const GuideSection = ({ title, children }) => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div style={{ marginTop: 16 }}>
-        <Button
-          theme='borderless'
-          size='small'
-          icon={open ? <IconChevronUp /> : <IconChevronDown />}
-          onClick={() => setOpen(!open)}
-          style={{ padding: '4px 0', color: 'var(--semi-color-primary)' }}
-        >
-          {title}
-        </Button>
-        <Collapsible isOpen={open} keepDOM>
-          <div
-            style={{
-              background: 'var(--semi-color-fill-0)',
-              padding: '12px 16px',
-              borderRadius: 8,
-              marginTop: 8,
-            }}
-          >
-            {children}
-          </div>
-        </Collapsible>
-      </div>
-    );
-  };
-
-  const CodeBlock = ({ children }) => (
-    <pre
-      style={{
-        background: 'var(--semi-color-bg-2)',
-        border: '1px solid var(--semi-color-border)',
-        padding: '10px 14px',
-        borderRadius: 6,
-        fontFamily: 'monospace',
-        fontSize: 13,
-        margin: '8px 0',
-        whiteSpace: 'pre-wrap',
-        lineHeight: 1.6,
-        overflowX: 'auto',
-      }}
-    >
-      {children}
-    </pre>
   );
 
   const renderGuide = () => (
