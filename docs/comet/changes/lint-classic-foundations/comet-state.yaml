@@ -1,0 +1,61 @@
+schema: comet.native.v4
+name: lint-classic-foundations
+language: zh-CN
+phase: build
+status: active
+state_version: 2
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-classic-foundations
+  target_branch: codex/p1-lint-debt
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：权威 oxlint 对 foundation owned paths 返回 0 errors；helpers 拆分后所有现有
+      importers 可解析。
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: A2：`react/only-export-components`、Hooks、Promise 与其他修复保持 Theme/context
+      初始化、i18n、entrypoint、helper 输出和模块副作用；相关既有测试通过，或明确报告无测试。
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: A3：Git diff 除 foundation 文件与必要 import-only 调整外不含 classic 领域逻辑变化，也不含 lint
+      配置、package/lock、依赖或 disable 变化。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-08-18T10:06:44.870Z
