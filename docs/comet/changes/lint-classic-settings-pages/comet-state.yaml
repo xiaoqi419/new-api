@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-settings-pages
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -40,7 +40,58 @@ acceptance:
       RatioSetting、配置、package/lock、依赖、disable 或范围外变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: a6f1c2fa-14f5-4756-9768-c67768fbf191
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4ada2e34-f54d-40bc-a80c-8c71e45c3683
+  iteration: 1
+  summary:
+    text: Cleared all approved classic settings oxlint errors with
+      behavior-preserving Hook, Promise, component export, render-branch and
+      stable list identity repairs; duplicate 2FA backup codes now use
+      collision-free occurrence identities and APIMart UI keys remain outside
+      saved payloads.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned paths oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Builder full owned-path run reported 0 errors and 399 warnings; main-agent
+          independent rerun across 62 owned files, excluding RatioSetting.jsx,
+          exited 0 with no diagnostics under --quiet.
+        truncated: false
+    - name:
+        text: classic owned tests
+        truncated: false
+      result: not-run
+      note:
+        text: web/classic has no test script and no directly owned test/spec files; no
+          synthetic tests were added.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: Exactly 56 implementation files are inside the approved settings paths;
+          RatioSetting, config, package/lock, dependency, i18n, backend and
+          other-child paths are unchanged, and git diff --check passed.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 399 warning-only diagnostics remain outside this child scope.
+      truncated: false
+    - text: No browser interaction or broad classic build/typecheck was run;
+        serialized integration gates cover those later.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T13:13:42.434Z
 blockers: []
 verification: null
 history: []
