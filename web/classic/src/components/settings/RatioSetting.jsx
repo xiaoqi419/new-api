@@ -61,7 +61,7 @@ const RatioSetting = () => {
         if (item.value.startsWith('{') || item.value.startsWith('[')) {
           try {
             item.value = JSON.stringify(JSON.parse(item.value), null, 2);
-          } catch (e) {
+          } catch {
             // 如果后端返回的不是合法 JSON，直接展示
           }
         }
@@ -81,7 +81,7 @@ const RatioSetting = () => {
     try {
       setLoading(true);
       await getOptions();
-    } catch (error) {
+    } catch {
       showError('刷新失败');
     } finally {
       setLoading(false);

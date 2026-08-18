@@ -66,12 +66,18 @@ function flattenRules(nested) {
     if (typeof inner !== 'object' || inner === null) continue;
     for (const [rawKey, desc] of Object.entries(inner)) {
       const { op, groupName } = parsePrefix(rawKey);
+      let description = '';
+      if (op === OP_REMOVE) {
+        description = 'remove';
+      } else if (typeof desc === 'string') {
+        description = desc;
+      }
       rules.push({
         _id: uid(),
         userGroup,
         op,
         targetGroup: groupName,
-        description: op === OP_REMOVE ? 'remove' : (typeof desc === 'string' ? desc : ''),
+        description,
       });
     }
   }
@@ -88,7 +94,7 @@ function nestRules(rules) {
   return result;
 }
 
-export function serializeGroupSpecialUsable(rules) {
+function serializeGroupSpecialUsable(rules) {
   const nested = nestRules(rules);
   return Object.keys(nested).length === 0 ? '' : JSON.stringify(nested, null, 2);
 }

@@ -37,6 +37,18 @@ import {
 } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
 
+const MODEL_RATIO_OPTION_KEYS = [
+  'ModelPrice',
+  'ModelRatio',
+  'CacheRatio',
+  'CreateCacheRatio',
+  'CompletionRatio',
+  'ImageRatio',
+  'AudioRatio',
+  'AudioCompletionRatio',
+  'ExposeRatioEnabled',
+];
+
 export default function ModelRatioSettings(props) {
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState({
@@ -56,55 +68,52 @@ export default function ModelRatioSettings(props) {
 
   async function onSubmit() {
     try {
-      await refForm.current
-        .validate()
-        .then(() => {
-          const updateArray = compareObjects(inputs, inputsRow);
-          if (!updateArray.length)
-            return showWarning(t('你似乎并没有修改什么'));
-
-          const requestQueue = updateArray.map((item) => {
-            const value =
-              typeof inputs[item.key] === 'boolean'
-                ? String(inputs[item.key])
-                : inputs[item.key];
-            return API.put('/api/option/', { key: item.key, value });
-          });
-
-          setLoading(true);
-          Promise.all(requestQueue)
-            .then((res) => {
-              if (res.includes(undefined)) {
-                return showError(
-                  requestQueue.length > 1
-                    ? t('部分保存失败，请重试')
-                    : t('保存失败'),
-                );
-              }
-
-              for (let i = 0; i < res.length; i++) {
-                if (!res[i].data.success) {
-                  return showError(res[i].data.message);
-                }
-              }
-
-              showSuccess(t('保存成功'));
-              props.refresh();
-            })
-            .catch((error) => {
-              console.error('Unexpected error:', error);
-              showError(t('保存失败，请重试'));
-            })
-            .finally(() => {
-              setLoading(false);
-            });
-        })
-        .catch(() => {
-          showError(t('请检查输入'));
-        });
-    } catch (error) {
+      await refForm.current.validate();
+    } catch {
       showError(t('请检查输入'));
-      console.error(error);
+      return;
+    }
+
+    const updateArray = compareObjects(inputs, inputsRow);
+    if (!updateArray.length) {
+      showWarning(t('你似乎并没有修改什么'));
+      return;
+    }
+
+    const requestQueue = updateArray.map((item) => {
+      const value =
+        typeof inputs[item.key] === 'boolean'
+          ? String(inputs[item.key])
+          : inputs[item.key];
+      return API.put('/api/option/', { key: item.key, value });
+    });
+
+    setLoading(true);
+    try {
+      const res = await Promise.all(requestQueue);
+      if (res.includes(undefined)) {
+        showError(
+          requestQueue.length > 1
+            ? t('部分保存失败，请重试')
+            : t('保存失败'),
+        );
+        return;
+      }
+
+      for (let i = 0; i < res.length; i++) {
+        if (!res[i].data.success) {
+          showError(res[i].data.message);
+          return;
+        }
+      }
+
+      showSuccess(t('保存成功'));
+      props.refresh();
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      showError(t('保存失败，请重试'));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -124,8 +133,8 @@ export default function ModelRatioSettings(props) {
 
   useEffect(() => {
     const currentInputs = {};
-    for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+    for (const key in props.options) {
+      if (MODEL_RATIO_OPTION_KEYS.includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
