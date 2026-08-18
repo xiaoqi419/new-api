@@ -10,7 +10,17 @@
 - 微信官方支付的代码验收已经完成，Comet change `p0-wallet-wechatpay` 已归档；Native、H5、JSAPI、二维码轮询和跳转安全均已通过本轮验收。
 - 微信/支付宝真实商户收款、平台回调、公网 HTTPS、真实支付结算仍未完成。这些属于线上环境验收，不属于当前本地代码缺陷。
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
-- 当前下一工程目标是 Phase 4：全量质量门禁、跨功能回归、i18n 检查和发布前风险清单。
+- Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过一次独立 Verify，最终归档状态以 Comet 的 `comet-state.yaml` 与 `verification.md` 为准。
+
+## Phase 4 当前进度（2026-08-18）
+
+- Comet Native change `p1-quality-regression` 的 A1-A7 已通过独立 Verify；本次本地质量候选可以进入归档确认，但 Git 提交、合并、推送和部署仍分别受后续授权约束。
+- 已修复 CI 后端构建前置条件：为 `web/dist`、`web/classic/dist` 和 `web/canvas/dist` 创建 embed placeholder，避免干净 checkout 因 ignored 前端产物缺失而无法执行 root `go build`。
+- 本地后端质量检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过；其中 root `GOWORK=off go test ./...` 已全量通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。
+- 本地前端检查已通过：`npx --yes bun run typecheck`、`bun test`（278 pass / 42 files）、`bun run build` 与 `bun run i18n:sync`。
+- 全量前端 oxlint 仍未通过：共 1,400 errors / 383 files，其中 `web/classic` 为 1,059 errors / 236 files，`web/src` 为 341 errors / 147 files。用户已确认将该历史 lint 债务拆为独立后续 change；本轮只验收修改或直接影响的 default 文件定向 lint，不宣称全量 lint 通过。
+- 当前仍不能宣称真实商户支付完成：微信/支付宝凭据、公网 HTTPS、回调验签和真实结算继续等待线上验收。
+- 微信登录新增开发继续按产品决策暂时搁置，不属于本轮质量修复范围。
 
 ## 状态表
 
@@ -36,15 +46,13 @@
 4. 验证支付宝正式/沙箱环境下单、回调验签、重复回调和余额到账。
 5. 保留订单号、回调日志和到账日志，作为线上验收证据。
 
-## 下一阶段：Phase 4 QA
+## Phase 4 剩余事项
 
-下一步建立独立的 Native change，范围限定为质量门禁和回归，不新增支付能力：
+以下事项不属于本次本地质量候选的通过条件，按已确认边界留给后续 change 或线上环境：
 
-- 运行并分层记录 `web` 的 typecheck、oxlint、build 和相关行为测试。
-- 针对钱包、返现、拼团、认证、视频、素材库、渠道监控和文档执行关键路径回归。
-- 检查中文/英文翻译完整性，并记录其他语言的回退缺口。
-- 检查路由、模块开关、管理员权限、普通用户权限和公开页面边界。
-- 只修复本轮确认到的真实回归，不顺带升级 UI 框架、依赖或数据库。
+- 在本 change 验收完成后，为全量 oxlint 的 1,400 项历史错误建立独立 `lint-debt` Native change，分批修复且不关闭规则、不降低错误级别、不忽略目录。
+- 继续保持真实微信/支付宝商户支付仅为线上验收事项，不把商户凭据、公网 HTTPS、回调或结算缺失当作本地代码缺陷。
+- 继续搁置微信登录新增开发；本阶段不新增支付能力、不升级 UI 框架、依赖或数据库。
 
 ## 不在当前阶段
 

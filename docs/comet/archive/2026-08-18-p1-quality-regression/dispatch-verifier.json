@@ -1,0 +1,135 @@
+{
+  "kind": "dispatch-verifier",
+  "checks": [
+    {
+      "id": "root-vet-build-and-embed-placeholders",
+      "name": "root go vet/build and CI embed placeholders",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$required = @('web/dist/index.html','web/classic/dist/index.html','web/canvas/dist/index.html'); foreach ($path in $required) { if (-not (Test-Path $path)) { throw \"Missing embed placeholder: $path\" } }; $ci = Get-Content -Raw '.github/workflows/ci.yml'; foreach ($needle in @('web/classic/dist','web/canvas/dist')) { if ($ci -notmatch [regex]::Escape($needle)) { throw \"CI workflow does not create $needle\" } }; $env:GOWORK = 'off'; go vet ./...; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; go build ./..."
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "relaykit-vet-build-test",
+      "name": "relaykit independent vet/build/test",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$env:GOWORK = 'off'; Set-Location relaykit; go vet ./...; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; go build ./...; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; go test ./..."
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "root-go-tests",
+      "name": "root Go test baseline",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$env:GOWORK = 'off'; go test ./..."
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "web-typecheck",
+      "name": "frontend TypeScript typecheck",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun run typecheck"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "web-tests",
+      "name": "frontend test suite",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun test"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "web-build",
+      "name": "frontend production build",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun run build"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "web-lint",
+      "name": "frontend full lint",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun run lint"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "i18n-sync",
+      "name": "frontend i18n synchronization",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun run i18n:sync"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "route-permission-regressions",
+      "name": "router middleware controller regression tests",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$env:GOWORK = 'off'; go test ./router ./middleware ./controller -count=1"
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "focused-wallet-auth-regressions",
+      "name": "focused wallet groupbuy auth regression tests",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "npx --yes bun test src/features/wallet src/features/groupbuy src/features/auth src/features/oauth src/features/system-auth-config"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    }
+  ]
+}
