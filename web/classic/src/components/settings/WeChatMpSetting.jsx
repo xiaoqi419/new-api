@@ -71,15 +71,18 @@ export default function WeChatMpSetting() {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
   };
 
+  const loadOptionsRef = useRef(loadOptions);
+  loadOptionsRef.current = loadOptions;
+
   useEffect(() => {
-    loadOptions();
+    void loadOptionsRef.current();
   }, []);
 
   const onPickQr = (e) => {
@@ -126,7 +129,7 @@ export default function WeChatMpSetting() {
       }
       showSuccess(t('保存成功'));
       loadOptions();
-    } catch (e) {
+    } catch {
       showError(t('保存失败，请重试'));
     } finally {
       setLoading(false);

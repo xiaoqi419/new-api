@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   Banner,
   Button,
@@ -116,6 +116,19 @@ const ApimartHomeSetting = () => {
   const [home, setHome] = useState(defaultApimartHomeConfig);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const itemKeysRef = useRef({});
+  const nextItemKeyRef = useRef(0);
+
+  const getItemKey = (section, index) => {
+    if (!itemKeysRef.current[section]) {
+      itemKeysRef.current[section] = [];
+    }
+    if (!itemKeysRef.current[section][index]) {
+      itemKeysRef.current[section][index] =
+        `${section}-${nextItemKeyRef.current++}`;
+    }
+    return itemKeysRef.current[section][index];
+  };
 
   const updateHero = (patch) => {
     setHome((prev) => ({
@@ -154,6 +167,7 @@ const ApimartHomeSetting = () => {
   };
 
   const removeItem = (section, index) => {
+    itemKeysRef.current[section]?.splice(index, 1);
     setHome((prev) => ({
       ...prev,
       [section]: prev[section].filter((_, itemIndex) => itemIndex !== index),
@@ -170,17 +184,20 @@ const ApimartHomeSetting = () => {
         return;
       }
       const option = data.find((item) => item.key === OPTION_KEY);
+      itemKeysRef.current = {};
       setHome(
         normalizeApimartHomeConfig(
           option?.value || statusState?.status?.apimart_home,
         ),
       );
-    } catch (error) {
+    } catch {
       showError(t('加载 APIMart 首页配置失败'));
     } finally {
       setLoading(false);
     }
   };
+  const loadOptionsRef = useRef(loadOptions);
+  loadOptionsRef.current = loadOptions;
 
   const syncStatus = (nextHome) => {
     if (!statusState?.status) {
@@ -225,7 +242,7 @@ const ApimartHomeSetting = () => {
       syncStatus(normalized);
       await refreshStatus();
       showSuccess(t('APIMart 首页配置已保存'));
-    } catch (error) {
+    } catch {
       showError(t('保存 APIMart 首页配置失败'));
     } finally {
       setSaving(false);
@@ -233,11 +250,12 @@ const ApimartHomeSetting = () => {
   };
 
   const resetHome = () => {
+    itemKeysRef.current = {};
     setHome(clone(defaultApimartHomeConfig));
   };
 
   useEffect(() => {
-    loadOptions();
+    void loadOptionsRef.current();
   }, []);
 
   return (
@@ -359,11 +377,13 @@ const ApimartHomeSetting = () => {
               addText={t('新增指标')}
               onAdd={() => addItem('stats')}
             >
-              {home.stats.map((item, index) => (
-                <div
-                  className='grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end'
-                  key={index}
-                >
+              {home.stats.map((item, index) => {
+                const itemKey = getItemKey('stats', index);
+                return (
+                  <div
+                    className='grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end'
+                    key={itemKey}
+                  >
                   <Field label={t('数值')}>
                     <Input
                       value={item.value}
@@ -386,8 +406,9 @@ const ApimartHomeSetting = () => {
                     icon={<Trash2 size={14} />}
                     onClick={() => removeItem('stats', index)}
                   />
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </ArrayCard>
           </TabPane>
 
@@ -398,8 +419,10 @@ const ApimartHomeSetting = () => {
               addText={t('新增模型')}
               onAdd={() => addItem('featured_models')}
             >
-              {home.featured_models.map((item, index) => (
-                <Card className='!rounded-lg' key={index}>
+              {home.featured_models.map((item, index) => {
+                const itemKey = getItemKey('featured_models', index);
+                return (
+                  <Card className='!rounded-lg' key={itemKey}>
                   <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
                     <Field label={t('模型名称')}>
                       <Input
@@ -485,8 +508,9 @@ const ApimartHomeSetting = () => {
                       {t('删除')}
                     </Button>
                   </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </ArrayCard>
           </TabPane>
 
@@ -497,8 +521,10 @@ const ApimartHomeSetting = () => {
               addText={t('新增 API')}
               onAdd={() => addItem('api_use_cases')}
             >
-              {home.api_use_cases.map((item, index) => (
-                <Card className='!rounded-lg' key={index}>
+              {home.api_use_cases.map((item, index) => {
+                const itemKey = getItemKey('api_use_cases', index);
+                return (
+                  <Card className='!rounded-lg' key={itemKey}>
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
                     <Field label={t('标签名称')}>
                       <Input
@@ -571,8 +597,9 @@ const ApimartHomeSetting = () => {
                       {t('删除')}
                     </Button>
                   </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </ArrayCard>
           </TabPane>
 
@@ -582,11 +609,13 @@ const ApimartHomeSetting = () => {
               addText={t('新增步骤')}
               onAdd={() => addItem('steps')}
             >
-              {home.steps.map((item, index) => (
-                <div
-                  className='grid grid-cols-1 md:grid-cols-[100px_1fr_2fr_auto] gap-3 items-end'
-                  key={index}
-                >
+              {home.steps.map((item, index) => {
+                const itemKey = getItemKey('steps', index);
+                return (
+                  <div
+                    className='grid grid-cols-1 md:grid-cols-[100px_1fr_2fr_auto] gap-3 items-end'
+                    key={itemKey}
+                  >
                   <Field label={t('编号')}>
                     <Input
                       value={item.step}
@@ -617,8 +646,9 @@ const ApimartHomeSetting = () => {
                     icon={<Trash2 size={14} />}
                     onClick={() => removeItem('steps', index)}
                   />
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </ArrayCard>
 
             <ArrayCard
@@ -626,8 +656,10 @@ const ApimartHomeSetting = () => {
               addText={t('新增卖点')}
               onAdd={() => addItem('value_props')}
             >
-              {home.value_props.map((item, index) => (
-                <Card className='!rounded-lg' key={index}>
+              {home.value_props.map((item, index) => {
+                const itemKey = getItemKey('value_props', index);
+                return (
+                  <Card className='!rounded-lg' key={itemKey}>
                   <div className='grid grid-cols-1 md:grid-cols-[100px_1fr] gap-3'>
                     <Field label={t('编号')}>
                       <Input
@@ -669,8 +701,9 @@ const ApimartHomeSetting = () => {
                       {t('删除')}
                     </Button>
                   </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </ArrayCard>
           </TabPane>
 
@@ -680,11 +713,13 @@ const ApimartHomeSetting = () => {
               addText={t('新增供应商')}
               onAdd={() => addItem('providers')}
             >
-              {home.providers.map((item, index) => (
-                <div
-                  className='grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end'
-                  key={index}
-                >
+              {home.providers.map((item, index) => {
+                const itemKey = getItemKey('providers', index);
+                return (
+                  <div
+                    className='grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end'
+                    key={itemKey}
+                  >
                   <Field label={t('名称')}>
                     <Input
                       value={item.name}
@@ -711,8 +746,9 @@ const ApimartHomeSetting = () => {
                     icon={<Trash2 size={14} />}
                     onClick={() => removeItem('providers', index)}
                   />
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </ArrayCard>
 
             <ArrayCard
@@ -720,8 +756,10 @@ const ApimartHomeSetting = () => {
               addText={t('新增 FAQ')}
               onAdd={() => addItem('faq')}
             >
-              {home.faq.map((item, index) => (
-                <Card className='!rounded-lg' key={index}>
+              {home.faq.map((item, index) => {
+                const itemKey = getItemKey('faq', index);
+                return (
+                  <Card className='!rounded-lg' key={itemKey}>
                   <Field label={t('问题')}>
                     <Input
                       value={item.question}
@@ -751,8 +789,9 @@ const ApimartHomeSetting = () => {
                       {t('删除')}
                     </Button>
                   </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </ArrayCard>
           </TabPane>
         </Tabs>

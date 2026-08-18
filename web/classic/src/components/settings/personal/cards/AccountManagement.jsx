@@ -115,6 +115,8 @@ const AccountManagement = ({
       showError(error.response?.data?.message || error.message || t('获取绑定信息失败'));
     }
   };
+  const loadCustomOAuthBindingsRef = React.useRef(loadCustomOAuthBindings);
+  loadCustomOAuthBindingsRef.current = loadCustomOAuthBindings;
 
   // Unbind custom OAuth provider
   const handleUnbindCustomOAuth = async (providerId, providerName) => {
@@ -160,13 +162,47 @@ const AccountManagement = ({
   };
 
   React.useEffect(() => {
-    loadCustomOAuthBindings();
+    void loadCustomOAuthBindingsRef.current();
   }, []);
 
   const passkeyEnabled = passkeyStatus?.enabled;
   const lastUsedLabel = passkeyStatus?.last_used_at
     ? new Date(passkeyStatus.last_used_at).toLocaleString()
     : t('尚未使用');
+  const weChatLoginEnabled = status.wechat_login;
+  const weChatBound = isBound(userState.user?.wechat_id);
+  let weChatBindingText = t('未启用');
+  let weChatButtonText = t('未启用');
+  if (weChatLoginEnabled) {
+    weChatBindingText = weChatBound ? t('已绑定') : t('未绑定');
+    weChatButtonText = weChatBound ? t('修改绑定') : t('绑定');
+  }
+
+  let telegramBindingAction = (
+    <Button disabled size='small' type='primary' theme='outline'>
+      {t('未启用')}
+    </Button>
+  );
+  if (status.telegram_oauth) {
+    if (isBound(userState.user?.telegram_id)) {
+      telegramBindingAction = (
+        <Button disabled size='small' type='primary' theme='outline'>
+          {t('已绑定')}
+        </Button>
+      );
+    } else {
+      telegramBindingAction = (
+        <Button
+          type='primary'
+          theme='outline'
+          size='small'
+          onClick={() => setShowTelegramBindModal(true)}
+        >
+          {t('绑定')}
+        </Button>
+      );
+    }
+  }
 
   return (
     <Card className='!rounded-2xl'>
@@ -250,11 +286,7 @@ const AccountManagement = ({
                         {t('微信')}
                       </div>
                       <div className='text-sm text-gray-500 truncate'>
-                        {!status.wechat_login
-                          ? t('未启用')
-                          : isBound(userState.user?.wechat_id)
-                            ? t('已绑定')
-                            : t('未绑定')}
+                        {weChatBindingText}
                       </div>
                     </div>
                   </div>
@@ -263,14 +295,10 @@ const AccountManagement = ({
                       type='primary'
                       theme='outline'
                       size='small'
-                      disabled={!status.wechat_login}
+                      disabled={!weChatLoginEnabled}
                       onClick={() => setShowWeChatBindModal(true)}
                     >
-                      {isBound(userState.user?.wechat_id)
-                        ? t('修改绑定')
-                        : status.wechat_login
-                          ? t('绑定')
-                          : t('未启用')}
+                      {weChatButtonText}
                     </Button>
                   </div>
                 </div>
@@ -424,36 +452,7 @@ const AccountManagement = ({
                     </div>
                   </div>
                   <div className='flex-shrink-0'>
-                    {status.telegram_oauth ? (
-                      isBound(userState.user?.telegram_id) ? (
-                        <Button
-                          disabled
-                          size='small'
-                          type='primary'
-                          theme='outline'
-                        >
-                          {t('已绑定')}
-                        </Button>
-                      ) : (
-                        <Button
-                          type='primary'
-                          theme='outline'
-                          size='small'
-                          onClick={() => setShowTelegramBindModal(true)}
-                        >
-                          {t('绑定')}
-                        </Button>
-                      )
-                    ) : (
-                      <Button
-                        disabled
-                        size='small'
-                        type='primary'
-                        theme='outline'
-                      >
-                        {t('未启用')}
-                      </Button>
-                    )}
+                    {telegramBindingAction}
                   </div>
                 </div>
               </Card>

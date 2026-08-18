@@ -40,6 +40,7 @@ export default function SettingsDrawing(props) {
     MjActionCheckSuccessEnabled: false,
   });
   const refForm = useRef();
+  const inputKeys = useRef(Object.keys(inputs));
   const [inputsRow, setInputsRow] = useState(inputs);
 
   function onSubmit() {
@@ -58,13 +59,14 @@ export default function SettingsDrawing(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         props.refresh();
@@ -80,19 +82,18 @@ export default function SettingsDrawing(props) {
   useEffect(() => {
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (inputKeys.current.includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
     setInputs(currentInputs);
     setInputsRow(structuredClone(currentInputs));
     refForm.current.setValues(currentInputs);
-    localStorage.setItem('mj_notify_enabled', String(inputs.MjNotifyEnabled));
+    localStorage.setItem('mj_notify_enabled', String(currentInputs.MjNotifyEnabled));
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -204,7 +205,6 @@ export default function SettingsDrawing(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

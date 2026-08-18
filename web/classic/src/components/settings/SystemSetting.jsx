@@ -154,7 +154,7 @@ const SystemSetting = () => {
             try {
               const domains = item.value ? JSON.parse(item.value) : [];
               setDomainList(Array.isArray(domains) ? domains : []);
-            } catch (e) {
+            } catch {
               setDomainList([]);
             }
             break;
@@ -162,7 +162,7 @@ const SystemSetting = () => {
             try {
               const ips = item.value ? JSON.parse(item.value) : [];
               setIpList(Array.isArray(ips) ? ips : []);
-            } catch (e) {
+            } catch {
               setIpList([]);
             }
             break;
@@ -170,7 +170,7 @@ const SystemSetting = () => {
             try {
               const ports = item.value ? JSON.parse(item.value) : [];
               setAllowedPorts(Array.isArray(ports) ? ports : []);
-            } catch (e) {
+            } catch {
               setAllowedPorts(['80', '443', '8080', '8443']);
             }
             break;
@@ -292,7 +292,7 @@ const SystemSetting = () => {
         newInputs[opt.key] = opt.value;
       });
       setInputs(newInputs);
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);
@@ -324,11 +324,12 @@ const SystemSetting = () => {
 
   const submitSMTP = async () => {
     const options = [];
-    const smtpSecurityMode = inputs.SMTPSSLEnabled
-      ? 'ssl_tls'
-      : inputs.SMTPStartTLSEnabled
-        ? 'starttls'
-        : 'none';
+    let smtpSecurityMode = 'none';
+    if (inputs.SMTPSSLEnabled) {
+      smtpSecurityMode = 'ssl_tls';
+    } else if (inputs.SMTPStartTLSEnabled) {
+      smtpSecurityMode = 'starttls';
+    }
     const nextSMTPSSLEnabled = smtpSecurityMode === 'ssl_tls';
     const nextSMTPStartTLSEnabled = smtpSecurityMode === 'starttls';
 
@@ -731,6 +732,13 @@ const SystemSetting = () => {
     await updateOptions([{ key: 'PasswordLoginEnabled', value: false }]);
     setShowPasswordLoginConfirmModal(false);
   };
+
+  let selectedSMTPSecurityMode = 'none';
+  if (inputs.SMTPSSLEnabled) {
+    selectedSMTPSecurityMode = 'ssl_tls';
+  } else if (inputs.SMTPStartTLSEnabled) {
+    selectedSMTPSecurityMode = 'starttls';
+  }
 
   return (
     <div>
@@ -1367,13 +1375,7 @@ const SystemSetting = () => {
                       <Text strong>{t('SMTP 加密方式')}</Text>
                       <Radio.Group
                         type='button'
-                        value={
-                          inputs.SMTPSSLEnabled
-                            ? 'ssl_tls'
-                            : inputs.SMTPStartTLSEnabled
-                              ? 'starttls'
-                              : 'none'
-                        }
+                        value={selectedSMTPSecurityMode}
                         onChange={handleSMTPSecurityModeChange}
                         style={{ marginTop: 8, marginBottom: 8 }}
                       >
