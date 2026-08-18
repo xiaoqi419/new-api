@@ -727,8 +727,8 @@ export const PromptInput = ({
       form.reset()
     }
 
-    // Convert blob URLs to data URLs asynchronously
-    return Promise.all(
+    // Convert blob URLs to data URLs asynchronously.
+    void Promise.all(
       files.map(async ({ id, ...item }) => {
         if (item.url && item.url.startsWith('blob:')) {
           return {
@@ -738,33 +738,41 @@ export const PromptInput = ({
         }
         return item
       })
-    ).then((convertedFiles: FileUIPart[]) => {
-      try {
-        const result = onSubmit({ text, files: convertedFiles }, event)
+    )
+      .then((convertedFiles: FileUIPart[]) => {
+        let result: void | Promise<void>
 
-        // Handle both sync and async onSubmit
+        try {
+          result = onSubmit({ text, files: convertedFiles }, event)
+        } catch (error) {
+          console.error('Prompt input submission failed:', error)
+          return
+        }
+
+        // Handle both sync and async onSubmit.
         if (result instanceof Promise) {
-          result
+          void result
             .then(() => {
               clear()
               if (usingProvider) {
                 controller.textInput.clear()
               }
             })
-            .catch(() => {
-              // Don't clear on error - user may want to retry
+            .catch((error) => {
+              console.error('Prompt input submission failed:', error)
             })
-        } else {
-          // Sync function completed without throwing, clear attachments
-          clear()
-          if (usingProvider) {
-            controller.textInput.clear()
-          }
+          return
         }
-      } catch {
-        // Don't clear on error - user may want to retry
-      }
-    })
+
+        // Sync function completed without throwing, clear attachments.
+        clear()
+        if (usingProvider) {
+          controller.textInput.clear()
+        }
+      })
+      .catch((error) => {
+        console.error('Prompt input attachment conversion failed:', error)
+      })
   }
 
   // Render with or without local provider
