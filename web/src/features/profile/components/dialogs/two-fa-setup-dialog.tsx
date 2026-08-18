@@ -53,6 +53,7 @@ export function TwoFASetupDialog({
   const [step, setStep] = useState(0)
   const [setupData, setSetupData] = useState<TwoFASetupData | null>(null)
   const [code, setCode] = useState('')
+  const backupCodeOccurrences = new Map<string, number>()
   const stepLabels = [
     t('Scan QR Code'),
     t('Save Backup Codes'),
@@ -102,7 +103,7 @@ export function TwoFASetupDialog({
       } else {
         toast.error(response.message || t('Failed to enable 2FA'))
       }
-    } catch (_error) {
+    } catch {
       toast.error(t('Failed to enable 2FA'))
     } finally {
       setLoading(false)
@@ -177,20 +178,22 @@ export function TwoFASetupDialog({
       }
     >
       <div className='space-y-4 py-4'>
-        {initializing ? (
+        {initializing && (
           <div className='flex flex-col items-center justify-center gap-3 py-8'>
             <div className='border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent' />
             <div className='text-muted-foreground text-sm'>
               {t('Setting up 2FA...')}
             </div>
           </div>
-        ) : !setupData ? (
+        )}
+        {!initializing && !setupData && (
           <div className='flex justify-center py-8'>
             <div className='text-muted-foreground'>
               {t('Failed to load setup data')}
             </div>
           </div>
-        ) : (
+        )}
+        {!initializing && setupData && (
           <>
             {/* Step 0: QR Code */}
             {step === 0 && (
@@ -236,14 +239,19 @@ export function TwoFASetupDialog({
                 </Alert>
                 <div className='rounded-lg border p-4'>
                   <div className='grid grid-cols-2 gap-2'>
-                    {setupData.backup_codes.map((code, index) => (
-                      <div
-                        key={index}
-                        className='bg-muted rounded-md p-2 text-center font-mono text-sm'
-                      >
-                        {code}
-                      </div>
-                    ))}
+                    {setupData.backup_codes.map((code) => {
+                      const occurrence = backupCodeOccurrences.get(code) ?? 0
+                      backupCodeOccurrences.set(code, occurrence + 1)
+
+                      return (
+                        <div
+                          key={JSON.stringify([code, occurrence])}
+                          className='bg-muted rounded-md p-2 text-center font-mono text-sm'
+                        >
+                          {code}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
                 <CopyButton

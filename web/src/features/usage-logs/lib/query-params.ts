@@ -16,18 +16,20 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { Table } from '@tanstack/react-table'
 
-import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
+/**
+ * Build query parameters from values while preserving valid zero values.
+ */
+export function buildQueryParams(
+  params: Record<string, unknown>
+): URLSearchParams {
+  const queryParams = new URLSearchParams()
 
-import type { User } from '../types'
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      queryParams.append(key, String(value))
+    }
+  })
 
-interface DataTableBulkActionsProps {
-  table: Table<User>
-}
-
-export function DataTableBulkActions({ table }: DataTableBulkActionsProps) {
-  return (
-    <BulkActionsToolbar table={table} entityName='user'>{null}</BulkActionsToolbar>
-  )
+  return queryParams
 }
