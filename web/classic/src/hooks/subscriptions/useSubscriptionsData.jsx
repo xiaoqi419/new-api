@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../../helpers';
 import { useTableCompactMode } from '../common/useTableCompactMode';
@@ -60,6 +60,9 @@ export const useSubscriptionsData = () => {
       setLoading(false);
     }
   }, [pageSize, t]);
+
+  const loadPlansRef = useRef(loadPlans);
+  loadPlansRef.current = loadPlans;
 
   // Refresh data
   const refresh = useCallback(async () => {
@@ -120,8 +123,8 @@ export const useSubscriptionsData = () => {
 
   // Initialize data on component mount
   useEffect(() => {
-    loadPlans();
-  }, [loadPlans]);
+    loadPlansRef.current();
+  }, []);
 
   const planCount = allPlans.length;
   const plans = allPlans.slice(
