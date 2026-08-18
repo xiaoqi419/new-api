@@ -208,10 +208,6 @@ export function CanvasStudio() {
         src={CANVAS_APP_PATH}
         title={t('Infinite Canvas')}
         onLoad={sendTheme}
-        // Same-origin is required: the app keeps every canvas in this origin's
-        // storage, and the theme bridge checks `event.origin`. Downloads and
-        // popups cover its export buttons and outbound links.
-        sandbox='allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox'
         allow='clipboard-read; clipboard-write'
         className='min-h-0 w-full flex-1 border-0'
       />
