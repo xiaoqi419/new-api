@@ -17,8 +17,8 @@
 
 # Acceptance examples
 
-- A1：权威 oxlint 对全部 owned paths 返回 0 errors。
-- A2：Hooks、Promise、array key、component export、iframe 与机械性修复保持认证、导航、响应式布局、首页数据、Playground 请求/流式状态、看板与 setup 行为；相关既有测试通过，或明确报告无测试。
+- A1：同步已包含四文件单规则 iframe override 的 Supervisor 目标分支后，权威 oxlint 对全部 owned paths 返回 0 errors。
+- A2：Hooks、Promise、array key、component export 与机械性修复保持认证、导航、响应式布局、首页数据、Playground 请求/流式状态、看板与 setup 行为；Chat、About、Home iframe 的 src、allow、sandbox 与 Home postMessage 行为保持不变；相关既有测试通过，或明确报告无测试。
 - A3：Git diff 只包含批准目录与本 child 正式产物，不含配置、package/lock、依赖、disable、受保护品牌或其他 child 领域变化。
 
 # Constraints and invariants
@@ -32,6 +32,7 @@
 
 - 本 child 严格继承已确认的 `p1-lint-debt` A2/A3 范围，无需重复用户确认。
 - foundations、tables、settings 和 topup 已由其他 child 独占；本 child 只处理列出的公共表面。
+- 2026-08-19 用户确认 Classic Chat、About、Home 的管理员外部 iframe 保持现有完整第三方应用能力；精确 lint override 由 `lint-default-shared` 独占修改并先合入 Supervisor。本 child 不修改 iframe 或 lint 配置，提交 Builder handoff 前同步更新后的 Supervisor 目标分支。
 
 # Open questions
 

@@ -3,7 +3,7 @@ name: lint-classic-common-pages
 language: zh-CN
 phase: build
 status: active
-state_version: 2
+state_version: 4
 brief: brief.md
 spec_changes: []
 workspace:
@@ -13,7 +13,7 @@ workspace:
   finish: null
 loop:
   stage: building
-  goal_cycle: 1
+  goal_cycle: 2
   iteration: 1
   attempt: 0
   retry_epoch: 0
@@ -25,14 +25,15 @@ loop:
 acceptance:
   - id: A1
     source: brief.md
-    text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
+    text: A1：同步已包含四文件单规则 iframe override 的 Supervisor 目标分支后，权威 oxlint 对全部 owned
+      paths 返回 0 errors。
     result: pending
     reason: null
   - id: A2
     source: brief.md
-    text: A2：Hooks、Promise、array key、component export、iframe
-      与机械性修复保持认证、导航、响应式布局、首页数据、Playground 请求/流式状态、看板与 setup
-      行为；相关既有测试通过，或明确报告无测试。
+    text: A2：Hooks、Promise、array key、component export
+      与机械性修复保持认证、导航、响应式布局、首页数据、Playground 请求/流式状态、看板与 setup 行为；Chat、About、Home
+      iframe 的 src、allow、sandbox 与 Home postMessage 行为保持不变；相关既有测试通过，或明确报告无测试。
     result: pending
     reason: null
   - id: A3
@@ -44,7 +45,16 @@ acceptance:
 builder_handoff: null
 blockers: []
 verification: null
-history: []
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-18T17:26:34.998Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null
