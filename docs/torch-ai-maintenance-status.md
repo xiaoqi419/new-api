@@ -22,6 +22,16 @@
 - 当前仍不能宣称真实商户支付完成：微信/支付宝凭据、公网 HTTPS、回调验签和真实结算继续等待线上验收。
 - 微信登录新增开发继续按产品决策暂时搁置，不属于本轮质量修复范围。
 
+## P1 上线收口进度（2026-08-18）
+
+- `p1-http2-test-stability` 的 A1-A8 已通过独立 Verify 并由用户接受，当前进入 Archive。四个 HTTP/2 `GetBody` 用例连续十轮共 40 次执行通过，`relay/channel` 包测试与 root `GOWORK=off go test ./...` 通过；实现只调整测试 fixture 生命周期，没有修改生产 HTTP 请求链路、依赖或 Go 版本。
+- `p1-lint-debt` 首波中，`lint-default-layout-assets`、`lint-default-channels-pricing`、`lint-default-dashboard-models-settings`、`lint-classic-foundations` 已通过独立 Verify 并由用户接受，当前按顺序 Archive/merge 到 supervisor 分支。
+- 已验收 child 的 owned paths 均为 0 lint errors：layout/assets 保留 2 项 warning，channels/pricing 保留 6 项 warning，dashboard/models/settings 保留 34 项 warning，classic foundations 保留 warning-only 债务；warning 专项不在本 change 范围。
+- `lint-default-user-features` 的非 Canvas owned paths 已为 0 errors，102 个相关测试与 typecheck 通过。独立 Verify 发现的 2FA 重复备用码 React key 问题已修复，等待与 Canvas 一并重新 Verify。
+- 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。更强的隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮 lint child 范围。
+- Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
+- 当前所有结果仍是本地状态；尚未推送、创建 PR 或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
+
 ## 状态表
 
 | 模块 | 代码状态 | 当前验收状态 | 备注 |
