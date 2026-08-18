@@ -306,7 +306,7 @@ export const useModelPricingData = () => {
         });
         setPerfMap(map);
       }
-    } catch (e) {
+    } catch {
       // 性能监控未启用或不可用时忽略
     }
   };
@@ -368,7 +368,7 @@ export const useModelPricingData = () => {
   };
 
   useEffect(() => {
-    refresh().then();
+    void refresh();
   }, []);
 
   // 当筛选条件变化时重置到第一页

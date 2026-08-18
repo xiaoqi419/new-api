@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Modal,
@@ -61,7 +61,7 @@ const parseMaybeJSON = (value) => {
   if (typeof value === 'string') {
     try {
       return JSON.parse(value);
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -177,6 +177,7 @@ const OllamaModelModal = ({
   const [pullProgress, setPullProgress] = useState(null);
   const [eventSource, setEventSource] = useState(null);
   const [selectedModelIds, setSelectedModelIds] = useState([]);
+  const fetchModelsRef = useRef(null);
 
   const handleApplyAllModels = () => {
     if (!onApplyModels || selectedModelIds.length === 0) {
@@ -295,6 +296,7 @@ const OllamaModelModal = ({
       setLoading(false);
     }
   };
+  fetchModelsRef.current = fetchModels;
 
   // 拉取模型 (流式，支持进度)
   const pullModel = async () => {
@@ -499,7 +501,7 @@ const OllamaModelModal = ({
     }
 
     if (channelId || Number(channelInfo?.type) === CHANNEL_TYPE_OLLAMA) {
-      fetchModels();
+      void fetchModelsRef.current();
     }
   }, [
     visible,

@@ -111,27 +111,7 @@ const DeploymentsTable = (deploymentsData) => {
     refresh?.();
   };
 
-  // Get all columns
-  const allColumns = useMemo(() => {
-    return getDeploymentsColumns({
-      t,
-      COLUMN_KEYS,
-      startDeployment,
-      restartDeployment,
-      deleteDeployment,
-      setEditingDeployment,
-      setShowEdit,
-      refresh,
-      activePage,
-      deployments,
-      // Enhanced handlers
-      onViewLogs: handleViewLogs,
-      onExtendDuration: handleExtendDuration,
-      onViewDetails: handleViewDetails,
-      onUpdateConfig: handleUpdateConfig,
-      onSyncToChannel: syncDeploymentToChannel,
-    });
-  }, [
+  const allColumns = getDeploymentsColumns({
     t,
     COLUMN_KEYS,
     startDeployment,
@@ -143,15 +123,16 @@ const DeploymentsTable = (deploymentsData) => {
     refresh,
     activePage,
     deployments,
-  ]);
-
-  // Filter columns based on visibility settings
-  const getVisibleColumns = () => {
-    return allColumns.filter((column) => visibleColumns[column.key]);
-  };
+    // Enhanced handlers
+    onViewLogs: handleViewLogs,
+    onExtendDuration: handleExtendDuration,
+    onViewDetails: handleViewDetails,
+    onUpdateConfig: handleUpdateConfig,
+    onSyncToChannel: syncDeploymentToChannel,
+  });
 
   const visibleColumnsList = useMemo(() => {
-    return getVisibleColumns();
+    return allColumns.filter((column) => visibleColumns[column.key]);
   }, [visibleColumns, allColumns]);
 
   const tableColumns = useMemo(() => {

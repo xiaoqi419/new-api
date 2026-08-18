@@ -126,7 +126,7 @@ const renderEndpoints = (value) => {
       });
     }
     return value || '-';
-  } catch (_) {
+  } catch {
     return value || '-';
   }
 };

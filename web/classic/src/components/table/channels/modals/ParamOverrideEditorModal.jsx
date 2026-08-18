@@ -499,7 +499,7 @@ const toValueText = (value) => {
   if (typeof value === 'string') return value;
   try {
     return JSON.stringify(value);
-  } catch (error) {
+  } catch {
     return String(value);
   }
 };
@@ -509,7 +509,7 @@ const parseLooseValue = (valueText) => {
   if (raw.trim() === '') return '';
   try {
     return JSON.parse(raw);
-  } catch (error) {
+  } catch {
     return raw;
   }
 };
@@ -577,7 +577,7 @@ const parseReturnErrorDraft = (valueText) => {
         simpleMode: false,
       };
     }
-  } catch (error) {
+  } catch {
     // treat as plain text message
   }
 
@@ -704,7 +704,7 @@ const parsePruneObjectsDraft = (valueText) => {
       simpleMode: true,
       typeText: String(parsed ?? '').trim(),
     };
-  } catch (error) {
+  } catch {
     return {
       ...defaults,
       simpleMode: true,
@@ -1011,7 +1011,7 @@ const validateOperations = (operations, t) => {
             return t('第 {{line}} 条 return_error 需要 message 字段', { line });
           }
         }
-      } catch (error) {
+      } catch {
         // plain string value is allowed
       }
     }
@@ -1045,7 +1045,7 @@ const validateOperations = (operations, t) => {
             });
           }
         }
-      } catch (error) {
+      } catch {
         // non-JSON string is treated as type string
       }
     }
@@ -1552,13 +1552,13 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
     [filteredFieldGuideSections],
   );
 
-  const updateOperation = (operationId, patch) => {
+  const updateOperation = useCallback((operationId, patch) => {
     setOperations((prev) =>
       prev.map((item) =>
         item.id === operationId ? { ...item, ...patch } : item,
       ),
     );
-  };
+  }, []);
 
   const formatSelectedOperationValueAsJson = useCallback(() => {
     if (!selectedOperation) return;
@@ -1573,7 +1573,7 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
         value_text: JSON.stringify(JSON.parse(raw), null, 2),
       });
       showSuccess(t('JSON 已格式化'));
-    } catch (error) {
+    } catch {
       showError(t('当前值不是合法 JSON，无法格式化'));
     }
   }, [selectedOperation, t, updateOperation]);
@@ -2056,6 +2056,13 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                 operation.id === dragOverOperationId &&
                                 draggedOperationId &&
                                 draggedOperationId !== operation.id;
+                              let dropIndicator = 'none';
+                              if (isDropTarget) {
+                                dropIndicator =
+                                  dragOverPosition === 'after'
+                                    ? 'inset 0 -3px 0 var(--semi-color-primary)'
+                                    : 'inset 0 3px 0 var(--semi-color-primary)';
+                              }
                               return (
                                 <div
                                   key={operation.id}
@@ -2093,11 +2100,7 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                       ? '1px solid var(--semi-color-primary)'
                                       : '1px solid var(--semi-color-border)',
                                     opacity: isDragging ? 0.6 : 1,
-                                    boxShadow: isDropTarget
-                                      ? dragOverPosition === 'after'
-                                        ? 'inset 0 -3px 0 var(--semi-color-primary)'
-                                        : 'inset 0 3px 0 var(--semi-color-primary)'
-                                      : 'none',
+                                    boxShadow: dropIndicator,
                                   }}
                                 >
                                   <div className='flex items-start justify-between gap-2'>
@@ -2183,6 +2186,20 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                           mode === 'sync_fields'
                             ? parseSyncTargetSpec(selectedOperation.to)
                             : null;
+                        const hasReturnErrorValue =
+                          meta.value &&
+                          mode === 'return_error' &&
+                          Boolean(returnErrorDraft);
+                        const hasPruneObjectsValue =
+                          meta.value &&
+                          mode === 'prune_objects' &&
+                          Boolean(pruneObjectsDraft);
+                        const showGenericValue =
+                          meta.value &&
+                          !hasReturnErrorValue &&
+                          !hasPruneObjectsValue;
+                        const showFieldMapping =
+                          meta.from || meta.to === false || meta.to;
                         return (
                           <Card
                             className='!rounded-2xl !border-0'
@@ -2287,8 +2304,7 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                               </Text>
                             </div>
 
-                            {meta.value ? (
-                              mode === 'return_error' && returnErrorDraft ? (
+                            {hasReturnErrorValue ? (
                                 <div
                                   className='mt-2 rounded-xl p-3'
                                   style={{
@@ -2510,7 +2526,9 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                     </>
                                   )}
                                 </div>
-                              ) : mode === 'prune_objects' && pruneObjectsDraft ? (
+                              ) : null}
+
+                            {hasPruneObjectsValue ? (
                                 <div
                                   className='mt-2 rounded-xl p-3'
                                   style={{
@@ -2825,7 +2843,9 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                     </>
                                   )}
                                 </div>
-                              ) : (
+                              ) : null}
+
+                            {showGenericValue ? (
                                 <div className='mt-2'>
                                   <div className='flex items-center justify-between gap-2'>
                                     <Text type='tertiary' size='small'>
@@ -2872,7 +2892,6 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                     }
                                   />
                                 </div>
-                              )
                             ) : null}
 
                             {meta.keepOrigin ? (
@@ -3015,7 +3034,9 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                                   </Tag>
                                 </Space>
                               </div>
-                            ) : meta.from || meta.to === false || meta.to ? (
+                            ) : null}
+
+                            {mode !== 'sync_fields' && showFieldMapping ? (
                               <Row gutter={12} style={{ marginTop: 8 }}>
                                 {meta.from || meta.to === false ? (
                                   <Col xs={24} md={12}>

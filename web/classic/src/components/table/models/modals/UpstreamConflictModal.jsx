@@ -58,15 +58,15 @@ const UpstreamConflictModal = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  const formatValue = (v) => {
+  const formatValue = useCallback((v) => {
     if (v === null || v === undefined) return '-';
     if (typeof v === 'string') return v || '-';
     try {
       return JSON.stringify(v, null, 2);
-    } catch (_) {
+    } catch {
       return String(v);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -238,10 +238,10 @@ const UpstreamConflictModal = ({
   }, [
     t,
     selections,
-    filteredDataSource,
     getHeaderState,
     applyHeaderChange,
     toggleField,
+    formatValue,
   ]);
 
   const pagedDataSource = useMemo(() => {
@@ -254,7 +254,7 @@ const UpstreamConflictModal = ({
     const payload = Object.entries(selections)
       .map(([modelName, set]) => ({
         model_name: modelName,
-        fields: Array.from(set || []),
+        fields: [...set || []],
       }))
       .filter((x) => x.fields.length > 0);
 

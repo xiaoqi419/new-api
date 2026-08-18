@@ -105,8 +105,13 @@ const ModelBasicInfo = ({ modelData, vendorsMap = {}, t }) => {
         <p className='mb-4'>{getModelDescription()}</p>
         {getModelTags().length > 0 && (
           <Space wrap>
-            {getModelTags().map((tag, index) => (
-              <Tag key={index} color={tag.color} shape='circle' size='small'>
+            {getModelTags().map((tag) => (
+              <Tag
+                key={`${tag.text}-${tag.color}`}
+                color={tag.color}
+                shape='circle'
+                size='small'
+              >
                 {tag.text}
               </Tag>
             ))}

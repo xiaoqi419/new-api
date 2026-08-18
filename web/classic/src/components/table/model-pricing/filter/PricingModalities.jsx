@@ -35,9 +35,9 @@ const PricingModalities = ({
     dimension === 'output' ? 'output_modalities' : 'input_modalities';
   const source = allModels.length > 0 ? allModels : models;
 
-  const available = Array.from(
+  const available = [...
     new Set(source.flatMap((m) => (Array.isArray(m[field]) ? m[field] : []))),
-  ).sort();
+  ].sort();
 
   if (available.length === 0) return null;
 

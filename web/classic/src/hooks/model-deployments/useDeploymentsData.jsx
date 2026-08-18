@@ -27,6 +27,7 @@ export const useDeploymentsData = () => {
   const { t } = useTranslation();
   const [compactMode, setCompactMode] = useTableCompactMode('deployments');
   const requestSeq = useRef(0);
+  const loadDeploymentsRef = useRef(null);
 
   // State management
   const [deployments, setDeployments] = useState([]);
@@ -266,6 +267,8 @@ export const useDeploymentsData = () => {
     });
   };
 
+  loadDeploymentsRef.current = loadDeployments;
+
   // Search deployments (also supports pagination)
   const searchDeployments = async (searchTerms) => {
     const nextQuery = normalizeQuery(searchTerms);
@@ -349,7 +352,7 @@ export const useDeploymentsData = () => {
       }
 
       const rawUrl = String(activeContainer.public_url).trim();
-      const baseUrl = rawUrl.replace(/\/+$/, '');
+      const baseUrl = rawUrl.replaceAll(/\/+$/g, '');
       if (!baseUrl) {
         showError(t('容器访问地址无效'));
         return;
@@ -367,9 +370,9 @@ export const useDeploymentsData = () => {
       try {
         randomKey =
           typeof crypto !== 'undefined' && crypto.randomUUID
-            ? `ionet-${crypto.randomUUID().replace(/-/g, '')}`
+            ? `ionet-${crypto.randomUUID().replaceAll('-', '')}`
             : null;
-      } catch (err) {
+      } catch {
         randomKey = null;
       }
       if (!randomKey) {
@@ -459,7 +462,7 @@ export const useDeploymentsData = () => {
 
   // Initial load
   useEffect(() => {
-    loadDeployments();
+    loadDeploymentsRef.current?.();
   }, []);
 
   return {
