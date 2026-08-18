@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-common-pages
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 4
+state_version: 5
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 2
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -42,7 +42,61 @@ acceptance:
       child 领域变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 581c32cc-a062-4611-9375-7ea4ad1204e8
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:ec3b98f0-f05c-4627-93ca-1c9fbcd44b84
+  iteration: 1
+  summary:
+    text: Commit c67d097b repairs the approved 59 Classic common-page source files,
+      and merge d0be90e2 synchronizes the Supervisor branch containing the exact
+      trusted-iframe override. The integrated candidate now has zero Oxlint
+      errors across all owned paths while preserving the approved iframe
+      behavior and ownership boundaries.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: Owned-path Oxlint 1.74.0
+        truncated: false
+      result: passed
+      note:
+        text: All 59 owned Classic source files completed with 0 errors and 221
+          warning-only diagnostics.
+        truncated: false
+    - name:
+        text: Classic direct tests
+        truncated: false
+      result: not-run
+      note:
+        text: web/classic/package.json has no test script and web/classic/src contains
+          no .test, .spec, or __tests__ paths.
+        truncated: false
+    - name:
+        text: Scope and whitespace invariants
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; the target-relative diff contains 59 approved
+          source files plus two child formal artifacts, with no package/lock,
+          lint config, dependency, disable, backend, default frontend, or
+          cross-child paths.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Classic has no direct automated tests for these paths; the final Classic
+        production build remains reserved for lint-final-gates.
+      truncated: false
+    - text: The 221 warning-only diagnostics are outside this errors-only child scope.
+      truncated: false
+    - text: The approved trusted-administrator iframe residual risk remains unchanged
+        and documented.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T18:48:38.484Z
 blockers: []
 verification: null
 history:
