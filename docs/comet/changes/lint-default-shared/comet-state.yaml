@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-shared
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -44,7 +44,82 @@ acceptance:
       config/package/lock/dependency/i18n/changelog/disable/ignore 变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: d9a4ebe4-4919-431e-9a74-d6e0efd3577d
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:980b1c68-6458-40c8-92ce-f914108de0e8
+  iteration: 1
+  summary:
+    text: Commit 53b8d4c84 repairs all 51 Default Shared lint errors across the 23
+      owned files, breaks the SearchProvider/CommandMenu import cycle by passing
+      controlled open state as props, preserves Promise and table/navigation
+      behavior, removes allow-same-origin only from unused WebPreviewBody, and
+      adds exactly one four-file react/iframe-missing-sandbox override while
+      preserving the existing Canvas override.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: Oxlint 1.74.0 on all 23 owned files
+        truncated: false
+      result: passed
+      note:
+        text: 0 errors and 3 warning-only diagnostics.
+        truncated: false
+    - name:
+        text: Iframe rule check on four approved files
+        truncated: false
+      result: passed
+      note:
+        text: 0 react/iframe-missing-sandbox diagnostics; untouched Classic About/Home
+          retain unrelated errors for their separate child.
+        truncated: false
+    - name:
+        text: Frontend tests
+        truncated: false
+      result: passed
+      note:
+        text: "npx --yes bun test: 278 passed, 0 failed across 42 files."
+        truncated: false
+    - name:
+        text: Frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully.
+        truncated: false
+    - name:
+        text: Scope, config, disable, package and whitespace checks
+        truncated: false
+      result: passed
+      note:
+        text: Exactly 23 approved changed files; one exact four-path/single-rule
+          override added; Canvas unchanged; no package/lock or added disable
+          lines; git diff --check passed.
+        truncated: false
+    - name:
+        text: Full frontend and Classic builds
+        truncated: false
+      result: not-run
+      note:
+        text: Reserved for lint-final-gates after all code children merge.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Three existing warning-only diagnostics remain in owned files and are
+        outside this change's warning non-goal.
+      truncated: false
+    - text: The trusted administrator iframe policy retains the recorded risk that
+        compromised administrator configuration may expose URL-injected
+        credentials or iframe capabilities.
+      truncated: false
+    - text: Full web lint/build and Classic build remain final integration-gate work.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T17:52:31.067Z
 blockers: []
 verification: null
 history: []
