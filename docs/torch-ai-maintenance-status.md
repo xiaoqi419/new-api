@@ -1,16 +1,17 @@
 # Torch AI 维护状态
 
-> 更新时间：2026-08-18
+> 更新时间：2026-08-19
 >
 > 本文是当前代码状态的维护记录。详细设计仍以 `secondary-development-plan.md` 和 `web-default-迁移计划.md` 为参考，但这两份计划中的早期“尚未改动”描述已经过时，不能作为当前实现进度的唯一依据。
 
 ## 当前结论
 
-- 主要二开功能已经落到 `web/default`：邀请返现、邀请中心、拼团、支付宝商户直连、微信官方支付、视频生成、素材库、渠道监控和应用内接入文档。
+- 主要二开功能已经落到 `web/default`：邀请返现、邀请中心、拼团、支付宝商户直连、微信官方支付、视频生成、素材库、渠道监控和应用内接入文档；这些功能已通过 `p1-quality-regression` 的本地关键路径、路由权限和相关测试验收，不再标记为“待统一回归”。
 - 微信官方支付的代码验收已经完成，Comet change `p0-wallet-wechatpay` 已归档；Native、H5、JSAPI、二维码轮询和跳转安全均已通过本轮验收。
 - 微信/支付宝真实商户收款、平台回调、公网 HTTPS、真实支付结算仍未完成。这些属于线上环境验收，不属于当前本地代码缺陷。
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
 - Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过独立 Verify，`p1-quality-regression` 已归档并合入 `codex/p0-wallet-wechatpay`（merge commit `4a79c68cd`）。
+- 当前本地发布阻塞集中在历史 lint 债务收口：`p1-lint-debt` 已完成 9 个代码 child，`lint-default-shared` 已就绪，`lint-classic-common-pages` 仍在 Build，`lint-final-gates` 等待这两个 child 完成后执行。
 
 ## Phase 4 当前进度（2026-08-18）
 
@@ -31,24 +32,38 @@
 - `lint-classic-users-tables` iteration 3 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；85 个 owned files 为 0 errors、330 warnings，订阅 page-size 不再额外请求套餐，usage-log tooltip 使用固定字段 identity。该 change 已以 merge commit `c3f088c2c` 合入 `codex/p1-lint-debt`。
 - `lint-classic-settings-pages` iteration 3 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；62 个 owned files 为 0 errors、399 warnings，`SettingsChannelAffinity` 已在 render 时同步当前 inputs，partial options 不再把缺失字段回退到挂载默认值，前两轮的预览、重复项和 localStorage 时序修复保持。该 change 已以 merge commit `901aea5ff` 合入 `codex/p1-lint-debt`。
 - `lint-classic-channels-models` iteration 1 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；98 个 owned files 为 0 errors、298 warnings，日志 modal、API 刷新 identity、单次错误提示与 Promise 传播、模型保存、部署操作和价格筛选语义保持。该 change 已以 merge commit `964c306bd` 合入 `codex/p1-lint-debt`。
-- `lint-default-user-features` 的非 Canvas owned paths 已为 0 errors，102 个相关测试与 typecheck 通过。独立 Verify 发现的 2FA 重复备用码 React key 问题已修复，等待从已归档 Canvas 基线重新同步并 Verify。
+- `lint-default-user-features` 的 A1-A3 已通过独立 Verify并完成 Archive：12 个 owned feature 目录为 0 errors、保留 9 项 warning-only diagnostics，18 个测试文件共 102/102 tests 通过，frontend typecheck 通过。2FA 重复备用码使用“值 + 出现次数”的稳定 identity，Canvas 保持已批准的可信同源基线；Archive commit 为 `2040c8c878f3f5d26b2624f3e8e78566532ede15`，随后以 merge commit `b3cac10e62156d003a3049f0ab2928565d8b8416` 合入 `codex/p1-lint-debt`。
 - 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。`p1-canvas-trusted-iframe-policy` 的 A1-A4 已通过独立 Verify、由用户接受并完成 Archive，已以 merge commit `03ee1599d` 合入 `codex/p0-wallet-wechatpay`。更强隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮范围。
 - Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
+- `p1-lint-debt` 当前共有 12 个 child：9 个已 done，`lint-default-shared` 为 ready，`lint-classic-common-pages` 为 active/build，`lint-final-gates` 为 pending。`lint-classic-common-pages` 涉及外部或管理员可配置 iframe 的既有安全边界；在没有新的产品/安全决策前，不通过随意添加 `sandbox` 或 lint override 伪造通过。
 - 当前所有结果仍是本地状态；尚未推送、创建 PR 或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
 
 ## 状态表
 
 | 模块 | 代码状态 | 当前验收状态 | 备注 |
 | --- | --- | --- | --- |
-| 邀请返现 / 邀请中心 | 已实现 | 待统一回归 | 包含管理员审核发放、作废、比例和用户侧记录 |
-| 拼团 | 已实现 | 待统一回归 | 用户端和管理员端均有 default 路由 |
-| 支付宝商户直连 | 已实现 | 待线上商户验收 | 需要真实支付宝应用、公钥、私钥和公网回调 |
+| 邀请返现 / 邀请中心 | 已实现 | 本地代码验收通过，未部署 | 包含管理员审核发放、作废、比例和用户侧记录；关键路径、权限和相关测试已通过 |
+| 拼团 | 已实现 | 本地代码验收通过，未部署 | 用户端和管理员端均有 default 路由；开团、参团、取消、结算/退款边界已纳入回归 |
+| 支付宝商户直连 | 已实现 | 本地代码验收通过，待线上商户验收 | 需要真实支付宝应用、公钥、私钥、公网回调和实际结算证据 |
 | 微信官方支付 | 已实现 | 代码验收通过，待线上商户验收 | 真实商户凭据和支付结算未在本地验证 |
 | 微信登录 | 现有代码可用 | 暂不扩展 | 当前开发范围明确排除新增微信登录能力 |
-| 视频生成 | 已实现 | 待统一回归 | 需要检查提交、轮询、失败和结果下载 |
-| 素材库 | 已实现 | 待统一回归 | 需要检查列表、上传登记、预览和删除 |
-| 渠道监控 | 已实现 | 待统一回归 | 需要检查时间范围、概览和详情钻取 |
-| 应用内接入文档 | 已实现 | 待统一回归 | 包含中英内容、三级目录、示例复制和 Base URL |
+| 视频生成 | 已实现 | 本地代码验收通过，未部署 | 提交、轮询、失败处理和视频/素材引用已纳入回归 |
+| 素材库 | 已实现 | 本地代码验收通过，未部署 | 素材归属、引用和删除边界已纳入回归 |
+| 渠道监控 | 已实现 | 本地代码验收通过，未部署 | 概览、详情、缺失数据与访问权限已纳入回归 |
+| 应用内接入文档 | 已实现 | 本地代码验收通过，未部署 | `/docs` 公开路由、语言、Base URL 与示例边界已纳入回归 |
+
+## 当前未完成项
+
+### 尚未完成或明确搁置的功能
+
+- **微信订阅号验证码登录扩展**：早期计划中的内置订阅号验证码登录未继续推进；这是当前唯一明确处于“二开功能未完成/搁置”状态的业务能力。现有微信登录代码保留，不等于已实现早期计划中的新增订阅号流程。
+- 除微信登录扩展外，当前维护范围内列出的邀请返现、邀请中心、拼团、支付宝商户直连、微信官方支付、视频生成、素材库、渠道监控和应用内接入文档均已有实现，并已通过本地质量回归；它们的剩余工作属于线上验收、发布收口或后续增强，不应再描述为“功能尚未开发”。
+
+### 已实现但仍未完成上线闭环
+
+- **真实商户支付验收**：微信/支付宝真实凭据、客户端下单、公网 HTTPS 回调、验签、重复回调幂等、余额到账和真实结算证据只能在线上环境完成。
+- **全量 lint 收口**：`lint-default-shared` 尚未开始 Build；`lint-classic-common-pages` 尚未完成 Build/Verify/Archive；二者完成后才能启动 `lint-final-gates`，运行全量 lint、tests、typecheck 和两套前端 build。
+- **发布与部署**：当前 lint supervisor 分支只完成本地 child merge，尚未推送、创建 PR、合入发布目标、打标签、发布或部署；服务器、域名、HTTPS、数据库/Redis、交付方式和回滚路径也仍需上线前确认。
 
 ## 线上支付验收待办
 
@@ -60,12 +75,13 @@
 4. 验证支付宝正式/沙箱环境下单、回调验签、重复回调和余额到账。
 5. 保留订单号、回调日志和到账日志，作为线上验收证据。
 
-## Phase 4 剩余事项
+## 当前工程剩余事项
 
-以下事项不属于本次本地质量候选的通过条件，按已确认边界留给后续 change 或线上环境：
+以下事项按已确认边界继续推进：
 
-- 已批准建立 `p1-lint-debt` Native Supervisor change，分批清理全量 oxlint 的 1,400 项历史错误；不得关闭规则、降低错误级别、忽略目录、增加 disable 注释或修改依赖来伪造通过。
-- 已批准建立 `p1-http2-test-stability` Native change，仅稳定 Windows raw HTTP/2 测试夹具；除非出现新的生产回归证据，否则不修改生产请求链路、HTTP client、依赖或 Go 版本。
+- `p1-http2-test-stability` 已完成，不再是剩余项；继续保持其生产 `GetBody` 请求链路未改动的边界。
+- 继续完成 `p1-lint-debt`：先推进已 ready 的 `lint-default-shared`，并完成 active 的 `lint-classic-common-pages`；两者 Archive 并合入 supervisor 后，再执行 `lint-final-gates`。
+- 最终门禁必须如实记录全量 oxlint error/warning 数量，并运行 `web` 的 lint、tests、typecheck、build 以及 `web/classic` build；不得关闭规则、降低错误级别、扩大 ignore、增加 disable 注释或修改依赖来伪造通过。
 - 继续保持真实微信/支付宝商户支付仅为线上验收事项，不把商户凭据、公网 HTTPS、回调或结算缺失当作本地代码缺陷。
 - 继续搁置微信登录新增开发；本阶段不新增支付能力、不升级 UI 框架、依赖或数据库。
 
@@ -74,12 +90,12 @@
 - 不开发新的微信登录能力。
 - 不要求本地完成真实商户支付结算。
 - 不修改受保护的 `new-api`、`QuantumNous` 标识。
-- 不推送 GitHub、创建 PR、合并或部署，除非另行明确授权。
+- 本轮只执行已获授权的本地 child → supervisor 合并；不推送 GitHub、不创建 PR、不合入发布目标或部署，除非另行明确授权。
 
 ## 上线推进目标（2026-08-20 前）
 
-- 本地发布阻塞项：完成 `p1-http2-test-stability`、完成 `p1-lint-debt`、通过 root/relaykit Go 门禁与前端 lint/typecheck/test/build，并形成可追溯的最终 Verify 记录。
-- 执行策略：两个 change 使用独立 worktree 并行推进；子代理最多五个，模型按 Luna max → Terra xhigh → Sol high 降级，每档最多验证两次，且禁止子代理派生子代理。
+- 本地发布阻塞项：完成 `p1-lint-debt` 剩余三个 child（`lint-default-shared`、`lint-classic-common-pages`、`lint-final-gates`），通过最终前端 lint/typecheck/test/build，并形成可追溯的 supervisor Verify 记录。`p1-http2-test-stability` 与 root/relaykit Go 门禁已经完成。
+- 执行策略：独立 owned paths 可以并行推进；子代理最多五个，模型按 Luna max → Terra xhigh → Sol high 降级，每档最多验证两次，且禁止子代理派生子代理。
 - 检索策略：未知代码先用 Fast Context 定位，再用 `rg` 精确阅读；需要外部资料时使用 Fathom、Exa、Firecrawl、Tavily 交叉核验。
 - 上线环境仍需在发布前确认服务器、域名、HTTPS、数据库/Redis、镜像或二进制交付方式及回滚路径。真实微信/支付宝商户凭据仍不是本地 Build 条件；没有凭据时必须保持对应支付入口关闭或明确标记未完成，不能伪造真实结算验收。
 - 每次 Native Verify 接受后同步更新本文，记录通过证据、剩余风险、远端/合并/部署状态和下一目标。
