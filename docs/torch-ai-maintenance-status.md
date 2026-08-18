@@ -29,8 +29,8 @@
 - 已验收 child 的 owned paths 均为 0 lint errors：layout/assets 保留 2 项 warning，channels/pricing 保留 6 项 warning，dashboard/models/settings 保留 34 项 warning，classic foundations 保留 warning-only 债务；warning 专项不在本 change 范围。
 - `lint-classic-topup-settings-ratio` 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；28 个 owned files 为 0 errors、保留 105 个 warning-only diagnostics，支付轮询、订阅购买和倍率表达式同步语义保持。该 change 已以 merge commit `3c36fb607` 合入 `codex/p1-lint-debt`；真实商户凭据、回调、二维码和跳转继续等待线上验收。
 - `lint-classic-users-tables` iteration 3 的 A1-A3 已通过独立 Verify：85 个 owned files 为 0 errors、330 warnings，订阅 page-size 不再额外请求套餐，usage-log tooltip 使用固定字段 identity；当前等待用户接受验收后进入 Archive。
-- `lint-classic-settings-pages` iteration 2 的 A1/A3 通过、A2 未通过：`SettingsChannelAffinity` 的 `inputsRef` 未同步当前 inputs，partial options 更新可能把缺失字段回退到挂载默认值；Runtime 已返回 Build iteration 3，当前只修复该回归。
-- `lint-classic-channels-models` 已提交 iteration 1 候选并进入独立 Verify；Builder 与主代理定向检查均为 0 errors，Verifier 尚未给出最终结论。
+- `lint-classic-settings-pages` iteration 3 的 A1-A3 已通过独立 Verify：62 个 owned files 为 0 errors、399 warnings，`SettingsChannelAffinity` 已在 render 时同步当前 inputs，partial options 不再把缺失字段回退到挂载默认值，前两轮的预览、重复项和 localStorage 时序修复保持；当前等待用户接受验收后进入 Archive。
+- `lint-classic-channels-models` iteration 1 的 A1-A3 已通过独立 Verify：98 个 owned files 为 0 errors、298 warnings，日志 modal、API 刷新 identity、单次错误提示与 Promise 传播、模型保存、部署操作和价格筛选语义保持；当前等待用户接受验收后进入 Archive。
 - `lint-default-user-features` 的非 Canvas owned paths 已为 0 errors，102 个相关测试与 typecheck 通过。独立 Verify 发现的 2FA 重复备用码 React key 问题已修复，等待从已归档 Canvas 基线重新同步并 Verify。
 - 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。`p1-canvas-trusted-iframe-policy` 的 A1-A4 已通过独立 Verify、由用户接受并完成 Archive，已以 merge commit `03ee1599d` 合入 `codex/p0-wallet-wechatpay`。更强隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮范围。
 - Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
