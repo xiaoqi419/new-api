@@ -17,18 +17,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-export * from './history';
-export * from './auth';
-export * from './authHeader';
-export * from './utils';
-export * from './base64';
-export * from './api';
-export * from './render';
-export * from './log';
-export * from './data';
-export * from './token';
-export * from './boolean';
-export * from './dashboard';
-export * from './passkey';
-export * from './statusCodeRules';
-export * from './frontendTheme';
+import { useContext } from 'react';
+import PlaygroundContext from './PlaygroundContext';
+
+/**
+ * Hook to access Playground context
+ * @returns {Object} Context value with onPasteImage, imageUrls, and imageEnabled
+ */
+export const usePlayground = () => {
+  const context = useContext(PlaygroundContext);
+  if (!context) {
+    return {
+      onPasteImage: () => {
+        console.warn('PlaygroundContext not provided');
+      },
+      imageUrls: [],
+      imageEnabled: false,
+    };
+  }
+  return context;
+};
