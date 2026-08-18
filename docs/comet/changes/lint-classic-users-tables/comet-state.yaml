@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-users-tables
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -41,7 +41,56 @@ acceptance:
       领域变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 9bed0139-f03c-4f71-bd77-e16d04046586
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:1a153e03-1b96-426f-b500-4f52a30fd10a
+  iteration: 1
+  summary:
+    text: Cleared all owned users, tokens, logs, redemptions, subscriptions, invoice
+      and ranking oxlint errors while preserving pagination, filtering, modal,
+      request, error and list identity behavior.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned paths oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Fresh main-agent rerun against all owned directories, excluding the four
+          separately owned channel/model table domains, exited 0 with zero
+          errors; Builder recorded 330 warnings across 85 lint source files.
+        truncated: false
+    - name:
+        text: classic owned tests
+        truncated: false
+      result: not-run
+      note:
+        text: web/classic/package.json has no test script and no owned *.test.* or
+          *.spec.* files were found; no synthetic tests were added.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed before commit; all 31 implementation files are
+          inside the approved owned paths, with no config, package, lock,
+          dependency, disable, i18n, backend or other-child changes.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 330 warning-only diagnostics remain outside this child scope.
+      truncated: false
+    - text: No browser interaction, wide typecheck or build was run; those remain
+        serialized integration gates.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T12:45:42.168Z
 blockers: []
 verification: null
 history: []
