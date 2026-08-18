@@ -10,13 +10,13 @@
 - 微信官方支付的代码验收已经完成，Comet change `p0-wallet-wechatpay` 已归档；Native、H5、JSAPI、二维码轮询和跳转安全均已通过本轮验收。
 - 微信/支付宝真实商户收款、平台回调、公网 HTTPS、真实支付结算仍未完成。这些属于线上环境验收，不属于当前本地代码缺陷。
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
-- Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过一次独立 Verify，最终归档状态以 Comet 的 `comet-state.yaml` 与 `verification.md` 为准。
+- Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过独立 Verify，`p1-quality-regression` 已归档并合入 `codex/p0-wallet-wechatpay`（merge commit `4a79c68cd`）。
 
 ## Phase 4 当前进度（2026-08-18）
 
-- Comet Native change `p1-quality-regression` 的 A1-A7 已通过独立 Verify；本次本地质量候选可以进入归档确认，但 Git 提交、合并、推送和部署仍分别受后续授权约束。
+- Comet Native change `p1-quality-regression` 的 A1-A7 已通过独立 Verify并完成归档；change 分支已合入 `codex/p0-wallet-wechatpay`，尚未推送、创建 PR 或部署。
 - 已修复 CI 后端构建前置条件：为 `web/dist`、`web/classic/dist` 和 `web/canvas/dist` 创建 embed placeholder，避免干净 checkout 因 ignored 前端产物缺失而无法执行 root `go build`。
-- 本地后端质量检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过；其中 root `GOWORK=off go test ./...` 已全量通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。
+- 验收候选的后端检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。合并后 Windows 复核中，root 全量测试可间歇失败于两个 raw HTTP/2 fixture；两个失败用例单独执行均通过，现有证据指向测试连接关闭时序而非生产 `GetBody` 回归，已批准独立 `p1-http2-test-stability` change 处理。
 - 本地前端检查已通过：`npx --yes bun run typecheck`、`bun test`（278 pass / 42 files）、`bun run build` 与 `bun run i18n:sync`。
 - 全量前端 oxlint 仍未通过：共 1,400 errors / 383 files，其中 `web/classic` 为 1,059 errors / 236 files，`web/src` 为 341 errors / 147 files。用户已确认将该历史 lint 债务拆为独立后续 change；本轮只验收修改或直接影响的 default 文件定向 lint，不宣称全量 lint 通过。
 - 当前仍不能宣称真实商户支付完成：微信/支付宝凭据、公网 HTTPS、回调验签和真实结算继续等待线上验收。
@@ -50,7 +50,8 @@
 
 以下事项不属于本次本地质量候选的通过条件，按已确认边界留给后续 change 或线上环境：
 
-- 在本 change 验收完成后，为全量 oxlint 的 1,400 项历史错误建立独立 `lint-debt` Native change，分批修复且不关闭规则、不降低错误级别、不忽略目录。
+- 已批准建立 `p1-lint-debt` Native Supervisor change，分批清理全量 oxlint 的 1,400 项历史错误；不得关闭规则、降低错误级别、忽略目录、增加 disable 注释或修改依赖来伪造通过。
+- 已批准建立 `p1-http2-test-stability` Native change，仅稳定 Windows raw HTTP/2 测试夹具；除非出现新的生产回归证据，否则不修改生产请求链路、HTTP client、依赖或 Go 版本。
 - 继续保持真实微信/支付宝商户支付仅为线上验收事项，不把商户凭据、公网 HTTPS、回调或结算缺失当作本地代码缺陷。
 - 继续搁置微信登录新增开发；本阶段不新增支付能力、不升级 UI 框架、依赖或数据库。
 
@@ -60,3 +61,11 @@
 - 不要求本地完成真实商户支付结算。
 - 不修改受保护的 `new-api`、`QuantumNous` 标识。
 - 不推送 GitHub、创建 PR、合并或部署，除非另行明确授权。
+
+## 上线推进目标（2026-08-20 前）
+
+- 本地发布阻塞项：完成 `p1-http2-test-stability`、完成 `p1-lint-debt`、通过 root/relaykit Go 门禁与前端 lint/typecheck/test/build，并形成可追溯的最终 Verify 记录。
+- 执行策略：两个 change 使用独立 worktree 并行推进；子代理最多五个，模型按 Luna max → Terra xhigh → Sol high 降级，每档最多验证两次，且禁止子代理派生子代理。
+- 检索策略：未知代码先用 Fast Context 定位，再用 `rg` 精确阅读；需要外部资料时使用 Fathom、Exa、Firecrawl、Tavily 交叉核验。
+- 上线环境仍需在发布前确认服务器、域名、HTTPS、数据库/Redis、镜像或二进制交付方式及回滚路径。真实微信/支付宝商户凭据仍不是本地 Build 条件；没有凭据时必须保持对应支付入口关闭或明确标记未完成，不能伪造真实结算验收。
+- 每次 Native Verify 接受后同步更新本文，记录通过证据、剩余风险、远端/合并/部署状态和下一目标。
