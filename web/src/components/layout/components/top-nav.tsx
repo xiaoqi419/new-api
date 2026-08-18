@@ -30,7 +30,7 @@ import {
 import { resolveNavIcon } from '@/lib/nav-icons'
 import { cn } from '@/lib/utils'
 
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
 
 type TopNavProps = React.HTMLAttributes<HTMLElement> & {
   links: TopNavLink[]
