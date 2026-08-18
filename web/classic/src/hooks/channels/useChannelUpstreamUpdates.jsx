@@ -28,7 +28,7 @@ const getManualIgnoredModelCountFromSettings = (settings) => {
   } else if (typeof settings === 'string') {
     try {
       parsed = JSON.parse(settings);
-    } catch (error) {
+    } catch {
       parsed = null;
     }
   }

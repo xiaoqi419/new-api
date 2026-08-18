@@ -86,7 +86,7 @@ export function collectDisallowedStatusCodeRedirects(statusCodeMappingStr) {
   let parsed;
   try {
     parsed = JSON.parse(statusCodeMappingStr);
-  } catch (error) {
+  } catch {
     return [];
   }
 
@@ -110,7 +110,7 @@ export function collectDisallowedStatusCodeRedirects(statusCodeMappingStr) {
     riskyMappings.push(`${fromCode} -> ${toCode}`);
   });
 
-  return Array.from(new Set(riskyMappings)).sort();
+  return [...new Set(riskyMappings)].sort();
 }
 
 export function collectNewDisallowedStatusCodeRedirects(

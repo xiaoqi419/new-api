@@ -25,12 +25,16 @@ const PricingCardSkeleton = ({
   rowSelection = false,
   showRatio = false,
 }) => {
+  const skeletonCards = Array.from(
+    { length: skeletonCount },
+    (_, index) => ({ id: `skeleton-card-${index}`, index }),
+  );
   const placeholder = (
     <div className='px-2 pt-2'>
       <div className='grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4'>
-        {Array.from({ length: skeletonCount }).map((_, index) => (
+        {skeletonCards.map(({ id, index }) => (
           <Card
-            key={index}
+            key={id}
             className='!rounded-2xl border border-gray-200'
             bodyStyle={{ padding: '24px' }}
           >
@@ -92,9 +96,12 @@ const PricingCardSkeleton = ({
 
             {/* 标签区域骨架 */}
             <div className='flex flex-wrap gap-2'>
-              {Array.from({ length: 2 + (index % 3) }).map((_, tagIndex) => (
+              {Array.from(
+                { length: 2 + (index % 3) },
+                (_, tagIndex) => `skeleton-tag-${tagIndex}`,
+              ).map((tagId) => (
                 <Skeleton.Button
-                  key={tagIndex}
+                  key={tagId}
                   size='small'
                   style={{
                     width: 64,
@@ -118,9 +125,9 @@ const PricingCardSkeleton = ({
                   />
                 </div>
                 <div className='grid grid-cols-3 gap-2'>
-                  {Array.from({ length: 3 }).map((_, ratioIndex) => (
+                  {['skeleton-ratio-1', 'skeleton-ratio-2', 'skeleton-ratio-3'].map((ratioId) => (
                     <Skeleton.Title
-                      key={ratioIndex}
+                      key={ratioId}
                       style={{ width: '100%', height: 12, marginBottom: 0 }}
                     />
                   ))}
@@ -138,7 +145,7 @@ const PricingCardSkeleton = ({
     </div>
   );
 
-  return <Skeleton loading={true} active placeholder={placeholder}></Skeleton>;
+  return <Skeleton active placeholder={placeholder} />;
 };
 
 export default PricingCardSkeleton;

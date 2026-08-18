@@ -73,6 +73,9 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
 
   const logContainerRef = useRef(null);
   const autoRefreshRef = useRef(null);
+  const fetchLogsRef = useRef(null);
+  const fetchContainersRef = useRef(null);
+  const fetchContainerDetailsRef = useRef(null);
 
   // Auto scroll to bottom when new logs arrive
   const scrollToBottom = () => {
@@ -132,7 +135,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
       if (response.data.success) {
         const rawContent =
           typeof response.data.data === 'string' ? response.data.data : '';
-        const normalized = rawContent.replace(/\r\n?/g, '\n');
+        const normalized = rawContent.replaceAll(/\r\n?/g, '\n');
         const lines = normalized ? normalized.split('\n') : [];
 
         setLogLines(lines);
@@ -216,6 +219,10 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
     }
   };
 
+  fetchLogsRef.current = fetchLogs;
+  fetchContainersRef.current = fetchContainers;
+  fetchContainerDetailsRef.current = fetchContainerDetails;
+
   const handleContainerChange = (value) => {
     const newValue = value || ALL_CONTAINERS;
     setSelectedContainerId(newValue);
@@ -272,7 +279,10 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
   };
 
   const downloadLogs = () => {
-    const sourceLogs = filteredLogs.length > 0 ? filteredLogs : logLines;
+    const sourceLogs =
+      filteredLogs.length > 0
+        ? filteredLogs.map(({ line }) => line)
+        : logLines;
     if (sourceLogs.length === 0) {
       showError(t('暂无日志可下载'));
       return;
@@ -285,7 +295,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
     a.href = url;
     const safeContainerId =
       selectedContainerId && selectedContainerId !== ALL_CONTAINERS
-        ? selectedContainerId.replace(/[^a-zA-Z0-9_-]/g, '-')
+        ? selectedContainerId.replaceAll(/[^a-zA-Z0-9_-]/g, '-')
         : '';
     const fileName = safeContainerId
       ? `deployment-${deployment.id}-container-${safeContainerId}-logs.txt`
@@ -300,7 +310,10 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
   };
 
   const copyAllLogs = async () => {
-    const sourceLogs = filteredLogs.length > 0 ? filteredLogs : logLines;
+    const sourceLogs =
+      filteredLogs.length > 0
+        ? filteredLogs.map(({ line }) => line)
+        : logLines;
     if (sourceLogs.length === 0) {
       showError(t('暂无日志可复制'));
       return;
@@ -319,7 +332,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
   useEffect(() => {
     if (autoRefresh && visible) {
       autoRefreshRef.current = setInterval(() => {
-        fetchLogs();
+        fetchLogsRef.current?.();
       }, 5000);
     } else {
       if (autoRefreshRef.current) {
@@ -337,7 +350,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
 
   useEffect(() => {
     if (visible && deployment?.id) {
-      fetchContainers();
+      fetchContainersRef.current?.();
     } else if (!visible) {
       setContainers([]);
       setSelectedContainerId(ALL_CONTAINERS);
@@ -356,14 +369,14 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
 
   useEffect(() => {
     if (visible && deployment?.id) {
-      fetchContainerDetails(selectedContainerId);
+      fetchContainerDetailsRef.current?.(selectedContainerId);
     }
   }, [visible, deployment?.id, selectedContainerId]);
 
   // Initial load and cleanup
   useEffect(() => {
     if (visible && deployment?.id) {
-      fetchLogs();
+      fetchLogsRef.current?.();
     }
 
     return () => {
@@ -374,21 +387,75 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
   }, [visible, deployment?.id, streamFilter, selectedContainerId, following]);
 
   // Filter logs based on search term
+  const logLineCounts = new Map();
   const filteredLogs = logLines
-    .map((line) => line ?? '')
+    .map((rawLine) => {
+      const line = rawLine ?? '';
+      const occurrence = (logLineCounts.get(line) ?? 0) + 1;
+      logLineCounts.set(line, occurrence);
+      return { id: `${line}-${occurrence}`, line };
+    })
     .filter(
-      (line) =>
+      ({ line }) =>
         !searchTerm || line.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
-  const renderLogEntry = (line, index) => (
+  const renderLogEntry = (log) => (
     <div
-      key={`${index}-${line.slice(0, 20)}`}
+      key={log.id}
       className='py-1 px-3 hover:bg-gray-50 font-mono text-sm border-b border-gray-100 whitespace-pre-wrap break-words'
     >
-      {line}
+      {log.line}
     </div>
   );
+
+  let createdAtText = t('未知');
+  if (containerDetails?.created_at) {
+    createdAtText = timestamp2string(containerDetails.created_at);
+  } else if (currentContainer?.created_at) {
+    createdAtText = timestamp2string(currentContainer.created_at);
+  }
+
+  const containerEventKeyCounts = new Map();
+  const recentContainerEvents = Array.isArray(containerDetails?.events)
+    ? containerDetails.events.slice(0, 5).map((event) => {
+        const eventIdentity = JSON.stringify({
+          containerId:
+            containerDetails?.container_id ??
+            currentContainer?.container_id ??
+            selectedContainerId,
+          time: event?.time ?? null,
+          message: event?.message ?? null,
+          status: containerDetails?.status ?? currentContainer?.status ?? null,
+        });
+        const occurrence =
+          (containerEventKeyCounts.get(eventIdentity) ?? 0) + 1;
+        containerEventKeyCounts.set(eventIdentity, occurrence);
+
+        return { event, key: `${eventIdentity}\u001f${occurrence}` };
+      })
+    : [];
+
+  let logContent;
+  if (loading && logLines.length === 0) {
+    logContent = (
+      <div className='flex items-center justify-center p-8'>
+        <Spin tip={t('加载日志中...')} />
+      </div>
+    );
+  } else if (filteredLogs.length === 0) {
+    logContent = (
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description={searchTerm ? t('没有匹配的日志条目') : t('暂无日志')}
+        style={{ padding: '60px 20px' }}
+      />
+    );
+  } else {
+    logContent = (
+      <div>{filteredLogs.map((log) => renderLogEntry(log))}</div>
+    );
+  }
 
   return (
     <Modal
@@ -594,7 +661,8 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
                   <div className='flex items-center justify-center py-6'>
                     <Spin tip={t('加载容器详情中...')} />
                   </div>
-                ) : containerDetails ? (
+                ) : null}
+                {!containerDetailsLoading && containerDetails ? (
                   <div className='grid gap-4 md:grid-cols-2 text-sm'>
                     <div className='flex items-center gap-2'>
                       <FaInfoCircle className='text-blue-500' />
@@ -622,11 +690,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
                       <FaClock className='text-orange-500' />
                       <Text type='secondary'>{t('创建时间')}</Text>
                       <Text>
-                        {containerDetails?.created_at
-                          ? timestamp2string(containerDetails.created_at)
-                          : currentContainer?.created_at
-                            ? timestamp2string(currentContainer.created_at)
-                            : t('未知')}
+                        {createdAtText}
                       </Text>
                     </div>
                     <div className='flex items-center gap-2'>
@@ -640,36 +704,32 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
                       </Text>
                     </div>
                   </div>
-                ) : (
+                ) : null}
+                {!containerDetailsLoading && !containerDetails ? (
                   <Text size='small' type='secondary'>
                     {t('暂无容器详情')}
                   </Text>
-                )}
+                ) : null}
 
-                {containerDetails?.events &&
-                  containerDetails.events.length > 0 && (
+                {recentContainerEvents.length > 0 && (
                     <div className='bg-gray-50 rounded-lg p-3'>
                       <Text size='small' type='secondary'>
                         {t('最近事件')}
                       </Text>
                       <div className='mt-2 space-y-2 max-h-32 overflow-y-auto'>
-                        {containerDetails.events
-                          .slice(0, 5)
-                          .map((event, index) => (
-                            <div
-                              key={`${event.time}-${index}`}
-                              className='flex gap-3 text-xs font-mono'
-                            >
-                              <span className='text-gray-500'>
-                                {event.time
-                                  ? timestamp2string(event.time)
-                                  : '--'}
-                              </span>
-                              <span className='text-gray-700 break-all flex-1'>
-                                {event.message}
-                              </span>
-                            </div>
-                          ))}
+                        {recentContainerEvents.map(({ event, key }) => (
+                          <div
+                            key={key}
+                            className='flex gap-3 text-xs font-mono'
+                          >
+                            <span className='text-gray-500'>
+                              {event.time ? timestamp2string(event.time) : '--'}
+                            </span>
+                            <span className='text-gray-700 break-all flex-1'>
+                              {event.message}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -685,23 +745,7 @@ const ViewLogsModal = ({ visible, onCancel, deployment, t }) => {
             className='flex-1 overflow-y-auto bg-white'
             style={{ maxHeight: '400px' }}
           >
-            {loading && logLines.length === 0 ? (
-              <div className='flex items-center justify-center p-8'>
-                <Spin tip={t('加载日志中...')} />
-              </div>
-            ) : filteredLogs.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  searchTerm ? t('没有匹配的日志条目') : t('暂无日志')
-                }
-                style={{ padding: '60px 20px' }}
-              />
-            ) : (
-              <div>
-                {filteredLogs.map((log, index) => renderLogEntry(log, index))}
-              </div>
-            )}
+            {logContent}
           </div>
 
           {/* Footer status */}

@@ -18,11 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 export const normalizeModelList = (models = []) =>
-  Array.from(
+  [...
     new Set(
       (models || []).map((model) => String(model || '').trim()).filter(Boolean),
     ),
-  );
+  ];
 
 export const parseUpstreamUpdateMeta = (settings) => {
   let parsed = null;
@@ -31,7 +31,7 @@ export const parseUpstreamUpdateMeta = (settings) => {
   } else if (typeof settings === 'string') {
     try {
       parsed = JSON.parse(settings);
-    } catch (error) {
+    } catch {
       parsed = null;
     }
   }

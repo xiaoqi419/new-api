@@ -181,9 +181,9 @@ export default function DynamicPricingBreakdown({ billingExpr, t }) {
           <Text strong className='text-sm' style={{ display: 'block', marginBottom: 8 }}>
             {t('条件乘数')}
           </Text>
-          {ruleGroups.map((group, gi) => (
+          {ruleGroups.map((group) => (
             <div
-              key={`group-${gi}`}
+              key={JSON.stringify(group)}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',

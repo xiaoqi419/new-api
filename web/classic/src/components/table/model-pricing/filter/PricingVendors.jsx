@@ -56,7 +56,7 @@ const PricingVendors = ({
     });
 
     return {
-      vendors: Array.from(vendors).sort(),
+      vendors: [...vendors].sort(),
       vendorIcons,
       hasUnknownVendor,
     };

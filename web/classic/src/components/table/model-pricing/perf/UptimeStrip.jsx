@@ -25,8 +25,11 @@ const UptimeStrip = ({ rates = [], max = 24, showLabel = true, t }) => {
   const valid = (rates || []).filter((r) => Number.isFinite(r));
   if (valid.length === 0) return null;
 
-  const display = valid.slice(-max);
-  const avg = display.reduce((s, r) => s + r, 0) / display.length;
+  const display = valid
+    .slice(-max)
+    .map((rate, position) => ({ id: `uptime-${position}-${rate}`, rate }));
+  const avg =
+    display.reduce((sum, item) => sum + item.rate, 0) / display.length;
 
   return (
     <div>
@@ -44,17 +47,17 @@ const UptimeStrip = ({ rates = [], max = 24, showLabel = true, t }) => {
         className='flex items-stretch justify-between h-5'
         style={{ gap: 3 }}
       >
-        {display.map((r, i) => (
+        {display.map((item) => (
           <span
-            key={i}
+            key={item.id}
             className='rounded-full'
             style={{
               flex: '1 1 0',
               minWidth: 4,
               maxWidth: 6,
-              backgroundColor: successRateColor(r),
+              backgroundColor: successRateColor(item.rate),
             }}
-            title={`${t ? t('成功率') : '成功率'} ${r.toFixed(1)}%`}
+            title={`${t ? t('成功率') : '成功率'} ${item.rate.toFixed(1)}%`}
           />
         ))}
       </div>
