@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-users-tables
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 5
+state_version: 6
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 1
   iteration: 2
   attempt: 0
@@ -22,49 +22,36 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
-    result: passed
-    reason:
-      text: Independent scoped oxlint covered all owned paths and exited 0 with zero
-        errors and 330 warnings.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：Hooks、Promise、array key、component export
       与机械性修复保持查询/分页/筛选、批量操作、错误传播、modal 生命周期、列表 identity
       与订阅/额度状态；相关既有测试通过，或明确报告无测试。
-    result: failed
-    reason:
-      text: useSubscriptionsData.jsx now makes loadPlans depend on pageSize and the
-        effect depend on loadPlans, so changing the client-side page size
-        triggers an additional GET /api/subscription/admin/plans that did not
-        occur on the target branch. Preserve latest pageSize for loadPlans while
-        keeping initial plan loading mount-only, for example through a
-        latest-callback ref invoked by an empty-dependency effect.
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含配置、package/lock、依赖、disable 或其他 child
       领域变化。
-    result: passed
-    reason:
-      text: The candidate contains only approved owned implementation paths and the
-        two formal child artifacts; scope audit, suppression/config audit, and
-        git diff --check passed.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: 9bed0139-f03c-4f71-bd77-e16d04046586
+  candidate_id: 4cf3f6f6-3d33-4a55-acdc-3fe83ee62663
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:1a153e03-1b96-426f-b500-4f52a30fd10a
-  iteration: 1
+  builder_execution_ref: skill-coordinated:builder:a03ff158-05e9-4585-8346-295414da3b80
+  iteration: 2
   summary:
-    text: Cleared all owned users, tokens, logs, redemptions, subscriptions, invoice
-      and ranking oxlint errors while preserving pagination, filtering, modal,
-      request, error and list identity behavior.
+    text: Repaired the failed subscription pagination invariant by routing the
+      mount-only initial plan load through a render-updated callback ref, so
+      page-size changes remain client-only while explicit reload paths keep the
+      latest pageSize closure.
     truncated: false
   addressed_acceptance_ids:
     - A1
@@ -76,60 +63,48 @@ builder_handoff:
         truncated: false
       result: passed
       note:
-        text: Fresh main-agent rerun against all owned directories, excluding the four
-          separately owned channel/model table domains, exited 0 with zero
-          errors; Builder recorded 330 warnings across 85 lint source files.
+        text: Luna max Builder reran oxlint against the repaired hook and all 85
+          explicitly enumerated owned files with the worktree config; both
+          exited 0 with zero errors.
+        truncated: false
+    - name:
+        text: subscription request cadence review
+        truncated: false
+      result: passed
+      note:
+        text: loadPlans still closes over latest pageSize, while the initialization
+          effect has an empty dependency list and invokes the current
+          loadPlansRef exactly on mount; changing pageSize therefore no longer
+          schedules an extra plans GET.
         truncated: false
     - name:
         text: classic owned tests
         truncated: false
       result: not-run
       note:
-        text: web/classic/package.json has no test script and no owned *.test.* or
-          *.spec.* files were found; no synthetic tests were added.
+        text: web/classic has no test script and no owned test/spec files; no synthetic
+          tests were added.
         truncated: false
     - name:
         text: scope and whitespace review
         truncated: false
       result: passed
       note:
-        text: git diff --check passed before commit; all 31 implementation files are
-          inside the approved owned paths, with no config, package, lock,
-          dependency, disable, i18n, backend or other-child changes.
+        text: Iteration 2 implementation changes only useSubscriptionsData.jsx; git diff
+          --check passed and prior A3 scope remains unchanged.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: 330 warning-only diagnostics remain outside this child scope.
+    - text: Request-count behavior is established by the direct Hook dependency/effect
+        chain because classic has no browser or hook test harness.
       truncated: false
-    - text: No browser interaction, wide typecheck or build was run; those remain
-        serialized integration gates.
+    - text: 330 warning-only diagnostics and broad build/typecheck/browser checks
+        remain outside this child scope.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-08-18T12:45:42.168Z
+  submitted_at: 2026-08-18T13:16:27.989Z
 blockers: []
-verification:
-  candidate_id: 9bed0139-f03c-4f71-bd77-e16d04046586
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:19d2edbc-aa4e-48c0-925c-f9a8e71cac44
-  iteration: 1
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks: []
-  summary:
-    text: "FAIL: A1 and A3 pass, but A2 fails because changing subscription page
-      size now performs an extra plans request."
-    truncated: false
-  risks:
-    - text: Classic has no owned automated tests or test script, so the page-size
-        request-count regression was established by a direct static effect and
-        callback dependency trace.
-      truncated: false
-    - text: 330 warning-only diagnostics remain outside this child scope, and broad
-        build/typecheck/browser checks remain final integration gates.
-      truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T13:09:37.445Z
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -152,7 +127,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T12:02:24.062Z
