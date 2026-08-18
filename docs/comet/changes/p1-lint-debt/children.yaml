@@ -1,0 +1,48 @@
+schema: comet.native.children.v1
+children:
+  - name: lint-default-channels-pricing
+    depends_on: []
+    covers: [A1, A3]
+  - name: lint-default-dashboard-models-settings
+    depends_on: []
+    covers: [A1, A3]
+  - name: lint-default-user-features
+    depends_on: []
+    covers: [A1, A3]
+  - name: lint-default-layout-assets
+    depends_on: []
+    covers: [A1, A3]
+  - name: lint-classic-foundations
+    depends_on: []
+    covers: [A2, A3]
+  - name: lint-default-shared
+    depends_on:
+      - lint-default-channels-pricing
+      - lint-default-dashboard-models-settings
+      - lint-default-user-features
+      - lint-default-layout-assets
+    covers: [A1, A3]
+  - name: lint-classic-channels-models
+    depends_on: [lint-classic-foundations]
+    covers: [A2, A3]
+  - name: lint-classic-users-tables
+    depends_on: [lint-classic-foundations]
+    covers: [A2, A3]
+  - name: lint-classic-topup-settings-ratio
+    depends_on: [lint-classic-foundations]
+    covers: [A2, A3]
+  - name: lint-classic-settings-pages
+    depends_on: [lint-classic-foundations]
+    covers: [A2, A3]
+  - name: lint-classic-common-pages
+    depends_on: [lint-classic-foundations]
+    covers: [A2, A3]
+  - name: lint-final-gates
+    depends_on:
+      - lint-default-shared
+      - lint-classic-channels-models
+      - lint-classic-users-tables
+      - lint-classic-topup-settings-ratio
+      - lint-classic-settings-pages
+      - lint-classic-common-pages
+    covers: [A4, A5, A6, A7, A8, A9, A10, A11]
