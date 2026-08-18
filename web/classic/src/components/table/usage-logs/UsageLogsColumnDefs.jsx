@@ -78,17 +78,20 @@ function buildChannelAffinityTooltip(affinity, t) {
   const keyText = `${keySource}:${keyPath}${keyFp}`;
 
   const lines = [
-    t('渠道亲和性'),
-    `${t('规则')}：${affinity.rule_name || '-'}`,
-    `${t('分组')}：${affinity.selected_group || '-'}`,
-    `${t('Key')}：${keyText}`,
-    ...(keyHint ? [`${t('Key 摘要')}：${keyHint}`] : []),
+    { key: 'channel', text: t('渠道亲和性') },
+    { key: 'rule_name', text: `${t('规则')}：${affinity.rule_name || '-'}` },
+    {
+      key: 'selected_group',
+      text: `${t('分组')}：${affinity.selected_group || '-'}`,
+    },
+    { key: 'key', text: `${t('Key')}：${keyText}` },
+    ...(keyHint ? [{ key: 'key_hint', text: `${t('Key 摘要')}：${keyHint}` }] : []),
   ];
 
   return (
     <div style={{ lineHeight: 1.6, display: 'flex', flexDirection: 'column' }}>
       {lines.map((line) => (
-        <div key={line}>{line}</div>
+        <div key={line.key}>{line.text}</div>
       ))}
     </div>
   );
@@ -145,19 +148,22 @@ function renderType(type, t) {
 function buildStreamStatusTooltip(ss, t) {
   if (!ss) return null;
   const lines = [
-    t('流状态') + '：' + t('异常'),
-    (ss.end_reason || 'unknown'),
+    { key: 'status', text: t('流状态') + '：' + t('异常') },
+    { key: 'end_reason', text: ss.end_reason || 'unknown' },
   ];
   if (ss.error_count > 0) {
-    lines.push(`${t('软错误')}: ${ss.error_count}`);
+    lines.push({
+      key: 'soft_error',
+      text: `${t('软错误')}: ${ss.error_count}`,
+    });
   }
   if (ss.end_error) {
-    lines.push(ss.end_error);
+    lines.push({ key: 'end_error', text: ss.end_error });
   }
   return (
     <div style={{ lineHeight: 1.6, display: 'flex', flexDirection: 'column' }}>
       {lines.map((line) => (
-        <div key={line}>{line}</div>
+        <div key={line.key}>{line.text}</div>
       ))}
     </div>
   );
