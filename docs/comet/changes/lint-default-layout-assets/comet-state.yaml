@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-layout-assets
 language: zh-CN
-phase: build
+phase: archive
 status: active
-state_version: 2
+state_version: 6
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,39 +12,184 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: archive-ready
   goal_cycle: 1
   iteration: 1
-  attempt: 0
+  attempt: 1
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: archive
 acceptance:
   - id: A1
     source: brief.md
     text: A1：权威 oxlint 对 `web/src/components/layout` 与 `web/src/assets/brand-icons`
       返回 0 errors。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: "Independent Sol high verifier reran the authoritative scoped oxlint
+        command: exit 0, zero errors, and two warning-only non-goal findings."
+      truncated: false
   - id: A2
     source: brief.md
     text: A2：Hooks、component export、array key 与 import-type 修复保持导航、焦点、响应式布局、图标
       identity 和模块副作用；相关既有测试通过，或明确报告无测试。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: All changed source files were reviewed. Icon changes are type-only
+        imports; layout changes preserve navigation, auth, focus, responsive
+        behavior, SVG geometry, exports, and module side effects. No direct
+        existing tests were found.
+      truncated: false
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含品牌替换、lint 配置、package/lock、依赖或 disable
       变化。
-    result: pending
-    reason: null
-builder_handoff: null
+    result: passed
+    reason:
+      text: The candidate contains only the child artifacts, 18 approved brand-icon
+        files, and 14 approved layout files; no config, package, lockfile,
+        dependency, backend, branding, or disable-directive change is present,
+        and the candidate diff check passes.
+      truncated: false
+builder_handoff:
+  candidate_id: 705c131c-77a3-46f4-a3b7-dcba62bbdec5
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:374225c3-dcb9-4b16-befc-60b1e0147ea7
+  iteration: 1
+  summary:
+    text: Cleared 43 oxlint errors within the approved layout and brand-icons paths
+      using type-only imports, data-derived React keys, equivalent conditional
+      control flow, and fragment removal. Targeted oxlint now reports 0 errors.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: targeted oxlint for layout and brand-icons
+        truncated: false
+      result: passed
+      note:
+        text: web/node_modules/.bin/oxlint.exe -c .oxlintrc.json src/components/layout
+          src/assets/brand-icons exited 0 with 0 errors; 2 existing out-of-scope
+          warnings remain.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: Exited 0 with no whitespace errors.
+        truncated: false
+    - name:
+        text: direct existing layout or brand-icons tests
+        truncated: false
+      result: not-run
+      note:
+        text: Exact test-reference search found no direct existing tests for these
+          paths; broad typecheck and build are explicitly out of scope.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No direct existing layout or brand-icons test was found.
+      truncated: false
+    - text: Two pre-existing oxlint warnings remain outside the approved warning
+        scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T10:37:46.622Z
 blockers: []
-verification: null
-history: []
+verification:
+  candidate_id: 705c131c-77a3-46f4-a3b7-dcba62bbdec5
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:dcbd4f77-f8a7-42ec-9e41-399d216095cc
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: targeted-oxlint
+      name:
+        text: Targeted oxlint for layout and brand icons
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/components/layout
+          truncated: false
+        - text: src/assets/brand-icons
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 242
+    - id: frontend-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: bun
+          truncated: false
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5308
+    - id: candidate-diff-check
+      name:
+        text: Candidate whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: codex/p1-lint-debt...HEAD
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 37
+  summary:
+    text: Sol high independently verified candidate
+      705c131c-77a3-46f4-a3b7-dcba62bbdec5 and found A1-A3 satisfied with
+      protected branding and approved scope preserved.
+    truncated: false
+  risks:
+    - text: There are no direct behavior tests for these paths; frontend typecheck
+        passed and broader build remains in the Supervisor final gate.
+      truncated: false
+    - text: Composite navigation/footer keys rely on sibling title and href
+        uniqueness, which current generated and fallback data satisfy.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T11:01:39.412Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Sol high independently verified candidate
+        705c131c-77a3-46f4-a3b7-dcba62bbdec5 and found A1-A3 satisfied with
+        protected branding and approved scope preserved.
+      truncated: false
+    completed_at: 2026-08-18T11:01:39.412Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null
@@ -55,7 +200,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: pending
-verification_report: null
+verification_result: pass
+verification_report: verification.md
 archived: false
 created_at: 2026-08-18T10:06:43.346Z
