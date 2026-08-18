@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260818-ab791b03a',
+    date: '2026-08-18',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '主钱包充值接入微信官方支付:微信内优先使用 JSAPI,手机浏览器使用 H5,电脑端展示 Native 二维码;扫码支付成功后余额会自动更新。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260814-1b22caa61',
     date: '2026-08-14',
     changes: [
