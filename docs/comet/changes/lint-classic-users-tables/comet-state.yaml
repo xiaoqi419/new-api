@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-users-tables
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 8
+state_version: 9
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 1
   iteration: 3
   attempt: 0
@@ -22,52 +22,36 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
-    result: passed
-    reason:
-      text: Independent oxlint 1.74.0 covered all 85 owned files while excluding the
-        four other table child domains and exited 0 with zero errors and 330
-        warnings.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：Hooks、Promise、array key、component export
       与机械性修复保持查询/分页/筛选、批量操作、错误传播、modal 生命周期、列表 identity
       与订阅/额度状态；相关既有测试通过，或明确报告无测试。
-    result: failed
-    reason:
-      text: The subscription page-size request regression is repaired, but
-        UsageLogsColumnDefs.jsx uses display text as React key in two tooltip
-        line arrays. Distinct fields can contain the same text and create
-        duplicate sibling keys. Use field identities such as
-        status/end_reason/soft_error/end_error rather than display strings,
-        preserving all rows and order.
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含配置、package/lock、依赖、disable 或其他 child
       领域变化。
-    result: passed
-    reason:
-      text: The target diff remains limited to 31 approved implementation files plus
-        two formal child artifacts, with no
-        config/package/lock/dependency/i18n/backend/other-child changes; diff
-        check and clean worktree checks passed.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: 4cf3f6f6-3d33-4a55-acdc-3fe83ee62663
+  candidate_id: c0a3e509-98c3-4620-a47e-84130f2c4903
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:a03ff158-05e9-4585-8346-295414da3b80
-  iteration: 2
+  builder_execution_ref: skill-coordinated:builder:5d61a5dc-6a84-4697-9fb2-82ab46a4d80e
+  iteration: 3
   summary:
-    text: Repaired the failed subscription pagination invariant by routing the
-      mount-only initial plan load through a render-updated callback ref, so
-      page-size changes remain client-only while explicit reload paths keep the
-      latest pageSize closure.
+    text: Repaired the remaining usage-log tooltip identity issue by assigning
+      invariant field keys to each semantic line, preserving duplicate display
+      text, row order, conditions and content while retaining the previously
+      accepted subscription request-cadence repair.
     truncated: false
   addressed_acceptance_ids:
     - A1
@@ -79,19 +63,18 @@ builder_handoff:
         truncated: false
       result: passed
       note:
-        text: Luna max Builder reran oxlint against the repaired hook and all 85
-          explicitly enumerated owned files with the worktree config; both
-          exited 0 with zero errors.
+        text: Luna max Builder ran scoped oxlint on UsageLogsColumnDefs.jsx and all 85
+          explicitly enumerated owned files; both exited 0 with zero errors.
         truncated: false
     - name:
-        text: subscription request cadence review
+        text: tooltip identity review
         truncated: false
       result: passed
       note:
-        text: loadPlans still closes over latest pageSize, while the initialization
-          effect has an empty dependency list and invokes the current
-          loadPlansRef exactly on mount; changing pageSize therefore no longer
-          schedules an extra plans GET.
+        text: Channel affinity lines use channel/rule_name/selected_group/key/key_hint
+          identities and stream status lines use
+          status/end_reason/soft_error/end_error identities; equal display text
+          remains rendered without duplicate sibling keys.
         truncated: false
     - name:
         text: classic owned tests
@@ -106,43 +89,22 @@ builder_handoff:
         truncated: false
       result: passed
       note:
-        text: Iteration 2 implementation changes only useSubscriptionsData.jsx; git diff
-          --check passed and prior A3 scope remains unchanged.
+        text: Iteration 3 implementation changes only UsageLogsColumnDefs.jsx; git diff
+          --check passed and previously accepted target scope remains unchanged.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: Request-count behavior is established by the direct Hook dependency/effect
-        chain because classic has no browser or hook test harness.
-      truncated: false
-    - text: 330 warning-only diagnostics and broad build/typecheck/browser checks
-        remain outside this child scope.
-      truncated: false
-  known_limits_truncated: false
-  submitted_at: 2026-08-18T13:16:27.989Z
-blockers: []
-verification:
-  candidate_id: 4cf3f6f6-3d33-4a55-acdc-3fe83ee62663
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:b6f3d9fd-f718-4497-8b0e-71fd1bb3f09b
-  iteration: 2
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks: []
-  summary:
-    text: "FAIL: A1/A3 and the subscription repair pass, but A2 still fails because
-      two usage-log tooltips can generate duplicate React keys from equal
-      display text."
-    truncated: false
-  risks:
-    - text: Classic has no relevant test harness, so request cadence and duplicate-key
-        behavior are protected only by direct source review.
+    - text: No browser render test exists for duplicate tooltip values, so the
+        invariant is established by fixed semantic keys and direct source
+        review.
       truncated: false
     - text: 330 warnings and broad build/typecheck/browser checks remain deferred to
         integration gates.
       truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T13:32:26.607Z
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T13:36:53.095Z
+blockers: []
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -177,7 +139,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T12:02:24.062Z
