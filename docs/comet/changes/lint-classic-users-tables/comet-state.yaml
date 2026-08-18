@@ -1,18 +1,18 @@
 schema: comet.native.v4
 name: lint-classic-users-tables
 language: zh-CN
-phase: verify
-status: await-user
-state_version: 11
+phase: archive
+status: active
+state_version: 13
 brief: brief.md
 spec_changes: []
 workspace:
   isolation: worktree
   change_branch: codex/lint-classic-users-tables
   target_branch: codex/p1-lint-debt
-  finish: null
+  finish: merge
 loop:
-  stage: await-user
+  stage: archive-ready
   goal_cycle: 1
   iteration: 3
   attempt: 1
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: confirm-skill-coordinated-pass
+  next_action: archive
 acceptance:
   - id: A1
     source: brief.md
@@ -114,14 +114,7 @@ builder_handoff:
       truncated: false
   known_limits_truncated: false
   submitted_at: 2026-08-18T13:36:53.095Z
-blockers:
-  - owner: user
-    reason:
-      text: The generic Skill bridge cannot prove an independent Verifier execution;
-        user confirmation is required before Archive.
-      truncated: false
-    acceptance_ids: []
-    resolution_action: await-user
+blockers: []
 verification:
   candidate_id: c0a3e509-98c3-4620-a47e-84130f2c4903
   identity_provider: skill-coordinated
