@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-topup-settings-ratio
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -40,7 +40,68 @@ acceptance:
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含配置、package/lock、依赖、disable 或范围外支付/设置变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: e9cd97fc-9c58-4004-857d-04dce24ae9a2
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4d9cf001-2ee0-484b-8c34-01f7cac4cdd4
+  iteration: 1
+  summary:
+    text: Cleared all approved classic topup and ratio oxlint errors while
+      preserving payment polling cadence, topup and subscription flows, billing
+      expression serialization, external model synchronization, and stable
+      UI-only list identities.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned paths oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Builder and main-agent independent runs over all approved topup, TopUp,
+          Ratio and RatioSetting paths exited 0 with zero errors; Builder
+          recorded 105 warnings and the main quiet run covered 28 files.
+        truncated: false
+    - name:
+        text: payment and expression semantic review
+        truncated: false
+      result: passed
+      note:
+        text: Wechat polling remains keyed only by visible/tradeNo with latest callbacks
+          via refs; PriceInput preserves intermediate decimal text; expression
+          synchronization prevents local feedback remounts and suppresses stale
+          emission during true external/model changes; UI _id fields are not
+          serialized.
+        truncated: false
+    - name:
+        text: classic owned tests
+        truncated: false
+      result: not-run
+      note:
+        text: web/classic has no test script and no directly owned test/spec files; no
+          synthetic tests were added.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: Exactly 19 implementation files are inside the approved topup/Ratio paths;
+          config, package/lock, dependency, i18n, backend, WeChat login and
+          other-child paths are unchanged, and git diff --check passed.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 105 warning-only diagnostics remain outside this child scope.
+      truncated: false
+    - text: No browser interaction or real merchant payment integration was run; real
+        credentials and callbacks remain explicitly pending online acceptance.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T13:26:31.239Z
 blockers: []
 verification: null
 history: []
