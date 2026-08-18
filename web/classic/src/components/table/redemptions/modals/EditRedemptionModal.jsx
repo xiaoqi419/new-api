@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   API,
@@ -56,6 +56,14 @@ import {
 
 const { Text, Title } = Typography;
 
+const getInitValues = () => ({
+  name: '',
+  quota: 100000,
+  amount: Number(quotaToDisplayAmount(100000).toFixed(6)),
+  count: 1,
+  expired_time: null,
+});
+
 const EditRedemptionModal = (props) => {
   const { t } = useTranslation();
   const isEdit = props.editingRedemption.id !== undefined;
@@ -64,19 +72,11 @@ const EditRedemptionModal = (props) => {
   const formApiRef = useRef(null);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
 
-  const getInitValues = () => ({
-    name: '',
-    quota: 100000,
-    amount: Number(quotaToDisplayAmount(100000).toFixed(6)),
-    count: 1,
-    expired_time: null,
-  });
-
   const handleCancel = () => {
     props.handleClose();
   };
 
-  const loadRedemption = async () => {
+  const loadRedemption = useCallback(async () => {
     setLoading(true);
     let res = await API.get(`/api/redemption/${props.editingRedemption.id}`);
     const { success, message, data } = res.data;
@@ -92,7 +92,7 @@ const EditRedemptionModal = (props) => {
       showError(message);
     }
     setLoading(false);
-  };
+  }, [props.editingRedemption.id]);
 
   useEffect(() => {
     if (formApiRef.current) {
@@ -102,7 +102,7 @@ const EditRedemptionModal = (props) => {
         formApiRef.current.setValues(getInitValues());
       }
     }
-  }, [props.editingRedemption.id]);
+  }, [props.editingRedemption.id, isEdit, loadRedemption]);
 
   const submit = async (values) => {
     let name = values.name;
@@ -174,8 +174,7 @@ const EditRedemptionModal = (props) => {
   };
 
   return (
-    <>
-      <SideSheet
+    <SideSheet
         placement={isEdit ? 'right' : 'left'}
         title={
           <Space>
@@ -384,8 +383,7 @@ const EditRedemptionModal = (props) => {
             )}
           </Form>
         </Spin>
-      </SideSheet>
-    </>
+    </SideSheet>
   );
 };
 

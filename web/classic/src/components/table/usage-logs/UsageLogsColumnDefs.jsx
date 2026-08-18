@@ -87,8 +87,8 @@ function buildChannelAffinityTooltip(affinity, t) {
 
   return (
     <div style={{ lineHeight: 1.6, display: 'flex', flexDirection: 'column' }}>
-      {lines.map((line, i) => (
-        <div key={i}>{line}</div>
+      {lines.map((line) => (
+        <div key={line}>{line}</div>
       ))}
     </div>
   );
@@ -156,8 +156,8 @@ function buildStreamStatusTooltip(ss, t) {
   }
   return (
     <div style={{ lineHeight: 1.6, display: 'flex', flexDirection: 'column' }}>
-      {lines.map((line, i) => (
-        <div key={i}>{line}</div>
+      {lines.map((line) => (
+        <div key={line}>{line}</div>
       ))}
     </div>
   );
@@ -278,13 +278,12 @@ function renderModelName(record, copyText, t) {
   if (!modelMapped) {
     return renderModelTag(record.model_name, {
       onClick: (event) => {
-        copyText(event, record.model_name).then((r) => {});
+        void copyText(event, record.model_name);
       },
     });
   } else {
     return (
-      <>
-        <Space vertical align={'start'}>
+      <Space vertical align={'start'}>
           <Popover
             content={
               <div style={{ padding: 10 }}>
@@ -295,7 +294,7 @@ function renderModelName(record, copyText, t) {
                     </Typography.Text>
                     {renderModelTag(record.model_name, {
                       onClick: (event) => {
-                        copyText(event, record.model_name).then((r) => {});
+                        void copyText(event, record.model_name);
                       },
                     })}
                   </div>
@@ -305,9 +304,7 @@ function renderModelName(record, copyText, t) {
                     </Typography.Text>
                     {renderModelTag(other.upstream_model_name, {
                       onClick: (event) => {
-                        copyText(event, other.upstream_model_name).then(
-                          (r) => {},
-                        );
+                        void copyText(event, other.upstream_model_name);
                       },
                     })}
                   </div>
@@ -317,7 +314,7 @@ function renderModelName(record, copyText, t) {
           >
             {renderModelTag(record.model_name, {
               onClick: (event) => {
-                copyText(event, record.model_name).then((r) => {});
+                void copyText(event, record.model_name);
               },
               suffixIcon: (
                 <Route
@@ -326,8 +323,7 @@ function renderModelName(record, copyText, t) {
               ),
             })}
           </Popover>
-        </Space>
-      </>
+      </Space>
     );
   }
 }
@@ -372,8 +368,8 @@ function getPromptCacheSummary(other) {
 
 function normalizeDetailText(detail) {
   return String(detail || '')
-    .replace(/\n\r/g, '\n')
-    .replace(/\r\n/g, '\n');
+    .replaceAll('\n\r', '\n')
+    .replaceAll('\r\n', '\n');
 }
 
 function getUsageLogGroupSummary(groupRatio, userGroupRatio, t) {
@@ -402,16 +398,16 @@ function renderCompactDetailSummary(summarySegments) {
         lineHeight: 1.35,
       }}
     >
-      {segments.map((segment, index) => (
+      {segments.map((segment) => (
         <Typography.Text
-          key={`${segment.text}-${index}`}
+          key={`${segment.tone}-${segment.text}`}
           type={segment.tone === 'secondary' ? 'tertiary' : undefined}
           size={segment.tone === 'secondary' ? 'small' : undefined}
           style={{
             display: 'block',
             maxWidth: '100%',
             fontSize: 12,
-            marginTop: index === 0 ? 0 : 2,
+            marginTop: segments.indexOf(segment) === 0 ? 0 : 2,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -603,9 +599,7 @@ export const getLogsColumns = ({
             </Avatar>
             {text}
           </div>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -629,9 +623,7 @@ export const getLogsColumns = ({
               {t(text)}{' '}
             </Tag>
           </div>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -646,7 +638,7 @@ export const getLogsColumns = ({
           record.type === 6
         ) {
           if (record.group) {
-            return <>{renderGroup(record.group)}</>;
+            return renderGroup(record.group);
           } else {
             let other = null;
             try {
@@ -658,16 +650,16 @@ export const getLogsColumns = ({
               );
             }
             if (other === null) {
-              return <></>;
+              return null;
             }
             if (other.group !== undefined) {
-              return <>{renderGroup(other.group)}</>;
+              return renderGroup(other.group);
             } else {
-              return <></>;
+              return null;
             }
           }
         } else {
-          return <></>;
+          return null;
         }
       },
     },
@@ -676,7 +668,7 @@ export const getLogsColumns = ({
       title: t('类型'),
       dataIndex: 'type',
       render: (text, record, index) => {
-        return <>{renderType(text, t)}</>;
+        return renderType(text, t);
       },
     },
     {
@@ -688,10 +680,8 @@ export const getLogsColumns = ({
           record.type === 2 ||
           record.type === 5 ||
           record.type === 6 ? (
-          <>{renderModelName(record, copyText, t)}</>
-        ) : (
-          <></>
-        );
+          renderModelName(record, copyText, t)
+        ) : null;
       },
     },
     {
@@ -700,27 +690,23 @@ export const getLogsColumns = ({
       dataIndex: 'use_time',
       render: (text, record, index) => {
         if (!(record.type === 2 || record.type === 5)) {
-          return <></>;
+          return null;
         }
         if (record.is_stream) {
           let other = getLogOther(record.other);
           return (
-            <>
-              <Space>
-                {renderUseTime(text, t)}
-                {renderFirstUseTime(other?.frt, t)}
-                {renderIsStream(record.is_stream, t, other?.stream_status)}
-              </Space>
-            </>
+            <Space>
+              {renderUseTime(text, t)}
+              {renderFirstUseTime(other?.frt, t)}
+              {renderIsStream(record.is_stream, t, other?.stream_status)}
+            </Space>
           );
         } else {
           return (
-            <>
-              <Space>
-                {renderUseTime(text, t)}
-                {renderIsStream(record.is_stream, t)}
-              </Space>
-            </>
+            <Space>
+              {renderUseTime(text, t)}
+              {renderIsStream(record.is_stream, t)}
+            </Space>
           );
         }
       },
@@ -780,9 +766,7 @@ export const getLogsColumns = ({
               </span>
             ) : null}
           </div>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -795,10 +779,8 @@ export const getLogsColumns = ({
             record.type === 2 ||
             record.type === 5 ||
             record.type === 6) ? (
-          <>{<span> {text} </span>}</>
-        ) : (
-          <></>
-        );
+          <span> {text} </span>
+        ) : null;
       },
     },
     {
@@ -814,7 +796,7 @@ export const getLogsColumns = ({
             record.type === 6
           )
         ) {
-          return <></>;
+          return null;
         }
         const other = getLogOther(record.other);
         const isSubscription = other?.billing_source === 'subscription';
@@ -826,7 +808,7 @@ export const getLogsColumns = ({
             </Tooltip>
           );
         }
-        return <>{renderQuota(text, 6)}</>;
+        return renderQuota(text, 6);
       },
     },
     {
@@ -864,9 +846,7 @@ export const getLogsColumns = ({
               </Tag>
             </span>
           </Tooltip>
-        ) : (
-          <></>
-        );
+        ) : null;
       },
     },
     {
@@ -875,13 +855,13 @@ export const getLogsColumns = ({
       dataIndex: 'retry',
       render: (text, record, index) => {
         if (!(record.type === 2 || record.type === 5)) {
-          return <></>;
+          return null;
         }
         let content = t('渠道') + `：${record.channel}`;
         if (record.other !== '') {
           let other = JSON.parse(record.other);
           if (other === null) {
-            return <></>;
+            return null;
           }
           if (other.admin_info !== undefined) {
             if (
@@ -895,7 +875,7 @@ export const getLogsColumns = ({
             }
           }
         }
-        return isAdminUser ? <div>{content}</div> : <></>;
+        return isAdminUser ? <div>{content}</div> : null;
       },
     },
     {

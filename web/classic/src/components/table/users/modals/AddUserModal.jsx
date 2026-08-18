@@ -71,8 +71,7 @@ const AddUserModal = (props) => {
   };
 
   return (
-    <>
-      <SideSheet
+    <SideSheet
         placement={'left'}
         title={
           <Space>
@@ -178,8 +177,7 @@ const AddUserModal = (props) => {
             </div>
           </Form>
         </Spin>
-      </SideSheet>
-    </>
+    </SideSheet>
   );
 };
 

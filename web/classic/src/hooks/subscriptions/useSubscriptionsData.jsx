@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../../helpers';
 import { useTableCompactMode } from '../common/useTableCompactMode';
@@ -40,7 +40,7 @@ export const useSubscriptionsData = () => {
   const [sheetPlacement, setSheetPlacement] = useState('left'); // 'left' | 'right'
 
   // Load subscription plans
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get('/api/subscription/admin/plans');
@@ -54,17 +54,17 @@ export const useSubscriptionsData = () => {
       } else {
         showError(res.data?.message || t('加载失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, t]);
 
   // Refresh data
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     await loadPlans();
-  };
+  }, [loadPlans]);
 
   const handlePageChange = (page) => {
     setActivePage(page);
@@ -93,7 +93,7 @@ export const useSubscriptionsData = () => {
       } else {
         showError(res.data?.message || t('操作失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setLoading(false);
@@ -121,7 +121,7 @@ export const useSubscriptionsData = () => {
   // Initialize data on component mount
   useEffect(() => {
     loadPlans();
-  }, []);
+  }, [loadPlans]);
 
   const planCount = allPlans.length;
   const plans = allPlans.slice(
