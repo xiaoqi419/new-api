@@ -166,7 +166,7 @@ export const useUsersData = () => {
       } else {
         showError(message || t('操作失败，请重试'));
       }
-    } catch (error) {
+    } catch {
       showError(t('操作失败，请重试'));
     }
   };
@@ -183,7 +183,7 @@ export const useUsersData = () => {
       } else {
         showError(message || t('操作失败，请重试'));
       }
-    } catch (error) {
+    } catch {
       showError(t('操作失败，请重试'));
     }
   };
@@ -193,10 +193,9 @@ export const useUsersData = () => {
     setActivePage(page);
     const { searchKeyword, searchGroup } = getFormValues();
     if (searchKeyword === '' && searchGroup === '') {
-      loadUsers(page, pageSize).then();
-    } else {
-      searchUsers(page, pageSize, searchKeyword, searchGroup).then();
+      return loadUsers(page, pageSize);
     }
+    return searchUsers(page, pageSize, searchKeyword, searchGroup);
   };
 
   // Handle page size change
@@ -266,12 +265,12 @@ export const useUsersData = () => {
 
   // Initialize data on component mount
   useEffect(() => {
-    loadUsers(0, pageSize)
+    loadUsers(0, ITEMS_PER_PAGE)
       .then()
       .catch((reason) => {
         showError(reason);
       });
-    fetchGroups().then();
+    void fetchGroups();
   }, []);
 
   return {

@@ -162,7 +162,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('保存失败，请重试'));
     } finally {
       setLoading(false);
@@ -175,7 +175,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       try {
         const modules = JSON.parse(props.options.SidebarModulesAdmin);
         setSidebarModulesAdmin(modules);
-      } catch (error) {
+      } catch {
         // 使用默认配置
         const defaultModules = {
           chat: { enabled: true, playground: true, chat: true },

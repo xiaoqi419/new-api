@@ -106,7 +106,7 @@ const EditPrefillGroupModal = ({
           showError(res.data.message || t('创建失败'));
         }
       }
-    } catch (error) {
+    } catch {
       showError(t('操作失败'));
     }
     setLoading(false);

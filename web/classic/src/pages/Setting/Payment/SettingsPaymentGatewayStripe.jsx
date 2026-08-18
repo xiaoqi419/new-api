@@ -145,7 +145,7 @@ export default function SettingsPaymentGateway(props) {
         setOriginInputs({ ...inputs });
         props.refresh?.();
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);

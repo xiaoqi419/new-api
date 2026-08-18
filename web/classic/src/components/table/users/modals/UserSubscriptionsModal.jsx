@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Empty,
@@ -112,7 +112,7 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
     }));
   }, [plans]);
 
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     setPlansLoading(true);
     try {
       const res = await API.get('/api/subscription/admin/plans');
@@ -121,14 +121,14 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
       } else {
         showError(res.data?.message || t('加载失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setPlansLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadUserSubscriptions = async () => {
+  const loadUserSubscriptions = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -142,12 +142,12 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
       } else {
         showError(res.data?.message || t('加载失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t, user?.id]);
 
   useEffect(() => {
     if (!visible) return;
@@ -155,7 +155,7 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
     setCurrentPage(1);
     loadPlans();
     loadUserSubscriptions();
-  }, [visible]);
+  }, [visible, loadPlans, loadUserSubscriptions]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -187,14 +187,14 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
       } else {
         showError(res.data?.message || t('新增失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setCreating(false);
     }
   };
 
-  const invalidateSubscription = (subId) => {
+  const invalidateSubscription = useCallback((subId) => {
     Modal.confirm({
       title: t('确认作废'),
       content: t('作废后该订阅将立即失效，历史记录不受影响。是否继续？'),
@@ -212,14 +212,14 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
           } else {
             showError(res.data?.message || t('操作失败'));
           }
-        } catch (e) {
+        } catch {
           showError(t('请求失败'));
         }
       },
     });
-  };
+  }, [loadUserSubscriptions, onSuccess, t]);
 
-  const deleteSubscription = (subId) => {
+  const deleteSubscription = useCallback((subId) => {
     Modal.confirm({
       title: t('确认删除'),
       content: t('删除会彻底移除该订阅记录（含权益明细）。是否继续？'),
@@ -238,12 +238,12 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
           } else {
             showError(res.data?.message || t('删除失败'));
           }
-        } catch (e) {
+        } catch {
           showError(t('请求失败'));
         }
       },
     });
-  };
+  }, [loadUserSubscriptions, onSuccess, t]);
 
   const columns = useMemo(() => {
     return [
@@ -347,7 +347,7 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
         },
       },
     ];
-  }, [t, planTitleMap]);
+  }, [deleteSubscription, invalidateSubscription, planTitleMap, t]);
 
   return (
     <SideSheet

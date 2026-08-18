@@ -49,7 +49,7 @@ const PricingEndpointTypes = ({
         });
       }
     });
-    return Array.from(endpointTypes).sort();
+    return [...endpointTypes].sort();
   };
 
   // 计算每个端点类型的模型数量

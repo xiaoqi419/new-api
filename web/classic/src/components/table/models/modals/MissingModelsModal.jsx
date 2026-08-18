@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Table,
@@ -42,6 +42,7 @@ const MissingModelsModal = ({ visible, onClose, onConfigureModel, t }) => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const isMobile = useIsMobile();
+  const fetchMissingRef = useRef(null);
 
   const fetchMissing = async () => {
     setLoading(true);
@@ -52,15 +53,17 @@ const MissingModelsModal = ({ visible, onClose, onConfigureModel, t }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (_) {
+    } catch {
       showError(t('获取未配置模型失败'));
     }
     setLoading(false);
   };
 
+  fetchMissingRef.current = fetchMissing;
+
   useEffect(() => {
     if (visible) {
-      fetchMissing();
+      fetchMissingRef.current?.();
       setSearchKeyword('');
       setCurrentPage(1);
     } else {

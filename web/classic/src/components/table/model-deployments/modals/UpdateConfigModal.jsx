@@ -53,6 +53,11 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
   const [loading, setLoading] = useState(false);
   const [envVars, setEnvVars] = useState([]);
   const [secretEnvVars, setSecretEnvVars] = useState([]);
+  const dynamicFieldIdRef = useRef(0);
+  const getDynamicFieldId = (field) => {
+    dynamicFieldIdRef.current += 1;
+    return `${field}-${dynamicFieldIdRef.current}`;
+  };
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -75,6 +80,7 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
       const envVarsList = deployment.container_config?.env_variables
         ? Object.entries(deployment.container_config.env_variables).map(
             ([key, value]) => ({
+              id: getDynamicFieldId('env'),
               key,
               value: String(value),
             }),
@@ -96,14 +102,21 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
       // Prepare the update payload
       const payload = {};
 
-      if (formValues.image_url) payload.image_url = formValues.image_url;
-      if (formValues.traffic_port)
+      if (formValues.image_url) {
+        payload.image_url = formValues.image_url;
+      }
+      if (formValues.traffic_port) {
         payload.traffic_port = formValues.traffic_port;
-      if (formValues.registry_username)
+      }
+      if (formValues.registry_username) {
         payload.registry_username = formValues.registry_username;
-      if (formValues.registry_secret)
+      }
+      if (formValues.registry_secret) {
         payload.registry_secret = formValues.registry_secret;
-      if (formValues.command) payload.command = formValues.command;
+      }
+      if (formValues.command) {
+        payload.command = formValues.command;
+      }
 
       // Process entrypoint
       if (formValues.entrypoint) {
@@ -163,7 +176,10 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
   };
 
   const addEnvVar = () => {
-    setEnvVars([...envVars, { key: '', value: '' }]);
+    setEnvVars([
+      ...envVars,
+      { id: getDynamicFieldId('env'), key: '', value: '' },
+    ]);
   };
 
   const removeEnvVar = (index) => {
@@ -178,7 +194,10 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
   };
 
   const addSecretEnvVar = () => {
-    setSecretEnvVars([...secretEnvVars, { key: '', value: '' }]);
+    setSecretEnvVars([
+      ...secretEnvVars,
+      { id: getDynamicFieldId('secret-env'), key: '', value: '' },
+    ]);
   };
 
   const removeSecretEnvVar = (index) => {
@@ -366,7 +385,10 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
                   </div>
 
                   {envVars.map((envVar, index) => (
-                    <div key={index} className='flex items-end gap-2 mb-2'>
+                    <div
+                      key={envVar.id}
+                      className='flex items-end gap-2 mb-2'
+                    >
                       <Input
                         placeholder={t('变量名')}
                         value={envVar.key}
@@ -422,7 +444,10 @@ const UpdateConfigModal = ({ visible, onCancel, deployment, onSuccess, t }) => {
                   </div>
 
                   {secretEnvVars.map((envVar, index) => (
-                    <div key={index} className='flex items-end gap-2 mb-2'>
+                    <div
+                      key={envVar.id}
+                      className='flex items-end gap-2 mb-2'
+                    >
                       <Input
                         placeholder={t('变量名')}
                         value={envVar.key}

@@ -41,6 +41,7 @@ export default function RequestRateLimit(props) {
     ModelRequestRateLimitGroup: '',
   });
   const refForm = useRef();
+  const inputKeys = useRef(Object.keys(inputs));
   const [inputsRow, setInputsRow] = useState(inputs);
 
   function onSubmit() {
@@ -59,13 +60,14 @@ export default function RequestRateLimit(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
 
         for (let i = 0; i < res.length; i++) {
@@ -88,7 +90,7 @@ export default function RequestRateLimit(props) {
   useEffect(() => {
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (inputKeys.current.includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
@@ -98,8 +100,7 @@ export default function RequestRateLimit(props) {
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -236,7 +237,6 @@ export default function RequestRateLimit(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

@@ -32,6 +32,12 @@ export default function WechatPayModal({
 }) {
   const isAlipay = provider === 'alipay';
   const timerRef = useRef(null);
+  const tRef = useRef(t);
+  const onSuccessRef = useRef(onSuccess);
+  const onCancelRef = useRef(onCancel);
+  tRef.current = t;
+  onSuccessRef.current = onSuccess;
+  onCancelRef.current = onCancel;
 
   useEffect(() => {
     if (!visible || !tradeNo) return undefined;
@@ -46,18 +52,18 @@ export default function WechatPayModal({
         if (message === 'success' && data?.status) {
           if (data.status === 'success') {
             clearInterval(timerRef.current);
-            showSuccess(t('支付成功'));
-            onSuccess?.();
+            showSuccess(tRef.current('支付成功'));
+            onSuccessRef.current?.();
             return;
           }
           if (data.status === 'expired' || data.status === 'failed') {
             clearInterval(timerRef.current);
-            showError(t('支付未完成'));
-            onCancel?.();
+            showError(tRef.current('支付未完成'));
+            onCancelRef.current?.();
             return;
           }
         }
-      } catch (e) {
+      } catch {
         // ignore polling errors, keep retrying until timeout
       }
       if (elapsed >= 300) {

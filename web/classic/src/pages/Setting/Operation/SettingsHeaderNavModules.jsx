@@ -121,7 +121,7 @@ export default function SettingsHeaderNavModules(props) {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('保存失败，请重试'));
     } finally {
       setLoading(false);
@@ -143,7 +143,7 @@ export default function SettingsHeaderNavModules(props) {
         }
 
         setHeaderNavModules(modules);
-      } catch (error) {
+      } catch {
         // 使用默认配置
         const defaultModules = {
           home: true,

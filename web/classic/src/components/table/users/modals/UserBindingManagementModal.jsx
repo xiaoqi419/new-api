@@ -295,7 +295,7 @@ const UserBindingManagementModal = ({
     }
   });
 
-  const customBindingItems = Array.from(customProviderMap.values()).map(
+  const customBindingItems = [...customProviderMap.values()].map(
     (provider) => {
       const binding = customBindingMap.get(Number(provider.id));
       return {
@@ -365,11 +365,12 @@ const UserBindingManagementModal = ({
                   item.type === 'builtin'
                     ? `builtin-${item.key}`
                     : `custom-${item.providerId}`;
-                const statusText = isBound
-                  ? item.value
-                  : item.enabled
-                    ? t('未绑定')
-                    : t('未启用');
+                let statusText = t('未启用');
+                if (isBound) {
+                  statusText = item.value;
+                } else if (item.enabled) {
+                  statusText = t('未绑定');
+                }
                 const shouldSpanTwoColsOnDesktop =
                   visibleBindingItems.length % 2 === 1 &&
                   index === visibleBindingItems.length - 1;

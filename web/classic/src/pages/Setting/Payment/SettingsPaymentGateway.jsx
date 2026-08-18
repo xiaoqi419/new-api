@@ -109,7 +109,7 @@ export default function SettingsPaymentGateway(props) {
         showSuccess(t('更新成功'));
         props.refresh && props.refresh();
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);

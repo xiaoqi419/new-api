@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   Banner,
   Button,
@@ -57,6 +57,7 @@ export default function SettingsChats(props) {
     Chats: '[]',
   });
   const refForm = useRef();
+  const inputKeysRef = useRef(Object.keys(inputs));
   const [inputsRow, setInputsRow] = useState(inputs);
   const [editMode, setEditMode] = useState('visual');
   const [chatConfigs, setChatConfigs] = useState([]);
@@ -99,7 +100,7 @@ export default function SettingsChats(props) {
     showSuccess(t('已添加 {{count}} 个模板', { count: toAdd.length }));
   };
 
-  const jsonToConfigs = (jsonString) => {
+  const jsonToConfigs = useCallback((jsonString) => {
     try {
       const configs = JSON.parse(jsonString);
       return Array.isArray(configs)
@@ -113,7 +114,7 @@ export default function SettingsChats(props) {
       console.error('JSON parse error:', error);
       return [];
     }
-  };
+  }, []);
 
   const configsToJson = (configs) => {
     const jsonArray = configs.map((config) => ({
@@ -122,10 +123,10 @@ export default function SettingsChats(props) {
     return JSON.stringify(jsonArray, null, 2);
   };
 
-  const syncJsonToConfigs = () => {
+  const syncJsonToConfigs = useCallback(() => {
     const configs = jsonToConfigs(inputs.Chats);
     setChatConfigs(configs);
-  };
+  }, [inputs.Chats, jsonToConfigs]);
 
   const syncConfigsToJson = (configs) => {
     const jsonString = configsToJson(configs);
@@ -151,8 +152,9 @@ export default function SettingsChats(props) {
       }
 
       const updateArray = compareObjects(inputs, inputsRow);
-      if (!updateArray.length)
+      if (!updateArray.length) {
         return showWarning(t('你似乎并没有修改什么'));
+      }
       const requestQueue = updateArray.map((item) => {
         let value = '';
         if (typeof inputs[item.key] === 'boolean') {
@@ -190,7 +192,7 @@ export default function SettingsChats(props) {
   useEffect(() => {
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (inputKeysRef.current.includes(key)) {
         if (key === 'Chats') {
           const obj = JSON.parse(props.options[key]);
           currentInputs[key] = JSON.stringify(obj, null, 2);
@@ -208,13 +210,13 @@ export default function SettingsChats(props) {
     // 同步到可视化配置
     const configs = jsonToConfigs(currentInputs.Chats || '[]');
     setChatConfigs(configs);
-  }, [props.options]);
+  }, [props.options, jsonToConfigs]);
 
   useEffect(() => {
     if (editMode === 'visual') {
       syncJsonToConfigs();
     }
-  }, [inputs.Chats, editMode]);
+  }, [editMode, syncJsonToConfigs]);
 
   useEffect(() => {
     if (refForm.current && editMode === 'json') {
@@ -315,16 +317,22 @@ export default function SettingsChats(props) {
     if (!text) return text;
 
     const parts = text.split(/(\{address\}|\{key\})/g);
-    return parts.map((part, index) => {
+    let addressOccurrences = 0;
+    let keyOccurrences = 0;
+    return parts.map((part) => {
       if (part === '{address}') {
+        const key = `address-${addressOccurrences}`;
+        addressOccurrences += 1;
         return (
-          <span key={index} style={{ color: '#0077cc', fontWeight: 600 }}>
+          <span key={key} style={{ color: '#0077cc', fontWeight: 600 }}>
             {part}
           </span>
         );
       } else if (part === '{key}') {
+        const key = `key-${keyOccurrences}`;
+        keyOccurrences += 1;
         return (
-          <span key={index} style={{ color: '#ff6b35', fontWeight: 600 }}>
+          <span key={key} style={{ color: '#ff6b35', fontWeight: 600 }}>
             {part}
           </span>
         );

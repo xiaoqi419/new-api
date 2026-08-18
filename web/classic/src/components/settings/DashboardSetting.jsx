@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Card, Spin, Button, Modal } from '@douyinfe/semi-ui';
 import { API, showError, showSuccess, toBoolean } from '../../helpers';
 import SettingsAPIInfo from '../../pages/Setting/Dashboard/SettingsAPIInfo';
@@ -53,26 +53,28 @@ const DashboardSetting = () => {
   let [loading, setLoading] = useState(false);
   const [showMigrateModal, setShowMigrateModal] = useState(false); // 下个版本会删除
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
-      data.forEach((item) => {
-        if (item.key in inputs) {
-          newInputs[item.key] = item.value;
-        }
-        if (item.key.endsWith('Enabled') && item.key === 'DataExportEnabled') {
-          newInputs[item.key] = toBoolean(item.value);
-        }
+      setInputs((currentInputs) => {
+        const newInputs = {};
+        data.forEach((item) => {
+          if (item.key in currentInputs) {
+            newInputs[item.key] = item.value;
+          }
+          if (item.key.endsWith('Enabled') && item.key === 'DataExportEnabled') {
+            newInputs[item.key] = toBoolean(item.value);
+          }
+        });
+        return newInputs;
       });
-      setInputs(newInputs);
     } else {
       showError(message);
     }
-  };
+  }, []);
 
-  async function onRefresh() {
+  const onRefresh = useCallback(async () => {
     try {
       setLoading(true);
       await getOptions();
@@ -82,11 +84,11 @@ const DashboardSetting = () => {
     } finally {
       setLoading(false);
     }
-  }
+  }, [getOptions]);
 
   useEffect(() => {
-    onRefresh();
-  }, []);
+    void onRefresh();
+  }, [onRefresh]);
 
   // 用于迁移检测的旧键，下个版本会删除
   const hasLegacyData = useMemo(() => {
@@ -122,8 +124,7 @@ const DashboardSetting = () => {
   };
 
   return (
-    <>
-      <Spin spinning={loading} size='large'>
+    <Spin spinning={loading} size='large'>
         {/* 用于迁移检测的旧键模态框，下个版本会删除 */}
         <Modal
           title='配置迁移确认'
@@ -165,8 +166,7 @@ const DashboardSetting = () => {
         <Card style={{ marginTop: '10px' }}>
           <SettingsUptimeKuma options={inputs} refresh={onRefresh} />
         </Card>
-      </Spin>
-    </>
+    </Spin>
   );
 };
 

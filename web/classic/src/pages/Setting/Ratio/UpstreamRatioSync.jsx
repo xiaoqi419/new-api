@@ -59,6 +59,16 @@ const MODELS_DEV_PRESET_ID = -101;
 const MODELS_DEV_PRESET_NAME = 'models.dev 价格预设';
 const MODELS_DEV_PRESET_BASE_URL = 'https://models.dev';
 const MODELS_DEV_PRESET_ENDPOINT = 'https://models.dev/api.json';
+const RATIO_SYNC_FIELDS = [
+  'model_ratio',
+  'completion_ratio',
+  'cache_ratio',
+  'create_cache_ratio',
+  'image_ratio',
+  'audio_ratio',
+  'audio_completion_ratio',
+];
+const NUMERIC_SYNC_FIELDS = new Set([...RATIO_SYNC_FIELDS, 'model_price']);
 
 function ConflictConfirmModal({ t, visible, items, loading, onOk, onCancel }) {
   const isMobile = useIsMobile();
@@ -261,19 +271,8 @@ export default function UpstreamRatioSync(props) {
     }
   };
 
-  const ratioSyncFields = [
-    'model_ratio',
-    'completion_ratio',
-    'cache_ratio',
-    'create_cache_ratio',
-    'image_ratio',
-    'audio_ratio',
-    'audio_completion_ratio',
-  ];
-
-  const numericSyncFields = new Set([...ratioSyncFields, 'model_price']);
   const syncFieldOrder = [
-    ...ratioSyncFields,
+    ...RATIO_SYNC_FIELDS,
     'model_price',
     'billing_mode',
     'billing_expr',
@@ -321,7 +320,9 @@ export default function UpstreamRatioSync(props) {
   }
 
   function getBillingCategory(ratioType) {
-    if (ratioType === 'model_price') return 'price';
+    if (ratioType === 'model_price') {
+      return 'price';
+    }
     if (ratioType === 'billing_mode' || ratioType === 'billing_expr') {
       return 'tiered';
     }
@@ -340,21 +341,29 @@ export default function UpstreamRatioSync(props) {
       .join('');
   }
 
-  function getUpstreamValue(model, ratioType, sourceName) {
-    return differences[model]?.[ratioType]?.upstreams?.[sourceName];
-  }
+  const getUpstreamValue = useCallback(
+    (model, ratioType, sourceName) =>
+      differences[model]?.[ratioType]?.upstreams?.[sourceName],
+    [differences],
+  );
 
   function isSelectableUpstreamValue(value) {
     return value !== null && value !== undefined && value !== 'same';
   }
 
-  function getPreferredSyncField(model, ratioType, sourceName) {
-    const exprValue = getUpstreamValue(model, 'billing_expr', sourceName);
-    if (ratioType !== 'billing_expr' && isSelectableUpstreamValue(exprValue)) {
-      return 'billing_expr';
-    }
-    return ratioType;
-  }
+  const getPreferredSyncField = useCallback(
+    (model, ratioType, sourceName) => {
+      const exprValue = getUpstreamValue(model, 'billing_expr', sourceName);
+      if (
+        ratioType !== 'billing_expr' &&
+        isSelectableUpstreamValue(exprValue)
+      ) {
+        return 'billing_expr';
+      }
+      return ratioType;
+    },
+    [getUpstreamValue],
+  );
 
   function shouldShowSyncField(model, ratioType, sourceName) {
     if (!sourceName) return true;
@@ -363,13 +372,22 @@ export default function UpstreamRatioSync(props) {
 
   const selectValue = useCallback(
     (model, ratioType, value, sourceName) => {
-      const preferredRatioType = sourceName
-        ? getPreferredSyncField(model, ratioType, sourceName)
-        : ratioType;
-      const preferredValue =
-        preferredRatioType === ratioType
-          ? value
-          : getUpstreamValue(model, preferredRatioType, sourceName);
+      let preferredRatioType = ratioType;
+      let preferredValue = value;
+      if (sourceName) {
+        preferredRatioType = getPreferredSyncField(
+          model,
+          ratioType,
+          sourceName,
+        );
+        if (preferredRatioType !== ratioType) {
+          preferredValue = getUpstreamValue(
+            model,
+            preferredRatioType,
+            sourceName,
+          );
+        }
+      }
       ratioType = preferredRatioType;
       value = preferredValue;
 
@@ -419,7 +437,7 @@ export default function UpstreamRatioSync(props) {
         };
       });
     },
-    [setResolutions, differences],
+    [differences, getPreferredSyncField, getUpstreamValue],
   );
 
   const applySync = async () => {
@@ -454,8 +472,9 @@ export default function UpstreamRatioSync(props) {
         currentRatios.ImageRatio[model] !== undefined ||
         currentRatios.AudioRatio[model] !== undefined ||
         currentRatios.AudioCompletionRatio[model] !== undefined
-      )
+      ) {
         return 'ratio';
+      }
       return null;
     };
 
@@ -470,12 +489,12 @@ export default function UpstreamRatioSync(props) {
 
     Object.entries(resolutions).forEach(([model, ratios]) => {
       const localCat = getLocalBillingCategory(model);
-      const newCat =
-        'model_price' in ratios
-          ? 'price'
-          : ratioSyncFields.some((rt) => rt in ratios)
-            ? 'ratio'
-            : 'tiered';
+      let newCat = 'tiered';
+      if ('model_price' in ratios) {
+        newCat = 'price';
+      } else if (RATIO_SYNC_FIELDS.some((rt) => rt in ratios)) {
+        newCat = 'ratio';
+      }
 
       if (localCat && newCat !== 'tiered' && localCat !== newCat) {
         const currentDesc =
@@ -538,7 +557,7 @@ export default function UpstreamRatioSync(props) {
         const selectedTypes = Object.keys(ratios);
         const hasPrice = selectedTypes.includes('model_price');
         const hasRatio = selectedTypes.some((rt) =>
-          ratioSyncFields.includes(rt),
+          RATIO_SYNC_FIELDS.includes(rt),
         );
 
         if (hasPrice) {
@@ -556,7 +575,7 @@ export default function UpstreamRatioSync(props) {
 
         Object.entries(ratios).forEach(([ratioType, value]) => {
           const optionKey = optionKeyBySyncField(ratioType);
-          finalRatios[optionKey][model] = numericSyncFields.has(ratioType)
+          finalRatios[optionKey][model] = NUMERIC_SYNC_FIELDS.has(ratioType)
             ? parseFloat(value)
             : value;
         });
@@ -602,14 +621,14 @@ export default function UpstreamRatioSync(props) {
         } else {
           showError(t('部分保存失败'));
         }
-      } catch (error) {
+      } catch {
         showError(t('保存失败'));
       } finally {
         setLoading(false);
       }
       return success;
     },
-    [resolutions, props.options, props.refresh],
+    [props, resolutions, t],
   );
 
   const getCurrentPageData = (dataSource) => {
@@ -700,10 +719,10 @@ export default function UpstreamRatioSync(props) {
   );
 
   const renderDifferenceTable = () => {
-    const dataSource = useMemo(() => {
-      return Object.entries(differences).map(([model, ratioTypes]) => {
+    const dataSource = Object.entries(differences).map(
+      ([model, ratioTypes]) => {
         const hasPrice = 'model_price' in ratioTypes;
-        const hasOtherRatio = ratioSyncFields.some((rt) => rt in ratioTypes);
+        const hasOtherRatio = RATIO_SYNC_FIELDS.some((rt) => rt in ratioTypes);
 
         return {
           key: model,
@@ -711,10 +730,10 @@ export default function UpstreamRatioSync(props) {
           ratioTypes,
           billingConflict: hasPrice && hasOtherRatio,
         };
-      });
-    }, [differences]);
+      },
+    );
 
-    const filteredDataSource = useMemo(() => {
+    const filteredDataSource = (() => {
       if (!searchKeyword.trim() && !ratioTypeFilter) {
         return dataSource;
       }
@@ -729,9 +748,9 @@ export default function UpstreamRatioSync(props) {
 
         return matchesKeyword && matchesRatioType;
       });
-    }, [dataSource, searchKeyword, ratioTypeFilter]);
+    })();
 
-    const upstreamNames = useMemo(() => {
+    const upstreamNames = (() => {
       const set = new Set();
       filteredDataSource.forEach((row) => {
         getOrderedRatioTypes(row.ratioTypes).forEach((ratioType) => {
@@ -740,8 +759,8 @@ export default function UpstreamRatioSync(props) {
           );
         });
       });
-      return Array.from(set);
-    }, [filteredDataSource, ratioTypeFilter]);
+      return [...set];
+    })();
 
     const renderValueTag = (value, color = 'default') => {
       if (value === null || value === undefined) {
@@ -890,21 +909,20 @@ export default function UpstreamRatioSync(props) {
         );
       }
 
+      let emptyDescription = t('请先选择同步渠道');
+      if (searchKeyword.trim()) {
+        emptyDescription = t('未找到匹配的模型');
+      } else if (Object.keys(differences).length === 0 && hasSynced) {
+        emptyDescription = t('暂无差异化价格显示');
+      }
+
       return (
         <Empty
           image={<IllustrationNoResult style={{ width: 150, height: 150 }} />}
           darkModeImage={
             <IllustrationNoResultDark style={{ width: 150, height: 150 }} />
           }
-          description={
-            searchKeyword.trim()
-              ? t('未找到匹配的模型')
-              : Object.keys(differences).length === 0
-                ? hasSynced
-                  ? t('暂无差异化价格显示')
-                  : t('请先选择同步渠道')
-                : t('请先选择同步渠道')
-          }
+          description={emptyDescription}
           style={{ padding: 30 }}
         />
       );

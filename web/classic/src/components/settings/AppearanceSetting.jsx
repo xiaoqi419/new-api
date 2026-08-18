@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banner,
   Button,
@@ -95,10 +95,10 @@ const AppearanceSetting = () => {
       }
       try {
         setAppearance(resolveAppearancePreset(JSON.parse(option.value)));
-      } catch (error) {
+      } catch {
         setAppearance(resolveAppearancePreset(currentAppearance));
       }
-    } catch (error) {
+    } catch {
       showError(t('加载外观主题失败'));
     } finally {
       setLoading(false);
@@ -148,7 +148,7 @@ const AppearanceSetting = () => {
       await refreshStatus();
       setAppearance(normalized);
       showSuccess(t('外观主题已更新'));
-    } catch (error) {
+    } catch {
       showError(t('保存外观主题失败'));
     } finally {
       setSaving(false);
@@ -163,8 +163,11 @@ const AppearanceSetting = () => {
     );
   };
 
+  const loadOptionsRef = useRef(loadOptions);
+  loadOptionsRef.current = loadOptions;
+
   useEffect(() => {
-    loadOptions();
+    void loadOptionsRef.current();
   }, []);
 
   return (

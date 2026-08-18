@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useContext, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   API,
@@ -118,6 +118,7 @@ const TopUp = () => {
   const [payMethods, setPayMethods] = useState([]);
 
   const affFetchedRef = useRef(false);
+  const getTopupInfoRef = useRef(null);
 
   // 邀请相关状态
   const [affLink, setAffLink] = useState('');
@@ -209,7 +210,7 @@ const TopUp = () => {
       } else {
         showError(message);
       }
-    } catch (err) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setIsSubmitting(false);
@@ -268,7 +269,7 @@ const TopUp = () => {
         return;
       }
       setOpen(true);
-    } catch (error) {
+    } catch {
       showError(t('获取金额失败'));
     } finally {
       setPaymentLoading(false);
@@ -357,7 +358,7 @@ const TopUp = () => {
             typeof data === 'string' ? data : message || t('支付失败');
           showError(errorMsg);
         }
-      } catch (e) {
+      } catch {
         showError(t('支付请求失败'));
       } finally {
         setOpen(false);
@@ -383,7 +384,7 @@ const TopUp = () => {
             typeof data === 'string' ? data : message || t('支付失败');
           showError(errorMsg);
         }
-      } catch (e) {
+      } catch {
         showError(t('支付请求失败'));
       } finally {
         setOpen(false);
@@ -463,7 +464,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setOpen(false);
@@ -508,7 +509,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setCreemOpen(false);
@@ -540,7 +541,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (e) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setPaymentLoading(false);
@@ -567,7 +568,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       // amount fetch failed silently
     } finally {
       setAmountLoading(false);
@@ -607,7 +608,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (e) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setPaymentLoading(false);
@@ -634,7 +635,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       // amount fetch failed silently
     } finally {
       setAmountLoading(false);
@@ -646,7 +647,7 @@ const TopUp = () => {
     window.open(data.checkout_url, '_blank');
   };
 
-  const getUserQuota = async () => {
+  const getUserQuota = useCallback(async () => {
     let res = await API.get(`/api/user/self`);
     const { success, message, data } = res.data;
     if (success) {
@@ -654,23 +655,23 @@ const TopUp = () => {
     } else {
       showError(message);
     }
-  };
+  }, [userDispatch]);
 
-  const getSubscriptionPlans = async () => {
+  const getSubscriptionPlans = useCallback(async () => {
     setSubscriptionLoading(true);
     try {
       const res = await API.get('/api/subscription/plans');
       if (res.data?.success) {
         setSubscriptionPlans(res.data.data || []);
       }
-    } catch (e) {
+    } catch {
       setSubscriptionPlans([]);
     } finally {
       setSubscriptionLoading(false);
     }
-  };
+  }, []);
 
-  const getSubscriptionSelf = async () => {
+  const getSubscriptionSelf = useCallback(async () => {
     try {
       const res = await API.get('/api/subscription/self');
       if (res.data?.success) {
@@ -684,10 +685,10 @@ const TopUp = () => {
         const allSubs = res.data.data?.all_subscriptions || [];
         setAllSubscriptions(allSubs);
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
-  };
+  }, []);
 
   const updateBillingPreference = async (pref) => {
     const previousPref = billingPreference;
@@ -705,7 +706,7 @@ const TopUp = () => {
         showError(res.data?.message || t('更新失败'));
         setBillingPreference(previousPref);
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
       setBillingPreference(previousPref);
     }
@@ -785,15 +786,16 @@ const TopUp = () => {
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           const enableWaffoPancakeTopUp =
             data.enable_waffo_pancake_topup || false;
-          const minTopUpValue = enableOnlineTopUp
-            ? data.min_topup
-            : enableStripeTopUp
-              ? data.stripe_min_topup
-              : enableWaffoTopUp
-                ? data.waffo_min_topup
-                : enableWaffoPancakeTopUp
-                  ? data.waffo_pancake_min_topup
-                  : 1;
+          let minTopUpValue = 1;
+          if (enableOnlineTopUp) {
+            minTopUpValue = data.min_topup;
+          } else if (enableStripeTopUp) {
+            minTopUpValue = data.stripe_min_topup;
+          } else if (enableWaffoTopUp) {
+            minTopUpValue = data.waffo_min_topup;
+          } else if (enableWaffoPancakeTopUp) {
+            minTopUpValue = data.waffo_pancake_min_topup;
+          }
           setEnableOnlineTopUp(enableOnlineTopUp);
           setEnableStripeTopUp(enableStripeTopUp);
           setEnableCreemTopUp(enableCreemTopUp);
@@ -823,7 +825,7 @@ const TopUp = () => {
           try {
             const products = JSON.parse(data.creem_products || '[]');
             setCreemProducts(products);
-          } catch (e) {
+          } catch {
             setCreemProducts([]);
           }
 
@@ -834,7 +836,7 @@ const TopUp = () => {
 
           // 初始化显示实付金额
           getAmount(minTopUpValue);
-        } catch (e) {
+        } catch {
           setPayMethods([]);
         }
 
@@ -849,13 +851,14 @@ const TopUp = () => {
       } else {
         showError(data || t('获取充值配置失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('获取充值配置异常'));
     }
   };
+  getTopupInfoRef.current = getTopupInfo;
 
   // 获取邀请链接
-  const getAffLink = async () => {
+  const getAffLink = useCallback(async () => {
     const res = await API.get('/api/user/aff');
     const { success, message, data } = res.data;
     if (success) {
@@ -864,7 +867,7 @@ const TopUp = () => {
     } else {
       showError(message);
     }
-  };
+  }, []);
 
   // 划转邀请额度
   const transfer = async () => {
@@ -879,7 +882,7 @@ const TopUp = () => {
     if (success) {
       showSuccess(message);
       setOpenTransfer(false);
-      getUserQuota().then();
+      await getUserQuota();
     } else {
       showError(message);
     }
@@ -898,26 +901,26 @@ const TopUp = () => {
       searchParams.delete('show_history');
       setSearchParams(searchParams, { replace: true });
     }
-  }, []);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     // 始终获取最新用户数据，确保余额等统计信息准确
-    getUserQuota().then();
+    void getUserQuota();
     setTransferAmount(getQuotaPerUnit());
-  }, []);
+  }, [getUserQuota]);
 
   useEffect(() => {
     if (affFetchedRef.current) return;
     affFetchedRef.current = true;
-    getAffLink().then();
-  }, []);
+    void getAffLink();
+  }, [getAffLink]);
 
   // 在 statusState 可用时获取充值信息
   useEffect(() => {
-    getTopupInfo().then();
-    getSubscriptionPlans().then();
-    getSubscriptionSelf().then();
-  }, []);
+    void getTopupInfoRef.current?.();
+    void getSubscriptionPlans();
+    void getSubscriptionSelf();
+  }, [getSubscriptionPlans, getSubscriptionSelf]);
 
   useEffect(() => {
     if (statusState?.status) {
@@ -954,7 +957,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       // amount fetch failed silently
     }
     setAmountLoading(false);
@@ -980,7 +983,7 @@ const TopUp = () => {
       } else {
         showError(res);
       }
-    } catch (err) {
+    } catch {
       // amount fetch failed silently
     } finally {
       setAmountLoading(false);
@@ -1079,7 +1082,7 @@ const TopUp = () => {
         tradeNo={wechatPayTradeNo}
         onSuccess={() => {
           setWechatPayOpen(false);
-          getUserQuota().then();
+          void getUserQuota();
         }}
         onCancel={() => setWechatPayOpen(false)}
       />
@@ -1093,7 +1096,7 @@ const TopUp = () => {
         tradeNo={alipayTradeNo}
         onSuccess={() => {
           setAlipayOpen(false);
-          getUserQuota().then();
+          void getUserQuota();
         }}
         onCancel={() => setAlipayOpen(false)}
       />

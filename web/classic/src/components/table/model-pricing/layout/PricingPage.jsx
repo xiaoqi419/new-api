@@ -71,7 +71,7 @@ const getEndpointTypes = (models = []) => {
       );
     }
   });
-  return Array.from(endpointTypes).sort();
+  return [...endpointTypes].sort();
 };
 
 const getVendorItems = (models = []) => {
@@ -80,7 +80,7 @@ const getVendorItems = (models = []) => {
     const vendor = model.vendor_name || 'unknown';
     vendors.set(vendor, (vendors.get(vendor) || 0) + 1);
   });
-  return Array.from(vendors.entries())
+  return [...vendors.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 };
@@ -164,6 +164,26 @@ const ApimartPricingPage = ({ pricingData, allProps, isMobile }) => {
       </button>
     );
   };
+
+  let marketContent = (
+    <div className='app-market-grid'>
+      {visibleModels.map((model, index) => renderMarketCard(model, index))}
+    </div>
+  );
+  if (visibleModels.length === 0) {
+    marketContent = (
+      <div className='app-market-empty'>
+        <Empty description={pricingData.t('搜索无结果')} />
+      </div>
+    );
+  }
+  if (pricingData.loading) {
+    marketContent = (
+      <div className='app-market-empty'>
+        <Empty description={pricingData.t('加载中')} />
+      </div>
+    );
+  }
 
   return (
     <div className='app-market-page'>
@@ -284,21 +304,7 @@ const ApimartPricingPage = ({ pricingData, allProps, isMobile }) => {
             {pricingData.filteredModels.length} {pricingData.t('模型')}
           </Text>
 
-          {pricingData.loading ? (
-            <div className='app-market-empty'>
-              <Empty description={pricingData.t('加载中')} />
-            </div>
-          ) : visibleModels.length === 0 ? (
-            <div className='app-market-empty'>
-              <Empty description={pricingData.t('搜索无结果')} />
-            </div>
-          ) : (
-            <div className='app-market-grid'>
-              {visibleModels.map((model, index) =>
-                renderMarketCard(model, index),
-              )}
-            </div>
-          )}
+          {marketContent}
 
           {pricingData.filteredModels.length > pageSize && (
             <div className='app-market-pagination'>

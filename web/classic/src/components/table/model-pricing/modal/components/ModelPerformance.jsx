@@ -122,7 +122,7 @@ const ModelPerformance = ({ modelData, hours = 24, t }) => {
     let active = true;
     if (!modelName) return;
     setLoading(true);
-    API.get('/api/perf-metrics', { params: { model: modelName, hours } })
+    void API.get('/api/perf-metrics', { params: { model: modelName, hours } })
       .then((res) => {
         if (!active) return;
         setGroups(res.data?.success ? res.data.data?.groups || [] : []);

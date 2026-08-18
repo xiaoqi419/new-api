@@ -18,8 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import { useState, useCallback } from 'react';
-import { API } from '../../helpers';
-import { showError } from '../../helpers';
+import { API, showError } from '../../helpers';
 
 export const useDeploymentResources = () => {
   const [hardwareTypes, setHardwareTypes] = useState([]);
@@ -141,7 +140,7 @@ export const useDeploymentResources = () => {
           });
         });
 
-        const normalizedLocations = Array.from(nextLocationsMap.values());
+        const normalizedLocations = [...nextLocationsMap.values()];
         setLocations(normalizedLocations);
         setLocationsTotalAvailable(
           normalizedLocations.reduce(

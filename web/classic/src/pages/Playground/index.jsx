@@ -59,7 +59,7 @@ import {
 } from '../../components/playground/OptimizedComponents';
 import ChatArea from '../../components/playground/ChatArea';
 import FloatingButtons from '../../components/playground/FloatingButtons';
-import { PlaygroundProvider } from '../../contexts/PlaygroundContext';
+import { PlaygroundProvider } from '../../contexts/PlaygroundProvider';
 
 // 生成头像
 const generateAvatarDataUrl = (username) => {

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Spin, Tabs } from '@douyinfe/semi-ui';
 
 import { API, showError, showSuccess, toBoolean } from '../../helpers';
@@ -52,7 +52,7 @@ const ModelSetting = () => {
 
   let [loading, setLoading] = useState(false);
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
@@ -88,8 +88,8 @@ const ModelSetting = () => {
     } else {
       showError(message);
     }
-  };
-  async function onRefresh() {
+  }, []);
+  const onRefresh = useCallback(async () => {
     try {
       setLoading(true);
       await getOptions();
@@ -100,15 +100,14 @@ const ModelSetting = () => {
     } finally {
       setLoading(false);
     }
-  }
+  }, [getOptions]);
 
   useEffect(() => {
-    onRefresh();
-  }, []);
+    void onRefresh();
+  }, [onRefresh]);
 
   return (
-    <>
-      <Spin spinning={loading} size='large'>
+    <Spin spinning={loading} size='large'>
         {/* OpenAI */}
         <Card style={{ marginTop: '10px' }}>
           <SettingGlobalModel options={inputs} refresh={onRefresh} />
@@ -129,8 +128,7 @@ const ModelSetting = () => {
         <Card style={{ marginTop: '10px' }}>
           <SettingGrokModel options={inputs} refresh={onRefresh} />
         </Card>
-      </Spin>
-    </>
+    </Spin>
   );
 };
 

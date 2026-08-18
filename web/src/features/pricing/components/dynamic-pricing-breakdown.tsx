@@ -191,6 +191,24 @@ export function DynamicPricingBreakdown({
   const normalizedMatchedTierLabel = normalizeTierLabel(
     matchedTierLabel ?? undefined
   )
+  const tierRows = useMemo(() => {
+    const duplicateCounts = new Map<string, number>()
+    return tiers.map((tier) => {
+      const signature = JSON.stringify(tier)
+      const duplicateCount = duplicateCounts.get(signature) ?? 0
+      duplicateCounts.set(signature, duplicateCount + 1)
+      return { tier, key: `tier-${signature}-${duplicateCount}` }
+    })
+  }, [tiers])
+  const ruleGroupRows = useMemo(() => {
+    const duplicateCounts = new Map<string, number>()
+    return ruleGroups.map((group) => {
+      const signature = JSON.stringify(group)
+      const duplicateCount = duplicateCounts.get(signature) ?? 0
+      duplicateCounts.set(signature, duplicateCount + 1)
+      return { group, key: `rule-group-${signature}-${duplicateCount}` }
+    })
+  }, [ruleGroups])
 
   if (!expr) return null
 
@@ -260,7 +278,7 @@ export function DynamicPricingBreakdown({
             {t('Tiered price table')}
           </div>
           <div className='space-y-1.5 sm:hidden'>
-            {tiers.map((tier, i) => {
+            {tierRows.map(({ tier, key }) => {
               const condSummary = formatConditionSummary(tier.conditions, t)
               const isMatched =
                 matchedTierLabel != null &&
@@ -268,7 +286,7 @@ export function DynamicPricingBreakdown({
                 tier.label === matchedTierLabel
               return (
                 <div
-                  key={`tier-mobile-${i}`}
+                  key={key}
                   className={cn(
                     'rounded-md border p-2',
                     isMatched && 'border-success/40 bg-success/10'
@@ -422,9 +440,9 @@ export function DynamicPricingBreakdown({
             {t('Conditional multipliers')}
           </div>
           <ul className='space-y-1.5'>
-            {ruleGroups.map((group, gi) => (
+            {ruleGroupRows.map(({ group, key }) => (
               <li
-                key={`group-${gi}`}
+                key={key}
                 className='bg-muted/50 flex items-center justify-between gap-3 rounded-md px-3 py-2'
               >
                 <span

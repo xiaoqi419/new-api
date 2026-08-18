@@ -134,7 +134,7 @@ const SubscriptionPlansCard = ({
             : res.data?.message || t('支付失败');
         showError(errorMsg);
       }
-    } catch (e) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setPaying(false);
@@ -162,7 +162,7 @@ const SubscriptionPlansCard = ({
             : res.data?.message || t('支付失败');
         showError(errorMsg);
       }
-    } catch (e) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setPaying(false);
@@ -191,7 +191,7 @@ const SubscriptionPlansCard = ({
             : res.data?.message || t('支付失败');
         showError(errorMsg);
       }
-    } catch (e) {
+    } catch {
       showError(t('支付请求失败'));
     } finally {
       setPaying(false);
@@ -396,6 +396,37 @@ const SubscriptionPlansCard = ({
                     const isCancelled = subscription?.status === 'cancelled';
                     const isActive =
                       subscription?.status === 'active' && !isExpired;
+                    let subscriptionStatus;
+                    if (isActive) {
+                      subscriptionStatus = (
+                        <Tag
+                          color='white'
+                          size='small'
+                          shape='circle'
+                          prefixIcon={<Badge dot type='success' />}
+                        >
+                          {t('生效')}
+                        </Tag>
+                      );
+                    } else if (isCancelled) {
+                      subscriptionStatus = (
+                        <Tag color='white' size='small' shape='circle'>
+                          {t('已作废')}
+                        </Tag>
+                      );
+                    } else {
+                      subscriptionStatus = (
+                        <Tag color='white' size='small' shape='circle'>
+                          {t('已过期')}
+                        </Tag>
+                      );
+                    }
+                    let endDateLabel = t('过期于');
+                    if (isActive) {
+                      endDateLabel = t('至');
+                    } else if (isCancelled) {
+                      endDateLabel = t('作废于');
+                    }
 
                     return (
                       <div key={subscription?.id || subIndex}>
@@ -407,24 +438,7 @@ const SubscriptionPlansCard = ({
                                 ? `${planTitle} · ${t('订阅')} #${subscription?.id}`
                                 : `${t('订阅')} #${subscription?.id}`}
                             </span>
-                            {isActive ? (
-                              <Tag
-                                color='white'
-                                size='small'
-                                shape='circle'
-                                prefixIcon={<Badge dot type='success' />}
-                              >
-                                {t('生效')}
-                              </Tag>
-                            ) : isCancelled ? (
-                              <Tag color='white' size='small' shape='circle'>
-                                {t('已作废')}
-                              </Tag>
-                            ) : (
-                              <Tag color='white' size='small' shape='circle'>
-                                {t('已过期')}
-                              </Tag>
-                            )}
+                            {subscriptionStatus}
                           </div>
                           {isActive && (
                             <span className='text-gray-500'>
@@ -433,11 +447,7 @@ const SubscriptionPlansCard = ({
                           )}
                         </div>
                         <div className='text-xs text-gray-500 mb-2'>
-                          {isActive
-                            ? t('至')
-                            : isCancelled
-                              ? t('作废于')
-                              : t('过期于')}{' '}
+                          {endDateLabel}{' '}
                           {new Date(
                             (subscription?.end_time || 0) * 1000,
                           ).toLocaleString()}
@@ -628,13 +638,14 @@ const SubscriptionPlansCard = ({
                               {reached ? t('已达上限') : t('立即订阅')}
                             </Button>
                           );
-                          return reached ? (
-                            <Tooltip content={tip} position='top'>
-                              {buttonEl}
-                            </Tooltip>
-                          ) : (
-                            buttonEl
-                          );
+                          if (reached) {
+                            return (
+                              <Tooltip content={tip} position='top'>
+                                {buttonEl}
+                              </Tooltip>
+                            );
+                          }
+                          return buttonEl;
                         })()}
                       </div>
                     </div>

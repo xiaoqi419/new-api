@@ -90,7 +90,7 @@ const renderType = (type, record = {}, t) => {
       if (parsed && typeof parsed === 'object' && parsed.source === 'ionet') {
         ionetMeta = parsed;
       }
-    } catch (error) {
+    } catch {
       // ignore invalid metadata
     }
   }
@@ -270,7 +270,7 @@ const isRequestPassThroughEnabled = (record) => {
   try {
     const parsed = JSON.parse(settingValue);
     return parsed?.pass_through_body_enabled === true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

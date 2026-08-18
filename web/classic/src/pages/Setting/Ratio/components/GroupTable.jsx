@@ -34,7 +34,7 @@ function buildRows(groupRatioStr, userUsableGroupsStr) {
     ...Object.keys(usableMap),
   ]);
 
-  return Array.from(allNames).map((name) => ({
+  return [...allNames].map((name) => ({
     _id: uid(),
     name,
     ratio: ratioMap[name] ?? 1,
@@ -43,7 +43,7 @@ function buildRows(groupRatioStr, userUsableGroupsStr) {
   }));
 }
 
-export function serializeGroupTable(rows) {
+function serializeGroupTable(rows) {
   const groupRatio = {};
   const userUsableGroups = {};
 
@@ -243,7 +243,7 @@ export default function GroupTable({ groupRatio, userUsableGroups, onChange }) {
       {duplicateNames.size > 0 && (
         <Text type='warning' size='small' className='mt-2 block'>
           {t('存在重复的分组名称：')}
-          {Array.from(duplicateNames).join(', ')}
+          {[...duplicateNames].join(', ')}
         </Text>
       )}
     </div>

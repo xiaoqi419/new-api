@@ -16,11 +16,25 @@
 
 - Comet Native change `p1-quality-regression` 的 A1-A7 已通过独立 Verify并完成归档；change 分支已合入 `codex/p0-wallet-wechatpay`，尚未推送、创建 PR 或部署。
 - 已修复 CI 后端构建前置条件：为 `web/dist`、`web/classic/dist` 和 `web/canvas/dist` 创建 embed placeholder，避免干净 checkout 因 ignored 前端产物缺失而无法执行 root `go build`。
-- 验收候选的后端检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。合并后 Windows 复核中，root 全量测试可间歇失败于两个 raw HTTP/2 fixture；两个失败用例单独执行均通过，现有证据指向测试连接关闭时序而非生产 `GetBody` 回归，已批准独立 `p1-http2-test-stability` change 处理。
+- 验收候选的后端检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。后续 `p1-http2-test-stability` 已稳定 Windows raw HTTP/2 fixture，完成独立 Verify、Archive，并以 merge commit `f734ce67b` 合入 `codex/p0-wallet-wechatpay`；生产 `GetBody` 请求链路未改动。
 - 本地前端检查已通过：`npx --yes bun run typecheck`、`bun test`（278 pass / 42 files）、`bun run build` 与 `bun run i18n:sync`。
 - 全量前端 oxlint 仍未通过：共 1,400 errors / 383 files，其中 `web/classic` 为 1,059 errors / 236 files，`web/src` 为 341 errors / 147 files。用户已确认将该历史 lint 债务拆为独立后续 change；本轮只验收修改或直接影响的 default 文件定向 lint，不宣称全量 lint 通过。
 - 当前仍不能宣称真实商户支付完成：微信/支付宝凭据、公网 HTTPS、回调验签和真实结算继续等待线上验收。
 - 微信登录新增开发继续按产品决策暂时搁置，不属于本轮质量修复范围。
+
+## P1 上线收口进度（2026-08-18）
+
+- `p1-http2-test-stability` 的 A1-A8 已通过独立 Verify、由用户接受并完成 Archive；四个 HTTP/2 `GetBody` 用例连续十轮共 40 次执行通过，`relay/channel` 包测试与 root `GOWORK=off go test ./...` 通过。该 change 已以 merge commit `f734ce67b` 合入 `codex/p0-wallet-wechatpay`，只调整测试 fixture 生命周期，没有修改生产 HTTP 请求链路、依赖或 Go 版本。
+- `p1-lint-debt` 首波的 `lint-default-layout-assets`、`lint-default-channels-pricing`、`lint-default-dashboard-models-settings`、`lint-classic-foundations` 均已通过独立 Verify、完成 Archive，并已合入 supervisor 分支。
+- 已验收 child 的 owned paths 均为 0 lint errors：layout/assets 保留 2 项 warning，channels/pricing 保留 6 项 warning，dashboard/models/settings 保留 34 项 warning，classic foundations 保留 warning-only 债务；warning 专项不在本 change 范围。
+- `lint-classic-topup-settings-ratio` 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；28 个 owned files 为 0 errors、保留 105 个 warning-only diagnostics，支付轮询、订阅购买和倍率表达式同步语义保持。该 change 已以 merge commit `3c36fb607` 合入 `codex/p1-lint-debt`；真实商户凭据、回调、二维码和跳转继续等待线上验收。
+- `lint-classic-users-tables` iteration 3 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；85 个 owned files 为 0 errors、330 warnings，订阅 page-size 不再额外请求套餐，usage-log tooltip 使用固定字段 identity。该 change 已以 merge commit `c3f088c2c` 合入 `codex/p1-lint-debt`。
+- `lint-classic-settings-pages` iteration 3 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；62 个 owned files 为 0 errors、399 warnings，`SettingsChannelAffinity` 已在 render 时同步当前 inputs，partial options 不再把缺失字段回退到挂载默认值，前两轮的预览、重复项和 localStorage 时序修复保持。该 change 已以 merge commit `901aea5ff` 合入 `codex/p1-lint-debt`。
+- `lint-classic-channels-models` iteration 1 的 A1-A3 已通过独立 Verify、由用户接受并完成 Archive；98 个 owned files 为 0 errors、298 warnings，日志 modal、API 刷新 identity、单次错误提示与 Promise 传播、模型保存、部署操作和价格筛选语义保持。该 change 已以 merge commit `964c306bd` 合入 `codex/p1-lint-debt`。
+- `lint-default-user-features` 的非 Canvas owned paths 已为 0 errors，102 个相关测试与 typecheck 通过。独立 Verify 发现的 2FA 重复备用码 React key 问题已修复，等待从已归档 Canvas 基线重新同步并 Verify。
+- 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。`p1-canvas-trusted-iframe-policy` 的 A1-A4 已通过独立 Verify、由用户接受并完成 Archive，已以 merge commit `03ee1599d` 合入 `codex/p0-wallet-wechatpay`。更强隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮范围。
+- Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
+- 当前所有结果仍是本地状态；尚未推送、创建 PR 或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
 
 ## 状态表
 

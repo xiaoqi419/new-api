@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Modal,
@@ -55,6 +55,8 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [keyStatusList, setKeyStatusList] = useState([]);
   const [operationLoading, setOperationLoading] = useState({});
+  const loadKeyStatusRef = useRef(null);
+  const pageSizeRef = useRef(10);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,6 +71,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState(null); // null=all, 1=enabled, 2=manual_disabled, 3=auto_disabled
+  pageSizeRef.current = pageSize;
 
   // Load key status data
   const loadKeyStatus = async (
@@ -117,6 +120,8 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
     }
   };
 
+  loadKeyStatusRef.current = loadKeyStatus;
+
   // Disable a specific key
   const handleDisableKey = async (keyIndex) => {
     const operationId = `disable_${keyIndex}`;
@@ -136,7 +141,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('禁用密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, [operationId]: false }));
@@ -162,7 +167,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('启用密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, [operationId]: false }));
@@ -188,7 +193,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('启用所有密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, enable_all: false }));
@@ -214,7 +219,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('禁用所有密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, disable_all: false }));
@@ -240,7 +245,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('删除禁用密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, delete_disabled: false }));
@@ -266,7 +271,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('删除密钥失败'));
     } finally {
       setOperationLoading((prev) => ({ ...prev, [operationId]: false }));
@@ -297,7 +302,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
   useEffect(() => {
     if (visible && channel?.id) {
       setCurrentPage(1); // Reset to first page when opening
-      loadKeyStatus(1, pageSize);
+      loadKeyStatusRef.current?.(1, pageSizeRef.current);
     }
   }, [visible, channel?.id]);
 

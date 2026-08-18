@@ -70,13 +70,14 @@ export default function SettingGeminiModel(props) {
           });
         });
         setLoading(true);
-        Promise.all(requestQueue)
+        return Promise.all(requestQueue)
           .then((res) => {
             if (requestQueue.length === 1) {
               if (res.includes(undefined)) return;
             } else if (requestQueue.length > 1) {
-              if (res.includes(undefined))
+              if (res.includes(undefined)) {
                 return showError(t('部分保存失败，请重试'));
+              }
             }
             showSuccess(t('保存成功'));
             props.refresh();
@@ -107,8 +108,7 @@ export default function SettingGeminiModel(props) {
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -300,7 +300,6 @@ export default function SettingGeminiModel(props) {
             </Button>
           </Row>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }
