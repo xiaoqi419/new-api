@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-channels-pricing
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -40,7 +40,64 @@ acceptance:
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含 lint 配置、package/lock、依赖或 disable 变化。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 8fbf367c-5c2f-405a-83b2-f6458ec45ff2
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:87c53241-d5fc-42fe-8ed7-df6b1fee872d
+  iteration: 1
+  summary:
+    text: Resolved all owned oxlint errors through behavior-preserving
+      TypeScript/React refactors; no lint configuration, dependency, or package
+      changes were made.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned-path oxlint
+        truncated: false
+      result: passed
+      note:
+        text: web/node_modules/.bin/oxlint.exe -c .oxlintrc.json src/features/channels
+          src/features/pricing exited 0 with 0 errors; 6 pre-existing/non-goal
+          warnings remain.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors after final edits.
+        truncated: false
+    - name:
+        text: approved feature scope check
+        truncated: false
+      result: passed
+      note:
+        text: All 19 changed files are under web/src/features/channels or
+          web/src/features/pricing.
+        truncated: false
+    - name:
+        text: nearby existing tests
+        truncated: false
+      result: not-run
+      note:
+        text: Node v24.14.1 could not resolve extensionless TypeScript imports before
+          test execution; Bun is unavailable on PATH, and node_modules/.bin has
+          no vitest executable.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Frontend test runner is unavailable in this worktree environment; relevant
+        existing tests could not be executed.
+      truncated: false
+    - text: The required errors-only lint goal intentionally leaves six warning-only
+        findings unchanged.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T10:44:05.073Z
 blockers: []
 verification: null
 history: []
