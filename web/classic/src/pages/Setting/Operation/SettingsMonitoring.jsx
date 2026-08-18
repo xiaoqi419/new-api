@@ -46,6 +46,7 @@ export default function SettingsMonitoring(props) {
     'monitor_setting.auto_test_channel_minutes': 10,
   });
   const refForm = useRef();
+  const inputKeys = useRef(Object.keys(inputs));
   const [inputsRow, setInputsRow] = useState(inputs);
   const parsedAutoDisableStatusCodes = parseHttpStatusCodeRules(
     inputs.AutomaticDisableStatusCodes || '',
@@ -90,13 +91,14 @@ export default function SettingsMonitoring(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         props.refresh();
@@ -112,7 +114,7 @@ export default function SettingsMonitoring(props) {
   useEffect(() => {
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (inputKeys.current.includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
@@ -122,8 +124,7 @@ export default function SettingsMonitoring(props) {
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -284,7 +285,6 @@ export default function SettingsMonitoring(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

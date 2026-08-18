@@ -122,13 +122,14 @@ export default function SettingGlobalModel(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         props.refresh();
@@ -152,7 +153,7 @@ export default function SettingGlobalModel(props) {
               value && String(value).trim() !== ''
                 ? JSON.stringify(JSON.parse(value), null, 2)
                 : defaultGlobalSettingInputs[key];
-          } catch (error) {
+    } catch {
             value = defaultGlobalSettingInputs[key];
           }
         }
@@ -162,7 +163,7 @@ export default function SettingGlobalModel(props) {
               value && String(value).trim() !== ''
                 ? JSON.stringify(JSON.parse(value), null, 2)
                 : defaultGlobalSettingInputs[key];
-          } catch (error) {
+    } catch {
             value = defaultGlobalSettingInputs[key];
           }
         }
@@ -180,8 +181,7 @@ export default function SettingGlobalModel(props) {
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -343,7 +343,7 @@ export default function SettingGlobalModel(props) {
                             2,
                           );
                           setChatCompletionsToResponsesPolicyValue(formatted);
-                        } catch (error) {
+      } catch {
                           showError(t('不是合法的 JSON 字符串'));
                         }
                       }}
@@ -410,7 +410,6 @@ export default function SettingGlobalModel(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

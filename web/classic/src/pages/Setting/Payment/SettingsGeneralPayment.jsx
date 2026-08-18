@@ -151,7 +151,7 @@ export default function SettingsGeneralPayment(props) {
           showError(res.data.message);
         });
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);

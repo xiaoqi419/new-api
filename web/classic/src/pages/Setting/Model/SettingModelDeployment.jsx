@@ -120,13 +120,14 @@ export default function SettingModelDeployment(props) {
     });
 
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         // 更新 inputsRow 以反映已保存的状态
@@ -164,8 +165,7 @@ export default function SettingModelDeployment(props) {
   }, [props.options]);
 
   return (
-    <>
-      <Spin spinning={loading}>
+    <Spin spinning={loading}>
         <Form
           values={inputs}
           getFormApi={(formAPI) => (refForm.current = formAPI)}
@@ -327,7 +327,6 @@ export default function SettingModelDeployment(props) {
             </Row>
           </Form.Section>
         </Form>
-      </Spin>
-    </>
+    </Spin>
   );
 }

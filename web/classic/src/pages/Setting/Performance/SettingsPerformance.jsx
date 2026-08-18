@@ -73,6 +73,7 @@ export default function SettingsPerformance(props) {
     'performance_setting.monitor_memory_threshold': 90,
     'performance_setting.monitor_disk_threshold': 95,
   });
+  const inputsRef = useRef(inputs);
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
   const [logInfo, setLogInfo] = useState(null);
@@ -102,13 +103,14 @@ export default function SettingsPerformance(props) {
       });
     });
     setLoading(true);
-    Promise.all(requestQueue)
+    return Promise.all(requestQueue)
       .then((res) => {
         if (requestQueue.length === 1) {
           if (res.includes(undefined)) return;
         } else if (requestQueue.length > 1) {
-          if (res.includes(undefined))
+          if (res.includes(undefined)) {
             return showError(t('部分保存失败，请重试'));
+          }
         }
         showSuccess(t('保存成功'));
         props.refresh();
@@ -135,6 +137,8 @@ export default function SettingsPerformance(props) {
       setStatsLoading(false);
     }
   }
+  const fetchStatsRef = useRef(fetchStats);
+  fetchStatsRef.current = fetchStats;
 
   async function clearDiskCache() {
     try {
@@ -145,7 +149,7 @@ export default function SettingsPerformance(props) {
       } else {
         showError(res.data.message || t('清理失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('清理失败'));
     }
   }
@@ -157,7 +161,7 @@ export default function SettingsPerformance(props) {
         showSuccess(t('统计已重置'));
         fetchStats();
       }
-    } catch (error) {
+    } catch {
       showError(t('重置失败'));
     }
   }
@@ -169,7 +173,7 @@ export default function SettingsPerformance(props) {
         showSuccess(t('GC 已执行'));
         fetchStats();
       }
-    } catch (error) {
+    } catch {
       showError(t('GC 执行失败'));
     }
   }
@@ -184,6 +188,8 @@ export default function SettingsPerformance(props) {
       console.error('Failed to fetch log info:', error);
     }
   }
+  const fetchLogInfoRef = useRef(fetchLogInfo);
+  fetchLogInfoRef.current = fetchLogInfo;
 
   async function cleanupLogFiles() {
     if (logCleanupValue == null || isNaN(logCleanupValue) || logCleanupValue < 1) {
@@ -207,7 +213,7 @@ export default function SettingsPerformance(props) {
         showError(res.data.message || t('清理失败'));
       }
       fetchLogInfo();
-    } catch (error) {
+    } catch {
       showError(t('清理失败'));
     } finally {
       setLogCleanupLoading(false);
@@ -215,27 +221,31 @@ export default function SettingsPerformance(props) {
   }
 
   useEffect(() => {
+    const currentState = inputsRef.current;
     const currentInputs = {};
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
-        if (typeof inputs[key] === 'boolean') {
+      if (Object.keys(currentState).includes(key)) {
+        if (typeof currentState[key] === 'boolean') {
           currentInputs[key] =
             props.options[key] === 'true' || props.options[key] === true;
-        } else if (typeof inputs[key] === 'number') {
-          currentInputs[key] = parseInt(props.options[key]) || inputs[key];
+        } else if (typeof currentState[key] === 'number') {
+          currentInputs[key] = parseInt(props.options[key]) || currentState[key];
         } else {
           currentInputs[key] = props.options[key];
         }
       }
     }
-    setInputs({ ...inputs, ...currentInputs });
-    setInputsRow({ ...inputs, ...currentInputs });
+    const nextInputs = { ...currentState, ...currentInputs };
+    setInputs(nextInputs);
+    setInputsRow(nextInputs);
     if (refForm.current) {
-      refForm.current.setValues({ ...inputs, ...currentInputs });
+      refForm.current.setValues(nextInputs);
     }
-    fetchStats();
-    fetchLogInfo();
+    void fetchStatsRef.current();
+    void fetchLogInfoRef.current();
   }, [props.options]);
+
+  inputsRef.current = inputs;
 
   const diskCacheUsagePercent =
     stats?.cache_stats?.disk_cache_max_bytes > 0
@@ -245,6 +255,12 @@ export default function SettingsPerformance(props) {
           100
         ).toFixed(1)
       : 0;
+  let diskSpaceProgressColor = 'var(--semi-color-primary)';
+  if (stats?.disk_space_info?.used_percent > 90) {
+    diskSpaceProgressColor = 'var(--semi-color-danger)';
+  } else if (stats?.disk_space_info?.used_percent > 70) {
+    diskSpaceProgressColor = 'var(--semi-color-warning)';
+  }
 
   return (
     <>
@@ -407,7 +423,7 @@ export default function SettingsPerformance(props) {
           )}
           style={{ marginBottom: 16 }}
         />
-        {logInfo === null ? null : logInfo.enabled ? (
+        {logInfo !== null && logInfo.enabled && (
           <>
             <Descriptions
               data={[
@@ -496,7 +512,8 @@ export default function SettingsPerformance(props) {
               </Col>
             </Row>
           </>
-        ) : (
+        )}
+        {logInfo !== null && !logInfo.enabled && (
           <Banner
             type='warning'
             description={t('服务器日志功能未启用（未配置日志目录）')}
@@ -647,13 +664,7 @@ export default function SettingsPerformance(props) {
                         )}
                         showInfo
                         style={{ marginBottom: 8 }}
-                        stroke={
-                          stats.disk_space_info.used_percent > 90
-                            ? 'var(--semi-color-danger)'
-                            : stats.disk_space_info.used_percent > 70
-                              ? 'var(--semi-color-warning)'
-                              : 'var(--semi-color-primary)'
-                        }
+                        stroke={diskSpaceProgressColor}
                       />
                       <div
                         style={{

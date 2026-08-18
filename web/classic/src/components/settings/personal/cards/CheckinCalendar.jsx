@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Card,
   Calendar,
@@ -102,7 +102,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
           setInitialLoaded(true);
         }
       }
-    } catch (error) {
+    } catch {
       showError(t('获取签到状态失败'));
       if (isFirstLoad) {
         setIsCollapsed(false);
@@ -112,6 +112,8 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
       setLoading(false);
     }
   };
+  const fetchCheckinStatusRef = useRef(fetchCheckinStatus);
+  fetchCheckinStatusRef.current = fetchCheckinStatus;
 
   const postCheckin = async (token) => {
     const url = token
@@ -152,7 +154,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
         }
         showError(message || t('签到失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('签到失败'));
     } finally {
       setCheckinLoading(false);
@@ -161,7 +163,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
 
   useEffect(() => {
     if (status?.checkin_enabled) {
-      fetchCheckinStatus(currentMonth);
+      void fetchCheckinStatusRef.current(currentMonth);
     }
   }, [status?.checkin_enabled, currentMonth]);
 
@@ -212,6 +214,23 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
     setCurrentMonth(month);
   };
 
+  let checkinStatusText = t('每日签到可获得随机额度奖励');
+  if (!initialLoaded) {
+    checkinStatusText = t('正在加载签到状态...');
+  } else if (checkinData.stats?.checked_in_today) {
+    checkinStatusText =
+      t('今日已签到，累计签到') +
+      ` ${checkinData.stats?.total_checkins || 0} ` +
+      t('天');
+  }
+
+  let checkinButtonText = t('立即签到');
+  if (!initialLoaded) {
+    checkinButtonText = t('加载中...');
+  } else if (checkinData.stats?.checked_in_today) {
+    checkinButtonText = t('今日已签到');
+  }
+
   return (
     <Card className='!rounded-2xl'>
       <Modal
@@ -259,13 +278,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
               )}
             </div>
             <div className='text-xs text-gray-500 dark:text-gray-400'>
-              {!initialLoaded
-                ? t('正在加载签到状态...')
-                : checkinData.stats?.checked_in_today
-                  ? t('今日已签到，累计签到') +
-                    ` ${checkinData.stats?.total_checkins || 0} ` +
-                    t('天')
-                  : t('每日签到可获得随机额度奖励')}
+              {checkinStatusText}
             </div>
           </div>
         </div>
@@ -278,11 +291,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
           disabled={!initialLoaded || checkinData.stats?.checked_in_today}
           className='!bg-green-600 hover:!bg-green-700'
         >
-          {!initialLoaded
-            ? t('加载中...')
-            : checkinData.stats?.checked_in_today
-              ? t('今日已签到')
-              : t('立即签到')}
+          {checkinButtonText}
         </Button>
       </div>
 

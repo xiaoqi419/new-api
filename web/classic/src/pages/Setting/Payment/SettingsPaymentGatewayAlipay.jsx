@@ -106,7 +106,7 @@ export default function SettingsPaymentGatewayAlipay(props) {
         setOriginInputs({ ...inputs });
         props.refresh?.();
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);

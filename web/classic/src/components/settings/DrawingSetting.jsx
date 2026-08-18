@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Spin } from '@douyinfe/semi-ui';
 import SettingsDrawing from '../../pages/Setting/Drawing/SettingsDrawing';
 import { API, showError, toBoolean } from '../../helpers';
@@ -35,7 +35,7 @@ const DrawingSetting = () => {
 
   let [loading, setLoading] = useState(false);
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
@@ -52,32 +52,30 @@ const DrawingSetting = () => {
     } else {
       showError(message);
     }
-  };
+  }, []);
 
-  async function onRefresh() {
+  const onRefresh = useCallback(async () => {
     try {
       setLoading(true);
       await getOptions();
-    } catch (error) {
+    } catch {
       showError('刷新失败');
     } finally {
       setLoading(false);
     }
-  }
+  }, [getOptions]);
 
   useEffect(() => {
-    onRefresh();
-  }, []);
+    void onRefresh();
+  }, [onRefresh]);
 
   return (
-    <>
-      <Spin spinning={loading} size='large'>
-        {/* 绘图设置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <SettingsDrawing options={inputs} refresh={onRefresh} />
-        </Card>
-      </Spin>
-    </>
+    <Spin spinning={loading} size='large'>
+      {/* 绘图设置 */}
+      <Card style={{ marginTop: '10px' }}>
+        <SettingsDrawing options={inputs} refresh={onRefresh} />
+      </Card>
+    </Spin>
   );
 };
 
