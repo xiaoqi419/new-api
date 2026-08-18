@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-settings-pages
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 8
+state_version: 9
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 1
   iteration: 3
   attempt: 0
@@ -22,127 +22,88 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
-    result: passed
-    reason:
-      text: Independent Terra xhigh verification ran oxlint across all approved
-        settings paths with RatioSetting excluded and obtained exit 0 with zero
-        errors and 399 warning-only diagnostics.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：Hooks、Promise、array key、component export
       与机械性修复保持设置加载/保存、表单初始化、验证、错误传播、导航和模块副作用；相关既有测试通过，或明确报告无测试。
-    result: failed
-    reason:
-      text: SettingsChannelAffinity initializes inputsRef from inputs but never
-        synchronizes inputsRef.current afterward; later partial props.options
-        updates merge against the stale mount defaults and can reset omitted
-        affinity fields such as rules instead of preserving the current loaded
-        or edited inputs.
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含
       RatioSetting、配置、package/lock、依赖、disable 或范围外变化。
-    result: passed
-    reason:
-      text: The target diff is confined to the approved settings scope and formal
-        artifacts; diff-check passed with no RatioSetting, config, package/lock,
-        dependency, i18n, backend or disable additions.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: ca2cc5ef-80f3-4bf3-aa17-fa283a54a176
+  candidate_id: d3a966fb-00e4-43f2-932b-5523fee49c75
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:cd0eabff-404a-4372-9adf-e4a893d91b21
-  iteration: 2
+  builder_execution_ref: skill-coordinated:builder:68638e23-ad77-4d62-a17b-ac6248a1c2ce
+  iteration: 3
   summary:
-    text: Repaired the failed settings behavior checks by preserving preview order,
-      duplicates and original slice limits with occurrence-based keys, and by
-      retaining the prior effect-start input snapshots for Dashboard and Drawing
-      localStorage writes.
+    text: Repaired the iteration-2 affinity regression by synchronizing inputsRef to
+      the current render state before partial props.options merging, so omitted
+      affinity fields retain loaded or edited values without changing preview
+      limits, duplicate identities, effects, requests or save behavior.
     truncated: false
   addressed_acceptance_ids:
-    - A1
     - A2
-    - A3
   checks:
     - name:
-        text: owned paths oxlint
+        text: focused SettingsChannelAffinity oxlint
         truncated: false
       result: passed
       note:
-        text: Terra xhigh Builder reran all approved settings paths with RatioSetting
-          excluded and reported 0 errors and 399 warnings; the three repaired
-          files also passed focused oxlint with 23 warnings.
+        text: Repository oxlint 1.74.0 with the candidate config exited 0 with zero
+          errors and 12 warnings.
         truncated: false
     - name:
-        text: settings behavior review
+        text: owned settings paths oxlint
         truncated: false
       result: passed
       note:
-        text: Affinity previews use the target branch's 3/2/3 slice limits and keep
-          duplicates with occurrence keys; Dashboard and Drawing write the
-          inputs snapshot captured for the props.options-triggered effect rather
-          than newly loaded currentInputs.
+        text: All 62 brief-owned files with RatioSetting excluded exited 0 with zero
+          errors and 399 warning-only diagnostics.
         truncated: false
     - name:
-        text: classic owned tests
+        text: partial options state review
         truncated: false
-      result: not-run
+      result: passed
       note:
-        text: web/classic has no test script and no directly owned test/spec files; no
-          synthetic tests were added.
+        text: inputsRef.current is refreshed during each render, so the unchanged
+          props.options effect merges against current inputs and does not reset
+          omitted fields to mount defaults.
         truncated: false
     - name:
         text: scope and whitespace review
         truncated: false
       result: passed
       note:
-        text: Iteration 2 implementation changes exactly the three approved settings
-          files identified by verification; git diff --check passed and
-          previously accepted target scope remains unchanged.
+        text: Iteration 3 changes one approved SettingsChannelAffinity line; target and
+          worktree diff-checks passed, with no Ratio, config, package/lock,
+          dependency, i18n, backend or disable change.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: No browser test covers duplicate affinity previews or the historical
-        localStorage snapshot timing, so both are established by direct
-        target-diff and effect-sequence review.
+    - text: Classic has no direct test script or owned test/spec for this settings
+        lifecycle, so no synthetic test was added.
       truncated: false
-    - text: 399 warnings and broad build/typecheck/browser checks remain deferred to
-        integration gates.
+    - text: No browser interaction test covers partial props.options updates; the
+        invariant is established by the render-time ref update and unchanged
+        effect merge chain.
+      truncated: false
+    - text: 399 warning-only diagnostics remain outside this child acceptance scope.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-08-18T13:44:08.180Z
+  submitted_at: 2026-08-18T14:21:29.428Z
 blockers: []
-verification:
-  candidate_id: ca2cc5ef-80f3-4bf3-aa17-fa283a54a176
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:a3e97165-35c0-4c0b-9fa8-d745c906ab1d
-  iteration: 2
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks: []
-  summary:
-    text: "FAIL: A1 and A3 pass, but A2 fails because SettingsChannelAffinity reads
-      a mount-stale inputsRef during later partial options updates and can reset
-      omitted settings fields."
-    truncated: false
-  risks:
-    - text: No classic browser or direct test harness covers partial settings option
-        updates; the regression is established from the ref lifecycle and
-        target-diff behavior.
-      truncated: false
-    - text: The owned paths retain 399 warning-only diagnostics, which are outside
-        this child acceptance scope.
-      truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T14:01:58.727Z
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -177,7 +138,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T12:02:28.432Z
