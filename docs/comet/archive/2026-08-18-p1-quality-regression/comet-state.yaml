@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: p1-quality-regression
 language: zh-CN
 phase: archive
-status: active
-state_version: 20
+status: done
+state_version: 21
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p0-wallet-wechatpay
   finish: merge
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 2
   iteration: 2
   attempt: 1
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -328,5 +328,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-08-18T04:20:49.945Z
