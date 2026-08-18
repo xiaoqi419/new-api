@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-default-shared
 language: zh-CN
-phase: shape
+phase: build
 status: active
-state_version: 1
+state_version: 2
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,17 +12,38 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: shape
+  stage: building
   goal_cycle: 1
-  iteration: 0
+  iteration: 1
   attempt: 0
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: confirm-shape
-acceptance: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：新增的四文件单规则 override 生效后，权威 oxlint 1.74.0 对全部 23 个 owned files 返回 0
+      errors，且四个管理员外部 iframe 文件不再产生 `react/iframe-missing-sandbox`
+      error；warnings 数量如实记录。
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: A2：搜索/command menu import cycle 被真实拆除；Promise rejection、passkey 编解码、URL
+      table state、HTTP status rules、列表 identity、主题与确认对话框行为保持；相关既有测试与 frontend
+      typecheck 通过。
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: A3：Git diff 只包含批准的 owned files、`web/.oxlintrc.json` 的四文件单规则
+      override、直接相关测试与本 child 正式产物；不含 classic 实现、backend、其他
+      config/package/lock/dependency/i18n/changelog/disable/ignore 变化。
+    result: pending
+    reason: null
 builder_handoff: null
 blockers: []
 verification: null
