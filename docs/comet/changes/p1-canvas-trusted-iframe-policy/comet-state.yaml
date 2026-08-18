@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: p1-canvas-trusted-iframe-policy
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p0-wallet-wechatpay
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -21,7 +21,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -48,7 +48,65 @@ acceptance:
       override；package/lock、依赖、其他配置和微信登录均不变，`git diff --check` 通过。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: c2845b4c-bc39-4fa2-93b9-795c82f63174
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4dcb1f95-2a94-4039-91a1-f201fad91dd1
+  iteration: 1
+  summary:
+    text: Removed the same-origin Canvas iframe sandbox and added the single
+      approved file-level oxlint override while preserving iframe attributes and
+      the strict same-origin theme/token message bridge.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+  checks:
+    - name:
+        text: Canvas scoped oxlint
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun x oxlint -c .oxlintrc.json src/features/canvas/index.tsx
+          exited 0 with zero errors.
+        truncated: false
+    - name:
+        text: default frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully with tsgo -b.
+        truncated: false
+    - name:
+        text: direct Canvas tests
+        truncated: false
+      result: not-run
+      note:
+        text: Repository search found no CanvasStudio, canvas-app or host-message
+          *.test.ts/tsx or *.spec.ts/tsx files; no synthetic test was added.
+        truncated: false
+    - name:
+        text: scope, config and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; implementation diff is exactly
+          web/src/features/canvas/index.tsx plus web/.oxlintrc.json, whose new
+          override contains one file and one disabled rule.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The approved trusted same-origin iframe has no browser sandbox isolation;
+        stronger isolation requires a separate-origin architecture and
+        redesigned storage/message bridge.
+      truncated: false
+    - text: No direct Canvas browser interaction test exists; runtime interaction
+        remains covered only by static bridge review and later release gates.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T12:53:02.767Z
 blockers: []
 verification: null
 history: []
