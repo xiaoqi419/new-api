@@ -1,0 +1,68 @@
+schema: comet.native.v4
+name: p1-canvas-trusted-iframe-policy
+language: zh-CN
+phase: build
+status: active
+state_version: 2
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/p1-canvas-trusted-iframe-policy
+  target_branch: codex/p0-wallet-wechatpay
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：`web/src/features/canvas/index.tsx` 的 `/canvas-app` iframe 不再包含
+      `sandbox` 属性，其他 iframe 属性与同源消息桥行为保持不变。
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: "A2：`web/.oxlintrc.json` 的唯一变化是新增一个 files 仅为
+      `src/features/canvas/index.tsx`、rules 仅为 `react/iframe-missing-sandbox:
+      off` 的 override。"
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: A3：Canvas 定向 oxlint 返回 0 errors，`bun run typecheck` 通过，相关既有测试通过或明确报告没有直接
+      Canvas 测试。
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: A4：Git diff 只包含本 change 正式产物、Canvas iframe 文件和精确 lint
+      override；package/lock、依赖、其他配置和微信登录均不变，`git diff --check` 通过。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-08-18T12:23:46.106Z
