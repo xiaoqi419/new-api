@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: lint-classic-settings-pages
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 5
+state_version: 6
 brief: brief.md
 spec_changes: []
 workspace:
@@ -12,7 +12,7 @@ workspace:
   target_branch: codex/p1-lint-debt
   finish: null
 loop:
-  stage: repairing
+  stage: verify-ready
   goal_cycle: 1
   iteration: 2
   attempt: 0
@@ -22,53 +22,35 @@ loop:
   execution_failure_count: 0
   previous_unresolved_ids:
     - A2
-  next_action: repair-failed-acceptance
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
     text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
-    result: passed
-    reason:
-      text: Independent version-matched oxlint covered all 62 owned files while
-        excluding RatioSetting.jsx and exited 0 with zero errors and 399
-        warnings.
-      truncated: false
+    result: pending
+    reason: null
   - id: A2
     source: brief.md
     text: A2：Hooks、Promise、array key、component export
       与机械性修复保持设置加载/保存、表单初始化、验证、错误传播、导航和模块副作用；相关既有测试通过，或明确报告无测试。
-    result: failed
-    reason:
-      text: SettingsChannelAffinity.jsx deduplicates model_regex, path_regex and
-        key_sources with Set/Map, hiding valid duplicate preview rows;
-        SettingsDataDashboard.jsx and SettingsDrawing.jsx changed localStorage
-        writes from the prior effect inputs values to newly loaded currentInputs
-        values, altering persistence timing and runtime-visible values. Preserve
-        every preview entry with occurrence-based stable keys and restore the
-        original localStorage value/timing semantics while satisfying lint.
-      truncated: false
+    result: pending
+    reason: null
   - id: A3
     source: brief.md
     text: A3：Git diff 只包含批准目录与本 child 正式产物，不含
       RatioSetting、配置、package/lock、依赖、disable 或范围外变化。
-    result: passed
-    reason:
-      text: The candidate has exactly 56 approved implementation files plus two formal
-        child artifacts, no
-        Ratio/config/package/lock/dependency/disable/i18n/backend/other-child
-        paths, a clean target diff, and git diff --check passed.
-      truncated: false
+    result: pending
+    reason: null
 builder_handoff:
-  candidate_id: a6f1c2fa-14f5-4756-9768-c67768fbf191
+  candidate_id: ca2cc5ef-80f3-4bf3-aa17-fa283a54a176
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:4ada2e34-f54d-40bc-a80c-8c71e45c3683
-  iteration: 1
+  builder_execution_ref: skill-coordinated:builder:cd0eabff-404a-4372-9adf-e4a893d91b21
+  iteration: 2
   summary:
-    text: Cleared all approved classic settings oxlint errors with
-      behavior-preserving Hook, Promise, component export, render-branch and
-      stable list identity repairs; duplicate 2FA backup codes now use
-      collision-free occurrence identities and APIMart UI keys remain outside
-      saved payloads.
+    text: Repaired the failed settings behavior checks by preserving preview order,
+      duplicates and original slice limits with occurrence-based keys, and by
+      retaining the prior effect-start input snapshots for Dashboard and Drawing
+      localStorage writes.
     truncated: false
   addressed_acceptance_ids:
     - A1
@@ -80,9 +62,19 @@ builder_handoff:
         truncated: false
       result: passed
       note:
-        text: Builder full owned-path run reported 0 errors and 399 warnings; main-agent
-          independent rerun across 62 owned files, excluding RatioSetting.jsx,
-          exited 0 with no diagnostics under --quiet.
+        text: Terra xhigh Builder reran all approved settings paths with RatioSetting
+          excluded and reported 0 errors and 399 warnings; the three repaired
+          files also passed focused oxlint with 23 warnings.
+        truncated: false
+    - name:
+        text: settings behavior review
+        truncated: false
+      result: passed
+      note:
+        text: Affinity previews use the target branch's 3/2/3 slice limits and keep
+          duplicates with occurrence keys; Dashboard and Drawing write the
+          inputs snapshot captured for the props.options-triggered effect rather
+          than newly loaded currentInputs.
         truncated: false
     - name:
         text: classic owned tests
@@ -97,43 +89,23 @@ builder_handoff:
         truncated: false
       result: passed
       note:
-        text: Exactly 56 implementation files are inside the approved settings paths;
-          RatioSetting, config, package/lock, dependency, i18n, backend and
-          other-child paths are unchanged, and git diff --check passed.
+        text: Iteration 2 implementation changes exactly the three approved settings
+          files identified by verification; git diff --check passed and
+          previously accepted target scope remains unchanged.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: 399 warning-only diagnostics remain outside this child scope.
+    - text: No browser test covers duplicate affinity previews or the historical
+        localStorage snapshot timing, so both are established by direct
+        target-diff and effect-sequence review.
       truncated: false
-    - text: No browser interaction or broad classic build/typecheck was run;
-        serialized integration gates cover those later.
+    - text: 399 warnings and broad build/typecheck/browser checks remain deferred to
+        integration gates.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-08-18T13:13:42.434Z
+  submitted_at: 2026-08-18T13:44:08.180Z
 blockers: []
-verification:
-  candidate_id: a6f1c2fa-14f5-4756-9768-c67768fbf191
-  identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:86a93e27-387d-4d9c-ac05-cec754af8708
-  iteration: 1
-  attempt: 1
-  assurance: skill-coordinated
-  verdict: fail
-  checks: []
-  summary:
-    text: "FAIL: A1 and A3 pass, but A2 fails because rule previews now hide
-      duplicates and two loading effects changed localStorage side effects."
-    truncated: false
-  risks:
-    - text: Classic has no settings test script or directly owned test/spec files, so
-        runtime behavior is checked through source-level state and effect
-        traces.
-      truncated: false
-    - text: 399 warnings and broad build/typecheck/browser checks remain outside this
-        child and are deferred to integration gates.
-      truncated: false
-  risks_truncated: false
-  completed_at: 2026-08-18T13:28:31.768Z
+verification: null
 history:
   - goal_cycle: 1
     iteration: 1
@@ -156,7 +128,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: fail
-verification_report: verification.md
+verification_result: pending
+verification_report: null
 archived: false
 created_at: 2026-08-18T12:02:28.432Z
