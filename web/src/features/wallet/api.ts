@@ -30,6 +30,10 @@ import type {
   PaymentResponse,
   StripePaymentResponse,
   AlipayPaymentResponse,
+  WechatPaymentRequest,
+  WechatPaymentResponse,
+  WechatJsapiPrepareRequest,
+  WechatJsapiPrepareResponse,
   TradeStatusResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
@@ -142,6 +146,30 @@ export async function requestAlipayPayment(
   request: PaymentRequest
 ): Promise<AlipayPaymentResponse> {
   const res = await api.post('/api/user/alipay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request a direct WeChat Pay Native or H5 order.
+ */
+export async function requestWechatPayment(
+  request: WechatPaymentRequest
+): Promise<WechatPaymentResponse> {
+  const res = await api.post('/api/user/wechatpay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Prepare a direct WeChat Pay JSAPI authorization redirect.
+ */
+export async function requestWechatJsapiPrepare(
+  request: WechatJsapiPrepareRequest
+): Promise<WechatJsapiPrepareResponse> {
+  const res = await api.post('/api/user/wechatpay/jsapi/prepare', request, {
     skipBusinessError: true,
   } as Record<string, unknown>)
   return res.data

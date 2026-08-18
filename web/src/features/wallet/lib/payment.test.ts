@@ -69,6 +69,8 @@ describe('payment redirect URL safety', () => {
     assert.equal(isSafePaymentRedirectUrl('http://pay.example.com'), true)
     assert.equal(isSafePaymentRedirectUrl('javascript:alert(1)'), false)
     assert.equal(isSafePaymentRedirectUrl('/console/log'), false)
+    assert.equal(isSafePaymentRedirectUrl('https:checkout.example.com'), false)
+    assert.equal(isSafePaymentRedirectUrl('http:checkout.example.com'), false)
     assert.equal(isSafePaymentRedirectUrl('   '), false)
   })
 })
@@ -97,6 +99,10 @@ describe('payment dispatch', () => {
           calls.push('alipay')
           return false
         },
+        wechat: async () => {
+          calls.push('wechat')
+          return false
+        },
       }
     )
 
@@ -118,6 +124,7 @@ describe('payment dispatch', () => {
         },
         waffoPancake: async () => false,
         alipay: async () => false,
+        wechat: async () => false,
       }
     )
 
@@ -142,6 +149,7 @@ describe('payment dispatch', () => {
           calls.push(`alipay:${amount}`)
           return true
         },
+        wechat: async () => false,
       }
     )
 
@@ -166,6 +174,7 @@ describe('payment dispatch', () => {
           calls.push('alipay')
           return true
         },
+        wechat: async () => false,
       }
     )
 

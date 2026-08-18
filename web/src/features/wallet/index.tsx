@@ -41,6 +41,7 @@ import {
   useWaffoPayment,
   useWaffoPancakePayment,
   useAlipayPayment,
+  useWechatPayment,
 } from './hooks'
 import {
   getDefaultPaymentType,
@@ -114,6 +115,12 @@ export function Wallet(props: WalletProps) {
     qrOrder: alipayQrOrder,
     closeAlipayQr,
   } = useAlipayPayment()
+  const {
+    processing: wechatProcessing,
+    processWechatPayment,
+    qrOrder: wechatQrOrder,
+    closeWechatQr,
+  } = useWechatPayment(topupInfo)
 
   // Fetch and refresh user data
   const fetchUser = useCallback(async () => {
@@ -215,6 +222,7 @@ export function Wallet(props: WalletProps) {
         waffo: processWaffoPayment,
         waffoPancake: processWaffoPancakePayment,
         alipay: processAlipayPayment,
+        wechat: processWechatPayment,
       }
     )
 
@@ -367,7 +375,11 @@ export function Wallet(props: WalletProps) {
         paymentMethod={selectedPaymentMethod}
         calculating={calculating}
         processing={
-          processing || waffoProcessing || pancakeProcessing || alipayProcessing
+          processing ||
+          waffoProcessing ||
+          pancakeProcessing ||
+          alipayProcessing ||
+          wechatProcessing
         }
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
@@ -401,6 +413,17 @@ export function Wallet(props: WalletProps) {
         provider='alipay'
         onClose={(paid) => {
           closeAlipayQr()
+          if (paid) void fetchUser()
+        }}
+      />
+
+      <PaymentQrDialog
+        open={wechatQrOrder !== null}
+        qrCode={wechatQrOrder?.qrCode ?? ''}
+        tradeNo={wechatQrOrder?.tradeNo ?? ''}
+        provider='wechat'
+        onClose={(paid) => {
+          closeWechatQr()
           if (paid) void fetchUser()
         }}
       />
