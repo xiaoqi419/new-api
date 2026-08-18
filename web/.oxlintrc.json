@@ -203,6 +203,12 @@
         "no-console": "off",
         "prefer-node-protocol": "off"
       }
+    },
+    {
+      "files": ["src/features/canvas/index.tsx"],
+      "rules": {
+        "react/iframe-missing-sandbox": "off"
+      }
     }
   ]
 }
