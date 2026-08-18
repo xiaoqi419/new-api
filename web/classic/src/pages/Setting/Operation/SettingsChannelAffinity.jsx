@@ -251,6 +251,7 @@ export default function SettingsChannelAffinity(props) {
   });
   const refForm = useRef();
   const inputsRef = useRef(inputs);
+  inputsRef.current = inputs;
   const [inputsRow, setInputsRow] = useState(inputs);
   const [editMode, setEditMode] = useState('visual');
   const prevEditModeRef = useRef(editMode);
