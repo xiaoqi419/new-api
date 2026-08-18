@@ -78,11 +78,11 @@ const CardPro = ({
     return (
       <div className='flex flex-col w-full'>
         {/* 统计信息区域 - 用于type2 */}
-        {type === 'type2' && statsArea && <>{statsArea}</>}
+        {type === 'type2' && statsArea}
 
         {/* 描述信息区域 - 用于type1和type3 */}
         {(type === 'type1' || type === 'type3') && descriptionArea && (
-          <>{descriptionArea}</>
+          descriptionArea
         )}
 
         {/* 第一个分隔线 - 在描述信息或统计信息后面 */}
@@ -92,24 +92,22 @@ const CardPro = ({
         ) : null}
 
         {/* 类型切换/标签区域 - 主要用于type3 */}
-        {type === 'type3' && tabsArea && <>{tabsArea}</>}
+        {type === 'type3' && tabsArea}
 
         {/* 移动端操作切换按钮 */}
         {isMobile && hasMobileHideableContent && (
-          <>
-            <div className='w-full mb-2'>
-              <Button
-                onClick={toggleMobileActions}
-                icon={showMobileActions ? <IconEyeClosed /> : <IconEyeOpened />}
-                type='tertiary'
-                size='small'
-                theme='outline'
-                block
-              >
-                {showMobileActions ? t('隐藏操作项') : t('显示操作项')}
-              </Button>
-            </div>
-          </>
+          <div className='w-full mb-2'>
+            <Button
+              onClick={toggleMobileActions}
+              icon={showMobileActions ? <IconEyeClosed /> : <IconEyeOpened />}
+              type='tertiary'
+              size='small'
+              theme='outline'
+              block
+            >
+              {showMobileActions ? t('隐藏操作项') : t('显示操作项')}
+            </Button>
+          </div>
         )}
 
         {/* 操作按钮和搜索表单的容器 */}
@@ -121,7 +119,7 @@ const CardPro = ({
             actionsArea &&
             (Array.isArray(actionsArea) ? (
               actionsArea.map((area, idx) => (
-                <React.Fragment key={idx}>
+                <React.Fragment key={area.key ?? area.props?.id ?? area.props?.name}>
                   {idx !== 0 && <Divider />}
                   <div className='w-full'>{area}</div>
                 </React.Fragment>

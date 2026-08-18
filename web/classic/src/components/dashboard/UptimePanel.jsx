@@ -46,6 +46,63 @@ const UptimePanel = ({
   ILLUSTRATION_SIZE,
   t,
 }) => {
+  let uptimeContent = (
+    <div className='flex justify-center items-center py-8'>
+      <Empty
+        image={<IllustrationConstruction style={ILLUSTRATION_SIZE} />}
+        darkModeImage={
+          <IllustrationConstructionDark style={ILLUSTRATION_SIZE} />
+        }
+        title={t('暂无监控数据')}
+        description={t('请联系管理员在系统设置中配置Uptime')}
+      />
+    </div>
+  );
+
+  if (uptimeData.length === 1) {
+    uptimeContent = (
+      <ScrollableContainer maxHeight='24rem'>
+        {renderMonitorList(uptimeData[0].monitors)}
+      </ScrollableContainer>
+    );
+  } else if (uptimeData.length > 1) {
+    uptimeContent = (
+      <Tabs
+        type='card'
+        collapsible
+        activeKey={activeUptimeTab}
+        onChange={setActiveUptimeTab}
+        size='small'
+      >
+        {uptimeData.map((group) => (
+          <TabPane
+            tab={
+              <span className='flex items-center gap-2'>
+                <Gauge size={14} />
+                {group.categoryName}
+                <Tag
+                  color={
+                    activeUptimeTab === group.categoryName ? 'red' : 'grey'
+                  }
+                  size='small'
+                  shape='circle'
+                >
+                  {group.monitors ? group.monitors.length : 0}
+                </Tag>
+              </span>
+            }
+            itemKey={group.categoryName}
+            key={group.categoryName}
+          >
+            <ScrollableContainer maxHeight='21.5rem'>
+              {renderMonitorList(group.monitors)}
+            </ScrollableContainer>
+          </TabPane>
+        ))}
+      </Tabs>
+    );
+  }
+
   return (
     <Card
       {...CARD_PROPS}
@@ -71,70 +128,15 @@ const UptimePanel = ({
     >
       {/* 内容区域 */}
       <div className='relative'>
-        <Spin spinning={uptimeLoading}>
-          {uptimeData.length > 0 ? (
-            uptimeData.length === 1 ? (
-              <ScrollableContainer maxHeight='24rem'>
-                {renderMonitorList(uptimeData[0].monitors)}
-              </ScrollableContainer>
-            ) : (
-              <Tabs
-                type='card'
-                collapsible
-                activeKey={activeUptimeTab}
-                onChange={setActiveUptimeTab}
-                size='small'
-              >
-                {uptimeData.map((group, groupIdx) => (
-                  <TabPane
-                    tab={
-                      <span className='flex items-center gap-2'>
-                        <Gauge size={14} />
-                        {group.categoryName}
-                        <Tag
-                          color={
-                            activeUptimeTab === group.categoryName
-                              ? 'red'
-                              : 'grey'
-                          }
-                          size='small'
-                          shape='circle'
-                        >
-                          {group.monitors ? group.monitors.length : 0}
-                        </Tag>
-                      </span>
-                    }
-                    itemKey={group.categoryName}
-                    key={groupIdx}
-                  >
-                    <ScrollableContainer maxHeight='21.5rem'>
-                      {renderMonitorList(group.monitors)}
-                    </ScrollableContainer>
-                  </TabPane>
-                ))}
-              </Tabs>
-            )
-          ) : (
-            <div className='flex justify-center items-center py-8'>
-              <Empty
-                image={<IllustrationConstruction style={ILLUSTRATION_SIZE} />}
-                darkModeImage={
-                  <IllustrationConstructionDark style={ILLUSTRATION_SIZE} />
-                }
-                title={t('暂无监控数据')}
-                description={t('请联系管理员在系统设置中配置Uptime')}
-              />
-            </div>
-          )}
-        </Spin>
+        <Spin spinning={uptimeLoading}>{uptimeContent}</Spin>
       </div>
 
       {/* 图例 */}
       {uptimeData.length > 0 && (
         <div className='p-3 bg-gray-50 rounded-b-2xl'>
           <div className='flex flex-wrap gap-3 text-xs justify-center'>
-            {uptimeLegendData.map((legend, index) => (
-              <div key={index} className='flex items-center gap-1'>
+            {uptimeLegendData.map((legend) => (
+              <div key={legend.label} className='flex items-center gap-1'>
                 <div
                   className='w-2 h-2 rounded-full'
                   style={{ backgroundColor: legend.color }}

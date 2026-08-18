@@ -35,17 +35,17 @@ const StatsCards = ({
   return (
     <div className='mb-4'>
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-        {groupedStatsData.map((group, idx) => (
+        {groupedStatsData.map((group) => (
           <Card
-            key={idx}
+            key={group.key}
             {...CARD_PROPS}
             className={`${group.color} border-0 !rounded-2xl w-full`}
             title={group.title}
           >
             <div className='space-y-4'>
-              {group.items.map((item, itemIdx) => (
+              {group.items.map((item) => (
                 <div
-                  key={itemIdx}
+                  key={item.key}
                   className='flex items-center justify-between cursor-pointer'
                   onClick={item.onClick}
                 >
@@ -80,7 +80,7 @@ const StatsCards = ({
                       </div>
                     </div>
                   </div>
-                  {item.title === t('当前余额') ? (
+                  {item.key === 'current-balance' ? (
                     <Tag
                       color='white'
                       shape='circle'

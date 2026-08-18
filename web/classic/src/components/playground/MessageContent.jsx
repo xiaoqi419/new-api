@@ -197,7 +197,7 @@ const MessageContent = ({
 
     currentExtractedThinkingContent = combinedThinkingContent || null;
     currentDisplayableFinalContent = baseContentForDisplay
-      .replace(/<\/?think>/g, '')
+      .replaceAll(/<\/?think>/g, '')
       .trim();
   }
 
@@ -308,7 +308,7 @@ const MessageContent = ({
                 {imageContents.length > 0 && (
                   <div className='mb-3 space-y-2'>
                     {imageContents.map((imgItem, index) => (
-                      <div key={index} className='max-w-sm'>
+                      <div key={imgItem.image_url.url} className='max-w-sm'>
                         <img
                           src={imgItem.image_url.url}
                           alt={`用户上传的图片 ${index + 1}`}

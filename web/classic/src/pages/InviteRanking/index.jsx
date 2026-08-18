@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Banner, Button, Card, Space, Table, Tag } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { API, showError, renderQuota } from '../../helpers';
@@ -49,7 +49,7 @@ const InviteRanking = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const load = async (p = page) => {
+  const load = useCallback(async (p) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -62,16 +62,16 @@ const InviteRanking = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     load(1);
-  }, []);
+  }, [load]);
 
   const columns = [
     {

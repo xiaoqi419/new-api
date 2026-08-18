@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Typography,
@@ -97,7 +97,7 @@ const TypewriterText = ({
   className = '',
 }) => {
   const fullText = String(text ?? '');
-  const chars = useMemo(() => Array.from(fullText), [fullText]);
+  const chars = useMemo(() => [...fullText], [fullText]);
   const [visibleCount, setVisibleCount] = useState(0);
   const visibleText = chars.slice(0, visibleCount).join('');
   const done = visibleCount >= chars.length;
@@ -255,7 +255,7 @@ const renderApimartIcon = (icon, size = 18, name = '') => {
       return <Dify.Color size={size} />;
     default: {
       const initial = String(name || 'AI')
-        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')
+        .replaceAll(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')
         .charAt(0)
         .toUpperCase();
       return (
@@ -335,7 +335,7 @@ const CodeHighlight = ({ code }) => {
           }
         }
         return (
-          <span className='app-home-code-line' key={li}>
+          <span className='app-home-code-line' key={line}>
             {tokens}
             {'\n'}
           </span>
@@ -383,7 +383,8 @@ const ApimartHome = ({
   const activeApi =
     configuredApiUseCases.find((item) => item.name === activeApiName) ||
     configuredApiUseCases[0];
-  const SECTION_COUNT = 6;
+  const sectionIds = ['hero', 'features', 'models', 'use-cases', 'faq', 'cta'];
+  const SECTION_COUNT = sectionIds.length;
   const { activeIndex, goTo, setSectionRef } = useFullpage(SECTION_COUNT, true);
   const titlePrefix = systemName === 'New API' ? 'AI API' : systemName;
   const formatHomeText = (text) =>
@@ -392,12 +393,17 @@ const ApimartHome = ({
   const renderHighlightTitle = (text) => {
     const parts = formatHomeText(text).split(' ');
     if (parts.length < 3) return formatHomeText(text);
-    return parts.map((part, i) => (
-      <React.Fragment key={i}>
-        {i % 2 === 1 ? <em className='app-home-hl'>{part}</em> : part}
-        {i < parts.length - 1 ? ' ' : ''}
-      </React.Fragment>
-    ));
+    const seenParts = new Map();
+    return parts.map((part, i) => {
+      const occurrence = seenParts.get(part) || 0;
+      seenParts.set(part, occurrence + 1);
+      return (
+        <React.Fragment key={`${part}-${occurrence}`}>
+          {i % 2 === 1 ? <em className='app-home-hl'>{part}</em> : part}
+          {i < parts.length - 1 ? ' ' : ''}
+        </React.Fragment>
+      );
+    });
   };
   const codeSamples = activeApi?.code_samples || {};
   const codeLangs = Object.keys(codeSamples);
@@ -421,9 +427,9 @@ const ApimartHome = ({
       data-active={activeIndex}
     >
       <nav className='app-home-fullpage-nav' aria-label='sections'>
-        {Array.from({ length: SECTION_COUNT }).map((_, i) => (
+        {sectionIds.map((sectionId, i) => (
           <button
-            key={i}
+            key={sectionId}
             type='button'
             className={activeIndex === i ? 'active' : ''}
             aria-label={`section ${i + 1}`}
@@ -764,7 +770,7 @@ const Home = () => {
     'New API';
   const isApimartHome = appearance.preset === 'apimart';
 
-  const displayHomePageContent = async () => {
+  const displayHomePageContent = useCallback(async () => {
     setHomePageContent(localStorage.getItem('home_page_content') || '');
     const res = await API.get('/api/home_page_content');
     const { success, message, data } = res.data;
@@ -791,7 +797,7 @@ const Home = () => {
       setHomePageContent('加载首页内容失败...');
     }
     setHomePageContentLoaded(true);
-  };
+  }, [actualTheme, i18n.language]);
 
   const handleCopyBaseURL = async () => {
     const ok = await copy(serverAddress);
@@ -821,8 +827,12 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    displayHomePageContent().then();
-  }, []);
+    displayHomePageContent().catch((error) => {
+      showError(error.message || '加载首页内容失败...');
+      setHomePageContent('加载首页内容失败...');
+      setHomePageContentLoaded(true);
+    });
+  }, [displayHomePageContent]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -831,6 +841,12 @@ const Home = () => {
     return () => clearInterval(timer);
   }, [endpointItems.length]);
 
+  const shouldShowApimartHome = homePageContentLoaded && isApimartHome;
+  const shouldShowDefaultHome =
+    homePageContentLoaded && !isApimartHome && homePageContent === '';
+  const shouldShowCustomHome =
+    !shouldShowApimartHome && !shouldShowDefaultHome;
+
   return (
     <div className='w-full overflow-x-hidden'>
       <NoticeModal
@@ -838,7 +854,7 @@ const Home = () => {
         onClose={() => setNoticeVisible(false)}
         isMobile={isMobile}
       />
-      {homePageContentLoaded && isApimartHome ? (
+      {shouldShowApimartHome && (
         <ApimartHome
           t={t}
           isMobile={isMobile}
@@ -849,7 +865,8 @@ const Home = () => {
           isDemoSiteMode={isDemoSiteMode}
           statusState={statusState}
         />
-      ) : homePageContentLoaded && homePageContent === '' ? (
+      )}
+      {shouldShowDefaultHome && (
         <div className='w-full overflow-x-hidden'>
           {/* Banner 部分 */}
           <div className='w-full border-b border-semi-color-border min-h-[500px] md:min-h-[600px] lg:min-h-[700px] relative overflow-x-hidden'>
@@ -863,11 +880,9 @@ const Home = () => {
                   <h1
                     className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-semi-color-text-0 leading-tight ${isChinese ? 'tracking-wide md:tracking-wider' : ''}`}
                   >
-                    <>
-                      {t('统一的')}
-                      <br />
-                      <span className='shine-text'>{t('大模型接口网关')}</span>
-                    </>
+                    {t('统一的')}
+                    <br />
+                    <span className='shine-text'>{t('大模型接口网关')}</span>
                   </h1>
                   <p className='text-base md:text-lg lg:text-xl text-semi-color-text-1 mt-4 md:mt-6 max-w-xl'>
                     {t('更好的价格，更好的稳定性，只需要将模型基址替换为：')}
@@ -1028,7 +1043,8 @@ const Home = () => {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+      {shouldShowCustomHome && (
         <div className='overflow-x-hidden w-full'>
           {homePageContent.startsWith('https://') ? (
             <iframe

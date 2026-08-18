@@ -17,7 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect, useMemo, useContext, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useContext,
+  useRef,
+  useCallback,
+} from 'react';
 import { StatusContext } from '../../context/Status';
 import { API } from '../../helpers';
 
@@ -101,7 +108,7 @@ export const useSidebar = () => {
       try {
         const config = JSON.parse(statusState.status.SidebarModulesAdmin);
         return mergeAdminConfig(config);
-      } catch (error) {
+      } catch {
         return mergeAdminConfig(null);
       }
     }
@@ -109,7 +116,7 @@ export const useSidebar = () => {
   }, [statusState?.status?.SidebarModulesAdmin]);
 
   // 加载用户配置的通用方法
-  const loadUserConfig = async ({ withLoading } = {}) => {
+  const loadUserConfig = useCallback(async ({ withLoading } = {}) => {
     const shouldShowLoader =
       typeof withLoading === 'boolean'
         ? withLoading
@@ -150,7 +157,7 @@ export const useSidebar = () => {
         });
         setUserConfig(defaultUserConfig);
       }
-    } catch (error) {
+    } catch {
       // 出错时也生成默认配置，而不是设置为空对象
       const defaultUserConfig = {};
       Object.keys(adminConfig).forEach((sectionKey) => {
@@ -170,7 +177,7 @@ export const useSidebar = () => {
       }
       hasLoadedOnceRef.current = true;
     }
-  };
+  }, [adminConfig]);
 
   // 刷新用户配置的方法（供外部调用）
   const refreshUserConfig = async () => {
@@ -192,7 +199,7 @@ export const useSidebar = () => {
     if (Object.keys(adminConfig).length > 0) {
       loadUserConfig();
     }
-  }, [adminConfig]);
+  }, [adminConfig, loadUserConfig]);
 
   // 监听全局刷新事件
   useEffect(() => {
@@ -216,7 +223,7 @@ export const useSidebar = () => {
         handleRefresh,
       );
     };
-  }, [adminConfig]);
+  }, [adminConfig, loadUserConfig]);
 
   // 计算最终的显示配置
   const finalConfig = useMemo(() => {

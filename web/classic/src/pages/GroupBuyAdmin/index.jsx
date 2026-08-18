@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -69,47 +69,65 @@ const Packages = () => {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formApi, setFormApi] = useState(null);
-  const [tiers, setTiers] = useState([{ count: 3, per_share_amount: 100 }]);
+  const nextTierDraftIdRef = useRef(0);
+  const createTierDraft = ({ count, per_share_amount }) => ({
+    count,
+    per_share_amount,
+    draftId: `tier-draft-${nextTierDraftIdRef.current++}`,
+  });
+  const [tiers, setTiers] = useState(() => [
+    createTierDraft({ count: 3, per_share_amount: 100 }),
+  ]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get('/api/group_buy/packages');
       const { success, message, data } = res.data;
       if (success) {
-        setPackages(data || []);
+        setPackages(
+          (data || []).map((packageRecord) => ({
+            ...packageRecord,
+            tiers: packageRecord.tiers?.map((tier, tierIndex) => ({
+              ...tier,
+              tierKey: `package-${packageRecord.id}-tier-${tierIndex}`,
+            })),
+          })),
+        );
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const toTiers = (record) => {
     if (record.tiers && record.tiers.length > 0) {
-      return record.tiers.map((x) => ({
-        count: x.count,
-        per_share_amount: x.per_share_amount,
-      }));
+      return record.tiers.map((x) =>
+        createTierDraft({
+          count: x.count,
+          per_share_amount: x.per_share_amount,
+        }),
+      );
     }
     if (record.required_count) {
       return [
-        {
+        createTierDraft({
           count: record.required_count,
           per_share_amount: Math.floor(
             record.total_amount / record.required_count,
           ),
-        },
+        }),
       ];
     }
-    return [{ count: 3, per_share_amount: 100 }];
+    return [createTierDraft({ count: 3, per_share_amount: 100 })];
   };
 
   const openCreate = () => {
@@ -122,8 +140,8 @@ const Packages = () => {
       enabled: true,
     };
     setTiers([
-      { count: 3, per_share_amount: 100 },
-      { count: 5, per_share_amount: 120 },
+      createTierDraft({ count: 3, per_share_amount: 100 }),
+      createTierDraft({ count: 5, per_share_amount: 120 }),
     ]);
     setEditing(initial);
     setTimeout(() => formApi && formApi.setValues(initial), 0);
@@ -153,10 +171,13 @@ const Packages = () => {
     );
   const addTier = () =>
     setTiers((prev) => {
-      const last = prev[prev.length - 1] || { count: 2, per_share_amount: 100 };
+      const last = prev.at(-1) || { count: 2, per_share_amount: 100 };
       return [
         ...prev,
-        { count: last.count + 1, per_share_amount: last.per_share_amount },
+        createTierDraft({
+          count: last.count + 1,
+          per_share_amount: last.per_share_amount,
+        }),
       ];
     });
   const removeTier = (idx) =>
@@ -235,12 +256,13 @@ const Packages = () => {
                   per_share_amount: Math.floor(
                     r.total_amount / (r.required_count || 1),
                   ),
+                  tierKey: `package-${r.id}-default-tier`,
                 },
               ];
         return (
           <Space wrap>
-            {ts.map((x, i) => (
-              <Tag key={i} color='violet'>
+            {ts.map((x) => (
+              <Tag key={x.tierKey} color='violet'>
                 {x.count}
                 {t('人')}→{renderShareAmount(x.per_share_amount)}
               </Tag>
@@ -331,7 +353,7 @@ const Packages = () => {
           </div>
           <div className='flex flex-col gap-2 mb-3'>
             {tiers.map((tier, idx) => (
-              <div key={idx} className='flex items-center gap-2'>
+              <div key={tier.draftId} className='flex items-center gap-2'>
                 <InputNumber
                   prefix={t('人数')}
                   min={2}
@@ -396,7 +418,7 @@ const Orders = () => {
   const [status, setStatus] = useState('');
   const [detail, setDetail] = useState(null);
 
-  const load = async (p = page, s = status) => {
+  const load = useCallback(async (p, s) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -409,17 +431,17 @@ const Orders = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     load(1, status);
     setPage(1);
-  }, [status]);
+  }, [load, status]);
 
   const viewDetail = async (record) => {
     const res = await API.get(`/api/group_buy/orders/${record.id}`);
@@ -434,7 +456,7 @@ const Orders = () => {
     const res = await API.post(`/api/group_buy/orders/${id}/cancel`);
     if (res.data.success) {
       showSuccess(t('已作废并触发退款'));
-      load();
+      load(page, status);
     } else {
       showError(res.data.message);
     }
@@ -516,7 +538,7 @@ const Orders = () => {
             { label: t('已失败'), value: 'failed' },
           ]}
         />
-        <Button onClick={() => load()}>{t('刷新')}</Button>
+        <Button onClick={() => load(page, status)}>{t('刷新')}</Button>
       </Space>
       <Table
         columns={columns}
@@ -555,7 +577,7 @@ const RefundQueue = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const load = async (p = page) => {
+  const load = useCallback(async (p) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -568,22 +590,22 @@ const RefundQueue = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     load(1);
-  }, []);
+  }, [load]);
 
   const markRefunded = async (id) => {
     const res = await API.post(`/api/group_buy/refunds/${id}/done`);
     if (res.data.success) {
       showSuccess(t('已标记退款'));
-      load();
+      load(page);
     } else {
       showError(res.data.message);
     }
@@ -624,7 +646,7 @@ const RefundQueue = () => {
             '以下为无法自动退款的渠道（如易支付），请在支付平台手动退款后标记',
           )}
         </Typography.Text>
-        <Button onClick={() => load()}>{t('刷新')}</Button>
+        <Button onClick={() => load(page)}>{t('刷新')}</Button>
       </Space>
       <Table
         columns={columns}

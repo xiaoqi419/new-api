@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -58,7 +58,7 @@ const Invitation = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const loadAff = async () => {
+  const loadAff = useCallback(async () => {
     const res = await API.get('/api/user/aff');
     const { success, message, data } = res.data;
     if (success) {
@@ -66,17 +66,17 @@ const Invitation = () => {
     } else {
       showError(message);
     }
-  };
+  }, []);
 
-  const loadSelf = async () => {
+  const loadSelf = useCallback(async () => {
     const res = await API.get('/api/user/self');
     const { success, data } = res.data;
     if (success) {
       setAffCount(data.aff_count || 0);
     }
-  };
+  }, []);
 
-  const loadRebate = async (p = page) => {
+  const loadRebate = useCallback(async (p) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -91,18 +91,18 @@ const Invitation = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadAff();
     loadSelf();
     loadRebate(1);
-  }, []);
+  }, [loadAff, loadSelf, loadRebate]);
 
   const handleCopy = async () => {
     await copy(affLink);

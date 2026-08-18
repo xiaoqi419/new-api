@@ -100,7 +100,7 @@ const GroupBuy = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
@@ -119,7 +119,7 @@ const GroupBuy = () => {
         if (w) setPayWay('wechatpay');
         else if (a) setPayWay('alipay_direct');
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -185,7 +185,7 @@ const GroupBuy = () => {
       } else {
         showError(typeof data === 'string' ? data : message || t('参团失败'));
       }
-    } catch (e) {
+    } catch {
       showError(t('参团失败'));
     } finally {
       setSubmitting(false);
@@ -228,8 +228,8 @@ const GroupBuy = () => {
           },
         ];
   const minCount = tiers[0].count;
-  const maxCount = tiers[tiers.length - 1].count;
-  const bestAmount = tiers[tiers.length - 1].per_share_amount;
+  const maxCount = tiers.at(-1).count;
+  const bestAmount = tiers.at(-1).per_share_amount;
   const cap = detail.target_count || maxCount;
   const paid = detail.paid_count || 0;
   const remaining = Math.max(0, cap - paid);
@@ -240,10 +240,12 @@ const GroupBuy = () => {
     detail.status === 'pending' && !detail.joined && !expired && remaining > 0;
 
   const payOptions = [];
-  if (enableWechat)
+  if (enableWechat) {
     payOptions.push({ label: t('微信支付'), value: 'wechatpay' });
-  if (enableAlipay)
+  }
+  if (enableAlipay) {
     payOptions.push({ label: t('支付宝'), value: 'alipay_direct' });
+  }
 
   const notes =
     detail.notes && detail.notes.length > 0
@@ -493,8 +495,8 @@ const GroupBuy = () => {
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4'>
         <Card className='!rounded-2xl' title={t('拼团须知')}>
           <div className='flex flex-col gap-2'>
-            {notes.map((note, idx) => (
-              <div key={idx} className='flex items-start gap-2'>
+            {notes.map((note) => (
+              <div key={note} className='flex items-start gap-2'>
                 <IconTickCircle
                   size='small'
                   style={{ color: 'var(--semi-color-primary)', marginTop: 3 }}
@@ -531,8 +533,8 @@ const GroupBuy = () => {
               {t('还没有成员，快来当第一个吧')}
             </Typography.Text>
           )}
-          {(detail.participants || []).map((p, idx) => (
-            <Tag key={idx} color={p.pay_status === 'paid' ? 'green' : 'orange'}>
+          {(detail.participants || []).map((p) => (
+            <Tag key={p.user_id ?? p.username} color={p.pay_status === 'paid' ? 'green' : 'orange'}>
               {p.username}（
               {p.pay_status === 'paid' ? t('已支付') : t('待支付')}）
             </Tag>
