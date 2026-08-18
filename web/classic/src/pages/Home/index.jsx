@@ -17,7 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Button,
   Typography,
@@ -273,9 +280,12 @@ const CODE_KEYWORDS =
 // 轻量代码高亮：逐行按注释 / 字符串 / 关键字 / 数字着色，无第三方依赖。
 const CodeHighlight = ({ code }) => {
   const lines = String(code || '').split('\n');
+  const lineOccurrences = new Map();
   return (
     <code className='app-home-code-hl'>
-      {lines.map((line, li) => {
+      {lines.map((line) => {
+        const occurrence = lineOccurrences.get(line) || 0;
+        lineOccurrences.set(line, occurrence + 1);
         const tokens = [];
         let rest = line;
         let guard = 0;
@@ -335,7 +345,10 @@ const CodeHighlight = ({ code }) => {
           }
         }
         return (
-          <span className='app-home-code-line' key={line}>
+          <span
+            className='app-home-code-line'
+            key={JSON.stringify([line, occurrence])}
+          >
             {tokens}
             {'\n'}
           </span>
@@ -769,6 +782,8 @@ const Home = () => {
     localStorage.getItem('system_name') ||
     'New API';
   const isApimartHome = appearance.preset === 'apimart';
+  const initialThemeRef = useRef(actualTheme);
+  const initialLanguageRef = useRef(i18n.language);
 
   const displayHomePageContent = useCallback(async () => {
     setHomePageContent(localStorage.getItem('home_page_content') || '');
@@ -787,8 +802,14 @@ const Home = () => {
         const iframe = document.querySelector('iframe');
         if (iframe) {
           iframe.onload = () => {
-            iframe.contentWindow.postMessage({ themeMode: actualTheme }, '*');
-            iframe.contentWindow.postMessage({ lang: i18n.language }, '*');
+            iframe.contentWindow.postMessage(
+              { themeMode: initialThemeRef.current },
+              '*',
+            );
+            iframe.contentWindow.postMessage(
+              { lang: initialLanguageRef.current },
+              '*',
+            );
           };
         }
       }
@@ -797,7 +818,7 @@ const Home = () => {
       setHomePageContent('加载首页内容失败...');
     }
     setHomePageContentLoaded(true);
-  }, [actualTheme, i18n.language]);
+  }, []);
 
   const handleCopyBaseURL = async () => {
     const ok = await copy(serverAddress);

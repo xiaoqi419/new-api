@@ -302,31 +302,41 @@ const MessageContent = ({
             const imageContents = message.content.filter(
               (item) => item.type === 'image_url',
             );
+            const imageOccurrences = new Map();
 
             return (
               <div>
                 {imageContents.length > 0 && (
                   <div className='mb-3 space-y-2'>
-                    {imageContents.map((imgItem, index) => (
-                      <div key={imgItem.image_url.url} className='max-w-sm'>
-                        <img
-                          src={imgItem.image_url.url}
-                          alt={`用户上传的图片 ${index + 1}`}
-                          className='rounded-lg max-w-full h-auto shadow-sm border'
-                          style={{ maxHeight: '300px' }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'block';
-                          }}
-                        />
+                    {imageContents.map((imgItem, index) => {
+                      const url = imgItem.image_url.url;
+                      const occurrence = imageOccurrences.get(url) || 0;
+                      imageOccurrences.set(url, occurrence + 1);
+
+                      return (
                         <div
-                          className='text-red-500 text-sm p-2 bg-red-50 rounded-lg border border-red-200'
-                          style={{ display: 'none' }}
+                          key={JSON.stringify([url, occurrence])}
+                          className='max-w-sm'
                         >
-                          图片加载失败: {imgItem.image_url.url}
+                          <img
+                            src={imgItem.image_url.url}
+                            alt={`用户上传的图片 ${index + 1}`}
+                            className='rounded-lg max-w-full h-auto shadow-sm border'
+                            style={{ maxHeight: '300px' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <div
+                            className='text-red-500 text-sm p-2 bg-red-50 rounded-lg border border-red-200'
+                            style={{ display: 'none' }}
+                          >
+                            图片加载失败: {imgItem.image_url.url}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
