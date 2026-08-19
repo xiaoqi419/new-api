@@ -3,7 +3,7 @@ name: p1-lint-debt
 language: zh-CN
 phase: archive
 status: active
-state_version: 13
+state_version: 14
 brief: brief.md
 children_contract_hash: f05aadf3af45931e4901279a7c298cea9b8df1dcb06bb6dd0520eb9b9ebcb1fd
 spec_changes:
@@ -14,7 +14,7 @@ workspace:
   isolation: worktree
   change_branch: codex/p1-lint-debt
   target_branch: codex/p0-wallet-wechatpay
-  finish: null
+  finish: merge
 loop:
   stage: archive-ready
   goal_cycle: 3
