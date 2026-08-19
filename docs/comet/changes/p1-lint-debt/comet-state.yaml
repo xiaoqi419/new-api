@@ -3,9 +3,9 @@ name: p1-lint-debt
 language: zh-CN
 phase: build
 status: active
-state_version: 4
+state_version: 9
 brief: brief.md
-children_contract_hash: d3ca3c7cd94885262f85c4916f62588958585975bee89817cde2e0c7d489658e
+children_contract_hash: f05aadf3af45931e4901279a7c298cea9b8df1dcb06bb6dd0520eb9b9ebcb1fd
 spec_changes:
   - capability: frontend-lint-quality
     operation: create
@@ -17,7 +17,7 @@ workspace:
   finish: null
 loop:
   stage: building
-  goal_cycle: 2
+  goal_cycle: 3
   iteration: 1
   attempt: 0
   retry_epoch: 0
@@ -138,6 +138,30 @@ history:
       text: Native confirmed acceptance criteria changed
       truncated: false
     completed_at: 2026-08-18T17:26:35.007Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A6
+      - A9
+      - A11
+    summary:
+      text: Supervisor verification found one stale maintenance-document merge-state
+        defect and one historical concurrency-evidence gap. A1-A5, A7-A8, and
+        A10 pass; A6 fails; A9 and A11 are blocked pending narrow
+        repair/evidence resolution.
+      truncated: false
+    completed_at: 2026-08-19T02:50:10.961Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native child declarations changed
+      truncated: false
+    completed_at: 2026-08-19T02:52:08.186Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null

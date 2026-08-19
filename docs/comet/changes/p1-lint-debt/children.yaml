@@ -46,3 +46,6 @@ children:
       - lint-classic-settings-pages
       - lint-classic-common-pages
     covers: [A4, A5, A6, A7, A8, A9, A10, A11]
+  - name: lint-supervisor-evidence-repair
+    depends_on: [lint-final-gates]
+    covers: [A6, A9, A11]
