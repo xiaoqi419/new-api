@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: p1-lint-debt
 language: zh-CN
-phase: build
+phase: archive
 status: active
-state_version: 9
+state_version: 13
 brief: brief.md
 children_contract_hash: f05aadf3af45931e4901279a7c298cea9b8df1dcb06bb6dd0520eb9b9ebcb1fd
 spec_changes:
@@ -16,57 +16,80 @@ workspace:
   target_branch: codex/p0-wallet-wechatpay
   finish: null
 loop:
-  stage: building
+  stage: archive-ready
   goal_cycle: 3
   iteration: 1
-  attempt: 0
+  attempt: 1
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: archive
 acceptance:
   - id: A1
     source: brief.md
     text: A1：从 `web` 运行权威 oxlint 配置后，`web/src/**` 为 0 errors；所有 default child 的
       owned paths 在各自提交前已定向 lint 为 0 errors。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Archived default-child verifications pass, and the integrated final-gates
+        lint record reports exit 0 with 0 errors.
+      truncated: false
   - id: A2
     source: brief.md
     text: A2：同一权威 oxlint 运行中，`web/classic/src/**` 为 0 errors；classic foundations
       先通过，随后各领域 child 的 owned paths 定向 lint 为 0 errors。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Classic foundations and domain children have archived passing
+        verifications, and the integrated lint run covers web/classic/src at 0
+        errors.
+      truncated: false
   - id: A3
     source: brief.md
     text: A3：`react-hooks/exhaustive-deps`、`promise/catch-or-return`、`react/only-export-components`、`react/no-array-index-key`
       与 `typescript/no-import-type-side-effects` 等语义性修复保持现有请求、订阅、错误传播、渲染
       identity 与模块副作用；有邻近既有测试时通过对应测试，无测试时由 child 明确报告并由最终门禁覆盖。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Child-specific independent verification plus the final 281/281 test suite,
+        typecheck, and builds support preserved hook, Promise, identity, export,
+        import-side-effect, and mechanical semantics.
+      truncated: false
   - id: A4
     source: brief.md
     text: A4：相对已包含 Canvas 策略的目标分支，`web/.oxlintrc.json` 最终 diff 只新增一个匹配四个管理员外部 iframe
       文件、只关闭 `react/iframe-missing-sandbox` 的精确 override；既有 Canvas override
       不变。package/lock 与依赖不变，不新增 disable 注释，不扩大
       ignore，不降低其他规则等级，也不包含批准范围外的产品或后端变更。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Relative to the target, the only oxlint config delta is the approved exact
+        four-file iframe override; the Canvas override is unchanged and package,
+        lock, dependency, and script files are unchanged.
+      truncated: false
   - id: A5
     source: brief.md
     text: A5：`web` 的全量 lint 为 0 errors，`bun test`、`bun run typecheck`、`bun run
       build` 通过；`web/classic` 的 `bun run build` 通过。warnings 数量单独记录，不作为本 change
       的完成阻塞。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Archived Runtime gates record lint exit 0 with 0 errors and 1,682
+        warnings, 281 tests passing across 45 files, and successful web
+        typecheck/build plus Classic build.
+      truncated: false
   - id: A6
     source: brief.md
     text: A6：维护状态文档记录原始基线、实际修复范围、最终检查结果、剩余
       warnings/风险、合并与部署状态，并继续区分本地通过、线上待验收和微信登录搁置。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Maintenance status now accurately records lint-final-gates Verify/Archive
+        and local merge 7741f2004 into codex/p1-lint-debt while keeping the
+        Supervisor target merge, push, PR, release, and deployment pending.
+      truncated: false
   - id: A7
     source: specs/frontend-lint-quality/spec.md
     text: 权威范围从历史基线降为零错误 - `web/src/**` 从初始 341 errors / 147 files 降为 0 errors。 -
@@ -76,8 +99,12 @@ acceptance:
       明确要求时可调整；目标分支保留一个仅针对 `src/features/canvas/index.tsx`、关闭
       `react/iframe-missing-sandbox` 的精确 override，并新增一个只匹配四个管理员外部 iframe
       文件、关闭同一规则的精确 override；其他 lint 配置、config/package/lock files 不在批准范围。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: The 341 plus 1,059 error baseline and final zero-error result are
+        recorded; the only Classic Prettier change is the explicitly permitted
+        behavior-equivalent ESM conversion.
+      truncated: false
   - id: A8
     source: specs/frontend-lint-quality/spec.md
     text: 语义性与机械性修复保持现有行为 - Hooks dependency 修复保持请求触发、订阅建立/销毁、闭包取值和 render
@@ -86,8 +113,12 @@ acceptance:
       import/export 契约；高扇出 helper 先合入再处理调用方。 - Array key 使用真实稳定
       identity；Type-only import 保留有副作用模块的运行时加载。 -
       机械规则修复保持分支、短路、浅拷贝、字符串全局替换和索引语义不变。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: All 13 child verification reports pass, and no current source, test,
+        typecheck, or build evidence contradicts the required
+        behavior-preservation scenarios.
+      truncated: false
   - id: A9
     source: specs/frontend-lint-quality/spec.md
     text: Supervisor 按依赖与独占所有权推进 - 首波并行处理四个 default 独占域与 classic
@@ -95,8 +126,14 @@ acceptance:
       children 只在 foundations 合入后处理。 - 最终门禁 child 在全部代码 child 合入后复核全量
       error、修复批准范围内的交叉残余，并运行完整检查。 - 每个 child
       只修改任务声明中的路径；依赖表达真实的高扇出和集成顺序，不以数组顺序代替依赖。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: The project policy forbids more than five execution subagents and nested
+        spawning, while the host hard limit of six total slots including the
+        primary agent enforces the same ceiling; children.yaml, archives, and
+        merge history confirm the dependency waves, with the lack of per-second
+        telemetry disclosed.
+      truncated: false
   - id: A10
     source: specs/frontend-lint-quality/spec.md
     text: 只允许已批准的 iframe 信任模型例外 - 目标分支 `web/.oxlintrc.json` 的既有批准例外是一个只匹配
@@ -113,8 +150,12 @@ acceptance:
       `eslint-disable`、`oxlint-disable` 或等价行内/文件级豁免。 - 不使用 `--fix`、`lint:fix`
       或其他未审阅的批量自动改写。 - 不升级依赖、不修改 package scripts/lockfile、不排除目录，也不扩张到 warning
       专项、UI 重设计、功能开发、classic 迁移、后端或微信登录。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: The trusted administrator iframe override remains exact, Canvas remains
+        under its approved exception, and generic WebPreviewBody retains
+        scripts/forms/popups/presentation while omitting allow-same-origin.
+      truncated: false
   - id: A11
     source: specs/frontend-lint-quality/spec.md
     text: 完整发布前门禁通过并留档 - 从 `web` 运行 `npx --yes bun run lint`、`npx --yes bun
@@ -123,11 +164,75 @@ acceptance:
       通过。 - 验证前确认 lint config diff 只有已批准的四文件单规则 override，既有 Canvas override
       未变，package/lock files 与依赖未变；A1-A6 及本规格场景由独立 Verifier 验收。 - Verify
       接受后同步维护状态文档；真实商户支付继续标记线上验收，微信登录新增开发继续搁置。
-    result: pending
-    reason: null
-builder_handoff: null
+    result: passed
+    reason:
+      text: Final-gates and evidence-repair both completed independent Verify/Archive,
+        all 13 children are done and merged, and complete release-gate evidence
+        remains archived.
+      truncated: false
+builder_handoff:
+  candidate_id: b58a7d39-5419-42e1-b773-f02c094443f4
+  identity_provider: skill-coordinated
+  builder_execution_ref: native-parent-integration:bb0b1b4c-af60-4a56-8d65-8e2f3918911b
+  iteration: 1
+  summary:
+    text: All thirteen children are now verified, archived, and merged. The repair
+      child corrected the final-gates local merge state and retained an
+      independently verified concurrency audit covering A6, A9, and A11 without
+      changing code or rerunning release gates.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+  checks: []
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-08-19T03:12:22.155Z
 blockers: []
-verification: null
+verification:
+  candidate_id: b58a7d39-5419-42e1-b773-f02c094443f4
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:c181c61d-0970-48d6-91bd-4ff0992e8843
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Independent Terra/xhigh verification passed A1-A11. All 13 children have
+      passing archives and merge evidence, the exact iframe/config scope is
+      preserved, maintenance status is accurate, and release gates are fully
+      evidenced without reopening warning-only or online-only residual work.
+    truncated: false
+  risks:
+    - text: 1,682 warning-only lint diagnostics remain intentional non-blocking debt.
+      truncated: false
+    - text: Real WeChat and Alipay merchant credentials, public HTTPS callbacks,
+        actual ordering, signatures, and settlement remain online-only
+        acceptance work.
+      truncated: false
+    - text: New WeChat-login development remains paused.
+      truncated: false
+    - text: The approved administrator-configured external iframe model retains
+        URL-injected API-key exposure and iframe-permission-abuse residual risk
+        if administrator or configuration trust is compromised.
+      truncated: false
+    - text: Historical per-second active-agent telemetry was not retained; the audit
+        proves the enforced upper bound but cannot reconstruct an exact
+        timeline.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-19T03:21:34.340Z
 history:
   - goal_cycle: 1
     iteration: 1
@@ -162,6 +267,18 @@ history:
       text: Native child declarations changed
       truncated: false
     completed_at: 2026-08-19T02:52:08.186Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent Terra/xhigh verification passed A1-A11. All 13 children have
+        passing archives and merge evidence, the exact iframe/config scope is
+        preserved, maintenance status is accurate, and release gates are fully
+        evidenced without reopening warning-only or online-only residual work.
+      truncated: false
+    completed_at: 2026-08-19T03:21:34.340Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null
@@ -172,7 +289,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: pending
-verification_report: null
+verification_result: pass
+verification_report: verification.md
 archived: false
 created_at: 2026-08-18T09:54:18.064Z
