@@ -26,8 +26,10 @@ import {
   lazy,
   type ReactNode,
   Suspense,
+  useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -345,6 +347,12 @@ export const CodeBlockEditor = ({
   value,
   ...props
 }: CodeBlockEditorProps) => {
+  const onKeyDownRef = useRef(onKeyDown)
+  onKeyDownRef.current = onKeyDown
+  const stableOnKeyDown = useCallback((event: globalThis.KeyboardEvent) => {
+    onKeyDownRef.current?.(event)
+  }, [])
+
   return (
     <CodeBlockFrame
       bodyClassName='p-0'
@@ -360,7 +368,7 @@ export const CodeBlockEditor = ({
           autoFocus
           language={language}
           onChange={onChange}
-          onKeyDown={onKeyDown}
+          onKeyDown={stableOnKeyDown}
           rows={rows}
           showLineNumbers
           value={value}

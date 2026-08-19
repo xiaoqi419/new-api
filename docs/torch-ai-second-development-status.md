@@ -53,12 +53,14 @@
 ### 已完成的本地工程门禁
 
 - `web` lint：0 errors、1,682 warnings；warnings 是历史 warning-only 债务。
-- `web` 测试：281 pass、0 fail，45 个文件。
+- `web` 测试：rc.25 同步后的 Vitest 为 310 pass、0 fail，53 个文件；其中 API Key Auto Group、CodeMirror lazy 编辑器和旧 `node:test` 迁移回归均已通过。
 - `web` typecheck、`web` build、`web/classic` build：均通过。
 - root 与独立 `relaykit` 的 Go vet、build 和全量测试：均有通过记录。
 - `p1-quality-regression`、`p1-http2-test-stability`、`p1-lint-debt`：均完成独立 Verify、Archive，并在本地合入 `codex/p0-wallet-wechatpay`。
 - Comet Native change `p1-feature-gates-native-controls` 已接受：A1-A9 全部通过，迭代 2 独立 Verify 通过；已于 2026-08-19 归档，归档目录为 `docs/comet/archive/2026-08-19-p1-feature-gates-native-controls/`。迭代 1 仅 A7 因维护文档生命周期表述过时退回，已在迭代 2 修正；本条不表示已部署或已完成线上验收。
-- QuantumNous/new-api 上游同步明确另开 change；上游 39 个提交、207 个文件差异不在本 change 内，需逐组进行三方冲突审查。
+- QuantumNous/new-api `v1.0.0-rc.25` 已在独立 Comet change `upstream-rc25-sync` 完成三方合并候选；39 个官方提交、207 个文件差异和 27 个冲突路径已审查，当前处于 Build，尚未 Verify/Archive。
+- rc.25 同步没有替换或关闭 Torch AI 二开：支付和订单状态、邀请返现/拼团、视频、素材库/无限画布代码、渠道监控、排行/并发/兜底/发票、代理/白标和既定公开入口屏蔽均按原口径保留。
+- 本轮 Build 验证已通过 root Go test/vet/build、独立 relaykit build/test、前端 53 files / 310 tests、typecheck、0-error lint 和 default/classic/canvas 三套构建；正式状态仍需等待 Comet 独立 Verify 与 Archive，不能提前写成已发布。
 
 ### 当前本机联调实例（2026-08-19）
 

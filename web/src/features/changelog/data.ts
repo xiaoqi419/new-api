@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260819-6acf55ae4',
+    date: '2026-08-19',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          'Torch AI 已同步 QuantumNous/new-api v1.0.0-rc.25:额度预扣、充值与订阅并发保护、OAuth、渠道测试、高级自定义渠道、Claude/Responses 兼容和前端测试基础设施已进入当前版本;原有支付、拼团、返现、视频、渠道兜底、实时并发、发票和代理能力保持不变。',
+          '修复 API Key Auto Group 编辑抽屉、批量创建参数和 CodeMirror 异步编辑器测试;普通用户仍按产品策略屏蔽无限画布、素材库和成为代理公开入口。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260819-380cd6aa9',
     date: '2026-08-19',
     changes: [
