@@ -13,6 +13,7 @@
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
 - Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过独立 Verify，`p1-quality-regression` 已归档并合入 `codex/p0-wallet-wechatpay`（merge commit `4a79c68cd`）。
 - 当前本地前端发布门禁已经完成：`lint-final-gates` child 的全量 lint、测试、类型检查和两套前端构建均通过，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`；`p1-lint-debt` Supervisor 的 A1-A11 随后通过独立 Terra/xhigh Verify、完成 Archive，并以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。
+- 已启动本机联调实例：Go API 监听 `0.0.0.0:3000`，使用独立 SQLite `data/local-acceptance.db`，`http://localhost:3000` 和局域网 `http://192.168.1.7:3000` 可访问；这不等同于生产部署。
 
 ## 最终前端门禁记录（2026-08-19）
 
@@ -25,6 +26,7 @@
 - 相对 `codex/p0-wallet-wechatpay` 的 `web/.oxlintrc.json` diff 仅保留已批准的四个管理员受信任 iframe 文件级 `react/iframe-missing-sandbox: off` override；既有 Canvas override 未变，未扩大 ignore、降低规则级别或新增 lint-disable。
 - 以上结果先在本地 `codex/lint-final-gates` child worktree 形成，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`；Supervisor A1-A11 已通过独立 Terra/xhigh Verify、完成 Archive，并以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。当前仍未推送、创建 PR、发布或部署。
 - 微信/支付宝真实商户凭据、公网 HTTPS 回调、真实下单与结算仍待线上环境验收；微信登录新增开发继续按产品决策搁置。
+- 本机联调只能验证初始化、管理员支付配置、下单请求和前端轮询；微信/支付宝平台不能访问 localhost 回调，真实到账验收仍需公网 HTTPS 或线上环境。
 - 四个管理员可配置外部 iframe 继续采用已确认的受信任集成模型，以保留脚本、同源存储、Cookie、OAuth、表单、弹窗和媒体能力；管理员配置或账户失陷时仍存在 URL 注入 API key 暴露和 iframe 权限滥用的 residual risk。通用 `WebPreviewBody` 仍保留 scripts/forms/popups/presentation，并移除 `allow-same-origin` 以使用 opaque origin。
 
 ## Phase 4 当前进度（2026-08-18）

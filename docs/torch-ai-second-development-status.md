@@ -55,6 +55,14 @@
 - root 与独立 `relaykit` 的 Go vet、build 和全量测试：均有通过记录。
 - `p1-quality-regression`、`p1-http2-test-stability`、`p1-lint-debt`：均完成独立 Verify、Archive，并在本地合入 `codex/p0-wallet-wechatpay`。
 
+### 当前本机联调实例（2026-08-19）
+
+- 已从当前分支用 Go 启动本地 API 服务，监听 `0.0.0.0:3000`。
+- 当前访问地址：`http://localhost:3000`；同一局域网可用 `http://192.168.1.7:3000`。
+- 使用独立 SQLite 数据库 `data/local-acceptance.db`，启动时 `/api/setup` 返回 `root_init=false`；首次访问需要在初始化向导创建本地管理员。
+- `web/default` 和 `web/classic` 已重新构建并由 Go `embed` 静态托管；健康检查 `GET /api/status` 返回 HTTP 200。
+- 本机没有 Docker 和公网隧道工具，因此这只是本地联调实例，不等同于线上部署；微信/支付宝平台无法访问 `localhost` 回调，真实支付到账仍需公网 HTTPS 地址或线上环境。
+
 ### 仍待线上验收的已实现能力
 
 - 微信和支付宝真实商户凭据是否能保存并用于真实下单。
