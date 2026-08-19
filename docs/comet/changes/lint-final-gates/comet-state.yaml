@@ -3,14 +3,14 @@ name: lint-final-gates
 language: zh-CN
 phase: archive
 status: active
-state_version: 8
+state_version: 9
 brief: brief.md
 spec_changes: []
 workspace:
   isolation: worktree
   change_branch: codex/lint-final-gates
   target_branch: codex/p1-lint-debt
-  finish: null
+  finish: merge
 loop:
   stage: archive-ready
   goal_cycle: 1
