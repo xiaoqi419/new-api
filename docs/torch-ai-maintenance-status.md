@@ -11,7 +11,7 @@
 - 微信/支付宝真实商户收款、平台回调、公网 HTTPS、真实支付结算仍未完成。这些属于线上环境验收，不属于当前本地代码缺陷。
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
 - Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过独立 Verify，`p1-quality-regression` 已归档并合入 `codex/p0-wallet-wechatpay`（merge commit `4a79c68cd`）。
-- 当前本地前端发布门禁已在 `lint-final-gates` child 分支完成：全量 lint、测试、类型检查和两套前端构建均通过；该 child 已完成独立 Verify、Archive，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`。Supervisor 最终 Verify/Archive 仍在进行，尚未合入 `codex/p0-wallet-wechatpay`。
+- 当前本地前端发布门禁已经完成：`lint-final-gates` child 的全量 lint、测试、类型检查和两套前端构建均通过，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`；`p1-lint-debt` Supervisor 的 A1-A11 随后通过独立 Terra/xhigh Verify、完成 Archive，并以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。
 
 ## 最终前端门禁记录（2026-08-19）
 
@@ -22,7 +22,7 @@
 - `web/classic`：`npx --yes bun run build` 退出码 0。
 - 为清除全量 oxlint 唯一残余 error，`web/classic/.prettierrc.mjs` 将等价的 CommonJS `require` 配置改为 ESM default import/export；该文件属于规格允许的“当前 error 明确要求”范围。未修改 package、lock、依赖、脚本或框架版本。
 - 相对 `codex/p0-wallet-wechatpay` 的 `web/.oxlintrc.json` diff 仅保留已批准的四个管理员受信任 iframe 文件级 `react/iframe-missing-sandbox: off` override；既有 Canvas override 未变，未扩大 ignore、降低规则级别或新增 lint-disable。
-- 以上结果来自本地 `codex/lint-final-gates` child worktree；child 已在本地合入 `codex/p1-lint-debt`（merge commit `7741f2004`），但 Supervisor 尚未合入 `codex/p0-wallet-wechatpay`。当前仍未推送、创建 PR、发布或部署；下一步是完成 Supervisor 独立 Verify、Archive 和按授权范围的本地合并。
+- 以上结果先在本地 `codex/lint-final-gates` child worktree 形成，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`；Supervisor A1-A11 已通过独立 Terra/xhigh Verify、完成 Archive，并以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。当前仍未推送、创建 PR、发布或部署。
 - 微信/支付宝真实商户凭据、公网 HTTPS 回调、真实下单与结算仍待线上环境验收；微信登录新增开发继续按产品决策搁置。
 - 四个管理员可配置外部 iframe 继续采用已确认的受信任集成模型，以保留脚本、同源存储、Cookie、OAuth、表单、弹窗和媒体能力；管理员配置或账户失陷时仍存在 URL 注入 API key 暴露和 iframe 权限滥用的 residual risk。通用 `WebPreviewBody` 仍保留 scripts/forms/popups/presentation，并移除 `allow-same-origin` 以使用 opaque origin。
 
@@ -48,8 +48,8 @@
 - `lint-default-user-features` 的 A1-A3 已通过独立 Verify并完成 Archive：12 个 owned feature 目录为 0 errors、保留 9 项 warning-only diagnostics，18 个测试文件共 102/102 tests 通过，frontend typecheck 通过。2FA 重复备用码使用“值 + 出现次数”的稳定 identity，Canvas 保持已批准的可信同源基线；Archive commit 为 `2040c8c878f3f5d26b2624f3e8e78566532ede15`，随后以 merge commit `b3cac10e62156d003a3049f0ab2928565d8b8416` 合入 `codex/p1-lint-debt`。
 - 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。`p1-canvas-trusted-iframe-policy` 的 A1-A4 已通过独立 Verify、由用户接受并完成 Archive，已以 merge commit `03ee1599d` 合入 `codex/p0-wallet-wechatpay`。更强隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮范围。
 - Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
-- `p1-lint-debt` 当前共有 13 个 child：12 个原始代码/门禁 child 已完成并归档，`lint-final-gates` 已以 merge commit `7741f2004` 合入 Supervisor；`lint-supervisor-evidence-repair` 仅修复 Supervisor 维护文档合并状态和并发证据留档。`lint-classic-common-pages` 涉及外部或管理员可配置 iframe 的既有安全边界；在没有新的产品/安全决策前，不通过随意添加 `sandbox` 或 lint override 伪造通过。
-- 当前所有结果仍是本地状态；尚未推送、创建 PR 或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
+- `p1-lint-debt` 的 13 个 child 均已完成独立 Verify、Archive 并合入 Supervisor；其中 `lint-final-gates` 以 merge commit `7741f2004` 合入，`lint-supervisor-evidence-repair` 只修复 Supervisor 维护文档合并状态和并发证据留档。Supervisor A1-A11 最终全部通过并归档，归档产物位于 `docs/comet/archive/2026-08-19-p1-lint-debt/`，随后以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。`lint-classic-common-pages` 涉及外部或管理员可配置 iframe 的既有安全边界；在没有新的产品/安全决策前，不通过随意添加 `sandbox` 或 lint override 伪造通过。
+- 当前结果仍是本地状态；尚未推送、创建 PR、发布或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
 
 ## 状态表
 
@@ -75,8 +75,8 @@
 ### 已实现但仍未完成上线闭环
 
 - **真实商户支付验收**：微信/支付宝真实凭据、客户端下单、公网 HTTPS 回调、验签、重复回调幂等、余额到账和真实结算证据只能在线上环境完成。
-- **全量 lint 收口**：`lint-final-gates` 已在 child worktree 完成全量 lint、tests、typecheck 和两套前端 build，并已本地合入 Supervisor；当前只剩 Supervisor Verify/Archive，warnings 不在本阶段专项清理。
-- **发布与部署**：当前 lint supervisor 分支只完成本地 child merge，尚未推送、创建 PR、合入发布目标、打标签、发布或部署；服务器、域名、HTTPS、数据库/Redis、交付方式和回滚路径也仍需上线前确认。
+- **全量 lint 收口**：`p1-lint-debt` 已完成 Supervisor 独立 Verify、Archive 和本地目标分支合并；全量 lint 为 0 errors，1,682 warnings 仍是非阻塞的历史 warning-only 债务，不在本阶段专项清理。
+- **发布与部署**：lint Supervisor 已本地合入 `codex/p0-wallet-wechatpay`，但尚未推送、创建 PR、合入远端发布分支、打标签、发布或部署；服务器、域名、HTTPS、数据库/Redis、交付方式和回滚路径也仍需上线前确认。
 
 ## 线上支付验收待办
 
@@ -93,7 +93,7 @@
 以下事项按已确认边界继续推进：
 
 - `p1-http2-test-stability` 已完成，不再是剩余项；继续保持其生产 `GetBody` 请求链路未改动的边界。
-- 继续完成 `p1-lint-debt`：`lint-final-gates` child 已归档并合入 Supervisor，当前执行唯一 evidence-repair child 后重新 Verify/Archive Supervisor。
+- `p1-lint-debt` 已完成，不再是本地工程剩余项：13 个 child 和 Supervisor 均已独立 Verify、Archive，Supervisor 已本地合入 `codex/p0-wallet-wechatpay`。
 - 最终门禁必须如实记录全量 oxlint error/warning 数量，并运行 `web` 的 lint、tests、typecheck、build 以及 `web/classic` build；不得关闭规则、降低错误级别、扩大 ignore、增加 disable 注释或修改依赖来伪造通过。
 - 继续保持真实微信/支付宝商户支付仅为线上验收事项，不把商户凭据、公网 HTTPS、回调或结算缺失当作本地代码缺陷。
 - 继续搁置微信登录新增开发；本阶段不新增支付能力、不升级 UI 框架、依赖或数据库。
@@ -103,11 +103,11 @@
 - 不开发新的微信登录能力。
 - 不要求本地完成真实商户支付结算。
 - 不修改受保护的 `new-api`、`QuantumNous` 标识。
-- 本轮只执行已获授权的本地 child → supervisor 合并；不推送 GitHub、不创建 PR、不合入发布目标或部署，除非另行明确授权。
+- 本轮已按授权完成本地 child → Supervisor → `codex/p0-wallet-wechatpay` 合并；不推送 GitHub、不创建 PR、不发布或部署，除非另行明确授权。
 
 ## 上线推进目标（2026-08-20 前）
 
-- 本地发布阻塞项：完成 `p1-lint-debt` Supervisor 的 evidence repair、独立 Verify、Archive 和本地合并，并形成可追溯的 supervisor Verify 记录。最终前端 lint/typecheck/test/build 已在 child worktree 通过；`p1-http2-test-stability` 与 root/relaykit Go 门禁已经完成。
+- 本地发布阻塞项已收口：`p1-lint-debt` Supervisor 的 evidence repair、独立 Verify、Archive 和本地目标分支合并均已完成，并形成可追溯的 Supervisor Verify 记录。最终前端 lint/typecheck/test/build、`p1-http2-test-stability` 与 root/relaykit Go 门禁均已有通过证据。
 - 执行策略：独立 owned paths 可以并行推进；子代理最多五个，模型按 Luna max → Terra xhigh → Sol high 降级，每档最多验证两次，且禁止子代理派生子代理。
 - 检索策略：未知代码先用 Fast Context 定位，再用 `rg` 精确阅读；需要外部资料时使用 Fathom、Exa、Firecrawl、Tavily 交叉核验。
 - 上线环境仍需在发布前确认服务器、域名、HTTPS、数据库/Redis、镜像或二进制交付方式及回滚路径。真实微信/支付宝商户凭据仍不是本地 Build 条件；没有凭据时必须保持对应支付入口关闭或明确标记未完成，不能伪造真实结算验收。
