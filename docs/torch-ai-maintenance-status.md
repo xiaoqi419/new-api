@@ -19,6 +19,7 @@
 - 仍存本地验收范围之外的风险：完整 `format:check` 受既有 classic Tailwind `theme.css` 依赖缺口阻塞；最终重建后的受保护视频页面尚未在已认证浏览器会话中重新打开复验；隐藏素材选择器的数据加载仍会调用 `loadAssetOptions` 和 `/api/ark_asset`，属于可另行批准的清理项。上述事项均未写成已修复。
 - Comet Native change `upstream-rc25-sync` 已完成 Build 候选：以 Torch AI 基线 `60e2775e3` 和官方 `v1.0.0-rc.25` / `f11641428` 为输入，39 个官方提交、207 个文件差异已经完成三方合并，27 个预测冲突路径已逐组处理；当前仍在 Build，尚未进入 Verify/Archive。
 - rc.25 同步保留 Torch AI 的支付、拼团、返现、视频、素材库、无限画布、渠道监控、排行、实时并发、渠道兜底、发票、代理/白标和入口屏蔽策略，同时进入官方额度原子预扣、充值/订阅并发保护、OAuth、渠道测试、高级自定义渠道、Claude/Responses relay 修复和 Vitest 测试基础设施。
+- 下一独立 change 目标为“Figma 首页与全局主题改造”。当前 `upstream-rc25-sync` change 不包含首页或全局主题改造；该目标需另行建立 change 并重新确认范围与验收。
 
 ## 最终前端门禁记录（2026-08-19）
 
