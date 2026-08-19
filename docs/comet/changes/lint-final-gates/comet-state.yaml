@@ -1,0 +1,316 @@
+schema: comet.native.v4
+name: lint-final-gates
+language: zh-CN
+phase: archive
+status: active
+state_version: 8
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-final-gates
+  target_branch: codex/p1-lint-debt
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 2
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A4：lint 配置和依赖 diff 满足父 Supervisor 的精确范围，Canvas override 未变。
+    result: passed
+    reason:
+      text: The only oxlint config delta is the approved four-file administrator
+        iframe override; the existing Canvas override is unchanged, package and
+        lock files are unchanged, and the Classic Prettier ESM conversion is
+        behavior-equivalent and explicitly permitted.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A5：`web` lint/test/typecheck/build 与 `web/classic` build 全部通过；lint error 为
+      0，warnings 如实记录。
+    result: passed
+    reason:
+      text: Runtime records web lint exit 0 with 0 errors and 1,682 warnings, 281/281
+        tests passing across 45 files, successful typecheck and web build, and
+        successful Classic build.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A6：维护状态文档记录实际命令、结果、风险、合并和部署状态，并区分本地通过、线上待验收和微信登录搁置。
+    result: passed
+    reason:
+      text: Maintenance documentation accurately records local-only evidence, unmerged
+        and undeployed status, online-only real merchant payment acceptance,
+        paused WeChat-login expansion, and the trusted-iframe residual risk.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A7-A10：全量基线、语义行为、Supervisor 所有权和 iframe 信任模型与父规格一致。
+    result: passed
+    reason:
+      text: "Parent A7-A10 remain consistent with the candidate: baseline and
+        ownership are preserved, no application semantics changed in this child,
+        Canvas and generic preview sandbox policies match the approved model,
+        and all terminal code children have archived verification evidence."
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A11：独立 Verifier 可复核完整发布前门禁和文档留档。
+    result: passed
+    reason:
+      text: All authoritative release-gate commands and the independent scope review
+        are recorded and reproducible; no unapproved dependency, lint
+        suppression, ignore expansion, or rule severity change was found.
+      truncated: false
+builder_handoff:
+  candidate_id: d7cc9b29-5417-4cd9-9b53-8a0e18ea0232
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:fbb09e5e-8cfa-4dde-b29f-19019de4d92e
+  iteration: 1
+  summary:
+    text: "Final frontend gates completed on Terra/xhigh: lint passes with 0 errors
+      and 1682 warnings; tests 281/281 pass across 45 files; web typecheck/build
+      and web/classic build pass. Fixed the only remaining lint error by
+      converting classic/.prettierrc.mjs from CommonJS require/module.exports to
+      equivalent ESM import/export. Updated maintenance status with gate
+      evidence and residual risks."
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+  checks:
+    - name:
+        text: npx --yes bun run lint (web)
+        truncated: false
+      result: passed
+      note:
+        text: exit 0; 0 errors; 1682 warnings
+        truncated: false
+    - name:
+        text: npx --yes bun test (web)
+        truncated: false
+      result: passed
+      note:
+        text: exit 0; 281 pass; 0 fail; 45 files
+        truncated: false
+    - name:
+        text: npx --yes bun run typecheck (web)
+        truncated: false
+      result: passed
+      note:
+        text: exit 0
+        truncated: false
+    - name:
+        text: npx --yes bun run build (web)
+        truncated: false
+      result: passed
+      note:
+        text: exit 0
+        truncated: false
+    - name:
+        text: npx --yes bun run build (web/classic)
+        truncated: false
+      result: passed
+      note:
+        text: exit 0
+        truncated: false
+    - name:
+        text: diff/config scope review
+        truncated: false
+      result: passed
+      note:
+        text: oxlint diff is only approved four-admin iframe override relative to
+          codex/p0-wallet-wechatpay; package/lock/dependency/script files
+          unchanged
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Warnings were recorded but not cleaned as out of scope.
+      truncated: false
+    - text: Child worktree has not been pushed, merged, archived, or deployed;
+        Supervisor independent Verify remains required.
+      truncated: false
+    - text: Real merchant payment remains online-only acceptance; new WeChat login
+        development remains paused; approved external iframe trust model retains
+        documented residual risk.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-19T01:56:44.824Z
+blockers: []
+verification:
+  candidate_id: d7cc9b29-5417-4cd9-9b53-8a0e18ea0232
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:88415b09-1363-40b2-9ba3-763a320aa7db
+  iteration: 1
+  attempt: 2
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: web-lint
+      name:
+        text: frontend full lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun run lint
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 3704
+    - id: web-tests
+      name:
+        text: frontend test suite
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun test
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5421
+    - id: web-typecheck
+      name:
+        text: frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5224
+    - id: web-build
+      name:
+        text: frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 8266
+    - id: classic-build
+      name:
+        text: classic frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/classic
+      status: passed
+      exit_code: 0
+      duration_ms: 6023
+    - id: scope-diff
+      name:
+        text: lint config and dependency scope review
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git
+            diff codex/p0-wallet-wechatpay...HEAD -- web/.oxlintrc.json; git
+            diff --name-only codex/p0-wallet-wechatpay...HEAD --
+            web/package.json web/bun.lock web/classic/package.json
+            web/classic/bun.lock package.json bun.lock
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 391
+  summary:
+    text: Independent Terra/xhigh verification passed A1-A5. Final-gate code and
+      documentation changes are within the approved scope, and all Runtime
+      checks passed.
+    truncated: false
+  risks:
+    - text: 1,682 warning-only diagnostics remain intentionally out of scope.
+      truncated: false
+    - text: Real merchant payment acceptance remains online-only and new WeChat-login
+        development remains paused.
+      truncated: false
+    - text: The approved administrator-configured iframe trust model retains
+        documented API-key URL-injection and iframe-permission-abuse residual
+        risk.
+      truncated: false
+    - text: The child is not yet merged, pushed, or deployed.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-19T02:34:57.277Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: Independent Runtime verifier remained running beyond the 900-second
+        execution limit without returning a verdict or blocker; all dispatched
+        checks had previously completed successfully in the builder gate run.
+      truncated: false
+    completed_at: 2026-08-19T02:27:30.976Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent Terra/xhigh verification passed A1-A5. Final-gate code and
+        documentation changes are within the approved scope, and all Runtime
+        checks passed.
+      truncated: false
+    completed_at: 2026-08-19T02:34:57.277Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-19T01:39:23.894Z

@@ -11,15 +11,28 @@
 - 微信/支付宝真实商户收款、平台回调、公网 HTTPS、真实支付结算仍未完成。这些属于线上环境验收，不属于当前本地代码缺陷。
 - 微信登录相关代码已经存在，但按照当前产品决策，暂不继续扩展微信登录功能。
 - Phase 4 已完成质量门禁、跨功能回归、i18n 检查和发布前风险清单整理；A1-A7 已于 2026-08-18 通过独立 Verify，`p1-quality-regression` 已归档并合入 `codex/p0-wallet-wechatpay`（merge commit `4a79c68cd`）。
-- 当前本地发布阻塞集中在历史 lint 债务收口：`p1-lint-debt` 已完成 9 个代码 child，`lint-default-shared` 已就绪，`lint-classic-common-pages` 仍在 Build，`lint-final-gates` 等待这两个 child 完成后执行。
+- 当前本地前端发布门禁已在 `lint-final-gates` child 分支完成：全量 lint、测试、类型检查和两套前端构建均通过；结果仍需由 `p1-lint-debt` Supervisor 独立 Verify 并合入后续目标。
+
+## 最终前端门禁记录（2026-08-19）
+
+- `web`：`npx --yes bun run lint` 退出码 0，0 errors、1,682 warnings。warnings 为历史 warning-only 债务，本 child 未专项清理。
+- `web`：`npx --yes bun test` 退出码 0，281 pass、0 fail，45 个文件。
+- `web`：`npx --yes bun run typecheck` 退出码 0。
+- `web`：`npx --yes bun run build` 退出码 0。
+- `web/classic`：`npx --yes bun run build` 退出码 0。
+- 为清除全量 oxlint 唯一残余 error，`web/classic/.prettierrc.mjs` 将等价的 CommonJS `require` 配置改为 ESM default import/export；该文件属于规格允许的“当前 error 明确要求”范围。未修改 package、lock、依赖、脚本或框架版本。
+- 相对 `codex/p0-wallet-wechatpay` 的 `web/.oxlintrc.json` diff 仅保留已批准的四个管理员受信任 iframe 文件级 `react/iframe-missing-sandbox: off` override；既有 Canvas override 未变，未扩大 ignore、降低规则级别或新增 lint-disable。
+- 以上结果来自本地 `codex/lint-final-gates` child worktree；尚未推送、创建 PR、合并到 `codex/p1-lint-debt`、合入发布目标或部署。下一步由 Supervisor 完成独立 Verify、Archive 与本地合并流程。
+- 微信/支付宝真实商户凭据、公网 HTTPS 回调、真实下单与结算仍待线上环境验收；微信登录新增开发继续按产品决策搁置。
+- 四个管理员可配置外部 iframe 继续采用已确认的受信任集成模型，以保留脚本、同源存储、Cookie、OAuth、表单、弹窗和媒体能力；管理员配置或账户失陷时仍存在 URL 注入 API key 暴露和 iframe 权限滥用的 residual risk。通用 `WebPreviewBody` 仍保留 scripts/forms/popups/presentation，并移除 `allow-same-origin` 以使用 opaque origin。
 
 ## Phase 4 当前进度（2026-08-18）
 
 - Comet Native change `p1-quality-regression` 的 A1-A7 已通过独立 Verify并完成归档；change 分支已合入 `codex/p0-wallet-wechatpay`，尚未推送、创建 PR 或部署。
 - 已修复 CI 后端构建前置条件：为 `web/dist`、`web/classic/dist` 和 `web/canvas/dist` 创建 embed placeholder，避免干净 checkout 因 ignored 前端产物缺失而无法执行 root `go build`。
 - 验收候选的后端检查已通过：root 与独立 `relaykit` 的 `go vet`、build 和全量测试均通过，`service/channel_affinity_usage_cache_test.go` 的时间键碰撞与共享缓存污染已修复。后续 `p1-http2-test-stability` 已稳定 Windows raw HTTP/2 fixture，完成独立 Verify、Archive，并以 merge commit `f734ce67b` 合入 `codex/p0-wallet-wechatpay`；生产 `GetBody` 请求链路未改动。
-- 本地前端检查已通过：`npx --yes bun run typecheck`、`bun test`（278 pass / 42 files）、`bun run build` 与 `bun run i18n:sync`。
-- 全量前端 oxlint 仍未通过：共 1,400 errors / 383 files，其中 `web/classic` 为 1,059 errors / 236 files，`web/src` 为 341 errors / 147 files。用户已确认将该历史 lint 债务拆为独立后续 change；本轮只验收修改或直接影响的 default 文件定向 lint，不宣称全量 lint 通过。
+- 本地前端检查已通过：最终 child 的 `npx --yes bun run typecheck`、`npx --yes bun test`（281 pass / 45 files）、`npx --yes bun run build` 与 `web/classic` build 均通过。
+- 全量前端 oxlint 已在最终 child 收口：`npx --yes bun run lint` 为 0 errors、1,682 warnings；warnings 仍是历史 warning-only 债务，本阶段不专项清理。
 - 当前仍不能宣称真实商户支付完成：微信/支付宝凭据、公网 HTTPS、回调验签和真实结算继续等待线上验收。
 - 微信登录新增开发继续按产品决策暂时搁置，不属于本轮质量修复范围。
 
@@ -35,7 +48,7 @@
 - `lint-default-user-features` 的 A1-A3 已通过独立 Verify并完成 Archive：12 个 owned feature 目录为 0 errors、保留 9 项 warning-only diagnostics，18 个测试文件共 102/102 tests 通过，frontend typecheck 通过。2FA 重复备用码使用“值 + 出现次数”的稳定 identity，Canvas 保持已批准的可信同源基线；Archive commit 为 `2040c8c878f3f5d26b2624f3e8e78566532ede15`，随后以 merge commit `b3cac10e62156d003a3049f0ab2928565d8b8416` 合入 `codex/p1-lint-debt`。
 - 用户已确认当前同源 Canvas 采用可信应用模型：移除 `/canvas-app` iframe 的整个 `sandbox` 属性，以保留浏览器存储和严格同源 `postMessage` 契约并清除无效隔离配置。`p1-canvas-trusted-iframe-policy` 的 A1-A4 已通过独立 Verify、由用户接受并完成 Archive，已以 merge commit `03ee1599d` 合入 `codex/p0-wallet-wechatpay`。更强隔离需要后续将 Canvas 部署到独立 origin 并重设计通信桥，不在本轮范围。
 - Canvas 决策已由 Fathom、Exa、Tavily 及 WHATWG/MDN 官方资料交叉核对；Firecrawl 当前无可用工具或 API key，此检索缺口已明确记录。
-- `p1-lint-debt` 当前共有 12 个 child：9 个已 done，`lint-default-shared` 为 ready，`lint-classic-common-pages` 为 active/build，`lint-final-gates` 为 pending。`lint-classic-common-pages` 涉及外部或管理员可配置 iframe 的既有安全边界；在没有新的产品/安全决策前，不通过随意添加 `sandbox` 或 lint override 伪造通过。
+- `p1-lint-debt` 当前共有 12 个 child：代码 child 已完成，`lint-final-gates` 已完成本地 Build 门禁并等待 Supervisor Verify。`lint-classic-common-pages` 涉及外部或管理员可配置 iframe 的既有安全边界；在没有新的产品/安全决策前，不通过随意添加 `sandbox` 或 lint override 伪造通过。
 - 当前所有结果仍是本地状态；尚未推送、创建 PR 或部署。真实商户支付仍等待线上环境验收，微信登录新增开发继续搁置。
 
 ## 状态表
@@ -62,7 +75,7 @@
 ### 已实现但仍未完成上线闭环
 
 - **真实商户支付验收**：微信/支付宝真实凭据、客户端下单、公网 HTTPS 回调、验签、重复回调幂等、余额到账和真实结算证据只能在线上环境完成。
-- **全量 lint 收口**：`lint-default-shared` 尚未开始 Build；`lint-classic-common-pages` 尚未完成 Build/Verify/Archive；二者完成后才能启动 `lint-final-gates`，运行全量 lint、tests、typecheck 和两套前端 build。
+- **全量 lint 收口**：`lint-final-gates` 已在 child worktree 完成全量 lint、tests、typecheck 和两套前端 build；仍需 Supervisor 独立 Verify、Archive 并合入，warnings 不在本阶段专项清理。
 - **发布与部署**：当前 lint supervisor 分支只完成本地 child merge，尚未推送、创建 PR、合入发布目标、打标签、发布或部署；服务器、域名、HTTPS、数据库/Redis、交付方式和回滚路径也仍需上线前确认。
 
 ## 线上支付验收待办
@@ -80,7 +93,7 @@
 以下事项按已确认边界继续推进：
 
 - `p1-http2-test-stability` 已完成，不再是剩余项；继续保持其生产 `GetBody` 请求链路未改动的边界。
-- 继续完成 `p1-lint-debt`：先推进已 ready 的 `lint-default-shared`，并完成 active 的 `lint-classic-common-pages`；两者 Archive 并合入 supervisor 后，再执行 `lint-final-gates`。
+- 继续完成 `p1-lint-debt`：`lint-final-gates` child 的本地门禁已完成，下一步执行 Supervisor 独立 Verify、Archive 和本地合并。
 - 最终门禁必须如实记录全量 oxlint error/warning 数量，并运行 `web` 的 lint、tests、typecheck、build 以及 `web/classic` build；不得关闭规则、降低错误级别、扩大 ignore、增加 disable 注释或修改依赖来伪造通过。
 - 继续保持真实微信/支付宝商户支付仅为线上验收事项，不把商户凭据、公网 HTTPS、回调或结算缺失当作本地代码缺陷。
 - 继续搁置微信登录新增开发；本阶段不新增支付能力、不升级 UI 框架、依赖或数据库。
@@ -94,7 +107,7 @@
 
 ## 上线推进目标（2026-08-20 前）
 
-- 本地发布阻塞项：完成 `p1-lint-debt` 剩余三个 child（`lint-default-shared`、`lint-classic-common-pages`、`lint-final-gates`），通过最终前端 lint/typecheck/test/build，并形成可追溯的 supervisor Verify 记录。`p1-http2-test-stability` 与 root/relaykit Go 门禁已经完成。
+- 本地发布阻塞项：完成 `p1-lint-debt` Supervisor 对最终 child 的独立 Verify、Archive 和本地合并，并形成可追溯的 supervisor Verify 记录。最终前端 lint/typecheck/test/build 已在 child worktree 通过；`p1-http2-test-stability` 与 root/relaykit Go 门禁已经完成。
 - 执行策略：独立 owned paths 可以并行推进；子代理最多五个，模型按 Luna max → Terra xhigh → Sol high 降级，每档最多验证两次，且禁止子代理派生子代理。
 - 检索策略：未知代码先用 Fast Context 定位，再用 `rg` 精确阅读；需要外部资料时使用 Fathom、Exa、Firecrawl、Tavily 交叉核验。
 - 上线环境仍需在发布前确认服务器、域名、HTTPS、数据库/Redis、镜像或二进制交付方式及回滚路径。真实微信/支付宝商户凭据仍不是本地 Build 条件；没有凭据时必须保持对应支付入口关闭或明确标记未完成，不能伪造真实结算验收。
