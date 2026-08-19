@@ -20,10 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import { Icon } from '@douyinfe/semi-ui';
 
-const WeChatIcon = () => {
-  function CustomIcon() {
-    return (
-      <svg
+const WeChatSvg = () => (
+  <svg
         t='1709714447384'
         className='icon'
         viewBox='0 0 1024 1024'
@@ -41,15 +39,9 @@ const WeChatIcon = () => {
           d='M866.7 792.7c56.9-41.2 93.2-102 93.2-169.7 0-124-120.8-224.5-269.9-224.5-149 0-269.9 100.5-269.9 224.5S540.9 847.5 690 847.5c30.8 0 60.6-4.4 88.1-12.3 2.6-0.8 5.2-1.2 7.9-1.2 5.2 0 9.9 1.6 14.3 4.1l59.1 34c1.7 1 3.3 1.7 5.2 1.7 2.4 0 4.7-0.9 6.4-2.6 1.7-1.7 2.6-4 2.6-6.4 0-2.2-0.9-4.4-1.4-6.6-0.3-1.2-7.6-28.3-12.2-45.3-0.5-1.9-0.9-3.8-0.9-5.7 0.1-5.9 3.1-11.2 7.6-14.5zM600.2 587.2c-19.9 0-36-16.1-36-35.9 0-19.8 16.1-35.9 36-35.9s36 16.1 36 35.9c0 19.8-16.2 35.9-36 35.9z m179.9 0c-19.9 0-36-16.1-36-35.9 0-19.8 16.1-35.9 36-35.9s36 16.1 36 35.9c-0.1 19.8-16.2 35.9-36 35.9z'
           p-id='5093'
         ></path>
-      </svg>
-    );
-  }
+  </svg>
+);
 
-  return (
-    <div>
-      <Icon svg={<CustomIcon />} />
-    </div>
-  );
-};
+const WeChatIcon = () => <div><Icon svg={<WeChatSvg />} /></div>;
 
 export default WeChatIcon;

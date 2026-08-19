@@ -20,7 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useRef, useEffect, useCallback } from 'react';
 import { Toast } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
-import { usePlayground } from '../../contexts/PlaygroundContext';
+import { usePlayground } from '../../contexts/usePlayground';
 
 const CustomInputRender = (props) => {
   const { t } = useTranslation();

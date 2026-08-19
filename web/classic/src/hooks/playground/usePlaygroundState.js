@@ -118,6 +118,7 @@ export const usePlaygroundState = () => {
   const chatRef = useRef(null);
   const saveConfigTimeoutRef = useRef(null);
   const saveMessagesTimeoutRef = useRef(null);
+  const initialMessageRef = useRef(message);
 
   // 配置更新函数
   const handleInputChange = useCallback((name, value) => {
@@ -213,7 +214,7 @@ export const usePlaygroundState = () => {
         setMessage(getDefaultMessages(t));
       }, 0);
     }
-  }, []);
+  }, [t]);
 
   // 清理定时器
   useEffect(() => {
@@ -226,9 +227,10 @@ export const usePlaygroundState = () => {
 
   // 页面首次加载时，若最后一条消息仍处于 LOADING/INCOMPLETE 状态，自动修复
   useEffect(() => {
-    if (!Array.isArray(message) || message.length === 0) return;
+    const initialMessage = initialMessageRef.current;
+    if (!Array.isArray(initialMessage) || initialMessage.length === 0) return;
 
-    const lastMsg = message[message.length - 1];
+    const lastMsg = initialMessage.at(-1);
     if (
       lastMsg.status === MESSAGE_STATUS.LOADING ||
       lastMsg.status === MESSAGE_STATUS.INCOMPLETE
@@ -246,11 +248,11 @@ export const usePlaygroundState = () => {
         isThinkingComplete: true,
       };
 
-      const updatedMessages = [...message.slice(0, -1), fixedLastMsg];
+      const updatedMessages = [...initialMessage.slice(0, -1), fixedLastMsg];
       setMessage(updatedMessages);
 
       // 保存修复后的消息列表
-      setTimeout(() => saveMessagesImmediately(updatedMessages), 0);
+      setTimeout(() => saveMessages(updatedMessages), 0);
     }
   }, []);
 

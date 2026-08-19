@@ -68,6 +68,8 @@ const PersonalSetting = () => {
   const [wechatBindCode, setWechatBindCode] = useState('');
   const [wechatBindLoading, setWechatBindLoading] = useState(false);
   const wechatBindPollRef = useRef(null);
+  const getUserDataRef = useRef(null);
+  const fetchWeChatBindCodeRef = useRef(null);
   const [showEmailBindModal, setShowEmailBindModal] = useState(false);
   const [showAccountDeleteModal, setShowAccountDeleteModal] = useState(false);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
@@ -157,12 +159,12 @@ const PersonalSetting = () => {
             setTurnstileSiteKey('');
           }
         }
-      } catch (e) {
+      } catch {
         // ignore and keep local status
       }
     })();
 
-    getUserData();
+    void getUserDataRef.current?.();
 
     isPasskeySupported()
       .then(setPasskeySupported)
@@ -235,18 +237,19 @@ const PersonalSetting = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       // 忽略错误，保留默认状态
     }
   };
 
   const startPasskeyManagementVerification = async (apiCall, options = {}) => {
     const methods = await checkPasskeyVerificationMethods();
-    const requiredMethod = methods.has2FA
-      ? '2fa'
-      : methods.hasPasskey
-        ? 'passkey'
-        : null;
+    let requiredMethod = null;
+    if (methods.has2FA) {
+      requiredMethod = '2fa';
+    } else if (methods.hasPasskey) {
+      requiredMethod = 'passkey';
+    }
 
     if (!requiredMethod) {
       showError(t('您需要先启用两步验证或 Passkey 才能执行此操作'));
@@ -373,6 +376,7 @@ const PersonalSetting = () => {
       showError(message);
     }
   };
+  getUserDataRef.current = getUserData;
 
   const handleSystemTokenClick = async (e) => {
     e.target.select();
@@ -428,7 +432,7 @@ const PersonalSetting = () => {
         showInfo(t('验证码已过期，请点击刷新重新获取'));
       }
       // pending：继续轮询
-    } catch (error) {
+    } catch {
       // 网络抖动忽略
     }
   };
@@ -450,16 +454,17 @@ const PersonalSetting = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('获取验证码失败，请重试'));
     } finally {
       setWechatBindLoading(false);
     }
   };
+  fetchWeChatBindCodeRef.current = fetchWeChatBindCode;
 
   useEffect(() => {
     if (showWeChatBindModal) {
-      fetchWeChatBindCode();
+      void fetchWeChatBindCodeRef.current?.();
     } else {
       stopWeChatBindPoll();
     }
@@ -551,13 +556,17 @@ const PersonalSetting = () => {
   };
 
   const handleNotificationSettingChange = (type, value) => {
+    let nextValue = value;
+    if (value.target) {
+      if (value.target.value !== undefined) {
+        nextValue = value.target.value;
+      } else {
+        nextValue = value.target.checked;
+      }
+    }
     setNotificationSettings((prev) => ({
       ...prev,
-      [type]: value.target
-        ? value.target.value !== undefined
-          ? value.target.value
-          : value.target.checked
-        : value, // handle checkbox properly
+      [type]: nextValue,
     }));
   };
 
@@ -591,7 +600,7 @@ const PersonalSetting = () => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('设置保存失败'));
     }
   };

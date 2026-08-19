@@ -20,10 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import { Icon } from '@douyinfe/semi-ui';
 
-const LinuxDoIcon = (props) => {
-  function CustomIcon() {
-    return (
-      <svg
+const LinuxDoSvg = (props) => (
+  <svg
         className='icon'
         viewBox='0 0 16 16'
         version='1.1'
@@ -46,11 +44,9 @@ const LinuxDoIcon = (props) => {
             fill='#1D1D1F'
           />
         </g>
-      </svg>
-    );
-  }
+  </svg>
+);
 
-  return <Icon svg={<CustomIcon />} />;
-};
+const LinuxDoIcon = (props) => <Icon svg={<LinuxDoSvg {...props} />} />;
 
 export default LinuxDoIcon;

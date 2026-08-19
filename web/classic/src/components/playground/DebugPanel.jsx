@@ -43,6 +43,13 @@ const DebugPanel = ({
 
   const [activeKey, setActiveKey] = useState(activeDebugTab);
 
+  let timestampText = '';
+  if (activeKey === 'preview' && debugData.previewTimestamp) {
+    timestampText = `${t('预览更新')}: ${new Date(debugData.previewTimestamp).toLocaleString()}`;
+  } else if (debugData.timestamp) {
+    timestampText = `${t('最后请求')}: ${new Date(debugData.timestamp).toLocaleString()}`;
+  }
+
   useEffect(() => {
     setActiveKey(activeDebugTab);
   }, [activeDebugTab]);
@@ -208,11 +215,7 @@ const DebugPanel = ({
           <div className='flex items-center gap-2'>
             <Clock size={14} className='text-gray-500' />
             <Typography.Text className='text-xs text-gray-500'>
-              {activeKey === 'preview' && debugData.previewTimestamp
-                ? `${t('预览更新')}: ${new Date(debugData.previewTimestamp).toLocaleString()}`
-                : debugData.timestamp
-                  ? `${t('最后请求')}: ${new Date(debugData.timestamp).toLocaleString()}`
-                  : ''}
+              {timestampText}
             </Typography.Text>
           </div>
         )}

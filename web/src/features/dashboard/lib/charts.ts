@@ -61,8 +61,7 @@ export function getDashboardChartColors(domainLength: number): string[] {
   if (domainLength <= DASHBOARD_SERIES_COLORS.length) {
     return DASHBOARD_SERIES_COLORS.slice(0, Math.max(domainLength, 1))
   }
-  return Array.from(
-    { length: domainLength },
+  return [...Array(domainLength)].map(
     (_, i) => DASHBOARD_SERIES_COLORS[i % DASHBOARD_SERIES_COLORS.length]
   )
 }
@@ -251,10 +250,11 @@ export function processChartData(
     const tokens = Number(item.token_used) || 0
 
     // Aggregate by time and model
-    if (!timeModelMap.has(timeKey)) {
-      timeModelMap.set(timeKey, new Map())
+    let modelMap = timeModelMap.get(timeKey)
+    if (!modelMap) {
+      modelMap = new Map()
+      timeModelMap.set(timeKey, modelMap)
     }
-    const modelMap = timeModelMap.get(timeKey)!
     const existing = modelMap.get(model) || { quota: 0, count: 0, tokens: 0 }
     modelMap.set(model, {
       quota: existing.quota + quota,
@@ -275,10 +275,10 @@ export function processChartData(
     })
   })
 
-  const allModels = Array.from(modelTotalsMap.keys())
-  const sortedTimes = Array.from(timeModelMap.keys()).sort()
+  const allModels = [...modelTotalsMap.keys()]
+  const sortedTimes = [...timeModelMap.keys()].sort()
   const sortedModels = [...allModels].sort()
-  const modelColorDomain = Array.from(new Set([...sortedModels, otherLabel]))
+  const modelColorDomain = [...new Set([...sortedModels, otherLabel])]
   const modelColorRange = getDashboardChartColors(modelColorDomain.length)
   const otherColor = modelColorRange[modelColorDomain.indexOf(otherLabel)]
   const otherTooltipColor =
@@ -296,13 +296,13 @@ export function processChartData(
     const lastTime = Math.max(
       ...data.map((item) => Number(item.created_at) || 0)
     )
-    const intervalSec =
-      timeGranularity === 'week'
-        ? 604800
-        : timeGranularity === 'day'
-          ? 86400
-          : 3600
-    const padded = Array.from({ length: MAX_TREND_POINTS }, (_, i) =>
+    let intervalSec = 3600
+    if (timeGranularity === 'week') {
+      intervalSec = 604800
+    } else if (timeGranularity === 'day') {
+      intervalSec = 86400
+    }
+    const padded = [...Array(MAX_TREND_POINTS)].map((_, i) =>
       formatChartTime(
         lastTime - (MAX_TREND_POINTS - 1 - i) * intervalSec,
         timeGranularity
@@ -312,17 +312,17 @@ export function processChartData(
   }
   const chartTimes = fillTimePoints(sortedTimes)
 
-  const totalTimes = Array.from(modelTotalsMap.values()).reduce(
+  const totalTimes = [...modelTotalsMap.values()].reduce(
     (sum, x) => sum + (Number(x.count) || 0),
     0
   )
-  const totalQuotaRaw = Array.from(modelTotalsMap.values()).reduce(
+  const totalQuotaRaw = [...modelTotalsMap.values()].reduce(
     (sum, x) => sum + (Number(x.quota) || 0),
     0
   )
 
   // Pie chart (model call count proportion)
-  const pieValues = Array.from(modelTotalsMap.entries())
+  const pieValues = [...modelTotalsMap.entries()]
     .map(([model, stats]) => ({
       type: model,
       value: Number(stats.count) || 0,
@@ -363,7 +363,7 @@ export function processChartData(
 
   // Area chart: top models by quota + "Other" bucket (too many series = unreadable)
   const MAX_AREA_MODELS = 15
-  const rankedQuotaModels = Array.from(modelTotalsMap.entries())
+  const rankedQuotaModels = [...modelTotalsMap.entries()]
     .map(([model, stats]) => ({
       Model: model,
       Quota: Number(stats.quota) || 0,
@@ -405,7 +405,7 @@ export function processChartData(
 
   // Line chart: model call trend (top models + "Other" bucket)
   const MAX_TREND_MODELS = 20
-  const rankedTrendModels = Array.from(modelTotalsMap.entries())
+  const rankedTrendModels = [...modelTotalsMap.entries()]
     .map(([model, stats]) => ({
       Model: model,
       Count: Number(stats.count) || 0,
@@ -449,7 +449,7 @@ export function processChartData(
 
   // Rank bar: model call count ranking (top 20 + "Other" bucket)
   const MAX_RANK_MODELS = 20
-  const allRankValues = Array.from(modelTotalsMap.entries())
+  const allRankValues = [...modelTotalsMap.entries()]
     .map(([model, stats]) => ({
       Model: model,
       Count: Number(stats.count) || 0,
@@ -761,7 +761,7 @@ export function processUserChartData(
     userQuotaTotal.set(username, prev + (Number(item.quota) || 0))
   })
 
-  const sorted = Array.from(userQuotaTotal.entries()).sort(
+  const sorted = [...userQuotaTotal.entries()].sort(
     (a, b) => b[1] - a[1]
   )
   const topUsers = sorted.slice(0, limit).map(([u]) => u)
@@ -791,12 +791,15 @@ export function processUserChartData(
     allTimePoints.add(timeKey)
     const user = item.username || 'unknown'
     if (!topUserSet.has(user)) return
-    if (!timeUserMap.has(timeKey)) timeUserMap.set(timeKey, new Map())
-    const map = timeUserMap.get(timeKey)!
+    let map = timeUserMap.get(timeKey)
+    if (!map) {
+      map = new Map()
+      timeUserMap.set(timeKey, map)
+    }
     map.set(user, (map.get(user) || 0) + (Number(item.quota) || 0))
   })
 
-  const sortedTimePoints = Array.from(allTimePoints).sort()
+  const sortedTimePoints = [...allTimePoints].sort()
   const trendValues: Array<{
     Time: string
     User: string

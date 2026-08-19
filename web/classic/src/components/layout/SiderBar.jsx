@@ -77,6 +77,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const [openedKeys, setOpenedKeys] = useState([]);
   const location = useLocation();
   const [routerMapState, setRouterMapState] = useState(routerMap);
+  const isDataExportEnabled =
+    localStorage.getItem('enable_data_export') === 'true';
+  const isDrawingEnabled = localStorage.getItem('enable_drawing') === 'true';
+  const isTaskEnabled = localStorage.getItem('enable_task') === 'true';
+  const isAdminUser = isAdmin();
+  const isRootUser = isRoot();
 
   const workspaceItems = useMemo(() => {
     const items = [
@@ -84,10 +90,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('数据看板'),
         itemKey: 'detail',
         to: '/detail',
-        className:
-          localStorage.getItem('enable_data_export') === 'true'
-            ? ''
-            : 'tableHiddle',
+        className: isDataExportEnabled ? '' : 'tableHiddle',
       },
       {
         text: t('令牌管理'),
@@ -103,17 +106,13 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('绘图日志'),
         itemKey: 'midjourney',
         to: '/midjourney',
-        className:
-          localStorage.getItem('enable_drawing') === 'true'
-            ? ''
-            : 'tableHiddle',
+        className: isDrawingEnabled ? '' : 'tableHiddle',
       },
       {
         text: t('任务日志'),
         itemKey: 'task',
         to: '/task',
-        className:
-          localStorage.getItem('enable_task') === 'true' ? '' : 'tableHiddle',
+        className: isTaskEnabled ? '' : 'tableHiddle',
       },
       {
         text: t('视频生成'),
@@ -144,9 +143,9 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
     return filteredItems;
   }, [
-    localStorage.getItem('enable_data_export'),
-    localStorage.getItem('enable_drawing'),
-    localStorage.getItem('enable_task'),
+    isDataExportEnabled,
+    isDrawingEnabled,
+    isTaskEnabled,
     t,
     isModuleVisible,
   ]);
@@ -190,73 +189,73 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('渠道管理'),
         itemKey: 'channel',
         to: '/channel',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('订阅管理'),
         itemKey: 'subscription',
         to: '/subscription',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('模型管理'),
         itemKey: 'models',
         to: '/console/models',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('模型部署'),
         itemKey: 'deployment',
         to: '/deployment',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('兑换码管理'),
         itemKey: 'redemption',
         to: '/redemption',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('发票管理'),
         itemKey: 'invoice',
         to: '/invoice',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('邀请返现'),
         itemKey: 'rebate',
         to: '/rebate',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('拼团管理'),
         itemKey: 'groupbuy',
         to: '/groupbuy-admin',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('拉新排行'),
         itemKey: 'invite_ranking',
         to: '/invite-ranking',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('用户排行'),
         itemKey: 'user_ranking',
         to: '/user-ranking',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('用户管理'),
         itemKey: 'user',
         to: '/user',
-        className: isAdmin() ? '' : 'tableHiddle',
+        className: isAdminUser ? '' : 'tableHiddle',
       },
       {
         text: t('系统设置'),
         itemKey: 'setting',
         to: '/setting',
-        className: isRoot() ? '' : 'tableHiddle',
+        className: isRootUser ? '' : 'tableHiddle',
       },
     ];
 
@@ -267,7 +266,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     });
 
     return filteredItems;
-  }, [isAdmin(), isRoot(), t, isModuleVisible]);
+  }, [isAdminUser, isRootUser, t, isModuleVisible]);
 
   const chatMenuItems = useMemo(() => {
     const items = [
@@ -338,7 +337,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           setChatItems(chatItems);
           updateRouterMapWithChats(chats);
         }
-      } catch (e) {
+      } catch {
         showError('聊天数据解析失败');
       }
     }
@@ -471,7 +470,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         type='sidebar'
         className=''
         collapsed={collapsed}
-        showAdmin={isAdmin()}
+        showAdmin={isAdminUser}
       >
         <Nav
           className='sidebar-nav'
@@ -549,7 +548,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           )}
 
           {/* 管理员区域 - 只在管理员时显示且配置允许时显示 */}
-          {isAdmin() && hasSectionVisibleModules('admin') && (
+          {isAdminUser && hasSectionVisibleModules('admin') && (
             <>
               <Divider className='sidebar-divider' />
               <div>

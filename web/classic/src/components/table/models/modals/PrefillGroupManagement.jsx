@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SideSheet,
   Button,
@@ -59,6 +59,7 @@ const PrefillGroupManagement = ({ visible, onClose }) => {
   const [groups, setGroups] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
   const [editingGroup, setEditingGroup] = useState({ id: undefined });
+  const loadGroupsRef = useRef(null);
 
   const typeOptions = [
     { label: t('模型组'), value: 'model' },
@@ -76,11 +77,13 @@ const PrefillGroupManagement = ({ visible, onClose }) => {
       } else {
         showError(res.data.message || t('获取组列表失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('获取组列表失败'));
     }
     setLoading(false);
   };
+
+  loadGroupsRef.current = loadGroups;
 
   // 删除组
   const deleteGroup = async (id) => {
@@ -92,7 +95,7 @@ const PrefillGroupManagement = ({ visible, onClose }) => {
       } else {
         showError(res.data.message || t('删除失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('删除失败'));
     }
   };
@@ -151,8 +154,9 @@ const PrefillGroupManagement = ({ visible, onClose }) => {
                 ? JSON.parse(items || '{}')
                 : items || {};
             const keys = Object.keys(obj);
-            if (keys.length === 0)
+            if (keys.length === 0) {
               return <Text type='tertiary'>{t('暂无项目')}</Text>;
+            }
             return renderLimitedItems({
               items: keys,
               renderItem: (key, idx) => (
@@ -217,7 +221,7 @@ const PrefillGroupManagement = ({ visible, onClose }) => {
 
   useEffect(() => {
     if (visible) {
-      loadGroups();
+      loadGroupsRef.current?.();
     }
   }, [visible]);
 

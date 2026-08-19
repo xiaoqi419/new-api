@@ -134,10 +134,12 @@ const TaskLogsCards = (taskLogsData) => {
         if (detail?.resolution) paramParts.push(detail.resolution);
         if (detail?.ratio) paramParts.push(detail.ratio);
         if (detail?.duration) paramParts.push(`${detail.duration}s`);
-        if (detail?.framespersecond)
+        if (detail?.framespersecond) {
           paramParts.push(`${detail.framespersecond}fps`);
-        if (detail && 'generate_audio' in detail)
+        }
+        if (detail && 'generate_audio' in detail) {
           paramParts.push(detail.generate_audio ? t('有声') : t('无声'));
+        }
         const paramStr = paramParts.join(' · ');
         const tokens = detail?.usage?.total_tokens;
         const resultUrl = record.result_url;
@@ -149,6 +151,63 @@ const TaskLogsCards = (taskLogsData) => {
           record.status === 'SUCCESS' &&
           Array.isArray(record.data) &&
           record.data.some((c) => c.audio_url);
+        let footerContent = (
+          <Typography.Text type='tertiary' size='small'>
+            {active ? t('处理中...') : t('无')}
+          </Typography.Text>
+        );
+        if (isSunoSuccess) {
+          footerContent = (
+            <Button
+              theme='borderless'
+              type='primary'
+              size='small'
+              icon={<Music size={14} />}
+              onClick={() => openAudioModal(record.data)}
+            >
+              {t('预览音乐')}
+            </Button>
+          );
+        } else if (record.status === 'SUCCESS' && isVideoTask && hasResultUrl) {
+          footerContent = (
+            <Button
+              theme='borderless'
+              type='primary'
+              size='small'
+              icon={<Video size={14} />}
+              onClick={() => openVideoModal(resultUrl)}
+            >
+              {t('预览视频')}
+            </Button>
+          );
+        } else if (record.status === 'FAILURE') {
+          footerContent = (
+            <Typography.Text
+              type='danger'
+              ellipsis={{ showTooltip: true }}
+              style={{ maxWidth: '70%' }}
+            >
+              {record.fail_reason || t('失败')}
+            </Typography.Text>
+          );
+        }
+        let durationContent = null;
+        if (record.finish_time) {
+          durationContent = renderDuration(
+            record.submit_time,
+            record.finish_time,
+          );
+        } else if (elapsedSec !== null) {
+          durationContent = (
+            <Tag
+              color='blue'
+              shape='circle'
+              prefixIcon={<Clock size={14} />}
+            >
+              {formatElapsed(elapsedSec)}
+            </Tag>
+          );
+        }
 
         return (
           <Card
@@ -270,54 +329,12 @@ const TaskLogsCards = (taskLogsData) => {
               <Typography.Text type='tertiary' size='small'>
                 {record.submit_time ? renderTimestamp(record.submit_time) : '-'}
               </Typography.Text>
-              {record.finish_time ? (
-                renderDuration(record.submit_time, record.finish_time)
-              ) : elapsedSec !== null ? (
-                <Tag
-                  color='blue'
-                  shape='circle'
-                  prefixIcon={<Clock size={14} />}
-                >
-                  {formatElapsed(elapsedSec)}
-                </Tag>
-              ) : null}
+              {durationContent}
             </div>
 
             {/* 底部：结果 / 详情 */}
             <div className='mt-3 pt-3 flex items-center justify-between border-t border-[var(--semi-color-border)]'>
-              {isSunoSuccess ? (
-                <Button
-                  theme='borderless'
-                  type='primary'
-                  size='small'
-                  icon={<Music size={14} />}
-                  onClick={() => openAudioModal(record.data)}
-                >
-                  {t('预览音乐')}
-                </Button>
-              ) : record.status === 'SUCCESS' && isVideoTask && hasResultUrl ? (
-                <Button
-                  theme='borderless'
-                  type='primary'
-                  size='small'
-                  icon={<Video size={14} />}
-                  onClick={() => openVideoModal(resultUrl)}
-                >
-                  {t('预览视频')}
-                </Button>
-              ) : record.status === 'FAILURE' ? (
-                <Typography.Text
-                  type='danger'
-                  ellipsis={{ showTooltip: true }}
-                  style={{ maxWidth: '70%' }}
-                >
-                  {record.fail_reason || t('失败')}
-                </Typography.Text>
-              ) : (
-                <Typography.Text type='tertiary' size='small'>
-                  {active ? t('处理中...') : t('无')}
-                </Typography.Text>
-              )}
+              {footerContent}
               <Button
                 theme='borderless'
                 type='tertiary'

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   API,
   showError,
@@ -59,6 +59,21 @@ import { StatusContext } from '../../../../context/Status';
 
 const { Text, Title } = Typography;
 
+const getInitValues = () => ({
+  name: '',
+  remain_quota: 0,
+  remain_amount: 0,
+  expired_time: -1,
+  unlimited_quota: true,
+  model_limits_enabled: false,
+  model_limits: [],
+  allow_ips: '',
+  group: '',
+  cross_group_retry: false,
+  max_concurrency: 0,
+  tokenCount: 1,
+});
+
 const EditTokenModal = (props) => {
   const { t } = useTranslation();
   const [statusState, statusDispatch] = useContext(StatusContext);
@@ -69,21 +84,6 @@ const EditTokenModal = (props) => {
   const [groups, setGroups] = useState([]);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
   const isEdit = props.editingToken.id !== undefined;
-
-  const getInitValues = () => ({
-    name: '',
-    remain_quota: 0,
-    remain_amount: 0,
-    expired_time: -1,
-    unlimited_quota: true,
-    model_limits_enabled: false,
-    model_limits: [],
-    allow_ips: '',
-    group: '',
-    cross_group_retry: false,
-    max_concurrency: 0,
-    tokenCount: 1,
-  });
 
   const handleCancel = () => {
     props.handleClose();
@@ -105,7 +105,7 @@ const EditTokenModal = (props) => {
     }
   };
 
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     let res = await API.get(`/api/user/models`);
     const { success, message, data } = res.data;
     if (success) {
@@ -132,9 +132,9 @@ const EditTokenModal = (props) => {
     } else {
       showError(t(message));
     }
-  };
+  }, [t]);
 
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     let res = await API.get(`/api/user/self/groups`);
     const { success, message, data } = res.data;
     if (success) {
@@ -155,9 +155,9 @@ const EditTokenModal = (props) => {
     } else {
       showError(t(message));
     }
-  };
+  }, [statusState?.status?.default_use_auto_group, t]);
 
-  const loadToken = async () => {
+  const loadToken = useCallback(async () => {
     setLoading(true);
     let res = await API.get(`/api/token/${props.editingToken.id}`);
     const { success, message, data } = res.data;
@@ -180,7 +180,7 @@ const EditTokenModal = (props) => {
       showError(message);
     }
     setLoading(false);
-  };
+  }, [props.editingToken.id]);
 
   useEffect(() => {
     if (formApiRef.current) {
@@ -190,7 +190,7 @@ const EditTokenModal = (props) => {
     }
     loadModels();
     loadGroups();
-  }, [props.editingToken.id]);
+  }, [isEdit, loadGroups, loadModels, props.editingToken.id]);
 
   useEffect(() => {
     if (props.visiable) {
@@ -202,7 +202,7 @@ const EditTokenModal = (props) => {
     } else {
       formApiRef.current?.reset();
     }
-  }, [props.visiable, props.editingToken.id]);
+  }, [isEdit, loadToken, props.visiable]);
 
   const generateRandomSuffix = () => {
     const characters =
@@ -451,8 +451,9 @@ const EditTokenModal = (props) => {
                         {
                           validator: (rule, value) => {
                             // 允许 -1 表示永不过期，也允许空值在必填校验时被拦截
-                            if (value === -1 || !value)
+                            if (value === -1 || !value) {
                               return Promise.resolve();
+                            }
                             const time = Date.parse(value);
                             if (isNaN(time)) {
                               return Promise.reject(t('过期时间格式错误！'));

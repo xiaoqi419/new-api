@@ -116,13 +116,8 @@ const ChannelsTable = (channelsData) => {
     detectChannelUpstreamUpdates,
   ]);
 
-  // Filter columns based on visibility settings
-  const getVisibleColumns = () => {
-    return allColumns.filter((column) => visibleColumns[column.key]);
-  };
-
   const visibleColumnsList = useMemo(() => {
-    return getVisibleColumns();
+    return allColumns.filter((column) => visibleColumns[column.key]);
   }, [visibleColumns, allColumns]);
 
   const tableColumns = useMemo(() => {

@@ -31,6 +31,9 @@ import {
   setUserData,
   onDiscordOAuthClicked,
   onCustomOAuthClicked,
+  onGitHubOAuthClicked,
+  onLinuxDOOAuthClicked,
+  onOIDCClicked,
 } from '../../helpers';
 import Turnstile from 'react-turnstile';
 import {
@@ -51,11 +54,6 @@ import {
   IconLock,
   IconKey,
 } from '@douyinfe/semi-icons';
-import {
-  onGitHubOAuthClicked,
-  onLinuxDOOAuthClicked,
-  onOIDCClicked,
-} from '../../helpers';
 import OIDCIcon from '../common/logo/OIDCIcon';
 import LinuxDoIcon from '../common/logo/LinuxDoIcon';
 import WeChatIcon from '../common/logo/WeChatIcon';
@@ -125,7 +123,7 @@ const RegisterForm = () => {
     if (!savedStatus) return {};
     try {
       return JSON.parse(savedStatus) || {};
-    } catch (err) {
+    } catch {
       return {};
     }
   }, [statusState?.status]);
@@ -204,7 +202,7 @@ const RegisterForm = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError('登录失败，请重试');
     } finally {
       setWechatCodeSubmitLoading(false);
@@ -246,7 +244,7 @@ const RegisterForm = () => {
         } else {
           showError(message);
         }
-      } catch (error) {
+      } catch {
         showError('注册失败，请重试');
       } finally {
         setRegisterLoading(false);
@@ -272,7 +270,7 @@ const RegisterForm = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError('发送验证码失败，请重试');
     } finally {
       setVerificationCodeLoading(false);
@@ -386,7 +384,7 @@ const RegisterForm = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError('登录失败，请重试');
     }
   };
@@ -646,29 +644,25 @@ const RegisterForm = () => {
                       <Text size='small' className='text-gray-600'>
                         {t('我已阅读并同意')}
                         {hasUserAgreement && (
-                          <>
-                            <a
-                              href='/user-agreement'
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              className='text-blue-600 hover:text-blue-800 mx-1'
-                            >
-                              {t('用户协议')}
-                            </a>
-                          </>
+                          <a
+                            href='/user-agreement'
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='text-blue-600 hover:text-blue-800 mx-1'
+                          >
+                            {t('用户协议')}
+                          </a>
                         )}
                         {hasUserAgreement && hasPrivacyPolicy && t('和')}
                         {hasPrivacyPolicy && (
-                          <>
-                            <a
-                              href='/privacy-policy'
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              className='text-blue-600 hover:text-blue-800 mx-1'
-                            >
-                              {t('隐私政策')}
-                            </a>
-                          </>
+                          <a
+                            href='/privacy-policy'
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='text-blue-600 hover:text-blue-800 mx-1'
+                          >
+                            {t('隐私政策')}
+                          </a>
                         )}
                       </Text>
                     </Checkbox>

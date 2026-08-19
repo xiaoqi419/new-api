@@ -18,9 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Modal, Form, Col, Row } from '@douyinfe/semi-ui';
+import { Modal, Form, Col, Row, Typography } from '@douyinfe/semi-ui';
 import { API, showError, showSuccess } from '../../../../helpers';
-import { Typography } from '@douyinfe/semi-ui';
 import { IconLink } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
@@ -29,6 +28,7 @@ const EditVendorModal = ({ visible, handleClose, refresh, editingVendor }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const formApiRef = useRef(null);
+  const loadVendorRef = useRef(null);
 
   const isMobile = useIsMobile();
   const isEdit = editingVendor && editingVendor.id !== undefined;
@@ -61,23 +61,25 @@ const EditVendorModal = ({ visible, handleClose, refresh, editingVendor }) => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('加载供应商信息失败'));
     }
     setLoading(false);
   };
 
+  loadVendorRef.current = loadVendor;
+
   useEffect(() => {
     if (visible) {
       if (isEdit) {
-        loadVendor();
+        loadVendorRef.current?.();
       } else {
         formApiRef.current?.setValues(getInitValues());
       }
     } else {
       formApiRef.current?.reset();
     }
-  }, [visible, editingVendor?.id]);
+  }, [visible, editingVendor?.id, isEdit]);
 
   const submit = async (values) => {
     setLoading(true);

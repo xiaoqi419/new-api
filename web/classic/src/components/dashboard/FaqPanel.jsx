@@ -54,19 +54,22 @@ const FaqPanel = ({
             expandIcon={<IconPlus />}
             collapseIcon={<IconMinus />}
           >
-            {faqData.map((item, index) => (
-              <Collapse.Panel
-                key={index}
-                header={item.question}
-                itemKey={index.toString()}
-              >
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: marked.parse(item.answer || ''),
-                  }}
-                />
-              </Collapse.Panel>
-            ))}
+            {faqData.map((item) => {
+              const itemKey = String(item.id ?? item.question);
+              return (
+                <Collapse.Panel
+                  key={itemKey}
+                  header={item.question}
+                  itemKey={itemKey}
+                >
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: marked.parse(item.answer || ''),
+                    }}
+                  />
+                </Collapse.Panel>
+              );
+            })}
           </Collapse>
         ) : (
           <div className='flex justify-center items-center py-8'>

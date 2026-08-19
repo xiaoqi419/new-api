@@ -129,7 +129,7 @@ const LoginForm = () => {
     if (!savedStatus) return {};
     try {
       return JSON.parse(savedStatus) || {};
-    } catch (err) {
+    } catch {
       return {};
     }
   }, [statusState?.status]);
@@ -172,7 +172,7 @@ const LoginForm = () => {
     if (searchParams.get('expired')) {
       showError(t('未登录或登录已过期，请重新登录'));
     }
-  }, []);
+  }, [searchParams, t]);
 
   const stopWeChatPoll = () => {
     if (wechatPollRef.current) {
@@ -227,7 +227,7 @@ const LoginForm = () => {
         showInfo(t('验证码已过期，请点击刷新重新获取'));
       }
       // pending：继续轮询
-    } catch (error) {
+    } catch {
       // 网络抖动忽略，继续轮询
     }
   };
@@ -246,7 +246,7 @@ const LoginForm = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('获取验证码失败，请重试'));
     } finally {
       setWechatLoading(false);
@@ -320,7 +320,7 @@ const LoginForm = () => {
       } else {
         showError('请输入用户名和密码！');
       }
-    } catch (error) {
+    } catch {
       showError('登录失败，请重试');
     } finally {
       setLoginLoading(false);
@@ -362,7 +362,7 @@ const LoginForm = () => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError('登录失败，请重试');
     }
   };
@@ -725,29 +725,25 @@ const LoginForm = () => {
                     <Text size='small' className='text-gray-600'>
                       {t('我已阅读并同意')}
                       {hasUserAgreement && (
-                        <>
-                          <a
-                            href='/user-agreement'
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='text-blue-600 hover:text-blue-800 mx-1'
-                          >
-                            {t('用户协议')}
-                          </a>
-                        </>
+                        <a
+                          href='/user-agreement'
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='text-blue-600 hover:text-blue-800 mx-1'
+                        >
+                          {t('用户协议')}
+                        </a>
                       )}
                       {hasUserAgreement && hasPrivacyPolicy && t('和')}
                       {hasPrivacyPolicy && (
-                        <>
-                          <a
-                            href='/privacy-policy'
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='text-blue-600 hover:text-blue-800 mx-1'
-                          >
-                            {t('隐私政策')}
-                          </a>
-                        </>
+                        <a
+                          href='/privacy-policy'
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='text-blue-600 hover:text-blue-800 mx-1'
+                        >
+                          {t('隐私政策')}
+                        </a>
                       )}
                     </Text>
                   </Checkbox>
@@ -831,29 +827,25 @@ const LoginForm = () => {
                       <Text size='small' className='text-gray-600'>
                         {t('我已阅读并同意')}
                         {hasUserAgreement && (
-                          <>
-                            <a
-                              href='/user-agreement'
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              className='text-blue-600 hover:text-blue-800 mx-1'
-                            >
-                              {t('用户协议')}
-                            </a>
-                          </>
+                          <a
+                            href='/user-agreement'
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='text-blue-600 hover:text-blue-800 mx-1'
+                          >
+                            {t('用户协议')}
+                          </a>
                         )}
                         {hasUserAgreement && hasPrivacyPolicy && t('和')}
                         {hasPrivacyPolicy && (
-                          <>
-                            <a
-                              href='/privacy-policy'
-                              target='_blank'
-                              rel='noopener noreferrer'
-                              className='text-blue-600 hover:text-blue-800 mx-1'
-                            >
-                              {t('隐私政策')}
-                            </a>
-                          </>
+                          <a
+                            href='/privacy-policy'
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='text-blue-600 hover:text-blue-800 mx-1'
+                          >
+                            {t('隐私政策')}
+                          </a>
                         )}
                       </Text>
                     </Checkbox>

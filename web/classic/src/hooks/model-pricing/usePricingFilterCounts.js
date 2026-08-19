@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 // 工具函数：将 tags 字符串转为小写去重数组
 const normalizeTags = (tags = '') =>
@@ -48,11 +48,12 @@ export const usePricingFilterCounts = ({
    * @param {Array<string>} ignore 需要忽略的过滤条件 key
    * @returns {boolean}
    */
-  const matchesFilters = (model, ignore = []) => {
+  const matchesFilters = useCallback((model, ignore = []) => {
     // 分组
     if (!ignore.includes('group') && filterGroup !== 'all') {
-      if (!model.enable_groups || !model.enable_groups.includes(filterGroup))
+      if (!model.enable_groups || !model.enable_groups.includes(filterGroup)) {
         return false;
+      }
     }
 
     // 计费类型
@@ -65,8 +66,9 @@ export const usePricingFilterCounts = ({
       if (
         !model.supported_endpoint_types ||
         !model.supported_endpoint_types.includes(filterEndpointType)
-      )
+      ) {
         return false;
+      }
     }
 
     // 供应商
@@ -81,7 +83,9 @@ export const usePricingFilterCounts = ({
     // 标签
     if (!ignore.includes('tag') && filterTag !== 'all') {
       const tagsArr = normalizeTags(model.tags);
-      if (!tagsArr.includes(filterTag.toLowerCase())) return false;
+      if (!tagsArr.includes(filterTag.toLowerCase())) {
+        return false;
+      }
     }
 
     // 搜索
@@ -96,72 +100,45 @@ export const usePricingFilterCounts = ({
           tags.includes(term) ||
           (model.vendor_name && model.vendor_name.toLowerCase().includes(term))
         )
-      )
+      ) {
         return false;
+      }
     }
 
     return true;
-  };
+  }, [
+    filterEndpointType,
+    filterGroup,
+    filterQuotaType,
+    filterTag,
+    filterVendor,
+    searchValue,
+  ]);
 
   // 生成不同视图所需的模型集合
   const quotaTypeModels = useMemo(
     () => allModels.filter((m) => matchesFilters(m, ['quota'])),
-    [
-      allModels,
-      filterGroup,
-      filterEndpointType,
-      filterVendor,
-      filterTag,
-      searchValue,
-    ],
+    [allModels, matchesFilters],
   );
 
   const endpointTypeModels = useMemo(
     () => allModels.filter((m) => matchesFilters(m, ['endpoint'])),
-    [
-      allModels,
-      filterGroup,
-      filterQuotaType,
-      filterVendor,
-      filterTag,
-      searchValue,
-    ],
+    [allModels, matchesFilters],
   );
 
   const vendorModels = useMemo(
     () => allModels.filter((m) => matchesFilters(m, ['vendor'])),
-    [
-      allModels,
-      filterGroup,
-      filterQuotaType,
-      filterEndpointType,
-      filterTag,
-      searchValue,
-    ],
+    [allModels, matchesFilters],
   );
 
   const tagModels = useMemo(
     () => allModels.filter((m) => matchesFilters(m, ['tag'])),
-    [
-      allModels,
-      filterGroup,
-      filterQuotaType,
-      filterEndpointType,
-      filterVendor,
-      searchValue,
-    ],
+    [allModels, matchesFilters],
   );
 
   const groupCountModels = useMemo(
     () => allModels.filter((m) => matchesFilters(m, ['group'])),
-    [
-      allModels,
-      filterQuotaType,
-      filterEndpointType,
-      filterVendor,
-      filterTag,
-      searchValue,
-    ],
+    [allModels, matchesFilters],
   );
 
   return {

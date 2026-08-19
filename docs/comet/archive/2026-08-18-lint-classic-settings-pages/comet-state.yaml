@@ -1,0 +1,194 @@
+schema: comet.native.v4
+name: lint-classic-settings-pages
+language: zh-CN
+phase: archive
+status: done
+state_version: 14
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-classic-settings-pages
+  target_branch: codex/p1-lint-debt
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 3
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 2
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：权威 oxlint 对全部 owned paths 返回 0 errors。
+    result: passed
+    reason:
+      text: Independent Terra xhigh verification ran repository oxlint 1.74.0 with the
+        candidate config across all 62 brief-owned settings files, explicitly
+        excluding RatioSetting, and obtained exit 0 with zero errors and 399
+        warning-only diagnostics.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：Hooks、Promise、array key、component export
+      与机械性修复保持设置加载/保存、表单初始化、验证、错误传播、导航和模块副作用；相关既有测试通过，或明确报告无测试。
+    result: passed
+    reason:
+      text: Full source-chain review confirmed render-time inputsRef synchronization
+        makes later partial props.options merges preserve current loaded or
+        edited fields without effect loops or new request/save side effects; the
+        3/2/3 preview limits, duplicates, Dashboard/Drawing snapshots, TwoFA and
+        APIMart behavior remain intact.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：Git diff 只包含批准目录与本 child 正式产物，不含
+      RatioSetting、配置、package/lock、依赖、disable 或范围外变化。
+    result: passed
+    reason:
+      text: The target diff contains only approved settings paths and this child
+        formal artifacts, with no RatioSetting, config, package/lock,
+        dependency, i18n, backend or disable additions; diff-check passed and
+        the Runtime-owned stale verification report deletion was committed
+        before final submission, leaving the worktree clean.
+      truncated: false
+builder_handoff:
+  candidate_id: d3a966fb-00e4-43f2-932b-5523fee49c75
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:68638e23-ad77-4d62-a17b-ac6248a1c2ce
+  iteration: 3
+  summary:
+    text: Repaired the iteration-2 affinity regression by synchronizing inputsRef to
+      the current render state before partial props.options merging, so omitted
+      affinity fields retain loaded or edited values without changing preview
+      limits, duplicate identities, effects, requests or save behavior.
+    truncated: false
+  addressed_acceptance_ids:
+    - A2
+  checks:
+    - name:
+        text: focused SettingsChannelAffinity oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Repository oxlint 1.74.0 with the candidate config exited 0 with zero
+          errors and 12 warnings.
+        truncated: false
+    - name:
+        text: owned settings paths oxlint
+        truncated: false
+      result: passed
+      note:
+        text: All 62 brief-owned files with RatioSetting excluded exited 0 with zero
+          errors and 399 warning-only diagnostics.
+        truncated: false
+    - name:
+        text: partial options state review
+        truncated: false
+      result: passed
+      note:
+        text: inputsRef.current is refreshed during each render, so the unchanged
+          props.options effect merges against current inputs and does not reset
+          omitted fields to mount defaults.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: Iteration 3 changes one approved SettingsChannelAffinity line; target and
+          worktree diff-checks passed, with no Ratio, config, package/lock,
+          dependency, i18n, backend or disable change.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Classic has no direct test script or owned test/spec for this settings
+        lifecycle, so no synthetic test was added.
+      truncated: false
+    - text: No browser interaction test covers partial props.options updates; the
+        invariant is established by the render-time ref update and unchanged
+        effect merge chain.
+      truncated: false
+    - text: 399 warning-only diagnostics remain outside this child acceptance scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T14:21:29.428Z
+blockers: []
+verification:
+  candidate_id: d3a966fb-00e4-43f2-932b-5523fee49c75
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:48668d25-4821-4e71-833f-676b238b01fb
+  iteration: 3
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: "PASS: A1-A3 pass for Settings iteration 3 with zero owned-path lint
+      errors, corrected current-state partial option merging, preserved prior
+      settings behavior and a clean approved scope."
+    truncated: false
+  risks:
+    - text: Classic has no direct test script or owned browser/unit test for the
+        affinity partial-options lifecycle, so the behavior is verified through
+        the complete state/effect/source chain.
+      truncated: false
+    - text: The owned paths retain 399 warning-only diagnostics, which are outside
+        this child acceptance scope.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T14:36:43.451Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A2
+    summary:
+      text: "FAIL: A1 and A3 pass, but A2 fails because rule previews now hide
+        duplicates and two loading effects changed localStorage side effects."
+      truncated: false
+    completed_at: 2026-08-18T13:28:31.768Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A2
+    summary:
+      text: "FAIL: A1 and A3 pass, but A2 fails because SettingsChannelAffinity reads
+        a mount-stale inputsRef during later partial options updates and can
+        reset omitted settings fields."
+      truncated: false
+    completed_at: 2026-08-18T14:01:58.727Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "PASS: A1-A3 pass for Settings iteration 3 with zero owned-path lint
+        errors, corrected current-state partial option merging, preserved prior
+        settings behavior and a clean approved scope."
+      truncated: false
+    completed_at: 2026-08-18T14:36:43.451Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-18T12:02:28.432Z

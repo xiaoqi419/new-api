@@ -80,7 +80,7 @@ const GroupMonitorDetail = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       // 拦截器已提示
     } finally {
       setLoading(false);

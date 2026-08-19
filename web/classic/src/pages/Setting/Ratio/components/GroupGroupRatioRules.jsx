@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo } from 'react';
 import {
   Button,
   Collapsible,
-  Input,
   InputNumber,
   Select,
   Tag,
@@ -57,7 +56,7 @@ function nestRules(rules) {
   return result;
 }
 
-export function serializeGroupGroupRatio(rules) {
+function serializeGroupGroupRatio(rules) {
   const nested = nestRules(rules);
   return Object.keys(nested).length === 0
     ? ''

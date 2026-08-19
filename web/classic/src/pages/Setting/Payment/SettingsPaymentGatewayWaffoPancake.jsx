@@ -108,7 +108,7 @@ export default function SettingsPaymentGatewayWaffoPancake(props) {
 
       showSuccess(t('更新成功'));
       props.refresh?.();
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     } finally {
       setLoading(false);

@@ -93,14 +93,27 @@ export const useEnhancedDeploymentActions = (t) => {
 
       const params = new URLSearchParams();
 
-      if (options.containerId)
+      if (options.containerId) {
         params.append('container_id', options.containerId);
-      if (options.level) params.append('level', options.level);
-      if (options.limit) params.append('limit', options.limit.toString());
-      if (options.cursor) params.append('cursor', options.cursor);
-      if (options.follow) params.append('follow', 'true');
-      if (options.startTime) params.append('start_time', options.startTime);
-      if (options.endTime) params.append('end_time', options.endTime);
+      }
+      if (options.level) {
+        params.append('level', options.level);
+      }
+      if (options.limit) {
+        params.append('limit', options.limit.toString());
+      }
+      if (options.cursor) {
+        params.append('cursor', options.cursor);
+      }
+      if (options.follow) {
+        params.append('follow', 'true');
+      }
+      if (options.startTime) {
+        params.append('start_time', options.startTime);
+      }
+      if (options.endTime) {
+        params.append('end_time', options.endTime);
+      }
 
       const response = await API.get(
         `/api/deployments/${deploymentId}/logs?${params}`,

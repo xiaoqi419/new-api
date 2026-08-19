@@ -48,14 +48,14 @@ function RankBadge(props: { rank: number }) {
   const isPodium = rank <= 3
   // Gold / silver / bronze must stay three distinguishable hues, so the podium
   // maps onto three separate tokens rather than collapsing into `warning`.
-  const palette =
-    rank === 1
-      ? 'bg-warning/15 text-warning'
-      : rank === 2
-        ? 'bg-neutral/15 text-neutral'
-        : rank === 3
-          ? 'bg-chart-3/15 text-tag-3'
-          : 'bg-muted text-muted-foreground'
+  let palette = 'bg-muted text-muted-foreground'
+  if (rank === 1) {
+    palette = 'bg-warning/15 text-warning'
+  } else if (rank === 2) {
+    palette = 'bg-neutral/15 text-neutral'
+  } else if (rank === 3) {
+    palette = 'bg-chart-3/15 text-tag-3'
+  }
   return (
     <span
       className={cn(
@@ -72,12 +72,12 @@ function GrowthChip(props: { value: number }) {
   const value = props.value
   const isUp = value > 0
   const isDown = value < 0
-  const palette = isUp
-    ? 'bg-success/15 text-success'
-    : isDown
-      ? 'bg-destructive/15 text-destructive'
-      : 'bg-muted text-muted-foreground'
-  const Icon = isUp ? ArrowUpRight : isDown ? ArrowDownRight : null
+  let palette = 'bg-muted text-muted-foreground'
+  if (isUp) {
+    palette = 'bg-success/15 text-success'
+  } else if (isDown) {
+    palette = 'bg-destructive/15 text-destructive'
+  }
   const formatted = `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
   return (
     <span
@@ -86,7 +86,8 @@ function GrowthChip(props: { value: number }) {
         palette
       )}
     >
-      {Icon && <Icon className='size-3' />}
+      {isUp && <ArrowUpRight className='size-3' />}
+      {isDown && <ArrowDownRight className='size-3' />}
       {formatted}
     </span>
   )

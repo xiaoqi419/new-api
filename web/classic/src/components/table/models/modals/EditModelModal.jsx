@@ -76,15 +76,18 @@ const capabilityOptions = [
   'embeddings',
 ];
 
-const splitCsv = (s) =>
-  typeof s === 'string'
-    ? s
-        .split(',')
-        .map((v) => v.trim())
-        .filter(Boolean)
-    : Array.isArray(s)
-      ? s
-      : [];
+const splitCsv = (s) => {
+  if (typeof s === 'string') {
+    return s
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(s)) {
+    return s;
+  }
+  return [];
+};
 
 const joinCsv = (v) => (Array.isArray(v) ? v.join(',') : v || '');
 
@@ -93,6 +96,7 @@ const EditModelModal = (props) => {
   const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
+  const modelModalActionsRef = useRef(null);
   const isEdit = props.editingModel && props.editingModel.id !== undefined;
   const placement = useMemo(() => (isEdit ? 'right' : 'left'), [isEdit]);
 
@@ -111,7 +115,7 @@ const EditModelModal = (props) => {
         const items = res.data.data.items || res.data.data || [];
         setVendors(Array.isArray(items) ? items : []);
       }
-    } catch (error) {
+    } catch {
       // ignore
     }
   };
@@ -129,7 +133,7 @@ const EditModelModal = (props) => {
       if (endpointRes?.data?.success) {
         setEndpointGroups(endpointRes.data.data || []);
       }
-    } catch (error) {
+    } catch {
       // ignore
     }
   };
@@ -198,17 +202,19 @@ const EditModelModal = (props) => {
       } else {
         showError(message);
       }
-    } catch (error) {
+    } catch {
       showError(t('加载模型信息失败'));
     }
     setLoading(false);
   };
 
+  modelModalActionsRef.current = { getInitValues, isEdit, loadModel };
+
   useEffect(() => {
     if (formApiRef.current) {
-      if (!isEdit) {
+      if (!modelModalActionsRef.current.isEdit) {
         formApiRef.current.setValues({
-          ...getInitValues(),
+          ...modelModalActionsRef.current.getInitValues(),
           model_name: props.editingModel?.model_name || '',
         });
       }
@@ -217,11 +223,11 @@ const EditModelModal = (props) => {
 
   useEffect(() => {
     if (props.visiable) {
-      if (isEdit) {
-        loadModel();
+      if (modelModalActionsRef.current.isEdit) {
+        void modelModalActionsRef.current.loadModel();
       } else {
         formApiRef.current?.setValues({
-          ...getInitValues(),
+          ...modelModalActionsRef.current.getInitValues(),
           model_name: props.editingModel?.model_name || '',
         });
       }
@@ -537,8 +543,9 @@ const EditModelModal = (props) => {
                                         'endpoints',
                                       ) || '';
                                     let base = {};
-                                    if (current && current.trim())
+                                    if (current && current.trim()) {
                                       base = JSON.parse(current);
+                                    }
                                     const groupObj =
                                       typeof group.items === 'string'
                                         ? JSON.parse(group.items || '{}')
@@ -548,7 +555,7 @@ const EditModelModal = (props) => {
                                       'endpoints',
                                       JSON.stringify(merged, null, 2),
                                     );
-                                  } catch (e) {
+                                  } catch {
                                     try {
                                       const groupObj =
                                         typeof group.items === 'string'

@@ -20,10 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import { Icon } from '@douyinfe/semi-ui';
 
-const OIDCIcon = (props) => {
-  function CustomIcon() {
-    return (
-      <svg
+const OIDCSvg = () => (
+  <svg
         t='1723135116886'
         className='icon'
         viewBox='0 0 1024 1024'
@@ -47,11 +45,9 @@ const OIDCIcon = (props) => {
           stroke='#2c2c2c'
           stroke-width='20'
         ></path>
-      </svg>
-    );
-  }
+  </svg>
+);
 
-  return <Icon svg={<CustomIcon />} />;
-};
+const OIDCIcon = () => <Icon svg={<OIDCSvg />} />;
 
 export default OIDCIcon;

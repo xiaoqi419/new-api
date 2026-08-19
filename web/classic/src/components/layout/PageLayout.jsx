@@ -25,7 +25,7 @@ import FooterBar from './Footer';
 import ConsoleSubNav from './ConsoleSubNav';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '../common/ErrorBoundary';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
 import { useTranslation } from 'react-i18next';
@@ -69,13 +69,12 @@ const PageLayout = () => {
   // 故在首页隐藏 PageLayout 页脚，由首页自身的最后一屏承载页脚信息。
   const isApimartFullpageHome =
     appearance.preset === 'apimart' && location.pathname === '/';
-  const shouldHideFooter = location.pathname.startsWith('/console')
-    ? true
-    : isApimartFullpageHome
-      ? true
-      : appearance.preset === 'apimart'
-        ? false
-        : cardProPages.includes(location.pathname);
+  let shouldHideFooter = cardProPages.includes(location.pathname);
+  if (location.pathname.startsWith('/console') || isApimartFullpageHome) {
+    shouldHideFooter = true;
+  } else if (appearance.preset === 'apimart') {
+    shouldHideFooter = false;
+  }
 
   const shouldInnerPadding =
     location.pathname.includes('/console') &&
@@ -105,6 +104,25 @@ const PageLayout = () => {
     isConsoleRoute && !useApimartTopNav && (!isMobile || drawerOpen);
   const isFixedLayout =
     isConsoleRoute || location.pathname === '/pricing' || isApimartFullpageHome;
+  const contentMarginLeft =
+    isMobile || !showSider ? '0' : 'var(--sidebar-current-width)';
+  const contentFlex = isFixedLayout ? '1 0 auto' : '1 1 auto';
+  const contentOverflowY =
+    isFixedLayout && !isMobile ? 'hidden' : 'visible';
+  let contentPadding = '0';
+  if (shouldInnerPadding) {
+    contentPadding = isMobile ? '5px' : '24px';
+  }
+  let contentPaddingTop = 'var(--app-floating-header-height)';
+  if (showConsoleSubNav) {
+    contentPaddingTop = 'var(--app-subnav-height)';
+  } else if (isApimartFullpageHome) {
+    contentPaddingTop = undefined;
+  } else if (shouldInnerPadding) {
+    contentPaddingTop = isMobile
+      ? 'calc(5px + var(--app-floating-header-height) - 60px)'
+      : 'calc(24px + var(--app-floating-header-height) - 60px)';
+  }
 
   useEffect(() => {
     if (isMobile && drawerOpen && collapsed) {
@@ -112,15 +130,15 @@ const PageLayout = () => {
     }
   }, [isMobile, drawerOpen, collapsed, setCollapsed]);
 
-  const loadUser = () => {
+  const loadUser = useCallback(() => {
     let user = localStorage.getItem('user');
     if (user) {
       let data = JSON.parse(user);
       userDispatch({ type: 'login', payload: data });
     }
-  };
+  }, [userDispatch]);
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const res = await API.get('/api/status');
       const { success, data } = res.data;
@@ -130,10 +148,10 @@ const PageLayout = () => {
       } else {
         showError('Unable to connect to server');
       }
-    } catch (error) {
+    } catch {
       showError('Failed to load status');
     }
-  };
+  }, [statusDispatch]);
 
   useEffect(() => {
     loadUser();
@@ -149,7 +167,7 @@ const PageLayout = () => {
         linkElement.href = logo;
       }
     }
-  }, []);
+  }, [loadStatus, loadUser]);
 
   useEffect(() => {
     let preferredLang;
@@ -158,7 +176,7 @@ const PageLayout = () => {
       try {
         const settings = JSON.parse(userState.user.setting);
         preferredLang = normalizeLanguage(settings.language);
-      } catch (e) {
+      } catch {
         // Ignore parse errors
       }
     }
@@ -236,11 +254,7 @@ const PageLayout = () => {
         )}
         <Layout
           style={{
-            marginLeft: isMobile
-              ? '0'
-              : showSider
-                ? 'var(--sidebar-current-width)'
-                : '0',
+            marginLeft: contentMarginLeft,
             flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
@@ -250,19 +264,11 @@ const PageLayout = () => {
           <Content
             className={isFixedLayout ? undefined : 'public-page-content'}
             style={{
-              flex: isFixedLayout ? '1 0 auto' : '1 1 auto',
-              overflowY: isFixedLayout && !isMobile ? 'hidden' : 'visible',
+              flex: contentFlex,
+              overflowY: contentOverflowY,
               WebkitOverflowScrolling: 'touch',
-              padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
-              paddingTop: showConsoleSubNav
-                ? 'var(--app-subnav-height)'
-                : isApimartFullpageHome
-                  ? undefined
-                  : shouldInnerPadding
-                    ? isMobile
-                      ? 'calc(5px + var(--app-floating-header-height) - 60px)'
-                      : 'calc(24px + var(--app-floating-header-height) - 60px)'
-                    : 'var(--app-floating-header-height)',
+              padding: contentPadding,
+              paddingTop: contentPaddingTop,
               position: 'relative',
               minHeight: 0,
             }}

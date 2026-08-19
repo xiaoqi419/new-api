@@ -35,11 +35,11 @@ import { IconSearch } from '@douyinfe/semi-icons';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 
 const normalizeModels = (models = []) =>
-  Array.from(
+  [...
     new Set(
       (models || []).map((model) => String(model || '').trim()).filter(Boolean),
     ),
-  );
+  ];
 
 const filterByKeyword = (models = [], keyword = '') => {
   const normalizedKeyword = String(keyword || '')

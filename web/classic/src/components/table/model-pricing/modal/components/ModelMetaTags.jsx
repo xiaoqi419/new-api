@@ -135,9 +135,11 @@ const ModelMetaTags = ({ modelData, vendorsMap = {}, t }) => {
     <div className='flex flex-col gap-2 mb-4'>
       {infoSegs.length > 0 && (
         <div className='flex items-center flex-wrap gap-x-2 gap-y-1 text-xs'>
-          {infoSegs.map((s, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <span className='text-gray-200'>|</span>}
+          {infoSegs.map((s) => (
+            <React.Fragment key={s.key}>
+              {s.key !== infoSegs[0].key && (
+                <span className='text-gray-200'>|</span>
+              )}
               {s}
             </React.Fragment>
           ))}

@@ -39,9 +39,15 @@ export function ThemeSwitch() {
     if (pageColor) metaThemeColor.setAttribute('content', pageColor)
   }, [resolvedTheme])
 
-  const Icon = theme === 'system' ? Monitor : theme === 'dark' ? Moon : Sun
-  const stateLabel =
-    theme === 'system' ? t('System') : theme === 'dark' ? t('Dark') : t('Light')
+  let Icon = Sun
+  let stateLabel = t('Light')
+  if (theme === 'system') {
+    Icon = Monitor
+    stateLabel = t('System')
+  } else if (theme === 'dark') {
+    Icon = Moon
+    stateLabel = t('Dark')
+  }
 
   return (
     <Button
