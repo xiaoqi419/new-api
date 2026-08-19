@@ -33,6 +33,84 @@ import PropTypes from 'prop-types';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { useMinimumLoadingTime } from '../../../hooks/common/useMinimumLoadingTime';
 
+const MobileRowCard = ({
+  record,
+  index,
+  getRowKey,
+  columns,
+  tableProps,
+  t,
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const rowKeyVal = getRowKey(record, index);
+
+  const hasDetails =
+    tableProps.expandedRowRender &&
+    (!tableProps.rowExpandable || tableProps.rowExpandable(record));
+
+  return (
+    <Card key={rowKeyVal} className='!rounded-2xl shadow-sm'>
+      {columns.map((col, colIdx) => {
+        if (tableProps?.visibleColumns && !tableProps.visibleColumns[col.key]) {
+          return null;
+        }
+
+        const title = col.title;
+        const cellContent = col.render
+          ? col.render(record[col.dataIndex], record, index)
+          : record[col.dataIndex];
+
+        if (!title) {
+          return (
+            <div key={col.key || colIdx} className='mt-2 flex justify-end'>
+              {cellContent}
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={col.key || colIdx}
+            className='flex justify-between items-start py-1 border-b last:border-b-0 border-dashed'
+            style={{ borderColor: 'var(--semi-color-border)' }}
+          >
+            <span className='font-medium text-gray-600 mr-2 whitespace-nowrap select-none'>
+              {title}
+            </span>
+            <div className='flex-1 break-all flex justify-end items-center gap-1'>
+              {cellContent !== undefined && cellContent !== null
+                ? cellContent
+                : '-'}
+            </div>
+          </div>
+        );
+      })}
+
+      {hasDetails && (
+        <>
+          <Button
+            theme='borderless'
+            size='small'
+            className='w-full flex justify-center mt-2'
+            icon={showDetails ? <IconChevronUp /> : <IconChevronDown />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(!showDetails);
+            }}
+          >
+            {showDetails ? t('收起') : t('详情')}
+          </Button>
+          <Collapsible isOpen={showDetails} keepDOM>
+            <div className='pt-2'>
+              {tableProps.expandedRowRender(record, index)}
+            </div>
+          </Collapsible>
+        </>
+      )}
+    </Card>
+  );
+};
+
 /**
  * CardTable 响应式表格组件
  *
@@ -87,7 +165,7 @@ const CardTable = ({
           {visibleCols.map((col, idx) => {
             if (!col.title) {
               return (
-                <div key={idx} className='mt-2 flex justify-end'>
+                <div key={col.key ?? col.dataIndex ?? col.title} className='mt-2 flex justify-end'>
                   <Skeleton.Title active style={{ width: 100, height: 24 }} />
                 </div>
               );
@@ -95,7 +173,7 @@ const CardTable = ({
 
             return (
               <div
-                key={idx}
+                key={col.key ?? col.dataIndex ?? col.title}
                 className='flex justify-between items-center py-1 border-b last:border-b-0 border-dashed'
                 style={{ borderColor: 'var(--semi-color-border)' }}
               >
@@ -130,80 +208,6 @@ const CardTable = ({
 
   const isEmpty = !showSkeleton && (!dataSource || dataSource.length === 0);
 
-  const MobileRowCard = ({ record, index }) => {
-    const [showDetails, setShowDetails] = useState(false);
-    const rowKeyVal = getRowKey(record, index);
-
-    const hasDetails =
-      tableProps.expandedRowRender &&
-      (!tableProps.rowExpandable || tableProps.rowExpandable(record));
-
-    return (
-      <Card key={rowKeyVal} className='!rounded-2xl shadow-sm'>
-        {columns.map((col, colIdx) => {
-          if (
-            tableProps?.visibleColumns &&
-            !tableProps.visibleColumns[col.key]
-          ) {
-            return null;
-          }
-
-          const title = col.title;
-          const cellContent = col.render
-            ? col.render(record[col.dataIndex], record, index)
-            : record[col.dataIndex];
-
-          if (!title) {
-            return (
-              <div key={col.key || colIdx} className='mt-2 flex justify-end'>
-                {cellContent}
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={col.key || colIdx}
-              className='flex justify-between items-start py-1 border-b last:border-b-0 border-dashed'
-              style={{ borderColor: 'var(--semi-color-border)' }}
-            >
-              <span className='font-medium text-gray-600 mr-2 whitespace-nowrap select-none'>
-                {title}
-              </span>
-              <div className='flex-1 break-all flex justify-end items-center gap-1'>
-                {cellContent !== undefined && cellContent !== null
-                  ? cellContent
-                  : '-'}
-              </div>
-            </div>
-          );
-        })}
-
-        {hasDetails && (
-          <>
-            <Button
-              theme='borderless'
-              size='small'
-              className='w-full flex justify-center mt-2'
-              icon={showDetails ? <IconChevronUp /> : <IconChevronDown />}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDetails(!showDetails);
-              }}
-            >
-              {showDetails ? t('收起') : t('详情')}
-            </Button>
-            <Collapsible isOpen={showDetails} keepDOM>
-              <div className='pt-2'>
-                {tableProps.expandedRowRender(record, index)}
-              </div>
-            </Collapsible>
-          </>
-        )}
-      </Card>
-    );
-  };
-
   if (isEmpty) {
     if (tableProps.empty) return tableProps.empty;
     return (
@@ -220,6 +224,10 @@ const CardTable = ({
           key={getRowKey(record, index)}
           record={record}
           index={index}
+          getRowKey={getRowKey}
+          columns={columns}
+          tableProps={tableProps}
+          t={t}
         />
       ))}
       {!hidePagination && tableProps.pagination && dataSource.length > 0 && (

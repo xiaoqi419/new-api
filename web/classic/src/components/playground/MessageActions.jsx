@@ -45,6 +45,18 @@ const MessageActions = ({
     message.content &&
     typeof onMessageEdit === 'function' &&
     !isEditing;
+  let roleToggleTooltip = t('切换为Assistant角色');
+  let roleToggleClass =
+    '!text-gray-400 hover:!text-purple-600 hover:!bg-purple-50';
+
+  if (shouldDisableActions) {
+    roleToggleTooltip = t('操作暂时被禁用');
+    roleToggleClass = '!text-gray-300 !cursor-not-allowed';
+  } else if (message.role === 'assistant') {
+    roleToggleTooltip = t('切换为System角色');
+  } else if (message.role === 'system') {
+    roleToggleClass = '!text-purple-500 hover:!text-purple-700 hover:!bg-purple-50';
+  }
 
   return (
     <div className='flex items-center gap-0.5'>
@@ -99,16 +111,7 @@ const MessageActions = ({
       )}
 
       {canToggleRole && !isLoading && (
-        <Tooltip
-          content={
-            shouldDisableActions
-              ? t('操作暂时被禁用')
-              : message.role === 'assistant'
-                ? t('切换为System角色')
-                : t('切换为Assistant角色')
-          }
-          position='top'
-        >
+        <Tooltip content={roleToggleTooltip} position='top'>
           <Button
             theme='borderless'
             type='tertiary'
@@ -118,7 +121,7 @@ const MessageActions = ({
               !shouldDisableActions && onRoleToggle && onRoleToggle(message)
             }
             disabled={shouldDisableActions}
-            className={`!rounded-full ${shouldDisableActions ? '!text-gray-300 !cursor-not-allowed' : message.role === 'system' ? '!text-purple-500 hover:!text-purple-700 hover:!bg-purple-50' : '!text-gray-400 hover:!text-purple-600 hover:!bg-purple-50'} ${styleState.isMobile ? '!w-6 !h-6' : '!w-7 !h-7'} !p-0 transition-all`}
+            className={`!rounded-full ${roleToggleClass} ${styleState.isMobile ? '!w-6 !h-6' : '!w-7 !h-7'} !p-0 transition-all`}
             aria-label={
               message.role === 'assistant'
                 ? t('切换为System角色')

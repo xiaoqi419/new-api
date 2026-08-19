@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useCallback, useRef } from 'react';
+import React, { useContext, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Toast, Modal } from '@douyinfe/semi-ui';
@@ -81,7 +81,7 @@ const Playground = () => {
   const { t } = useTranslation();
   const [userState] = useContext(UserContext);
   const isMobile = useIsMobile();
-  const styleState = { isMobile };
+  const styleState = useMemo(() => ({ isMobile }), [isMobile]);
   const [searchParams] = useSearchParams();
 
   const state = usePlaygroundState();

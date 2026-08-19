@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   TextArea,
   Typography,
@@ -40,6 +40,29 @@ const CustomRequestEditor = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [localValue, setLocalValue] = useState(customRequestBody || '');
 
+  // 验证JSON格式
+  const validateJson = useCallback(
+    (value) => {
+      if (!value.trim()) {
+        setIsValid(true);
+        setErrorMessage('');
+        return true;
+      }
+
+      try {
+        JSON.parse(value);
+        setIsValid(true);
+        setErrorMessage('');
+        return true;
+      } catch (error) {
+        setIsValid(false);
+        setErrorMessage(`${t('JSON格式错误')}: ${error.message}`);
+        return false;
+      }
+    },
+    [t],
+  );
+
   // 当切换到自定义模式时，用默认payload初始化
   useEffect(() => {
     if (
@@ -61,31 +84,16 @@ const CustomRequestEditor = ({
 
   // 同步外部传入的customRequestBody到本地状态
   useEffect(() => {
-    if (customRequestBody !== localValue) {
-      setLocalValue(customRequestBody || '');
-      validateJson(customRequestBody || '');
-    }
-  }, [customRequestBody]);
+    setLocalValue((currentValue) => {
+      if (customRequestBody === currentValue) {
+        return currentValue;
+      }
 
-  // 验证JSON格式
-  const validateJson = (value) => {
-    if (!value.trim()) {
-      setIsValid(true);
-      setErrorMessage('');
-      return true;
-    }
-
-    try {
-      JSON.parse(value);
-      setIsValid(true);
-      setErrorMessage('');
-      return true;
-    } catch (error) {
-      setIsValid(false);
-      setErrorMessage(`${t('JSON格式错误')}: ${error.message}`);
-      return false;
-    }
-  };
+      const nextValue = customRequestBody || '';
+      validateJson(nextValue);
+      return nextValue;
+    });
+  }, [customRequestBody, validateJson]);
 
   const handleValueChange = (value) => {
     setLocalValue(value);
@@ -111,7 +119,7 @@ const CustomRequestEditor = ({
       onCustomRequestBodyChange(formatted);
       setIsValid(true);
       setErrorMessage('');
-    } catch (error) {
+    } catch {
       // 如果格式化失败，保持原样
     }
   };

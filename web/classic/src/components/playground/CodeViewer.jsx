@@ -93,11 +93,11 @@ const codeThemeStyles = {
 
 const escapeHtml = (str) => {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 };
 
 const highlightJson = (str) => {
@@ -159,7 +159,7 @@ const formatContent = (content) => {
   if (typeof content === 'object') {
     try {
       return JSON.stringify(content, null, 2);
-    } catch (e) {
+    } catch {
       return String(content);
     }
   }
@@ -168,7 +168,7 @@ const formatContent = (content) => {
     try {
       const parsed = JSON.parse(content);
       return JSON.stringify(parsed, null, 2);
-    } catch (e) {
+    } catch {
       return content;
     }
   }

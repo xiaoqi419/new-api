@@ -248,12 +248,10 @@ const FooterBar = () => {
     loadFooter();
   }, []);
 
-  return (
-    <div className='w-full'>
-      {appearance.footer_variant === 'wordmark' ? (
-        wordmarkFooter
-      ) : footer ? (
-        <footer className='relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden'>
+  let footerContent = customFooter;
+  if (footer) {
+    footerContent = (
+      <footer className='relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden'>
           <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-4'>
             <div
               className='custom-footer na-cb6feafeb3990c78 text-sm !text-semi-color-text-1'
@@ -273,12 +271,14 @@ const FooterBar = () => {
               </a>
             </div>
           </div>
-        </footer>
-      ) : (
-        customFooter
-      )}
-    </div>
-  );
+      </footer>
+    );
+  }
+  if (appearance.footer_variant === 'wordmark') {
+    footerContent = wordmarkFooter;
+  }
+
+  return <div className='w-full'>{footerContent}</div>;
 };
 
 export default FooterBar;

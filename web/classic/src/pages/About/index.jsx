@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { marked } from 'marked';
 import { Empty } from '@douyinfe/semi-ui';
@@ -33,7 +33,7 @@ const About = () => {
   const [aboutLoaded, setAboutLoaded] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  const displayAbout = async () => {
+  const displayAbout = useCallback(async () => {
     setAbout(localStorage.getItem('about') || '');
     const res = await API.get('/api/about');
     const { success, message, data } = res.data;
@@ -49,11 +49,15 @@ const About = () => {
       setAbout(t('加载关于内容失败...'));
     }
     setAboutLoaded(true);
-  };
+  }, [t]);
 
   useEffect(() => {
-    displayAbout().then();
-  }, []);
+    displayAbout().catch((error) => {
+      showError(error.message || t('加载关于内容失败...'));
+      setAbout(t('加载关于内容失败...'));
+      setAboutLoaded(true);
+    });
+  }, [displayAbout, t]);
 
   const emptyStyle = {
     padding: '24px',
@@ -132,10 +136,15 @@ const About = () => {
     </div>
   );
 
-  return (
-    <div className='classic-page-fill flex flex-col pt-[60px] px-2'>
-      {aboutLoaded && about === '' ? (
-        <div className='flex flex-1 justify-center items-center p-8'>
+  let aboutContent = (
+    <div
+      style={{ fontSize: 'larger' }}
+      dangerouslySetInnerHTML={{ __html: about }}
+    ></div>
+  );
+  if (aboutLoaded && about === '') {
+    aboutContent = (
+      <div className='flex flex-1 justify-center items-center p-8'>
           <Empty
             image={
               <IllustrationConstruction style={{ width: 150, height: 150 }} />
@@ -150,27 +159,25 @@ const About = () => {
           >
             {customDescription}
           </Empty>
-        </div>
-      ) : (
-        <>
-          {about.startsWith('https://') ? (
-            <iframe
-              src={about}
-              style={{
-                width: '100%',
-                flex: '1 1 auto',
-                minHeight: 0,
-                border: 'none',
-              }}
-            />
-          ) : (
-            <div
-              style={{ fontSize: 'larger' }}
-              dangerouslySetInnerHTML={{ __html: about }}
-            ></div>
-          )}
-        </>
-      )}
+      </div>
+    );
+  } else if (about.startsWith('https://')) {
+    aboutContent = (
+      <iframe
+        src={about}
+        style={{
+          width: '100%',
+          flex: '1 1 auto',
+          minHeight: 0,
+          border: 'none',
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className='classic-page-fill flex flex-col pt-[60px] px-2'>
+      {aboutContent}
     </div>
   );
 };

@@ -34,6 +34,14 @@ const AnnouncementsPanel = ({
   ILLUSTRATION_SIZE,
   t,
 }) => {
+  const legendColors = {
+    grey: '#8b9aa7',
+    blue: '#3b82f6',
+    green: '#10b981',
+    orange: '#f59e0b',
+    red: '#ef4444',
+  };
+
   return (
     <Card
       {...CARD_PROPS}
@@ -49,24 +57,11 @@ const AnnouncementsPanel = ({
           </div>
           {/* 图例 */}
           <div className='flex flex-wrap gap-3 text-xs'>
-            {announcementLegendData.map((legend, index) => (
-              <div key={index} className='flex items-center gap-1'>
+            {announcementLegendData.map((legend) => (
+              <div key={legend.label} className='flex items-center gap-1'>
                 <div
                   className='w-2 h-2 rounded-full'
-                  style={{
-                    backgroundColor:
-                      legend.color === 'grey'
-                        ? '#8b9aa7'
-                        : legend.color === 'blue'
-                          ? '#3b82f6'
-                          : legend.color === 'green'
-                            ? '#10b981'
-                            : legend.color === 'orange'
-                              ? '#f59e0b'
-                              : legend.color === 'red'
-                                ? '#ef4444'
-                                : '#8b9aa7',
-                  }}
+                  style={{ backgroundColor: legendColors[legend.color] ?? '#8b9aa7' }}
                 />
                 <span className='text-gray-600'>{legend.label}</span>
               </div>
@@ -79,11 +74,11 @@ const AnnouncementsPanel = ({
       <ScrollableContainer maxHeight='24rem'>
         {announcementData.length > 0 ? (
           <Timeline mode='left'>
-            {announcementData.map((item, idx) => {
+            {announcementData.map((item) => {
               const htmlExtra = item.extra ? marked.parse(item.extra) : '';
               return (
                 <Timeline.Item
-                  key={idx}
+                  key={item.id ?? item.time ?? item.content}
                   type={item.type || 'default'}
                   time={`${item.relative ? item.relative + ' ' : ''}${item.time}`}
                   extra={

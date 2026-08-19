@@ -33,6 +33,20 @@ const CompleteStep = ({
   renderNavigationButtons,
   t,
 }) => {
+  let databaseType = 'PostgreSQL';
+  if (setupStatus.database_type === 'sqlite') {
+    databaseType = 'SQLite';
+  } else if (setupStatus.database_type === 'mysql') {
+    databaseType = 'MySQL';
+  }
+
+  let usageMode = t('演示站点模式');
+  if (formData.usageMode === 'external') {
+    usageMode = t('对外运营模式');
+  } else if (formData.usageMode === 'self') {
+    usageMode = t('自用模式');
+  }
+
   return (
     <div className='text-center'>
       <Avatar color='green' className='mx-auto mb-4 shadow-lg'>
@@ -47,11 +61,7 @@ const CompleteStep = ({
 
       <Descriptions>
         <Descriptions.Item itemKey={t('数据库类型')}>
-          {setupStatus.database_type === 'sqlite'
-            ? 'SQLite'
-            : setupStatus.database_type === 'mysql'
-              ? 'MySQL'
-              : 'PostgreSQL'}
+          {databaseType}
         </Descriptions.Item>
         <Descriptions.Item itemKey={t('管理员账号')}>
           {setupStatus.root_init
@@ -59,11 +69,7 @@ const CompleteStep = ({
             : formData.username || t('未设置')}
         </Descriptions.Item>
         <Descriptions.Item itemKey={t('使用模式')}>
-          {formData.usageMode === 'external'
-            ? t('对外运营模式')
-            : formData.usageMode === 'self'
-              ? t('自用模式')
-              : t('演示站点模式')}
+          {usageMode}
         </Descriptions.Item>
       </Descriptions>
 
