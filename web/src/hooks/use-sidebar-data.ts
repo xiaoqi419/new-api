@@ -30,12 +30,10 @@ import {
   Gift,
   HandCoins,
   History,
-  Images,
   Key,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
-  Palette,
   Radio,
   ReceiptText,
   Rocket,
@@ -142,22 +140,6 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        id: 'media',
-        title: t('AI Media'),
-        items: [
-          {
-            title: t('Asset Library'),
-            url: '/asset-library',
-            icon: Images,
-          },
-          {
-            title: t('Infinite Canvas'),
-            url: '/canvas',
-            icon: Palette,
-          },
-        ],
-      },
-      {
         id: 'personal',
         title: t('Personal'),
         items: [
@@ -198,15 +180,6 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/tickets/detail'],
             icon: LifeBuoy,
           },
-          ...(isAgent
-            ? []
-            : [
-                {
-                  title: t('Become an Agent'),
-                  url: '/agent-apply',
-                  icon: Building2,
-                },
-              ]),
         ],
       },
       {

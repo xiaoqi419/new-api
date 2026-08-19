@@ -15,6 +15,7 @@
 | --- | --- |
 | 已实现 / 本地验收通过 | 代码、路由、权限和受影响的回归检查已经在当前仓库完成；不代表已部署到线上。 |
 | 已实现 / 待线上验收 | 本地代码链路已完成，但真实商户凭据、公网回调、生产服务或真实结算只能在线上环境验证。 |
+| 部分实现 / 公开入口暂不开放 | 已有后端或内部管理代码，但普通用户入口按当前产品边界保持屏蔽；即使本地验收通过，也不视为公开功能已交付。 |
 | 设计中 / 未实现 | 已有产品或技术方案，但当前代码树没有对应业务实现，下一步需要重新审批后进入 Build。 |
 | 明确搁置 | 用户已经决定暂时不开发；现有同名基础能力可能保留，但不能写成该计划已完成。 |
 | 工程收口 | 功能代码之外的 lint、测试、构建、发布、部署和证据留档工作。 |
@@ -30,13 +31,15 @@
 | 支付宝官方商户直连 | 已实现 | 本地代码验收通过，待线上商户验收 | `controller/topup_alipay.go`、`router/api-router.go`、`web/src/features/wallet/`、`setting/payment_official.go` |
 | 微信官方支付（Native / H5 / JSAPI） | 已实现 | 本地代码验收通过，待线上商户验收 | `controller/topup_wechatpay.go`、`router/api-router.go`、`web/src/features/wallet/`、Comet `p0-wallet-wechatpay` Archive |
 | 视频生成 | 已实现 | 本地代码验收通过，未部署 | `controller/video_proxy.go`、`router/video-router.go`、`web/src/features/video-generation/` |
-| 素材库 / 视频引用素材 | 已实现 | 本地代码验收通过，未部署 | `web/src/features/video-generation/components/reference-media-editor.tsx` 及素材 API/模型实现 |
+| 素材库 / 视频引用素材 | 已实现，公开入口暂不开放 | `p1-feature-gates-native-controls` 已接受；A1-A9 全部通过，迭代 2 独立 Verify 通过并于 2026-08-19 归档 | `web/src/features/video-generation/components/reference-media-editor.tsx` 及素材 API/模型实现；手工 `asset://` 保留 |
+| 无限画布 | 已有代码，公开入口暂不开放 | `p1-feature-gates-native-controls` 已接受；A1-A9 全部通过，迭代 2 独立 Verify 通过并于 2026-08-19 归档 | `/canvas` 路由保留并显示 Coming Soon，不删除画布代码或历史数据 |
 | 渠道监控 | 已实现 | 本地代码验收通过，未部署 | `model/channel_monitor.go`、`controller/channel_monitor.go`、`web/src/features/channel-monitor/` |
 | 应用内接入文档 | 已实现 | 本地代码验收通过，未部署 | `web/src/routes/docs/`、`web/src/features/docs/` |
 | 用户 Token 排行与用量日志下钻 | 已实现 | 本地代码验收通过，未部署 | `controller/user_ranking.go`、`web/src/features/usage-logs/components/user-token-ranking-panel.tsx`、`web/classic/src/components/table/usage-logs/components/UserTokenRankingPanel.jsx` |
 | API Key / Token 实时并发统计 | 已实现 | 本地代码验收通过；Redis 可显示实时值，内存模式只显示上限 | `service/concurrency_limiter.go`、`controller/token.go`、`router/api-router.go`、`web/src/features/keys/api.ts`、`web/classic/src/hooks/tokens/useTokensData.jsx` |
 | 渠道兜底渠道与渠道自带兜底转发 | 已实现 | 本地代码验收通过，未部署 | `model/channel_cache.go`、`controller/relay.go`、`controller/channel-test.go`、`web/classic/src/components/table/channels/modals/EditChannelModal.jsx` |
 | 发票申请、管理员开票和 PDF 下载 | 已实现 | 本地代码验收通过，未部署 | `model/invoice.go`、`controller/invoice.go`、`router/api-router.go`、`web/src/features/invoices/` |
+| 代理商 / 白标分销 | 部分实现，公开申请入口暂不开放 | `p1-feature-gates-native-controls` 已接受；A1-A9 全部通过，迭代 2 独立 Verify 通过并于 2026-08-19 归档 | `model/agent*.go`、`controller/agent*.go`、`router/agent-router.go`、`web/src/features/agents/`、`web/src/features/agent-console/`；管理员与已激活 owner 入口保留 |
 
 ### 四项功能的实现范围
 
@@ -54,14 +57,18 @@
 - `web` typecheck、`web` build、`web/classic` build：均通过。
 - root 与独立 `relaykit` 的 Go vet、build 和全量测试：均有通过记录。
 - `p1-quality-regression`、`p1-http2-test-stability`、`p1-lint-debt`：均完成独立 Verify、Archive，并在本地合入 `codex/p0-wallet-wechatpay`。
+- Comet Native change `p1-feature-gates-native-controls` 已接受：A1-A9 全部通过，迭代 2 独立 Verify 通过；已于 2026-08-19 归档，归档目录为 `docs/comet/archive/2026-08-19-p1-feature-gates-native-controls/`。迭代 1 仅 A7 因维护文档生命周期表述过时退回，已在迭代 2 修正；本条不表示已部署或已完成线上验收。
+- QuantumNous/new-api 上游同步明确另开 change；上游 39 个提交、207 个文件差异不在本 change 内，需逐组进行三方冲突审查。
 
 ### 当前本机联调实例（2026-08-19）
 
 - 已从当前分支用 Go 启动本地 API 服务，监听 `0.0.0.0:3000`。
 - 当前访问地址：`http://localhost:3000`；同一局域网可用 `http://192.168.1.7:3000`。
 - 使用独立 SQLite 数据库 `data/local-acceptance.db`，启动时 `/api/setup` 返回 `root_init=false`；首次访问需要在初始化向导创建本地管理员。
+- 现有数据文件 `data/local-acceptance.db` 在 SQLite master `AutoMigrate` 迁移 agents 时失败，错误为 `invalid DDL, unbalanced brackets`；全新 SQLite master 可以启动，因此当前本地验收服务以 `NODE_TYPE=slave` 运行。该部署风险未归因于本次前端 change，也未宣称已修复。
 - `web/default` 和 `web/classic` 已重新构建并由 Go `embed` 静态托管；健康检查 `GET /api/status` 返回 HTTP 200。
 - 本机没有 Docker 和公网隧道工具，因此这只是本地联调实例，不等同于线上部署；微信/支付宝平台无法访问 `localhost` 回调，真实支付到账仍需公网 HTTPS 地址或线上环境。
+- 本轮归档仍保留以下未覆盖风险：完整 `format:check` 受既有 classic Tailwind `theme.css` 依赖缺口阻塞；最终重建后的受保护视频页面尚未在已认证浏览器会话中重新打开复验；隐藏素材选择器的数据加载仍会调用 `loadAssetOptions` 和 `/api/ark_asset`，属于可另行批准的后续清理项。上述事项均未写成已修复或已线上验收。
 
 ### 仍待线上验收的已实现能力
 
@@ -72,20 +79,25 @@
 
 这些事项不是“功能没有开发”，而是当前环境没有真实商户配置和线上条件，不能在本地伪造完成结论。
 
-## 4. 待拓展或尚未实现的功能
+## 4. 待拓展、部分实现或尚未实现的功能
 
-### 4.1 设计中，尚未写业务代码
+### 4.1 部分实现但公开入口暂不开放
+
+| 模块 | 当前状态 | 本轮边界 | 下一步 |
+| --- | --- | --- | --- |
+| 代理商 / 白标分销系统 | 已有部分代码，公开入口暂不开放 | 保留后端、管理员管理页和已激活 owner 控制台；普通用户 `/agent-apply` 显示 Coming Soon；`p1-feature-gates-native-controls` 已接受、A1-A9 全部通过并于 2026-08-19 归档 | 如需开放公开分销，另行确认租户边界、域名/证书、代理支付和线上结算 |
+
+### 4.2 设计中，尚未写业务代码
 
 | 模块 | 当前状态 | 设计文档 | 进入开发前提 |
 | --- | --- | --- | --- |
-| 代理商 / 白标分销系统 | 设计中，未实现 | `design/agent-reseller-spec.md` | 重新确认分销结算、租户边界、域名/证书、代理支付和多租户安全范围后再拆分 Build 任务 |
 | QQ 群机器人 | 方案设计，待评审，未实现 | `qq-bot/DESIGN.md` | 先确认 QQ 账号、NapCat/OneBot 部署、后台配置归属、积分规则和机器人权限，再决定是否实现中转站 Part A 与机器人 Part B |
 
-### 4.2 明确搁置
+### 4.3 明确搁置
 
 - **微信订阅号验证码登录扩展**：用户已明确暂时排除微信登录功能开发。仓库中的既有微信登录能力继续保留，但早期方案中的订阅号验证码登录没有实现，也不应列入当前开发完成项。
 
-### 4.3 已实现能力的后续增强候选
+### 4.4 已实现能力的后续增强候选
 
 这些不是当前已批准的 Build 任务，只是后续可选方向：
 
@@ -98,7 +110,7 @@
 
 1. 先完成微信/支付宝线上商户支付验收，形成订单号、回调日志、验签结果和到账日志证据。
 2. 完成发布前的 GitHub 推送、PR、部署和回滚路径确认；当前仓库仍未推送、未创建 PR、未发布、未部署。
-3. 若继续二开，优先评审代理商/白标分销和 QQ 机器人两个设计模块，先冻结产品边界，再分别进入 Comet Native Build。
+3. 若继续二开，先评审代理商/白标分销公开入口和 QQ 机器人设计模块；两者都需先冻结产品边界，再分别进入 Comet Native Build。
 4. 微信登录扩展继续保持搁置，除非用户重新明确授权并重新确认范围。
 
 ## 6. 为什么此前没有把排行 / 并发 / 兜底 / 发票列入二开功能

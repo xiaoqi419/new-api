@@ -26,7 +26,14 @@ import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import {
   Table,
@@ -544,6 +551,11 @@ function PrepayCard() {
   })
   const payMethods: { type: string; name?: string }[] =
     topupRes?.data?.pay_methods ?? []
+  const paymentMethodItems =
+    payMethods.length === 0
+      ? [{ value: '', label: t('No payment method') }]
+      : payMethods.map((m) => ({ value: m.type, label: m.name || m.type }))
+  const selectedPaymentMethod = method || payMethods[0]?.type || ''
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -582,22 +594,28 @@ function PrepayCard() {
         </div>
         <div className='space-y-1'>
           <Label>{t('Payment Method')}</Label>
-          <NativeSelect
-            className='w-full'
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
+          <Select
+            items={paymentMethodItems}
+            value={selectedPaymentMethod}
+            onValueChange={(value) => value !== null && setMethod(value)}
           >
-            {payMethods.length === 0 && (
-              <NativeSelectOption value=''>
-                {t('No payment method')}
-              </NativeSelectOption>
-            )}
-            {payMethods.map((m) => (
-              <NativeSelectOption key={m.type} value={m.type}>
-                {m.name || m.type}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+            <SelectTrigger className='w-full'>
+              <SelectValue>
+                {paymentMethodItems.find(
+                  (item) => item.value === selectedPaymentMethod
+                )?.label ?? t('No payment method')}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {paymentMethodItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <Button

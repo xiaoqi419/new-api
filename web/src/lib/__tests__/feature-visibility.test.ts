@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2025 QuantumNous
+Copyright (C) 2026 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -16,26 +16,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Input } from '@/components/ui/input'
+import assert from 'node:assert/strict'
+import { describe, test } from 'node:test'
 
-import type { SelectOption } from '../types'
+import { ComingSoon } from '@/components/coming-soon'
 
-interface AssetUrlInputProps {
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  assetOptions: SelectOption[]
-}
+const routeModules = await Promise.all([
+  import('@/routes/_authenticated/canvas'),
+  import('@/routes/_authenticated/asset-library'),
+  import('@/routes/_authenticated/agent-apply'),
+])
 
-export function AssetUrlInput(props: AssetUrlInputProps) {
-  return (
-    <div className='flex gap-2'>
-      <Input
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        placeholder={props.placeholder}
-        className='flex-1'
-      />
-    </div>
-  )
-}
+describe('retired user feature routes', () => {
+  test('use the ComingSoon page without importing feature implementations', () => {
+    for (const module of routeModules) {
+      assert.equal(module.Route.options.component, ComingSoon)
+    }
+  })
+})

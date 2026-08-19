@@ -29,6 +29,25 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260819-380cd6aa9',
+    date: '2026-08-19',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'Torch AI 二开汇总:邀请返现与邀请中心、拼团、微信官方支付、支付宝商户直连、视频生成、素材库、渠道监控、应用内接入文档、用户 Token 排行与用量下钻、实时并发、渠道兜底和发票均已落到当前代码树,本地代码验收与线上支付验收状态见维护文档。',
+        ],
+      },
+      {
+        kind: 'improvement',
+        items: [
+          '本轮暂时关闭普通用户的「无限画布」「素材库」「成为代理」公开入口,直接访问对应地址显示 Coming Soon;保留后端代码、历史数据、asset:// 手工引用,已激活代理 owner 与管理员内部入口继续用于开发验收。',
+          '代理分销与白标已有部分代码,但公开申请入口暂不开放且尚未完成验收;本 change 的本地验收待完成,上游同步另开 change 处理。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260818-ab791b03a',
     date: '2026-08-18',
     changes: [
