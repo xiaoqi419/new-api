@@ -21,16 +21,16 @@
 - rc.25 同步保留 Torch AI 的支付、拼团、返现、视频、素材库、无限画布、渠道监控、排行、实时并发、渠道兜底、发票、代理/白标和入口屏蔽策略，同时进入官方额度原子预扣、充值/订阅并发保护、OAuth、渠道测试、高级自定义渠道、Claude/Responses relay 修复和 Vitest 测试基础设施。
 - `figma-home-theme-refresh` 已完成像素级首页与全局主题改造的 Native Verify；A1-A22 全部通过，当前进入 Archive 收口。该 change 不修改后端支付、数据库、登录契约或受保护标识。
 
-## Figma 首页与全局主题改造（Verify 通过，Archive 收口）
+## Figma 首页与全局主题改造（Archive 已完成）
 
-- Comet Native change：`figma-home-theme-refresh`，工作树分支 `comet/figma-home-theme-refresh`；A1-A22 已由独立 `gpt-5.6-luna` / `max` Verifier 全部通过，Runtime 已进入 Archive。归档、提交和合并仍需完成后才能写成已完成。
+- Comet Native change：`figma-home-theme-refresh`，工作树分支 `comet/figma-home-theme-refresh`；A1-A22 已由独立 `gpt-5.6-luna` / `max` Verifier 全部通过，Runtime 已于 2026-08-20 完成 Archive。归档产物位于 `docs/comet/archive/2026-08-19-figma-home-theme-refresh/`。
 - 设计基准：Figma 文件 `SnTAn1XXoaAvEQgG61mm38`，浅色节点 `6:2`、深色节点 `44:2`。默认 `classic-landing` 已按设计稿保留公共导航、Hero/API 面板、模型卡、`01` 功能网格、utility cards、连接 CTA、`02` 工作流、`03` 统计和 footer 的层级。
 - 浏览器几何证据：1920px 下 Hero `1392x897`、H1 `590x228`、API panel `402x316`；浅色/深色 feature grid `1196x470`（x=388/362，y=1167）；CTA `1288x430`（y=1999）；workflow frame `1224x605`（x=336/310，y=2529）；stats frame `1242x470`（x=336/310，y=3234）；footer y=3804、h=620。1440/768/390 浅色与深色均无水平溢出并按响应式堆叠，390px 的 10px 差异来自浏览器滚动条，不是内容溢出。
 - 浏览器交互证据：主题切换、语言/通知/主题控件可访问名称、移动菜单展开/关闭和 Tab 可达性已验证；移动菜单使用 `aria-expanded`/`aria-controls`，body 滚动锁定正常；Hero 交互层 overlap 检查为空；主题页 `meta[name=theme-color]` 同步；未捕获 console warning/error。
 - 本地静态证据：受影响 `oxlint` 通过（仅保留既有 footer `react(no-danger)` warning）；受影响 `oxfmt --check` 通过；`git diff --check` 通过；`web` `tsgo -b` 通过；`web` Rsbuild v2.1.6 production build 通过；`web/classic` Rsbuild v2.1.8 production build 通过；七语言首页新增 key 集合检查通过，classic 八语言 key 集合检查通过。
-- 兼容边界：管理员 URL iframe、HTML/Markdown、自定义模板 ID、section 开关和内容覆盖仍由既有分支控制；本候选未修改后端 API、数据库、支付、登录或受保护的 `new-api`/`QuantumNous` 标识。默认首页资源已固化到 `web/public/assets/home-figma/`，运行组件使用本地路径。
+- 兼容边界：管理员 URL iframe、HTML/Markdown、自定义模板 ID、section 开关和内容覆盖仍由既有分支控制；本 change 未修改后端 API、数据库、支付、登录或受保护的 `new-api`/`QuantumNous` 标识。默认首页资源已固化到 `web/public/assets/home-figma/`，运行组件使用本地路径。
 - 未覆盖项：当前没有首页/theme 专用 Vitest；管理员自定义首页的 URL iframe、HTML/Markdown、模板 ID、section 开关和内容覆盖尚未在已认证管理员浏览器中逐分支打开；真实线上支付、回调、部署和发布仍属于 user-owned / blocked-online。上述事项不能写成已完成。
-- Git/发布状态：本地工作树仍有实现、资源和 Comet 产物待提交；尚未推送、创建 PR、合并到 `codex/p0-wallet-wechatpay`、发布或部署。完成 Archive 后由主代理继续执行原子提交和目标分支合并，并在本文补录 commit 哈希与远端状态。
+- Git/发布状态：实现提交为 `8f0a66ac3`，Comet finish-policy 提交为 `4259c4a61`，Archive 提交为 `7fe96c433`；本工作树干净。由于目标工作树 `E:\code\torch-ai` 当前存在用户/其他 change 的未提交支付改动，Archive 采用 `finish: keep`，因此尚未合并到 `codex/p0-wallet-wechatpay`、推送、创建 PR、发布或部署；不得覆盖这些已有改动。
 
 ## 最终前端门禁记录（2026-08-19）
 
