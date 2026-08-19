@@ -59,7 +59,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
         href={props.link.href}
         target='_blank'
         rel='noopener noreferrer'
-        className='text-muted-foreground hover:text-foreground text-sm transition-colors duration-200'
+        className='text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
       >
         {label}
       </a>
@@ -69,7 +69,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
   return (
     <Link
       to={props.link.href}
-      className='text-muted-foreground hover:text-foreground text-sm transition-colors duration-200'
+      className='text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
     >
       {label}
     </Link>
@@ -111,7 +111,7 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
           )}
           <Link
             to={item.href}
-            className='hover:text-foreground transition-colors duration-200'
+            className='hover:text-foreground focus-visible:ring-ring rounded-sm transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
           >
             {item.label}
           </Link>
@@ -132,7 +132,7 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
         href='https://github.com/QuantumNous/new-api'
         target='_blank'
         rel='noopener noreferrer'
-        className='text-foreground/70 hover:text-foreground font-medium transition-colors'
+        className='text-foreground/70 hover:text-foreground focus-visible:ring-ring rounded-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
       >
         {t('New API')}
       </a>
@@ -226,7 +226,7 @@ export function Footer(props: FooterProps) {
     return (
       <footer
         className={cn(
-          'border-border/40 relative z-10 border-t',
+          'public-footer border-border/40 relative z-10 border-t',
           props.className
         )}
       >
@@ -248,7 +248,11 @@ export function Footer(props: FooterProps) {
 
   return (
     <footer
-      className={cn('border-border/40 relative z-10 border-t', props.className)}
+      data-footer-variant='default'
+      className={cn(
+        'public-footer border-border/40 relative z-10 border-t',
+        props.className
+      )}
     >
       <div className='mx-auto max-w-6xl px-6 py-12 md:py-16'>
         <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>

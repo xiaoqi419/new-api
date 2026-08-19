@@ -1,6 +1,6 @@
 # Torch AI 维护状态
 
-> 更新时间：2026-08-19
+> 更新时间：2026-08-20
 >
 > 本文是当前代码状态的维护记录。二开功能总表见 [`torch-ai-second-development-status.md`](torch-ai-second-development-status.md)；详细设计仍以 `secondary-development-plan.md`、`四需求技术方案.md` 和 `web-default-迁移计划.md` 为参考，但这些文档中的早期“尚未改动”描述已经过时，不能作为当前实现进度的唯一依据。
 
@@ -19,7 +19,18 @@
 - 仍存本地验收范围之外的风险：完整 `format:check` 受既有 classic Tailwind `theme.css` 依赖缺口阻塞；最终重建后的受保护视频页面尚未在已认证浏览器会话中重新打开复验；隐藏素材选择器的数据加载仍会调用 `loadAssetOptions` 和 `/api/ark_asset`，属于可另行批准的清理项。上述事项均未写成已修复。
 - Comet Native change `upstream-rc25-sync` 已完成 Build 候选：以 Torch AI 基线 `60e2775e3` 和官方 `v1.0.0-rc.25` / `f11641428` 为输入，39 个官方提交、207 个文件差异已经完成三方合并，27 个预测冲突路径已逐组处理；当前仍在 Build，尚未进入 Verify/Archive。
 - rc.25 同步保留 Torch AI 的支付、拼团、返现、视频、素材库、无限画布、渠道监控、排行、实时并发、渠道兜底、发票、代理/白标和入口屏蔽策略，同时进入官方额度原子预扣、充值/订阅并发保护、OAuth、渠道测试、高级自定义渠道、Claude/Responses relay 修复和 Vitest 测试基础设施。
-- 下一独立 change 目标为“Figma 首页与全局主题改造”。当前 `upstream-rc25-sync` change 不包含首页或全局主题改造；该目标需另行建立 change 并重新确认范围与验收。
+- `figma-home-theme-refresh` 已完成像素级首页与全局主题改造的 Native Verify；A1-A22 全部通过，当前进入 Archive 收口。该 change 不修改后端支付、数据库、登录契约或受保护标识。
+
+## Figma 首页与全局主题改造（Verify 通过，Archive 收口）
+
+- Comet Native change：`figma-home-theme-refresh`，工作树分支 `comet/figma-home-theme-refresh`；A1-A22 已由独立 `gpt-5.6-luna` / `max` Verifier 全部通过，Runtime 已进入 Archive。归档、提交和合并仍需完成后才能写成已完成。
+- 设计基准：Figma 文件 `SnTAn1XXoaAvEQgG61mm38`，浅色节点 `6:2`、深色节点 `44:2`。默认 `classic-landing` 已按设计稿保留公共导航、Hero/API 面板、模型卡、`01` 功能网格、utility cards、连接 CTA、`02` 工作流、`03` 统计和 footer 的层级。
+- 浏览器几何证据：1920px 下 Hero `1392x897`、H1 `590x228`、API panel `402x316`；浅色/深色 feature grid `1196x470`（x=388/362，y=1167）；CTA `1288x430`（y=1999）；workflow frame `1224x605`（x=336/310，y=2529）；stats frame `1242x470`（x=336/310，y=3234）；footer y=3804、h=620。1440/768/390 浅色与深色均无水平溢出并按响应式堆叠，390px 的 10px 差异来自浏览器滚动条，不是内容溢出。
+- 浏览器交互证据：主题切换、语言/通知/主题控件可访问名称、移动菜单展开/关闭和 Tab 可达性已验证；移动菜单使用 `aria-expanded`/`aria-controls`，body 滚动锁定正常；Hero 交互层 overlap 检查为空；主题页 `meta[name=theme-color]` 同步；未捕获 console warning/error。
+- 本地静态证据：受影响 `oxlint` 通过（仅保留既有 footer `react(no-danger)` warning）；受影响 `oxfmt --check` 通过；`git diff --check` 通过；`web` `tsgo -b` 通过；`web` Rsbuild v2.1.6 production build 通过；`web/classic` Rsbuild v2.1.8 production build 通过；七语言首页新增 key 集合检查通过，classic 八语言 key 集合检查通过。
+- 兼容边界：管理员 URL iframe、HTML/Markdown、自定义模板 ID、section 开关和内容覆盖仍由既有分支控制；本候选未修改后端 API、数据库、支付、登录或受保护的 `new-api`/`QuantumNous` 标识。默认首页资源已固化到 `web/public/assets/home-figma/`，运行组件使用本地路径。
+- 未覆盖项：当前没有首页/theme 专用 Vitest；管理员自定义首页的 URL iframe、HTML/Markdown、模板 ID、section 开关和内容覆盖尚未在已认证管理员浏览器中逐分支打开；真实线上支付、回调、部署和发布仍属于 user-owned / blocked-online。上述事项不能写成已完成。
+- Git/发布状态：本地工作树仍有实现、资源和 Comet 产物待提交；尚未推送、创建 PR、合并到 `codex/p0-wallet-wechatpay`、发布或部署。完成 Archive 后由主代理继续执行原子提交和目标分支合并，并在本文补录 commit 哈希与远端状态。
 
 ## 最终前端门禁记录（2026-08-19）
 

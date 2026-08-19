@@ -1,5 +1,9 @@
 {
   "translation": {
+    "Connect your models": "Kết nối các mô hình của bạn",
+    "with New API": "với New API",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "Từ khóa API và khả năng tương thích giao thức đến quản lý sử dụng và quyền hạn, giảm chi phí tích hợp với một cổng thống nhất.",
+    "More control, lower cost": "Kiểm soát nhiều hơn, chi phí thấp hơn",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

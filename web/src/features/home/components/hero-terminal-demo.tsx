@@ -35,7 +35,6 @@ interface ApiDemoConfig {
   latency: number
   accent: AccentTone
 }
-
 const ACCENT_CLASSES: Record<
   AccentTone,
   {
@@ -203,19 +202,19 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
   const accent = ACCENT_CLASSES[demo.accent]
 
   return (
-    <div className={cn('mx-auto w-full max-w-2xl', props.className)}>
+    <div className={cn('mx-auto w-full max-w-[402px]', props.className)}>
       <div
         className={cn(
-          'overflow-hidden rounded-2xl border backdrop-blur-sm',
-          'border-border/60 bg-white/95 shadow-[0_20px_50px_-25px_rgba(15,23,42,0.18)]',
-          'dark:border-white/[0.06] dark:bg-[#0b0f17]/95 dark:shadow-[0_20px_60px_-25px_rgba(0,0,0,0.7)]'
+          'h-[316px] overflow-hidden rounded-[26px] border backdrop-blur-sm',
+          'border-black/[0.12] bg-white/[0.96] shadow-[0_30px_55px_-28px_rgba(15,23,42,0.28)]',
+          'dark:border-white/[0.08] dark:bg-[#111111]/95 dark:shadow-[0_30px_55px_-28px_rgba(0,0,0,0.7)]'
         )}
       >
         {/* Tab strip */}
         <div
           className={cn(
-            'flex items-center gap-1 border-b px-2 sm:gap-1.5 sm:px-3',
-            'border-border/50 dark:border-white/[0.05]'
+            'flex h-14 items-center gap-1 border-b px-3 sm:gap-1.5',
+            'border-black/[0.08] dark:border-white/[0.06]'
           )}
         >
           {API_DEMOS.map((item, index) => {
@@ -227,7 +226,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
                 type='button'
                 onClick={() => handleSelect(index)}
                 className={cn(
-                  'relative -mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-[11px] font-medium tracking-wide transition-colors sm:px-3 sm:text-xs',
+                  'relative -mb-px flex h-14 items-center gap-1.5 border-b-2 px-2 text-[10px] font-medium tracking-wide transition-colors sm:px-2.5 sm:text-[11px]',
                   isActive
                     ? `${tone.activeBorder} ${tone.activeText}`
                     : 'text-foreground/70 hover:text-foreground border-transparent'
@@ -240,7 +239,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
           <div className='ml-auto flex items-center gap-2 pr-2 sm:pr-3'>
             <span className='bg-success inline-block size-1.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.45)]' />
             <span className='text-foreground/70 font-mono text-[10px] tracking-wider uppercase'>
-              200 ok
+              200 OK
             </span>
           </div>
         </div>
@@ -249,7 +248,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
         <div
           className={cn(
             'flex items-center gap-2.5 border-b px-5 py-3',
-            'border-border/40 dark:border-white/[0.04]'
+            'border-black/[0.08] dark:border-white/[0.05]'
           )}
         >
           <span
@@ -271,7 +270,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
         </div>
 
         {/* Body — fixed rows so neither block shifts when switching demos */}
-        <div className='grid h-[400px] grid-rows-[235px_minmax(0,1fr)] font-mono text-[12.5px] leading-[1.55]'>
+        <div className='grid h-[205px] grid-rows-[1fr_1fr] overflow-hidden font-mono text-[10.5px] leading-[1.45] sm:text-[11px]'>
           {/* Request */}
           <RequestBlock demo={demo} transitioning={transitioning} />
 
@@ -281,9 +280,10 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
 
         {/* Footer metrics */}
         <div
+          aria-hidden='true'
           className={cn(
-            'flex items-center justify-between border-t px-5 py-2.5',
-            'border-border/40 bg-muted/30 dark:border-white/[0.05] dark:bg-white/[0.02]'
+            'hidden items-center justify-between border-t px-5 py-2.5',
+            'border-black/[0.08] bg-black/[0.025] dark:border-white/[0.05] dark:bg-white/[0.02]'
           )}
         >
           <div className='text-foreground/70 flex items-center gap-3 text-[10px] tabular-nums'>
@@ -340,7 +340,7 @@ function RequestBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
           <Flag>-d</Flag> <StringText>&apos;{'{'}</StringText>
         </CodeLine>
         {demo.request.map((line) => (
-          <CodeLine key={`${demo.id}-request-${line}`} indent={4}>
+          <CodeLine key={line} indent={4}>
             {renderJsonLine(line)}
           </CodeLine>
         ))}
@@ -370,9 +370,7 @@ function ResponseBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
         )}
       >
         {demo.response.map((line) => (
-          <CodeLine key={`${demo.id}-response-${line}`}>
-            {renderResponseLine(line, demo)}
-          </CodeLine>
+          <CodeLine key={line}>{renderResponseLine(line, demo)}</CodeLine>
         ))}
       </div>
     </div>
@@ -414,26 +412,32 @@ function renderResponseLine(line: string, demo: ApiDemoConfig): ReactNode {
     const placeholder = match[0]
     if (placeholder === '<text>') {
       segments.push(
-        <Accent key={`ph-${start}`} accent={demo.accent}>
+        <Accent key={`ph-${placeholder}-${start}`} accent={demo.accent}>
           {`"${truncateResponse(demo)}"`}
         </Accent>
       )
     } else if (placeholder === '<tokens>') {
-      segments.push(<NumberText key={`ph-${start}`}>{demo.tokens}</NumberText>)
+      segments.push(
+        <NumberText key={`ph-${placeholder}-${start}`}>
+          {demo.tokens}
+        </NumberText>
+      )
     } else if (placeholder === '<in>') {
       segments.push(
-        <NumberText key={`ph-${start}`}>
+        <NumberText key={`ph-${placeholder}-${start}`}>
           {Math.floor(demo.tokens * 0.4)}
         </NumberText>
       )
     } else if (placeholder === '<out>') {
       segments.push(
-        <NumberText key={`ph-${start}`}>
+        <NumberText key={`ph-${placeholder}-${start}`}>
           {Math.ceil(demo.tokens * 0.6)}
         </NumberText>
       )
     } else {
-      segments.push(<Muted key={`ph-${start}`}>{placeholder}</Muted>)
+      segments.push(
+        <Muted key={`ph-${placeholder}-${start}`}>{placeholder}</Muted>
+      )
     }
     cursor = start + placeholder.length
   })

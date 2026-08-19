@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260820-home-refresh',
+    date: '2026-08-20',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '首页按新版 Figma 信息架构重排:统一 API 网关 hero、模型连接 CTA、功能 bento、三步接入与用量统计在浅色和深色主题下保持稳定的响应式布局。',
+          '经典首页同步统一黑白、紫色与荧光黄视觉语言,并补齐七种语言的首页文案。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260819-6acf55ae4',
     date: '2026-08-19',
     changes: [

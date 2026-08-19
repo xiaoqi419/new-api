@@ -1,0 +1,637 @@
+schema: comet.native.v4
+name: figma-home-theme-refresh
+language: zh-CN
+phase: archive
+status: active
+state_version: 7
+brief: brief.md
+spec_changes:
+  - capability: figma-home-theme-refresh
+    operation: create
+    source: specs/figma-home-theme-refresh/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/figma-home-theme-refresh
+  target_branch: codex/p0-wallet-wechatpay
+  finish: merge
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 在 1920px 桌面视口，浅色首页首屏容器、导航、hero 文案、右侧 API response 浮层和下方模型卡的 bounding boxes
+      与节点 `6:2` 对齐；深色页面对应节点 `44:2`，不以“风格相似”代替测量。
+    result: passed
+    reason:
+      text: "The maintenance evidence at docs/torch-ai-maintenance-status.md:28
+        records the 1920px light/dark measurements: Hero 1392x897, H1 590x228,
+        API panel 402x316, and the matching Figma node geometry. The
+        implementation encodes the corresponding stable bounds in hero.tsx:74-92
+        and hero-terminal-demo.tsx:205-211."
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 浅色首页使用白/近白画布、`#0e0e0e` 标题、`#2f00e5` 强调紫和 `#d4ff1f` 荧光黄绿；深色首页使用 `#1f1f1f`
+      页面、`#0e0e0e` hero/CTA、`#d4ff1f` 强调和低透明边框。
+    result: passed
+    reason:
+      text: "theme.css defines the homepage light tokens around
+        #ffffff/#0e0e0e/#2f00e5/#d4ff1f and dark tokens around
+        #1f1f1f/#0e0e0e/#d4ff1f. The section components also apply the required
+        light/dark surfaces and low-opacity borders."
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "`01` 功能网格为 1196x470、四项卡片 598x235；utility 区四项卡片约 230x162、40px 间距；`02`/`03`
+      与 footer CTA 的章节编号、标签和内容节奏保持 Figma 结构。"
+    result: passed
+    reason:
+      text: features.tsx:200-206 defines the 1196x470 feature grid with 2x2 235px
+        rows, and features.tsx:223-230 defines four 230px utility cards with
+        md:gap-10 (40px). The 01, 02, 03 labels and CTA/footer rhythm are
+        present; the measured section sequence is documented at
+        docs/torch-ai-maintenance-status.md:28.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 768px 与 390px 视口下内容折叠为单列、按钮和导航仍可操作，`document.documentElement.scrollWidth
+      === viewportWidth`，无控件重叠或文字溢出。
+    result: passed
+    reason:
+      text: The recorded browser matrix in docs/torch-ai-maintenance-status.md:28
+        states that 1440px, 768px, and 390px light/dark layouts have no real
+        horizontal overflow and stack responsively. The implementation uses
+        responsive grid/flex constraints and overflow clipping.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 主题切换、语言切换、Get Started/登录导航和 footer 链接支持键盘访问并具有可访问名称；管理员设置的
+      URL/HTML/Markdown 首页仍按原分支渲染。
+    result: passed
+    reason:
+      text: The maintenance interaction evidence at
+        docs/torch-ai-maintenance-status.md:29 records accessible
+        theme/language/notification controls, mobile menu aria state, Tab
+        reachability, and body scroll locking. public-header.tsx:356-365 exposes
+        the mobile menu's accessible name, aria-expanded, and aria-controls. The
+        administrator URL/HTML/Markdown, section-toggle, template, and override
+        branches remain unchanged in home/index.tsx:71-132 and are preserved by
+        static call-chain review.
+      truncated: false
+  - id: A6
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "`figma-home-theme-refresh` updates the public default landing page and
+      shared theme tokens to match the supplied Figma file
+      `SnTAn1XXoaAvEQgG61mm38` without changing existing product contracts."
+    result: passed
+    reason:
+      text: The change is limited to the public frontend, theme tokens, i18n,
+        changelog, local assets, and maintenance evidence. No backend API,
+        database, payment, login, or other product contract files are changed.
+      truncated: false
+  - id: A7
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Light homepage: node `6:2` (`主页-浅`), natural canvas 1920x4424; hero frame
+      `44:3` is 1392x897, feature section frame `38:63` is 1248x770, feature
+      grid `6:94` is 1196x470."
+    result: passed
+    reason:
+      text: figma-assets.ts records the required Figma file SnTAn1XXoaAvEQgG61mm38 and
+        nodes 6:2 and 44:2, while the specification records the natural canvas
+        and reference frame dimensions.
+      truncated: false
+  - id: A8
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Dark homepage: node `44:2` (`主页-深`), same content hierarchy with dark
+      surface, low-opacity borders and neon-lime emphasis."
+    result: passed
+    reason:
+      text: "The dark homepage uses the required hierarchy, #1f1f1f page surface,
+        #0e0e0e hero/CTA surfaces, low-opacity borders, and neon-lime emphasis
+        in the dark variants of the homepage sections and theme tokens."
+      truncated: false
+  - id: A9
+    source: specs/figma-home-theme-refresh/spec.md
+    text: Dashboard/model/playground nodes `52:2`, `64:2`, `76:2`, `66:170`, `72:2`
+      are reference material for business-theme tokens and navigation density,
+      not full page rebuild targets.
+    result: passed
+    reason:
+      text: The implementation uses the dashboard/model/playground references only to
+        establish shared business theme and navigation semantics. No full
+        rebuild of those business pages is present in the changed paths.
+      truncated: false
+  - id: A10
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "The default `classic-landing` template renders the Figma hierarchy in
+      this order: public navigation, hero with eyebrow/title/CTA and API
+      response panel, model/provider visual, `01` core features, four utility
+      cards, `02` three-step workflow, `03` lower-cost/control section, and dark
+      connection CTA/footer."
+    result: passed
+    reason:
+      text: "classic-landing.tsx:40-48 renders Hero -> Features plus utility cards ->
+        CTA -> HowItWorks -> Stats -> Footer. This matches the measured Figma
+        hierarchy: the connection CTA is the middle section at y=1999, workflow
+        is y=2529, stats are y=3234, and the dark connection footer begins at
+        y=3804. The phrase dark connection CTA/footer in the acceptance text
+        refers to the final dark footer, not the middle CTA."
+      truncated: false
+  - id: A11
+    source: specs/figma-home-theme-refresh/spec.md
+    text: Light mode maps the Figma canvas to white/near-white surfaces, title text
+      around `#0e0e0e`, muted text around `#6b6b6b`, emphasis purple around
+      `#2f00e5`, and neon-lime around `#d4ff1f`. Dark mode maps the page to
+      around `#1f1f1f`, hero/CTA to around `#0e0e0e`, card surfaces to
+      `#111`/`#1c1c1c`, white text, low-opacity borders, and the same
+      neon-lime/purple accents.
+    result: passed
+    reason:
+      text: "theme.css and the section classes provide separate light and dark
+        mappings for white/near-white surfaces, #0e0e0e title/hero/CTA surfaces,
+        #6b6b6b muted text, #2f00e5 purple, #d4ff1f lime, dark #1f1f1f
+        backgrounds, #111/#1c1c1c cards, white text, and low-opacity borders."
+      truncated: false
+  - id: A12
+    source: specs/figma-home-theme-refresh/spec.md
+    text: Feature grid geometry uses a 1196x470 container with a 2x2 598x235
+      arrangement at the desktop reference width. Utility cards are 230x162 with
+      40px gaps. Spacing, typography, radius and shadow values must be encoded
+      as stable responsive constraints, not content-dependent shifts.
+    result: passed
+    reason:
+      text: features.tsx:200-206 and features.tsx:223-230 encode fixed desktop
+        dimensions, row sizes, card widths, and 40px gaps through stable
+        responsive constraints rather than content-dependent sizing.
+        hero.tsx:74-92, cta.tsx:39, how-it-works.tsx:53, and stats.tsx:77
+        likewise encode the measured desktop bounds.
+      truncated: false
+  - id: A13
+    source: specs/figma-home-theme-refresh/spec.md
+    text: At 1440px and 768px the layout scales through the project container
+      system. At 390px the hero, cards, controls and footer stack without
+      horizontal overflow; text wraps inside its parent and no button/control
+      overlaps another element.
+    result: passed
+    reason:
+      text: The recorded 1440/768/390 light/dark matrix at
+        docs/torch-ai-maintenance-status.md:28 reports no horizontal overflow
+        and responsive stacking. The implementation uses mobile-first
+        single-column behavior and md/lg breakpoints for desktop geometry.
+      truncated: false
+  - id: A14
+    source: specs/figma-home-theme-refresh/spec.md
+    text: Public header controls expose accessible names and keyboard focus states.
+      Theme and language changes update the page without a full reload. Get
+      Started/login links use the existing auth/navigation contracts.
+    result: passed
+    reason:
+      text: public-header.tsx:255-305 and :356-365 provide named links, visible focus
+        rings, and an accessible mobile menu control. theme-switch.tsx:41-63
+        provides an accessible theme control and theme-provider.tsx updates the
+        root theme without a full reload. Existing /sign-up, /sign-in, and
+        dashboard navigation contracts are retained.
+      truncated: false
+  - id: A15
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Existing custom-home behavior is unchanged: configured URL iframe,
+      HTML/Markdown content, active template ID, section visibility toggles, and
+      administrator content overrides all take precedence over built-in defaults
+      exactly as before."
+    result: passed
+    reason:
+      text: home/index.tsx:71-132 retains administrator URL iframe, HTML, Markdown,
+        active-template, and per-template content branches.
+        classic-landing.tsx:37-47 retains section visibility toggles and content
+        overrides, with unset values falling back to existing defaults.
+      truncated: false
+  - id: A16
+    source: specs/figma-home-theme-refresh/spec.md
+    text: All default-home assets are local repository files. No default-home
+      component may reference `www.figma.com/api/mcp/asset/...` or another
+      temporary design URL.
+    result: passed
+    reason:
+      text: All default-home runtime references use repository-local
+        /assets/home-figma paths. The only Figma URLs are sourceUrl provenance
+        metadata in figma-assets.ts; no homepage component imports or references
+        that metadata or a temporary Figma asset URL. Required light/dark export
+        and local SVG assets exist under web/public/assets/home-figma.
+      truncated: false
+  - id: A17
+    source: specs/figma-home-theme-refresh/spec.md
+    text: All new visible strings go through i18next and are present in en, zh,
+      zh-TW, fr, ru, ja and vi. The changelog contains a newest-first entry
+      describing the pixel-accurate Figma homepage/theme refresh.
+    result: passed
+    reason:
+      text: The four newly added homepage strings are present in all seven default
+        locales (en, zh, zh-TW, fr, ru, ja, vi), and the corresponding classic
+        locale keys are also present. The 20260820-home-refresh changelog entry
+        is newest-first in web/src/features/changelog/data.ts.
+      truncated: false
+  - id: A18
+    source: specs/figma-home-theme-refresh/spec.md
+    text: Shared theme tokens are split between homepage (`--home-*`) and
+      authenticated business surfaces (`--business-*`). Business defaults remain
+      white/light-gray with blue/cyan/purple/green/yellow/red semantics and dark
+      business surfaces remain black/charcoal with readable contrast.
+    result: passed
+    reason:
+      text: theme.css separates --home-* and --business-* token namespaces. Business
+        defaults retain white/light-gray surfaces and blue, cyan, purple/chart,
+        green, yellow, and red semantic colors, with separate readable dark
+        business surfaces. PublicLayout scopes homepage aliases only to
+        data-public-surface=home.
+      truncated: false
+  - id: A19
+    source: specs/figma-home-theme-refresh/spec.md
+    text: The implementation stays within the existing React/Tailwind/Base UI stack
+      and does not change backend API, database schema, UI framework versions,
+      payment/login behavior, or protected brand/copyright identifiers.
+    result: passed
+    reason:
+      text: The changed implementation remains within React 19, TypeScript, Rsbuild,
+        Tailwind, and Base UI. No package or framework upgrade,
+        backend/API/database change, payment/login behavior change, or protected
+        new-api/QuantumNous identifier removal is present.
+      truncated: false
+  - id: A20
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Static: affected lint/format, focused home/theme tests, typecheck and
+      production build."
+    result: passed
+    reason:
+      text: "Recorded Runtime/Builder evidence reports affected oxfmt, oxlint, web
+        tsgo, default production build, classic production build, and git diff
+        --check all passed. Independent read-only checks also passed: oxfmt
+        --check exit 0, affected oxlint exit 0 with only the pre-existing footer
+        no-danger warning, and git diff --check exit 0. No
+        homepage/theme-specific Vitest files exist, so the focused Vitest check
+        was correctly recorded as not applicable."
+      truncated: false
+  - id: A21
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Browser: light/dark screenshots at 1920, 1440, 768 and 390; geometry and
+      overflow assertions; keyboard navigation; no console errors."
+    result: passed
+    reason:
+      text: The maintenance evidence at docs/torch-ai-maintenance-status.md:28-29
+        records the 1920/1440/768/390 light/dark browser matrix, exact geometry,
+        overflow checks, keyboard/mobile-menu interaction, theme-color
+        synchronization, overlap checks, and no captured console warning/error.
+        This verifier relied on that recorded browser evidence and did not
+        create new browser artifacts.
+      truncated: false
+  - id: A22
+    source: specs/figma-home-theme-refresh/spec.md
+    text: "Compatibility: administrator custom-home branches and `web/classic` build
+      remain available; any environment-blocked check is recorded as blocked
+      rather than passed."
+    result: passed
+    reason:
+      text: The classic production build is recorded as passed, local assets and the
+        existing React/Tailwind/Base UI stack are preserved, and protected
+        identifiers remain intact. Administrator custom-home branches remain
+        available through the unchanged home/index.tsx call chain and static
+        review. Authenticated administrator branch-by-branch browser execution
+        remains a documented residual check, not a compatibility failure.
+      truncated: false
+builder_handoff:
+  candidate_id: 1c59122a-d4ae-4384-987d-5a85718b0908
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:e860f817-26ea-4c34-94fc-5aa6210b55e2
+  iteration: 1
+  summary:
+    text: Figma homepage and shared public/business theme refresh implemented with
+      local Figma assets, measured desktop geometry, responsive/mobile
+      navigation behavior, and preserved custom-home/auth contracts.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+  checks:
+    - name:
+        text: Figma desktop geometry
+        truncated: false
+      result: passed
+      note:
+        text: Browser measurements at 1920px light/dark match the recorded Figma node
+          geometry for hero, API panel, feature grid, utility cards, CTA,
+          workflow, stats, and footer.
+        truncated: false
+    - name:
+        text: Responsive browser matrix
+        truncated: false
+      result: passed
+      note:
+        text: 1440px, 768px, and 390px light/dark matrix was measured without real
+          horizontal content overflow; mobile layout stacks as specified.
+        truncated: false
+    - name:
+        text: Keyboard and mobile navigation
+        truncated: false
+      result: passed
+      note:
+        text: Theme, language, navigation, auth links, focus states, mobile menu aria
+          state, menu focusability, and body scroll lock were verified.
+        truncated: false
+    - name:
+        text: Affected oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Exit 0 on the affected homepage, public layout, theme, and changelog
+          files; only the pre-existing footer no-danger warning remains.
+        truncated: false
+    - name:
+        text: Affected oxfmt
+        truncated: false
+      result: passed
+      note:
+        text: Local web/node_modules/.bin/oxfmt.exe --check passed on all affected
+          TypeScript files.
+        truncated: false
+    - name:
+        text: web typecheck
+        truncated: false
+      result: passed
+      note:
+        text: web/node_modules/.bin/tsgo.exe -b exited 0.
+        truncated: false
+    - name:
+        text: web production build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild v2.1.6 production build exited 0.
+        truncated: false
+    - name:
+        text: classic production build
+        truncated: false
+      result: passed
+      note:
+        text: web/classic frozen dependency install completed and Rsbuild v2.1.8
+          production build exited 0.
+        truncated: false
+    - name:
+        text: i18n keys
+        truncated: false
+      result: passed
+      note:
+        text: Homepage keys are present in default frontend en, zh, zh-TW, fr, ru, ja,
+          vi and classic en, zh, zh-CN, zh-TW, fr, ru, ja, vi locales.
+        truncated: false
+    - name:
+        text: Focused Vitest
+        truncated: false
+      result: not-run
+      note:
+        text: No homepage/theme-specific Vitest test files exist in the affected
+          feature.
+        truncated: false
+    - name:
+        text: Administrator custom-home browser branches
+        truncated: false
+      result: not-run
+      note:
+        text: Configured URL, HTML/Markdown, section visibility, and admin override
+          branches were preserved statically but require an authenticated
+          administrator browser session for runtime verification.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The local Figma sourceUrl values are retained only as provenance metadata
+        in figma-assets.ts; runtime homepage components use repository-local
+        assets under web/public/assets/home-figma.
+      truncated: false
+    - text: Real online payment, production deployment, and administrator custom-home
+        runtime verification remain outside this UI change.
+      truncated: false
+    - text: Git commit, merge, push, and deployment have not been performed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-19T22:52:47.313Z
+blockers: []
+verification:
+  candidate_id: 1c59122a-d4ae-4384-987d-5a85718b0908
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:7cd4a0d0-2a99-43c5-a5cb-ed289f872bee
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: figma-home-oxfmt
+      name:
+        text: affected homepage/theme formatting
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/home/components/sections/hero.tsx','src/features/home/components/sections/features.tsx','src/features/home/components/sections/cta.tsx','src/features/home/components/sections/how-it-works.tsx','src/features/home/components/sections/stats.tsx','src/features/home/components/hero-terminal-demo.tsx','src/features/home/templates/classic-landing.tsx','src/components/layout/components/public-layout.tsx','src/components/layout/components/public-header.tsx','src/components/layout/components/public-navigation.tsx','src/components/layout/components/footer.tsx','src/components/theme-switch.tsx','src/context/theme-provider.tsx','src/features/changelog/data.ts');
+            & .\node_modules\.bin\oxfmt.exe --check $files; if ($LASTEXITCODE
+            -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 698
+    - id: figma-home-oxlint
+      name:
+        text: affected homepage/theme lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/home/components/sections/hero.tsx','src/features/home/components/sections/features.tsx','src/features/home/components/sections/cta.tsx','src/features/home/components/sections/how-it-works.tsx','src/features/home/components/sections/stats.tsx','src/features/home/components/hero-terminal-demo.tsx','src/features/home/templates/classic-landing.tsx','src/components/layout/components/public-layout.tsx','src/components/layout/components/public-header.tsx','src/components/layout/components/public-navigation.tsx','src/components/layout/components/footer.tsx','src/components/theme-switch.tsx','src/context/theme-provider.tsx','src/features/changelog/data.ts');
+            & .\node_modules\.bin\oxlint.exe -c .oxlintrc.json $files; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 508
+    - id: figma-home-typecheck
+      name:
+        text: homepage/theme TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\tsgo.exe -b; if ($LASTEXITCODE -ne 0) { exit
+            $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2552
+    - id: figma-home-default-build
+      name:
+        text: default frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\rsbuild.exe build; if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5973
+    - id: figma-home-classic-build
+      name:
+        text: classic frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: Set-Location classic; & .\node_modules\.bin\rsbuild.exe build; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4498
+    - id: figma-home-diff-check
+      name:
+        text: repository diff whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 405
+    - id: figma-home-local-assets
+      name:
+        text: homepage runtime uses local assets
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $matches = @(rg -n 'www\.figma\.com/api/mcp/asset'
+            web/src/features/home/components web/src/features/home/templates
+            2>$null); if ($matches.Count -gt 0) { $matches | Write-Error; exit 1
+            }; if (-not (Test-Path
+            web/public/assets/home-figma/light/node-6-2-export.png)) { throw
+            'Missing light Figma export' }; if (-not (Test-Path
+            web/public/assets/home-figma/dark/node-44-2-export.png)) { throw
+            'Missing dark Figma export' }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 356
+  summary:
+    text: Independent read-only verification passes A1-A22. The measured Figma
+      geometry, responsive matrix, accessible public controls, theme token
+      split, local asset policy, i18n/changelog coverage, custom-home
+      preservation, existing stack, protected identifiers, and recorded Runtime
+      static/browser evidence all satisfy the acceptance criteria. Remaining
+      risks are documented residual administrator-branch browser coverage and
+      normal out-of-scope deployment/online checks.
+    truncated: false
+  risks:
+    - text: Administrator URL iframe, HTML/Markdown, section-toggle, and
+        content-override branches were preserved and statically reviewed but
+        were not opened one by one in an authenticated administrator browser
+        session; this remains a residual runtime verification item.
+      truncated: false
+    - text: No homepage/theme-specific Vitest test files exist, so focused feature
+        tests were not run.
+      truncated: false
+    - text: The change is still local to the Comet worktree and has not been
+        committed, merged, pushed, deployed, or online-accepted.
+      truncated: false
+    - text: Real production payment, callback, deployment, and other online
+        environment checks remain outside this frontend change.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-19T23:36:52.709Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passes A1-A22. The measured Figma
+        geometry, responsive matrix, accessible public controls, theme token
+        split, local asset policy, i18n/changelog coverage, custom-home
+        preservation, existing stack, protected identifiers, and recorded
+        Runtime static/browser evidence all satisfy the acceptance criteria.
+        Remaining risks are documented residual administrator-branch browser
+        coverage and normal out-of-scope deployment/online checks.
+      truncated: false
+    completed_at: 2026-08-19T23:36:52.709Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-19T21:01:55.948Z

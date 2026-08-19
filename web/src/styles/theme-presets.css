@@ -148,3 +148,235 @@ For commercial licensing, please contact support@quantumnous.com
     width: 100%;
   }
 }
+
+/* Marketing pages have their own visual language. Scoping the aliases to the
+ * PublicLayout surface keeps the business shell's accessible blue/cyan
+ * palette intact while allowing the Figma homepage to use black, purple and
+ * lime in both color modes. */
+[data-public-surface='home'] {
+  --background: var(--home-background);
+  --foreground: var(--home-foreground);
+  --card: var(--home-card);
+  --card-foreground: var(--home-card-foreground);
+  --popover: var(--home-popover);
+  --popover-foreground: var(--home-popover-foreground);
+  --primary: var(--home-primary);
+  --primary-foreground: var(--home-primary-foreground);
+  --secondary: var(--home-secondary);
+  --secondary-foreground: var(--home-secondary-foreground);
+  --muted: var(--home-muted);
+  --muted-foreground: var(--home-muted-foreground);
+  --accent: var(--home-accent);
+  --accent-foreground: var(--home-accent-foreground);
+  --destructive: var(--home-destructive);
+  --destructive-foreground: var(--home-destructive-foreground);
+  --success: var(--home-success);
+  --success-foreground: var(--home-success-foreground);
+  --warning: var(--home-warning);
+  --warning-foreground: var(--home-warning-foreground);
+  --info: var(--home-info);
+  --info-foreground: var(--home-info-foreground);
+  --neutral: var(--home-neutral);
+  --neutral-foreground: var(--home-neutral-foreground);
+  --border: var(--home-border);
+  --input: var(--home-input);
+  --ring: var(--home-ring);
+  --sidebar: var(--home-sidebar);
+  --sidebar-foreground: var(--home-sidebar-foreground);
+  --sidebar-accent: var(--home-sidebar-accent);
+  --sidebar-border: var(--home-sidebar-border);
+  color-scheme: light;
+  --home-footer-background: #ffffff;
+  --home-footer-foreground: #0e0e0e;
+}
+
+.dark [data-public-surface='home'] {
+  color-scheme: dark;
+  --home-footer-background: #0e0e0e;
+  --home-footer-foreground: #ffffff;
+}
+
+[data-public-surface='home'] .public-footer[data-footer-variant='default'] {
+  position: relative;
+  min-height: 620px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 0;
+  border-radius: clamp(2.5rem, 4.48vw, 5.375rem) clamp(2.5rem, 4.48vw, 5.375rem)
+    0 0;
+  background-color: var(--home-footer-background);
+  background-image: url('../../public/assets/home-figma/light/asset-19.svg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  color: var(--home-footer-foreground);
+}
+
+[data-public-surface='home']
+  .public-footer[data-footer-variant='default']::before {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 0;
+  width: min(1042px, 100vw);
+  height: min(289px, 28vw);
+  content: '';
+  transform: translateX(-50%);
+  background: url('../../public/assets/home-figma/light/asset-06.svg') center
+    bottom / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+[data-public-surface='home'] .public-footer[data-footer-variant='default'] > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-public-surface='home']
+  .public-footer[data-footer-variant='default']
+  :is(.text-muted-foreground, .text-foreground\/70) {
+  color: color-mix(in srgb, var(--home-footer-foreground) 60%, transparent);
+}
+
+[data-public-surface='home']
+  .public-footer[data-footer-variant='default']
+  :is(a:hover, a:focus-visible) {
+  color: var(--home-lime);
+}
+
+.dark
+  [data-public-surface='home']
+  .public-footer[data-footer-variant='default'] {
+  background-image: none;
+}
+
+.dark
+  [data-public-surface='home']
+  .public-footer[data-footer-variant='default']::before {
+  background-image: url('../../public/assets/home-figma/dark/asset-15.svg');
+}
+
+[data-public-surface='business'] [data-public-header] .public-header-links {
+  gap: 2px;
+  margin-left: auto;
+}
+
+[data-public-surface='business'] [data-public-header] .public-header-controls {
+  gap: 2px;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-nav {
+  min-width: 0;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-brand-mark {
+  width: 22px;
+  height: 22px;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-site-name {
+  font-size: 17px;
+  line-height: 19px;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-links {
+  gap: 34px;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-nav-link {
+  padding-inline: 0;
+  padding-block: 0;
+  border-radius: 0;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-community {
+  padding-inline: 0;
+  padding-block: 0;
+  border-radius: 0;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-controls {
+  gap: 12px;
+}
+
+[data-public-surface='home']
+  [data-public-header]
+  .public-header-scrolled
+  .public-header-links {
+  gap: 16px;
+}
+
+[data-public-surface='home']
+  [data-public-header]
+  .public-header-scrolled
+  .public-header-controls {
+  gap: 4px;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-divider {
+  display: none;
+}
+
+[data-public-surface='home']
+  [data-public-header]
+  .public-header-language
+  button,
+[data-public-surface='home'] [data-public-header] .public-theme-switch,
+[data-public-surface='home'] [data-public-header] .public-header-notifications {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-cta {
+  height: 31px;
+  padding-inline: 18px;
+  border-radius: 28px;
+  font-size: 12px;
+  line-height: 13px;
+}
+
+[data-public-surface='home'] [data-public-navigation] {
+  gap: 34px;
+}
+
+[data-public-surface='home'] [data-public-navigation] .public-navigation-link {
+  padding-inline: 0;
+  padding-block: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 1023px) {
+  [data-public-surface='home'] [data-public-header] .public-header-desktop {
+    display: none;
+  }
+
+  [data-public-surface='home'] [data-public-header] .public-header-mobile {
+    display: flex;
+  }
+
+  [data-public-surface='home'] #public-mobile-navigation {
+    display: block;
+  }
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-cta {
+  background: var(--home-purple);
+  color: var(--home-primary-foreground);
+}
+
+[data-public-surface='home'] [data-public-header] .public-header-cta:hover {
+  background: color-mix(in srgb, var(--home-purple) 86%, white);
+}
+
+.dark [data-public-surface='home'] [data-public-header] .public-header-cta {
+  background: var(--home-lime);
+  color: var(--home-primary-foreground);
+}
+
+.dark
+  [data-public-surface='home']
+  [data-public-header]
+  .public-header-cta:hover {
+  background: color-mix(in srgb, var(--home-lime) 86%, white);
+}
