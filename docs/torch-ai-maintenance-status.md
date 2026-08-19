@@ -48,6 +48,8 @@
 - 构建：default、classic、canvas 三套前端生产构建通过；Canvas 仍有既有动态/静态混合导入和大 chunk warning，未伪装为已优化。
 - i18n：七个 locale 的键集合均为 6,296，`missing=0`、`extra=0`；同步工具清理了合并产生的重复 JSON key。
 - 执行代理模型按项目策略尝试：Luna/max 在确认请求模型正确后，每组最多两次均返回 `503 No available channel`，五组共十次；随后 Terra/xhigh 完成冲突实现，最后 Sol/high 完成前端测试收口。模型降级未改变产品、API、依赖或验收范围。
+- 浏览器：使用候选提交构建产物、独立临时 SQLite 和本地测试管理员登录后，桌面端抽查渠道、API Keys、钱包、用量日志、系统设置、游乐场和 changelog 均正常渲染、关键按钮存在且无控制台 error；`/asset-library`、`/canvas`、`/agent-apply` 均显示 Coming Soon。390×844 移动视口复查 API Keys、钱包、设置、游乐场、changelog 和受限页，`document.scrollWidth=390`、主内容宽度为 390，没有横向溢出。
+- 浏览器验收使用临时本地账户和临时数据库，不包含生产数据或真实商户凭据；既有 SQLite 验收库重启迁移风险仍保留为已知限制。
 
 ## Phase 4 当前进度（2026-08-18）
 

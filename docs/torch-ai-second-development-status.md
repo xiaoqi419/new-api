@@ -61,6 +61,7 @@
 - QuantumNous/new-api `v1.0.0-rc.25` 已在独立 Comet change `upstream-rc25-sync` 完成三方合并候选；39 个官方提交、207 个文件差异和 27 个冲突路径已审查，当前处于 Build，尚未 Verify/Archive。
 - rc.25 同步没有替换或关闭 Torch AI 二开：支付和订单状态、邀请返现/拼团、视频、素材库/无限画布代码、渠道监控、排行/并发/兜底/发票、代理/白标和既定公开入口屏蔽均按原口径保留。
 - 本轮 Build 验证已通过 root Go test/vet/build、独立 relaykit build/test、前端 53 files / 310 tests、typecheck、0-error lint 和 default/classic/canvas 三套构建；正式状态仍需等待 Comet 独立 Verify 与 Archive，不能提前写成已发布。
+- 本地浏览器抽查已覆盖渠道、API Keys、钱包、用量日志、设置、游乐场、changelog 和三个 Coming Soon 直达路由，并完成 390×844 移动视口无横向溢出检查；该记录仍不替代线上商户支付和生产部署验收。
 
 ### 当前本机联调实例（2026-08-19）
 
