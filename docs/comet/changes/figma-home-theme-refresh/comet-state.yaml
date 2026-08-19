@@ -3,7 +3,7 @@ name: figma-home-theme-refresh
 language: zh-CN
 phase: archive
 status: active
-state_version: 7
+state_version: 8
 brief: brief.md
 spec_changes:
   - capability: figma-home-theme-refresh
@@ -13,7 +13,7 @@ workspace:
   isolation: worktree
   change_branch: comet/figma-home-theme-refresh
   target_branch: codex/p0-wallet-wechatpay
-  finish: merge
+  finish: keep
 loop:
   stage: archive-ready
   goal_cycle: 1
