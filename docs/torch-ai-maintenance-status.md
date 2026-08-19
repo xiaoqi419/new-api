@@ -17,7 +17,9 @@
 - 现有数据文件 `data/local-acceptance.db` 在 SQLite master `AutoMigrate` 迁移 agents 时失败，错误为 `invalid DDL, unbalanced brackets`；全新 SQLite master 可以启动，因此当前本地验收服务以 `NODE_TYPE=slave` 运行。该部署风险未归因于本次前端 change，也未宣称已修复。
 - Comet Native change `p1-feature-gates-native-controls` 已接受：A1-A9 全部通过，迭代 2 独立 Verify 通过；已于 2026-08-19 归档，归档目录为 `docs/comet/archive/2026-08-19-p1-feature-gates-native-controls/`。该 change 保持普通用户的「无限画布」「素材库」「成为代理」公开入口屏蔽，代理后端、管理员管理页和已激活 owner 控制台保留；迭代 1 的 A7 仅因维护文档生命周期表述过时退回，已在迭代 2 修正。本地接受或归档不代表已部署或已完成线上验收。
 - 仍存本地验收范围之外的风险：完整 `format:check` 受既有 classic Tailwind `theme.css` 依赖缺口阻塞；最终重建后的受保护视频页面尚未在已认证浏览器会话中重新打开复验；隐藏素材选择器的数据加载仍会调用 `loadAssetOptions` 和 `/api/ark_asset`，属于可另行批准的清理项。上述事项均未写成已修复。
-- QuantumNous/new-api 上游同步不在本 change 范围内；上游 39 个提交、207 个文件差异另开 change，逐组进行三方冲突审查。
+- Comet Native change `upstream-rc25-sync` 已完成 Build 候选：以 Torch AI 基线 `60e2775e3` 和官方 `v1.0.0-rc.25` / `f11641428` 为输入，39 个官方提交、207 个文件差异已经完成三方合并，27 个预测冲突路径已逐组处理；当前仍在 Build，尚未进入 Verify/Archive。
+- rc.25 同步保留 Torch AI 的支付、拼团、返现、视频、素材库、无限画布、渠道监控、排行、实时并发、渠道兜底、发票、代理/白标和入口屏蔽策略，同时进入官方额度原子预扣、充值/订阅并发保护、OAuth、渠道测试、高级自定义渠道、Claude/Responses relay 修复和 Vitest 测试基础设施。
+- 下一独立 change 目标为“Figma 首页与全局主题改造”。当前 `upstream-rc25-sync` change 不包含首页或全局主题改造；该目标需另行建立 change 并重新确认范围与验收。
 
 ## 最终前端门禁记录（2026-08-19）
 
@@ -26,12 +28,29 @@
 - `web`：`npx --yes bun run typecheck` 退出码 0。
 - `web`：`npx --yes bun run build` 退出码 0。
 - `web/classic`：`npx --yes bun run build` 退出码 0。
+- `web`：rc.25 合并后的 `npx --yes bun run test` 退出码 0，53 个测试文件、310 个测试全部通过；旧 `node:test` 测试已迁移到 Vitest，API Key Auto Group 抽屉和 lazy CodeMirror 测试已修复。
+- `web`：`npx --yes bun run typecheck` 退出码 0；受影响 keys、CodeMirror 和测试文件的 oxlint/oxfmt 均通过。
 - 为清除全量 oxlint 唯一残余 error，`web/classic/.prettierrc.mjs` 将等价的 CommonJS `require` 配置改为 ESM default import/export；该文件属于规格允许的“当前 error 明确要求”范围。未修改 package、lock、依赖、脚本或框架版本。
 - 相对 `codex/p0-wallet-wechatpay` 的 `web/.oxlintrc.json` diff 仅保留已批准的四个管理员受信任 iframe 文件级 `react/iframe-missing-sandbox: off` override；既有 Canvas override 未变，未扩大 ignore、降低规则级别或新增 lint-disable。
 - 以上结果先在本地 `codex/lint-final-gates` child worktree 形成，并以 merge commit `7741f2004` 合入 `codex/p1-lint-debt`；Supervisor A1-A11 已通过独立 Terra/xhigh Verify、完成 Archive，并以 merge commit `1e2efa3a2` 本地合入 `codex/p0-wallet-wechatpay`。当前仍未推送、创建 PR、发布或部署。
 - 微信/支付宝真实商户凭据、公网 HTTPS 回调、真实下单与结算仍待线上环境验收；微信登录新增开发继续按产品决策搁置。
 - 本机联调只能验证初始化、管理员支付配置、下单请求和前端轮询；微信/支付宝平台不能访问 localhost 回调，真实到账验收仍需公网 HTTPS 或线上环境。
 - 四个管理员可配置外部 iframe 继续采用已确认的受信任集成模型，以保留脚本、同源存储、Cookie、OAuth、表单、弹窗和媒体能力；管理员配置或账户失陷时仍存在 URL 注入 API key 暴露和 iframe 权限滥用的 residual risk。通用 `WebPreviewBody` 仍保留 scripts/forms/popups/presentation，并移除 `allow-same-origin` 以使用 opaque origin。
+- rc.25 同步的真实商户支付仍未线上验收：微信/支付宝凭据、公网 HTTPS 回调、平台验签、真实到账和结算必须在线上环境完成；本地 `localhost` 联调不构成支付完成。
+- 当前 Build 候选尚未创建 merge commit、推送、PR、发布或部署；下一步由 Comet Runtime 进入 Verify，逐项验收 A1-A13，Verify 通过后再按 Runtime 指示 Archive。
+
+## rc.25 同步 Build 证据（2026-08-19）
+
+- Git 输入：Torch AI `60e2775e3163a2052d7c6f15626c7619cf6cb8a7`，官方 `v1.0.0-rc.25` / `f116414284162ad15d8925f7bca494c109b83e93`，共同基线 `v1.0.0-rc.24` / `5c3abffe8572aa8a49f15c3916707d2019d66af4`；27 个预测冲突路径已解决，`git diff --name-only --diff-filter=U` 和 `git diff --cached --check` 均为空。
+- 冲突审查覆盖充值/订阅/退款/代理结算、Token/OAuth、渠道测试与高级自定义渠道、Relay/Claude/Responses、动态计费、API Keys/Auto Group、游乐场、七语言包和前端测试基础设施；充值仍保留默认单笔最高 `500` 的 Torch AI 产品口径。
+- root Go：`go test ./...`、`go vet ./...`、`go build ./...` 通过；受影响的 `controller`、`model`、`service`、`relay/...`、`router` 定向测试通过。
+- 独立 `relaykit`：`GOWORK=off go build ./...` 与 `GOWORK=off go test ./...` 通过，未引入根模块依赖。
+- 前端：`npx --yes bun run test` 为 53 files / 310 tests 全部通过；`npx --yes bun run typecheck` 通过；全量 lint 为 0 errors / 1,681 warnings，warning-only 历史债务不在本 change 清理范围。
+- 构建：default、classic、canvas 三套前端生产构建通过；Canvas 仍有既有动态/静态混合导入和大 chunk warning，未伪装为已优化。
+- i18n：七个 locale 的键集合均为 6,296，`missing=0`、`extra=0`；同步工具清理了合并产生的重复 JSON key。
+- 执行代理模型按项目策略尝试：Luna/max 在确认请求模型正确后，每组最多两次均返回 `503 No available channel`，五组共十次；随后 Terra/xhigh 完成冲突实现，最后 Sol/high 完成前端测试收口。模型降级未改变产品、API、依赖或验收范围。
+- 浏览器：使用候选提交构建产物、独立临时 SQLite 和本地测试管理员登录后，桌面端抽查渠道、API Keys、钱包、用量日志、系统设置、游乐场和 changelog 均正常渲染、关键按钮存在且无控制台 error；`/asset-library`、`/canvas`、`/agent-apply` 均显示 Coming Soon。390×844 移动视口复查 API Keys、钱包、设置、游乐场、changelog 和受限页，`document.scrollWidth=390`、主内容宽度为 390，没有横向溢出。
+- 浏览器验收使用临时本地账户和临时数据库，不包含生产数据或真实商户凭据；既有 SQLite 验收库重启迁移风险仍保留为已知限制。
 
 ## Phase 4 当前进度（2026-08-18）
 

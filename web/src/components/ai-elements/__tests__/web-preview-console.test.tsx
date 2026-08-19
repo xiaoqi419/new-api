@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
-import { after, describe, test } from 'node:test'
+import { afterAll, describe, test } from 'vitest'
 
 import { Window } from 'happy-dom'
 
@@ -72,7 +72,7 @@ const reactTestGlobals = globalThis as typeof globalThis & {
 reactTestGlobals.IS_REACT_ACT_ENVIRONMENT = true
 
 describe('WebPreviewConsole log identity', () => {
-  after(() => {
+  afterAll(() => {
     domWindow.close()
   })
 
