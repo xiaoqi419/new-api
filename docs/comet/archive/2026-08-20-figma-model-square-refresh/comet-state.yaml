@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: figma-model-square-refresh
 language: zh-CN
 phase: archive
-status: active
-state_version: 27
+status: done
+state_version: 28
 brief: brief.md
 spec_changes:
   - capability: figma-model-square-refresh
@@ -15,7 +15,7 @@ workspace:
   target_branch: codex/p0-wallet-wechatpay
   finish: keep
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 1
   iteration: 3
   attempt: 1
@@ -24,7 +24,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -815,5 +815,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-08-20T10:18:08.247Z
