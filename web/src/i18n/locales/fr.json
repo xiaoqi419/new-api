@@ -1,5 +1,10 @@
 {
   "translation": {
+    "Connect your models": "Connectez vos modèles",
+    "with New API": "avec New API",
+    "with {{siteName}}": "avec {{siteName}}",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "Des clés API à la compatibilité des protocoles, en passant par l'usage et les permissions, réduisez les coûts d'intégration avec une passerelle unifiée.",
+    "More control, lower cost": "Plus de contrôle, moins de coûts",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

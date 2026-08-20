@@ -1,0 +1,810 @@
+schema: comet.native.v4
+name: figma-home-pixel-animation-fix
+language: zh-CN
+phase: archive
+status: done
+state_version: 21
+brief: brief.md
+spec_changes:
+  - capability: figma-home-pixel-animation-fix
+    operation: create
+    source: specs/figma-home-pixel-animation-fix/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/figma-home-theme-refresh
+  target_branch: comet/figma-home-theme-refresh
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 4
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 2
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 图一缺陷：切换到 Gemini 后 endpoint、headers、request、response 和 footer metrics
+      均在面板内部完整显示，不被固定高度或 overflow 截断；自动循环和手动 tab 切换不改变面板外框尺寸。
+    result: passed
+    reason:
+      text: Inherited iteration-3 Luna/max evidence remains valid; iteration 4 did not
+        touch the API demo.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 新增图一/图二：以新增图一和 Figma `38:63` / `6:94` 为正确基准；`01`、核心功能
+      eyebrow、两行标题严格对齐，内容区为 1196x470，四张卡片为
+      598x235，不能出现缺陷图二中的标题整体上移、内容区变矮或内部留白错位。
+    result: passed
+    reason:
+      text: Features heading geometry remains intact and the 1196x470 grid is now
+        centered.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 图二/图八：三个支持应用 pill 的高度、内容宽度、icon/text 间距和整体 x/y 位置与 Figma 截图一致；More pill
+      的圆点样式正确，窄屏换行不重叠。
+    result: passed
+    reason:
+      text: Application pills were untouched and retain accepted responsive behavior.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 图三/图九：CTA 文字、按钮、两块渐变装饰、星星、背景线与 utility cards 的相对位置和裁切边界与 Figma
+      一致；不出现装饰遮住文案或超出容器。
+    result: passed
+    reason:
+      text: CTA is unchanged and the utility row now shares its center axis.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 图四/图十：`02` 标题和三张 workflow cards 的相对位置、尺寸、强调卡片样式与基准一致；章节编号位于装饰层，不挤压内容。
+    result: passed
+    reason:
+      text: Workflow heading/card geometry remains intact and the card track is
+        centered.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: 图五/图十一：`03` 编号不遮挡 eyebrow 或标题，标题换行与统计卡片起始位置正确；四张统计卡片和 footer 之间留白符合基准。
+    result: passed
+    reason:
+      text: Stats layering and card geometry remain intact and centered.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: 图六/图十二：footer 的高度、顶部圆角、logo/name、文案、协议链接、居中版权和背景资产位置一致；light/dark
+      均无多余旧版列布局。
+    result: passed
+    reason:
+      text: Footer was untouched and retains iteration-3 accepted evidence.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: 顶部导航：桌面与移动端均不再输出由 `status.docs_link` 生成的外部“文档/Docs”，站内“接入文档”仍存在且指向
+      `/docs`；Hero 内独立文档按钮保持原行为。
+    result: passed
+    reason:
+      text: Navigation was untouched and retains iteration-3 accepted evidence.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: Footer CTA：保留配置的站点名称和既有视觉；`auth.user` 存在时 href 为 `/dashboard`，否则为
+      `/sign-in`，未登录点击能够进入登录页。
+    result: passed
+    reason:
+      text: Footer authentication routing was untouched and retains accepted evidence.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: "动画：初次进入页面有分段 reveal；Hero 装饰和 API panel 保留动态切换；滚动 reveal 只按既有
+      `AnimateInView` 语义触发；Stats counter 递增；手动切换重置 demo
+      定时器；`prefers-reduced-motion: reduce` 时关闭自动循环和 CSS 动画并立即显示内容。"
+    result: passed
+    reason:
+      text: Motion behavior was not changed by the alignment repair; counter cleanup
+        remains present.
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: 浏览器矩阵：1920/1440/768/390 的 light/dark 截图、DOM geometry、无横向溢出、无 console
+      error；管理员自定义 URL/HTML/Markdown/template 分支保持原行为。
+    result: passed
+    reason:
+      text: Browser geometry passed at 1920,1440,1280,1279,1024,768,390 with no
+        overflow or console errors; unchanged custom-home evidence is inherited.
+      truncated: false
+  - id: A12
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Figma file: `SnTAn1XXoaAvEQgG61mm38`"
+    result: passed
+    reason:
+      text: Figma file reference remains recorded.
+      truncated: false
+  - id: A13
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Light homepage: node `6:2`"
+    result: passed
+    reason:
+      text: Light homepage node remains recorded.
+      truncated: false
+  - id: A14
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Dark homepage: node `44:2`"
+    result: passed
+    reason:
+      text: Dark homepage node remains recorded.
+      truncated: false
+  - id: A15
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Hero reference: node `44:3`"
+    result: passed
+    reason:
+      text: Hero reference remains recorded.
+      truncated: false
+  - id: A16
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Feature section/grid references: nodes `38:63` / `6:94`"
+    result: passed
+    reason:
+      text: Features references remain recorded and were used for geometry review.
+      truncated: false
+  - id: A17
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "User-provided correct screenshots: 图七整体、图八 pills、图九 CTA/utility/02 起始、图十
+      02、图十一 03、图十二 footer。"
+    result: passed
+    reason:
+      text: Correct screenshot references remain recorded.
+      truncated: false
+  - id: A18
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "User-provided defect screenshots: 图一至图六；修复必须能回溯到对应正确图和 Figma 节点，不以主观观感签收。"
+    result: passed
+    reason:
+      text: Defect screenshot references remain recorded.
+      truncated: false
+  - id: A19
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Build 追加对照：`codex-clipboard-4bdbf72f-08ab-4edc-a5db-4e11dc356e1d.png` 是
+      `01` 正确基准，`codex-clipboard-eac51eb5-e124-4e8a-bae9-a9b46b77fcf1.png`
+      是当前缺陷样本。
+    result: passed
+    reason:
+      text: Additional Features comparison references remain recorded.
+      truncated: false
+  - id: A20
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Area | Primary files | Required behavior |"
+    result: passed
+    reason:
+      text: Component ownership table remains satisfied.
+      truncated: false
+  - id: A21
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Hero/API panel/pills |
+      `web/src/features/home/components/sections/hero.tsx`,
+      `web/src/features/home/components/hero-terminal-demo.tsx` | Stable panel
+      geometry, complete content, correct pills, four-demo cycle and manual tabs
+      |"
+    result: passed
+    reason:
+      text: Hero/API panel files were untouched and retain iteration-3 accepted
+        evidence.
+      truncated: false
+  - id: A22
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| CTA | `web/src/features/home/components/sections/cta.tsx` | Figma
+      geometry, local light/dark assets, correct z-index/overflow and CTA
+      interaction |"
+    result: passed
+    reason:
+      text: CTA files were untouched and CTA remains the measured center reference.
+      truncated: false
+  - id: A23
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Features 01 | `web/src/features/home/components/sections/features.tsx`
+      | Heading alignment and exact 1196x470 / 598x235 card geometry from Figma
+      nodes `38:63` / `6:94` |"
+    result: passed
+    reason:
+      text: Features 1196x470 grid and 598x235 card geometry are preserved and
+        centered.
+      truncated: false
+  - id: A24
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Workflow 02 |
+      `web/src/features/home/components/sections/how-it-works.tsx` | Number as
+      decoration layer, title/card spacing and three-card geometry |"
+    result: passed
+    reason:
+      text: Workflow decorative number, heading and three-card layout are preserved
+        and centered.
+      truncated: false
+  - id: A25
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Stats 03 | `web/src/features/home/components/sections/stats.tsx` |
+      Number behind content, title wrapping, four stat cards and counter
+      animation |"
+    result: passed
+    reason:
+      text: Stats layering, cards and counter behavior are preserved and centered.
+      truncated: false
+  - id: A26
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Footer | `web/src/components/layout/components/footer.tsx`,
+      `web/src/styles/theme-presets.css` | Figma footer geometry, assets, links,
+      copyright and theme variants |"
+    result: passed
+    reason:
+      text: Footer files were untouched and retain accepted evidence.
+      truncated: false
+  - id: A27
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Public navigation | `web/src/hooks/use-top-nav-links.ts` and its
+      desktop/mobile consumers | Hide the external Docs item while retaining the
+      internal `/docs` API documentation item |"
+    result: passed
+    reason:
+      text: Public navigation files were untouched and retain accepted evidence.
+      truncated: false
+  - id: A28
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Shared motion | `web/src/components/animate-in-view.tsx`,
+      `web/src/styles/index.css` and affected sections | Preserve reduced-motion
+      and restore missing reveal/decorative behavior without dependency changes
+      |"
+    result: passed
+    reason:
+      text: Shared motion files were untouched; section AnimateInView behavior
+        remains.
+      truncated: false
+  - id: A29
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| User-visible record | `web/src/features/changelog/data.ts`,
+      `docs/torch-ai-maintenance-status.md` | Newest-first changelog entry and
+      explicit Verify/archive status |"
+    result: passed
+    reason:
+      text: Existing changelog and maintenance record are present; lifecycle update
+        follows accepted Verify.
+      truncated: false
+  - id: A30
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Keep a stable desktop outer panel width of 402px and stable
+      height/bounding box matching the Figma reference; internal body may scroll
+      or reflow only within the measured frame.
+    result: passed
+    reason:
+      text: API panel fixed geometry was untouched and retains iteration-3 accepted
+        evidence.
+      truncated: false
+  - id: A31
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Render all four demo configurations from the existing React state machine.
+      Gemini must show its endpoint, `x-goog-api-key`, request body, candidates
+      response and `usageMetadata` without bottom truncation.
+    result: passed
+    reason:
+      text: Four demo rendering including Gemini was untouched and retains accepted
+        evidence.
+      truncated: false
+  - id: A32
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Preserve `CYCLE_INTERVAL = 4500` and transition behavior unless Figma
+      comparison proves a different timing; clean up timers on unmount.
+    result: passed
+    reason:
+      text: CYCLE_INTERVAL and timer cleanup were untouched.
+      truncated: false
+  - id: A33
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Manual tabs select immediately and reset the automatic cycle.
+      `prefers-reduced-motion` disables automatic cycling and transition
+      animation while retaining manual selection.
+    result: passed
+    reason:
+      text: Manual tabs and reduced-motion cycling behavior were untouched.
+      truncated: false
+  - id: A34
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: At the 1920px Figma reference, section frame `38:63` is 1248x770. Ghost
+      `01` starts at x=0/y=0; eyebrow is x=58/y=105; title is x=58/y=133 with
+      width 430 and height 110.
+    result: passed
+    reason:
+      text: Features ghost, eyebrow and title internal geometry remains unchanged
+        inside the centered frame.
+      truncated: false
+  - id: A35
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Feature grid `6:94` starts at x=52/y=300 and is exactly 1196x470. It is a
+      2x2 grid of four 598x235 cards; desktop card height must not collapse to
+      the shorter defect rendering.
+    result: passed
+    reason:
+      text: Browser measured Features at 1196x470 with four 598x235 cards on desktop.
+      truncated: false
+  - id: A36
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Card title, description and provider/security/coverage/developer visuals
+      keep their measured vertical positions. The top/right and lower card
+      surfaces may differ by the Figma emphasis treatment, but no card may
+      resize the grid.
+    result: passed
+    reason:
+      text: Feature card internal positions and fixed card sizing remain unchanged.
+      truncated: false
+  - id: A37
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Mobile may stack the cards, while retaining readable spacing,
+      content-driven height and no horizontal overflow. Existing content
+      overrides and per-card `AnimateInView` delays remain functional.
+    result: passed
+    reason:
+      text: Responsive stacking passed at 1279,1024,768,390 without horizontal
+        overflow.
+      truncated: false
+  - id: A38
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Measure pill height, content width, border radius, border alpha,
+      background, icon size, text line-height and gap from 图八/Figma; encode
+      stable dimensions at desktop and a wrapping rule at mobile.
+    result: passed
+    reason:
+      text: Pill geometry was untouched and retains accepted evidence.
+      truncated: false
+  - id: A39
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Use existing app icon sources/fallback semantics; do not add external
+      runtime fetches merely for visual decoration.
+    result: passed
+    reason:
+      text: No external decorative fetch was added.
+      truncated: false
+  - id: A40
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Ensure the More Apps pill remains a single control with the intended dot
+      treatment and accessible label.
+    result: passed
+    reason:
+      text: More Apps control was untouched and retains accepted evidence.
+      truncated: false
+  - id: A41
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Re-measure CTA outer container and each decorative asset against 图九/Figma;
+      correct absolute offsets, transform rotations, opacity and clipping.
+    result: passed
+    reason:
+      text: CTA decoration was untouched and retains accepted evidence.
+      truncated: false
+  - id: A42
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: CTA text and button must remain in the foreground stacking context.
+      Background assets must not intercept pointer events.
+    result: passed
+    reason:
+      text: CTA stacking and pointer behavior were untouched.
+      truncated: false
+  - id: A43
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Utility cards and the start of 02 must preserve the Figma vertical gap;
+      responsive stacking must not introduce an extra desktop-height spacer.
+    result: passed
+    reason:
+      text: Utility row remains 1040px centered and vertical spacing is unchanged.
+      truncated: false
+  - id: A44
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Background `02` is `aria-hidden`, pointer-events disabled and isolated in
+      a lower z-index decoration layer.
+    result: passed
+    reason:
+      text: Workflow decoration remains aria-hidden, pointer-disabled and below
+        content.
+      truncated: false
+  - id: A45
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Eyebrow/title content has an explicit higher stacking context. Three cards
+      maintain equal desktop widths and intended gap/radius/shadow; mobile
+      becomes one column without overflow.
+    result: passed
+    reason:
+      text: Workflow heading stays above decoration; equal desktop cards and
+        responsive stacking remain.
+      truncated: false
+  - id: A46
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Existing per-card reveal delays remain deterministic and respect
+      reduced-motion.
+    result: passed
+    reason:
+      text: Workflow reveal delays remain unchanged.
+      truncated: false
+  - id: A47
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Background `03` must never overlap the title's readable pixels; use a
+      separate decoration layer and content stacking context rather than relying
+      on source order alone.
+    result: passed
+    reason:
+      text: Stats decoration remains below the readable heading layer.
+      truncated: false
+  - id: A48
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Match title line breaks, stats card width/height/gap and the whitespace
+      before footer to 图十一/图十二.
+    result: passed
+    reason:
+      text: Stats title/cards/footer spacing remains unchanged; card group is
+        centered.
+      truncated: false
+  - id: A49
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Footer uses the correct local light/dark asset, height, corner treatment,
+      content max-width, links and centered copyright; no legacy columns appear
+      in this landing route.
+    result: passed
+    reason:
+      text: Footer local assets and landing layout were untouched.
+      truncated: false
+  - id: A50
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: The shared public top-navigation link source must not emit the external
+      Docs item derived from `status.docs_link`; this applies to desktop and
+      mobile consumers.
+    result: passed
+    reason:
+      text: External Docs remains omitted by unchanged accepted navigation code.
+      truncated: false
+  - id: A51
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: The internal API documentation item remains visible when its existing
+      module switch allows it and continues to link to `/docs`. The separate
+      Hero documentation button is unchanged.
+    result: passed
+    reason:
+      text: Internal /docs and Hero documentation behavior remain unchanged.
+      truncated: false
+  - id: A52
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: The landing footer CTA retains the configured site-name label and existing
+      Figma visual treatment. Its target is `/dashboard` when `auth.user` exists
+      and `/sign-in` otherwise.
+    result: passed
+    reason:
+      text: Footer CTA label and auth target remain unchanged.
+      truncated: false
+  - id: A53
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: The navigation change must not modify the `/docs` page, authentication
+      APIs, administrator custom-home branches or unrelated navigation entries.
+    result: passed
+    reason:
+      text: No docs, auth API, custom-home or unrelated navigation code changed.
+      truncated: false
+  - id: A54
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Compare current Torch AI behavior with original
+      `E:\code\new-api\web\src\features\home\components\hero-terminal-demo.tsx`
+      and original landing keyframes in
+      `E:\code\new-api\web\src\styles\index.css`.
+    result: passed
+    reason:
+      text: Original motion comparison evidence remains applicable; motion files were
+        untouched in iteration 4.
+      truncated: false
+  - id: A55
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Keep or restore: hero reveal, section scroll reveal,
+      CTA/feature/workflow/stats reveal delays, terminal panel cross-fade, stats
+      counter increment, and any existing decorative float/pulse behavior
+      represented in the original implementation."
+    result: passed
+    reason:
+      text: Required reveal, cross-fade, counter and decorative motion remain present.
+      truncated: false
+  - id: A56
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: All timers, observers and animation listeners must clean up. No animation
+      may alter the measured layout size or cause horizontal overflow.
+    result: passed
+    reason:
+      text: No animation changed layout size; all measured viewports had zero
+        horizontal overflow and counter RAF cleanup remains.
+      truncated: false
+  - id: A57
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Reduced-motion mode must remove automatic cycling and CSS/keyframe motion
+      while making content visible and usable immediately.
+    result: passed
+    reason:
+      text: Reduced-motion implementation was untouched and retains accepted evidence.
+      truncated: false
+  - id: A58
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Preserve the `classic-landing` template ID and existing `Home` custom URL
+      iframe, HTML/Markdown, content overrides and section visibility switches.
+    result: passed
+    reason:
+      text: Classic landing template/custom branches were untouched.
+      truncated: false
+  - id: A59
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: Preserve authenticated-home behavior, payment/login routes, API contracts,
+      database schema, local asset paths and protected branding.
+    result: passed
+    reason:
+      text: Authentication, payment routes, APIs, schema, assets and protected
+        branding were untouched.
+      truncated: false
+  - id: A60
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: New copy must be translated in all existing frontend locales and recorded
+      in changelog.
+    result: passed
+    reason:
+      text: No new copy was added; iteration-3 interpolation/locales/changelog fix
+        remains.
+      truncated: false
+  - id: A61
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| Viewport | Theme | Evidence |"
+    result: passed
+    reason:
+      text: Viewport/theme matrix completed for the alignment change.
+      truncated: false
+  - id: A62
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| 1920 | light/dark | full-page screenshot, geometry assertions, four API
+      demos |"
+    result: passed
+    reason:
+      text: 1920 geometry is centered; unchanged API demos and prior screenshots
+        remain applicable.
+      truncated: false
+  - id: A63
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| 1440 | light/dark | section alignment and overflow |"
+    result: passed
+    reason:
+      text: 1440 light/dark geometry is identical, centered and overflow-free.
+      truncated: false
+  - id: A64
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| 768 | light/dark | responsive stacking, controls and keyboard focus |"
+    result: passed
+    reason:
+      text: 768 responsive geometry is centered and overflow-free; unchanged controls
+        retain prior evidence.
+      truncated: false
+  - id: A65
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "| 390 | light/dark | no horizontal overflow, no clipping/overlap |"
+    result: passed
+    reason:
+      text: 390 layout is 332px centered with no document overflow or clipping.
+      truncated: false
+  - id: A66
+    source: specs/figma-home-pixel-animation-fix/spec.md
+    text: "Additional checks: reduced-motion browser context; automatic cycle over
+      at least one interval; manual tab switching; console errors; affected
+      lint/format; typecheck; production default/classic builds."
+    result: passed
+    reason:
+      text: Focused oxfmt, oxlint, tsgo, diff-check, browser matrix and console checks
+        passed; unchanged production build evidence is inherited.
+      truncated: false
+builder_handoff:
+  candidate_id: a03ecd0b-94c1-4e72-af59-0d3677b74ebd
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:20cdc433-feaf-43bb-a3d3-f72d41aef4d1
+  iteration: 4
+  summary:
+    text: "Iteration 4 repairs homepage horizontal alignment: Features grid and
+      utility row, Workflow 02 frame/card track, and Stats 03 frame/card track
+      now use a shared centered desktop axis based on the CTA. Existing
+      dimensions, vertical geometry, animations, theme behavior and responsive
+      flow are preserved."
+    truncated: false
+  addressed_acceptance_ids:
+    - A2
+    - A4
+    - A5
+    - A6
+    - A11
+    - A23
+    - A24
+    - A25
+    - A34
+    - A35
+    - A43
+    - A45
+    - A47
+    - A48
+    - A61
+    - A62
+    - A63
+    - A64
+    - A65
+    - A66
+  checks:
+    - name:
+        text: focused formatting
+        truncated: false
+      result: passed
+      note:
+        text: oxfmt --check passed for all three owned section files
+        truncated: false
+    - name:
+        text: focused lint
+        truncated: false
+      result: passed
+      note:
+        text: oxlint passed for all three owned section files
+        truncated: false
+    - name:
+        text: frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b exited 0
+        truncated: false
+    - name:
+        text: repository diff whitespace
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check exited 0
+        truncated: false
+    - name:
+        text: runtime model gate
+        truncated: false
+      result: passed
+      note:
+        text: Builder runtime confirmed gpt-5.6-terra with xhigh reasoning after
+          correcting default agent configuration
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Browser pixel and viewport matrix verification remains pending in the
+        main-agent Verify phase.
+      truncated: false
+    - text: No Git commit, push, merge, deployment, online acceptance or Archive
+        performed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-20T07:52:03.059Z
+blockers: []
+verification:
+  candidate_id: a03ecd0b-94c1-4e72-af59-0d3677b74ebd
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:d6cb01aa-5cbe-470b-9758-60438faf1d98
+  iteration: 4
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Independent Sol/high verification passed A1-A66. Features, utility,
+      Workflow and Stats now share the CTA center axis; seven viewport checks,
+      light/dark parity, zero horizontal overflow, zero console errors, focused
+      format/lint/typecheck and diff-check all passed.
+    truncated: false
+  risks:
+    - text: Iteration 4 did not rerun the unchanged production/classic builds;
+        iteration-3 accepted build evidence remains applicable.
+      truncated: false
+    - text: No commit, push, merge, deployment or online acceptance was performed.
+      truncated: false
+    - text: Verifier model degraded to Sol/high only after two genuine Luna/max 503
+        failures and two Terra/xhigh infrastructure failures.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-20T09:29:58.236Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-20T05:29:50.540Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Verifier runtime model mismatch: dispatch explicitly requested
+        gpt-5.6-luna max, but the verifier reported gpt-5.6-sol high. Per
+        project model gate this cannot count as a Luna attempt or semantic
+        verdict; retry after correcting effective agent role/config."
+      truncated: false
+    completed_at: 2026-08-20T05:59:05.504Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 2
+    outcome: fail
+    unresolved_ids:
+      - A1
+      - A11
+      - A21
+      - A31
+      - A39
+      - A56
+      - A60
+      - A62
+    summary:
+      text: "Luna max independent verifier failed the candidate: A1/A21/A31/A62 hidden
+        Hero metrics, A39 external decorative favicon fetch, A56 uncanceled
+        Stats animation frame, A60 hardcoded footer copy; A11 blocked for
+        missing authenticated admin custom-home browser coverage."
+      truncated: false
+    completed_at: 2026-08-20T06:04:10.744Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A60
+    summary:
+      text: Luna/max independent verification passes 65 of 66 items. A60 fails because
+        the footer second line still hardcodes English `with`; return to Build
+        for a focused i18n repair.
+      truncated: false
+    completed_at: 2026-08-20T06:36:49.366Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent gpt-5.6-luna/max verification passed all A1-A66. The sole
+        prior failure A60 is fixed through standard i18next interpolation across
+        all seven locales; all focused Runtime checks passed.
+      truncated: false
+    completed_at: 2026-08-20T06:48:46.549Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户确认统一 01/02/03 与 CTA 的页面中轴；当前候选存在多套水平坐标导致模块错位，返回 Build
+        修复并保留既有尺寸、动画、响应式和主题行为。
+      truncated: false
+    completed_at: 2026-08-20T07:17:34.690Z
+  - goal_cycle: 2
+    iteration: 4
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent Sol/high verification passed A1-A66. Features, utility,
+        Workflow and Stats now share the CTA center axis; seven viewport checks,
+        light/dark parity, zero horizontal overflow, zero console errors,
+        focused format/lint/typecheck and diff-check all passed.
+      truncated: false
+    completed_at: 2026-08-20T09:29:58.236Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-20T01:37:09.946Z

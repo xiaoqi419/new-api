@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useRouterState } from '@tanstack/react-router'
+
 import { usePromoBanner } from '@/hooks/use-promo-banner'
 import { cn } from '@/lib/utils'
 
@@ -37,11 +39,14 @@ type PublicLayoutProps = {
 
 export function PublicLayout(props: PublicLayoutProps) {
   const { visible: promoVisible } = usePromoBanner()
+  const pathname = useRouterState().location.pathname
+  const publicSurface = pathname === '/' ? 'home' : 'business'
 
   return (
     <div
+      data-public-surface={publicSurface}
       className={cn(
-        'bg-background text-foreground relative min-h-svh overflow-x-clip',
+        'public-layout bg-background text-foreground relative min-h-svh overflow-x-clip',
         // The header is fixed, so each page reserves room for it with its own
         // top padding. Padding the wrapper shifts every page down by the strip
         // height at once, including the many that opt out of `main`.

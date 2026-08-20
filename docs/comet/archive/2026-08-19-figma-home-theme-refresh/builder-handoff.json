@@ -1,0 +1,90 @@
+{
+  "kind": "builder-handoff",
+  "summary": "Figma homepage and shared public/business theme refresh implemented with local Figma assets, measured desktop geometry, responsive/mobile navigation behavior, and preserved custom-home/auth contracts.",
+  "addressed_acceptance_ids": [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "A8",
+    "A9",
+    "A10",
+    "A11",
+    "A12",
+    "A13",
+    "A14",
+    "A15",
+    "A16",
+    "A17",
+    "A18",
+    "A19",
+    "A20",
+    "A21",
+    "A22"
+  ],
+  "checks": [
+    {
+      "name": "Figma desktop geometry",
+      "result": "passed",
+      "note": "Browser measurements at 1920px light/dark match the recorded Figma node geometry for hero, API panel, feature grid, utility cards, CTA, workflow, stats, and footer."
+    },
+    {
+      "name": "Responsive browser matrix",
+      "result": "passed",
+      "note": "1440px, 768px, and 390px light/dark matrix was measured without real horizontal content overflow; mobile layout stacks as specified."
+    },
+    {
+      "name": "Keyboard and mobile navigation",
+      "result": "passed",
+      "note": "Theme, language, navigation, auth links, focus states, mobile menu aria state, menu focusability, and body scroll lock were verified."
+    },
+    {
+      "name": "Affected oxlint",
+      "result": "passed",
+      "note": "Exit 0 on the affected homepage, public layout, theme, and changelog files; only the pre-existing footer no-danger warning remains."
+    },
+    {
+      "name": "Affected oxfmt",
+      "result": "passed",
+      "note": "Local web/node_modules/.bin/oxfmt.exe --check passed on all affected TypeScript files."
+    },
+    {
+      "name": "web typecheck",
+      "result": "passed",
+      "note": "web/node_modules/.bin/tsgo.exe -b exited 0."
+    },
+    {
+      "name": "web production build",
+      "result": "passed",
+      "note": "Rsbuild v2.1.6 production build exited 0."
+    },
+    {
+      "name": "classic production build",
+      "result": "passed",
+      "note": "web/classic frozen dependency install completed and Rsbuild v2.1.8 production build exited 0."
+    },
+    {
+      "name": "i18n keys",
+      "result": "passed",
+      "note": "Homepage keys are present in default frontend en, zh, zh-TW, fr, ru, ja, vi and classic en, zh, zh-CN, zh-TW, fr, ru, ja, vi locales."
+    },
+    {
+      "name": "Focused Vitest",
+      "result": "not-run",
+      "note": "No homepage/theme-specific Vitest test files exist in the affected feature."
+    },
+    {
+      "name": "Administrator custom-home browser branches",
+      "result": "not-run",
+      "note": "Configured URL, HTML/Markdown, section visibility, and admin override branches were preserved statically but require an authenticated administrator browser session for runtime verification."
+    }
+  ],
+  "known_limits": [
+    "The local Figma sourceUrl values are retained only as provenance metadata in figma-assets.ts; runtime homepage components use repository-local assets under web/public/assets/home-figma.",
+    "Real online payment, production deployment, and administrator custom-home runtime verification remain outside this UI change.",
+    "Git commit, merge, push, and deployment have not been performed."
+  ]
+}

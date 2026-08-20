@@ -1,0 +1,27 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame" clip-path="url(#clip0_0_63)">
+<g id="Vector">
+</g>
+<g id="Mask group">
+<mask id="mask0_0_63" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="1" y="2" width="26" height="24">
+<g id="Group">
+<g id="Group_2">
+<path id="Vector_2" d="M2.91667 4.66667C2.91667 4.35725 3.03958 4.0605 3.25838 3.84171C3.47717 3.62292 3.77391 3.5 4.08333 3.5H23.9167C24.2261 3.5 24.5228 3.62292 24.7416 3.84171C24.9604 4.0605 25.0833 4.35725 25.0833 4.66667V18.6667C25.0833 18.9761 24.9604 19.2728 24.7416 19.4916C24.5228 19.7104 24.2261 19.8333 23.9167 19.8333H4.08333C3.77391 19.8333 3.47717 19.7104 3.25838 19.4916C3.03958 19.2728 2.91667 18.9761 2.91667 18.6667V4.66667Z" stroke="white" stroke-width="2.33333" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_3" d="M2.91659 15.1667C2.91659 14.8572 3.0395 14.5605 3.25829 14.3417C3.47709 14.1229 3.77383 14 4.08325 14H23.9166C24.226 14 24.5228 14.1229 24.7415 14.3417C24.9603 14.5605 25.0833 14.8572 25.0833 15.1667V18.6667C25.0833 18.9761 24.9603 19.2728 24.7415 19.4916C24.5228 19.7104 24.226 19.8333 23.9166 19.8333H4.08325C3.77383 19.8333 3.47709 19.7104 3.25829 19.4916C3.0395 19.2728 2.91659 18.9761 2.91659 18.6667V15.1667Z" fill="white" stroke="white" stroke-width="2.33333" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_4" d="M12.8333 7L10.4999 9.91667M16.3333 8.16667L14.5833 10.5" stroke="white" stroke-width="2.33333" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_5" d="M13.9999 18.0833C14.6443 18.0833 15.1666 17.561 15.1666 16.9167C15.1666 16.2723 14.6443 15.75 13.9999 15.75C13.3556 15.75 12.8333 16.2723 12.8333 16.9167C12.8333 17.561 13.3556 18.0833 13.9999 18.0833Z" fill="black"/>
+<path id="Vector_6" d="M9.91659 19.8333L8.16658 24.5H19.8333L18.0833 19.8333" stroke="white" stroke-width="2.33333" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</mask>
+<g mask="url(#mask0_0_63)">
+<path id="Vector_7" d="M-8.13007e-05 0H27.9999V28H-8.13007e-05V0Z" fill="white"/>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_63">
+<rect width="28" height="28" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -25,7 +25,6 @@ interface ClassicLandingProps {
   content?: unknown
   isAuthenticated: boolean
 }
-
 /**
  * Default landing template. Renders the hero + optional sections, honoring
  * per-section visibility toggles and editable content. Unset fields fall back
@@ -41,10 +40,10 @@ export function ClassicLanding({
   return (
     <>
       <Hero isAuthenticated={isAuthenticated} content={c?.hero} />
-      {(sections?.stats ?? true) && <Stats />}
       {(sections?.features ?? true) && <Features content={c?.features} />}
-      {(sections?.howItWorks ?? true) && <HowItWorks />}
       {(sections?.cta ?? true) && <CTA isAuthenticated={isAuthenticated} />}
+      {(sections?.howItWorks ?? true) && <HowItWorks />}
+      {(sections?.stats ?? true) && <Stats />}
       <Footer />
     </>
   )

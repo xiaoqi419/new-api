@@ -1,5 +1,10 @@
 {
   "translation": {
+    "Connect your models": "Подключите свои модели",
+    "with New API": "с New API",
+    "with {{siteName}}": "с {{siteName}}",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "От API-ключей и совместимости протоколов до учета и управления правами: единый шлюз снижает стоимость интеграции.",
+    "More control, lower cost": "Больше контроля, ниже стоимость",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

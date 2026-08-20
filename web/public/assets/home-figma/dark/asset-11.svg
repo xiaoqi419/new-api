@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle id="New API gradient logo mark" cx="11" cy="11" r="11" fill="url(#paint0_linear_0_30)"/>
+<defs>
+<linearGradient id="paint0_linear_0_30" x1="-5.5" y1="5.5" x2="5.5" y2="16.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#4DFFF0"/>
+<stop offset="0.55" stop-color="#FF4F8B"/>
+<stop offset="1" stop-color="#D7FF2E"/>
+</linearGradient>
+</defs>
+</svg>

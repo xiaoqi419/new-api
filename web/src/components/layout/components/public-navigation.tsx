@@ -50,7 +50,13 @@ export function PublicNavigation({
   const links = dynamicLinks.length > 0 ? dynamicLinks : defaultLinks
 
   return (
-    <nav className={cn('hidden items-center gap-1 md:flex', className)}>
+    <nav
+      data-public-navigation
+      className={cn(
+        'public-navigation hidden items-center gap-1 md:flex',
+        className
+      )}
+    >
       {links.map((link) => {
         const linkKey = `${link.title}-${link.href}`
 
@@ -62,8 +68,10 @@ export function PublicNavigation({
               href={link.href}
               target='_blank'
               rel='noopener noreferrer'
+              aria-disabled={link.disabled}
+              tabIndex={link.disabled ? -1 : undefined}
               className={cn(
-                'text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none',
+                'public-navigation-link text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 link.disabled && 'pointer-events-none opacity-50'
               )}
             >
@@ -76,8 +84,9 @@ export function PublicNavigation({
           <Link
             key={linkKey}
             to={link.href}
+            disabled={link.disabled}
             className={cn(
-              'text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none',
+              'public-navigation-link text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               link.disabled && 'pointer-events-none opacity-50'
             )}
           >

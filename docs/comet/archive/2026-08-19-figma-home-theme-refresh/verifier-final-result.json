@@ -1,0 +1,130 @@
+{
+  "kind": "verifier-response",
+  "response": {
+    "kind": "final-result",
+    "result": {
+      "iteration": 1,
+      "attempt": 1,
+      "verdict": "pass",
+      "acceptance": [
+        {
+          "id": "A1",
+          "result": "passed",
+          "reason": "The maintenance evidence at docs/torch-ai-maintenance-status.md:28 records the 1920px light/dark measurements: Hero 1392x897, H1 590x228, API panel 402x316, and the matching Figma node geometry. The implementation encodes the corresponding stable bounds in hero.tsx:74-92 and hero-terminal-demo.tsx:205-211."
+        },
+        {
+          "id": "A2",
+          "result": "passed",
+          "reason": "theme.css defines the homepage light tokens around #ffffff/#0e0e0e/#2f00e5/#d4ff1f and dark tokens around #1f1f1f/#0e0e0e/#d4ff1f. The section components also apply the required light/dark surfaces and low-opacity borders."
+        },
+        {
+          "id": "A3",
+          "result": "passed",
+          "reason": "features.tsx:200-206 defines the 1196x470 feature grid with 2x2 235px rows, and features.tsx:223-230 defines four 230px utility cards with md:gap-10 (40px). The 01, 02, 03 labels and CTA/footer rhythm are present; the measured section sequence is documented at docs/torch-ai-maintenance-status.md:28."
+        },
+        {
+          "id": "A4",
+          "result": "passed",
+          "reason": "The recorded browser matrix in docs/torch-ai-maintenance-status.md:28 states that 1440px, 768px, and 390px light/dark layouts have no real horizontal overflow and stack responsively. The implementation uses responsive grid/flex constraints and overflow clipping."
+        },
+        {
+          "id": "A5",
+          "result": "passed",
+          "reason": "The maintenance interaction evidence at docs/torch-ai-maintenance-status.md:29 records accessible theme/language/notification controls, mobile menu aria state, Tab reachability, and body scroll locking. public-header.tsx:356-365 exposes the mobile menu's accessible name, aria-expanded, and aria-controls. The administrator URL/HTML/Markdown, section-toggle, template, and override branches remain unchanged in home/index.tsx:71-132 and are preserved by static call-chain review."
+        },
+        {
+          "id": "A6",
+          "result": "passed",
+          "reason": "The change is limited to the public frontend, theme tokens, i18n, changelog, local assets, and maintenance evidence. No backend API, database, payment, login, or other product contract files are changed."
+        },
+        {
+          "id": "A7",
+          "result": "passed",
+          "reason": "figma-assets.ts records the required Figma file SnTAn1XXoaAvEQgG61mm38 and nodes 6:2 and 44:2, while the specification records the natural canvas and reference frame dimensions."
+        },
+        {
+          "id": "A8",
+          "result": "passed",
+          "reason": "The dark homepage uses the required hierarchy, #1f1f1f page surface, #0e0e0e hero/CTA surfaces, low-opacity borders, and neon-lime emphasis in the dark variants of the homepage sections and theme tokens."
+        },
+        {
+          "id": "A9",
+          "result": "passed",
+          "reason": "The implementation uses the dashboard/model/playground references only to establish shared business theme and navigation semantics. No full rebuild of those business pages is present in the changed paths."
+        },
+        {
+          "id": "A10",
+          "result": "passed",
+          "reason": "classic-landing.tsx:40-48 renders Hero -> Features plus utility cards -> CTA -> HowItWorks -> Stats -> Footer. This matches the measured Figma hierarchy: the connection CTA is the middle section at y=1999, workflow is y=2529, stats are y=3234, and the dark connection footer begins at y=3804. The phrase dark connection CTA/footer in the acceptance text refers to the final dark footer, not the middle CTA."
+        },
+        {
+          "id": "A11",
+          "result": "passed",
+          "reason": "theme.css and the section classes provide separate light and dark mappings for white/near-white surfaces, #0e0e0e title/hero/CTA surfaces, #6b6b6b muted text, #2f00e5 purple, #d4ff1f lime, dark #1f1f1f backgrounds, #111/#1c1c1c cards, white text, and low-opacity borders."
+        },
+        {
+          "id": "A12",
+          "result": "passed",
+          "reason": "features.tsx:200-206 and features.tsx:223-230 encode fixed desktop dimensions, row sizes, card widths, and 40px gaps through stable responsive constraints rather than content-dependent sizing. hero.tsx:74-92, cta.tsx:39, how-it-works.tsx:53, and stats.tsx:77 likewise encode the measured desktop bounds."
+        },
+        {
+          "id": "A13",
+          "result": "passed",
+          "reason": "The recorded 1440/768/390 light/dark matrix at docs/torch-ai-maintenance-status.md:28 reports no horizontal overflow and responsive stacking. The implementation uses mobile-first single-column behavior and md/lg breakpoints for desktop geometry."
+        },
+        {
+          "id": "A14",
+          "result": "passed",
+          "reason": "public-header.tsx:255-305 and :356-365 provide named links, visible focus rings, and an accessible mobile menu control. theme-switch.tsx:41-63 provides an accessible theme control and theme-provider.tsx updates the root theme without a full reload. Existing /sign-up, /sign-in, and dashboard navigation contracts are retained."
+        },
+        {
+          "id": "A15",
+          "result": "passed",
+          "reason": "home/index.tsx:71-132 retains administrator URL iframe, HTML, Markdown, active-template, and per-template content branches. classic-landing.tsx:37-47 retains section visibility toggles and content overrides, with unset values falling back to existing defaults."
+        },
+        {
+          "id": "A16",
+          "result": "passed",
+          "reason": "All default-home runtime references use repository-local /assets/home-figma paths. The only Figma URLs are sourceUrl provenance metadata in figma-assets.ts; no homepage component imports or references that metadata or a temporary Figma asset URL. Required light/dark export and local SVG assets exist under web/public/assets/home-figma."
+        },
+        {
+          "id": "A17",
+          "result": "passed",
+          "reason": "The four newly added homepage strings are present in all seven default locales (en, zh, zh-TW, fr, ru, ja, vi), and the corresponding classic locale keys are also present. The 20260820-home-refresh changelog entry is newest-first in web/src/features/changelog/data.ts."
+        },
+        {
+          "id": "A18",
+          "result": "passed",
+          "reason": "theme.css separates --home-* and --business-* token namespaces. Business defaults retain white/light-gray surfaces and blue, cyan, purple/chart, green, yellow, and red semantic colors, with separate readable dark business surfaces. PublicLayout scopes homepage aliases only to data-public-surface=home."
+        },
+        {
+          "id": "A19",
+          "result": "passed",
+          "reason": "The changed implementation remains within React 19, TypeScript, Rsbuild, Tailwind, and Base UI. No package or framework upgrade, backend/API/database change, payment/login behavior change, or protected new-api/QuantumNous identifier removal is present."
+        },
+        {
+          "id": "A20",
+          "result": "passed",
+          "reason": "Recorded Runtime/Builder evidence reports affected oxfmt, oxlint, web tsgo, default production build, classic production build, and git diff --check all passed. Independent read-only checks also passed: oxfmt --check exit 0, affected oxlint exit 0 with only the pre-existing footer no-danger warning, and git diff --check exit 0. No homepage/theme-specific Vitest files exist, so the focused Vitest check was correctly recorded as not applicable."
+        },
+        {
+          "id": "A21",
+          "result": "passed",
+          "reason": "The maintenance evidence at docs/torch-ai-maintenance-status.md:28-29 records the 1920/1440/768/390 light/dark browser matrix, exact geometry, overflow checks, keyboard/mobile-menu interaction, theme-color synchronization, overlap checks, and no captured console warning/error. This verifier relied on that recorded browser evidence and did not create new browser artifacts."
+        },
+        {
+          "id": "A22",
+          "result": "passed",
+          "reason": "The classic production build is recorded as passed, local assets and the existing React/Tailwind/Base UI stack are preserved, and protected identifiers remain intact. Administrator custom-home branches remain available through the unchanged home/index.tsx call chain and static review. Authenticated administrator branch-by-branch browser execution remains a documented residual check, not a compatibility failure."
+        }
+      ],
+      "risks": [
+        "Administrator URL iframe, HTML/Markdown, section-toggle, and content-override branches were preserved and statically reviewed but were not opened one by one in an authenticated administrator browser session; this remains a residual runtime verification item.",
+        "No homepage/theme-specific Vitest test files exist, so focused feature tests were not run.",
+        "The change is still local to the Comet worktree and has not been committed, merged, pushed, deployed, or online-accepted.",
+        "Real production payment, callback, deployment, and other online environment checks remain outside this frontend change."
+      ],
+      "summary": "Independent read-only verification passes A1-A22. The measured Figma geometry, responsive matrix, accessible public controls, theme token split, local asset policy, i18n/changelog coverage, custom-home preservation, existing stack, protected identifiers, and recorded Runtime static/browser evidence all satisfy the acceptance criteria. Remaining risks are documented residual administrator-branch browser coverage and normal out-of-scope deployment/online checks."
+    }
+  }
+}
