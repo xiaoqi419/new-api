@@ -19,6 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AnimateInView } from '@/components/animate-in-view'
+
 interface CounterProps {
   end: number
   suffix?: string
@@ -40,23 +42,34 @@ function Counter(props: CounterProps) {
       node.textContent = format(props.end)
       return
     }
+    let frameId: number | null = null
+    let isActive = true
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting || started.current) return
+        if (!isActive || !entry.isIntersecting || started.current) return
         started.current = true
         const start = performance.now()
         const frame = (now: number) => {
+          if (!isActive) return
           const progress = Math.min((now - start) / (props.duration ?? 1500), 1)
           node.textContent = format(props.end * (1 - Math.pow(1 - progress, 3)))
-          if (progress < 1) requestAnimationFrame(frame)
+          if (progress < 1) {
+            frameId = requestAnimationFrame(frame)
+          } else {
+            frameId = null
+          }
         }
-        requestAnimationFrame(frame)
+        frameId = requestAnimationFrame(frame)
         observer.unobserve(node)
       },
       { threshold: 0.5 }
     )
     observer.observe(node)
-    return () => observer.disconnect()
+    return () => {
+      isActive = false
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      observer.disconnect()
+    }
   }, [format, props.duration, props.end])
   return (
     <span ref={ref} className='tabular-nums'>
@@ -73,35 +86,39 @@ export function Stats() {
     { end: 10, label: t('scheduling controls') },
   ]
   return (
-    <section className='relative z-10 bg-white px-6 py-20 text-[#0e0e0e] md:pt-[100px] md:pb-[100px] dark:bg-[#1f1f1f] dark:text-white'>
-      <div className='relative mx-auto max-w-[1242px] md:h-[470px] md:translate-x-[2px] dark:md:-translate-x-[24px]'>
+    <section className='relative z-10 bg-white px-6 py-20 text-[#0e0e0e] xl:pt-[100px] xl:pb-[100px] dark:bg-[#1f1f1f] dark:text-white'>
+      <div className='relative mx-auto max-w-[1242px] xl:h-[470px]'>
         <p
           aria-hidden
-          className='pointer-events-none absolute top-0 left-0 h-[210px] w-[360px] overflow-hidden text-[206px] leading-[206px] font-black text-[#e8e8e0] opacity-36 dark:text-[rgba(71,69,69,0.72)]'
+          className='pointer-events-none absolute top-0 left-0 z-0 h-[210px] w-[360px] overflow-hidden text-[206px] leading-[206px] font-black text-[#e8e8e0] opacity-36 dark:text-[rgba(71,69,69,0.72)]'
         >
           03
         </p>
-        <div className='pt-0 pl-0 md:pt-[105px] md:pl-[58px]'>
+        <AnimateInView className='relative z-10 pt-0 pl-0 xl:pt-[105px] xl:pl-[58px]'>
           <p className='text-[15px] leading-[17px] font-medium text-[#6b6b6b] dark:text-[#a0a0a0]'>
             {t('Platform')} {t('Capabilities')}
           </p>
-          <h2 className='mt-[10px] min-h-0 max-w-[430px] text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black md:min-h-[98px] md:w-[390px] md:text-[45px] md:leading-[49px]'>
+          <h2 className='mt-[10px] min-h-0 max-w-[430px] text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black xl:min-h-[105px] xl:w-[430px] xl:text-[45px] xl:leading-[49px]'>
             {t('More control, lower cost')}
           </h2>
-        </div>
-        <div className='mt-16 grid grid-cols-2 gap-5 md:mt-[80px] md:ml-[58px] md:grid-cols-[repeat(4,278px)] md:gap-6'>
-          {stats.map((stat) => (
-            <div
+        </AnimateInView>
+        <div className='relative z-10 mt-16 grid grid-cols-2 gap-5 xl:mt-[73px] xl:grid-cols-[repeat(4,278px)] xl:justify-center xl:gap-6'>
+          {stats.map((stat, index) => (
+            <AnimateInView
               key={stat.label}
-              className='flex h-[160px] w-full flex-col items-center justify-center rounded-[24px] border border-black/[0.08] bg-white text-center md:h-[160px] md:w-[278px] dark:border-white/[0.06] dark:bg-[#1c1c1c]'
+              delay={index * 100}
+              animation='fade-up'
+              className='relative flex h-[160px] w-full flex-col items-center justify-center rounded-[24px] border border-white/[0.9] bg-white/[0.52] text-center xl:h-[160px] xl:w-[278px] dark:border-white/[0.06] dark:bg-[#1c1c1c]'
             >
-              <p className='text-[2rem] leading-none font-black md:text-[54px] md:leading-[57px]'>
+              <p
+                className={`text-[2rem] leading-none font-black xl:absolute xl:top-[42px] xl:left-1/2 xl:h-[58px] xl:w-[278px] xl:-translate-x-1/2 xl:text-[54px] xl:leading-[57px] ${index === 2 ? '' : 'text-[#c7c7c2]'}`}
+              >
                 <Counter end={stat.end} suffix='+' />
               </p>
-              <p className='mt-[6px] text-[14px] leading-[15px] text-[#6b6b6b] dark:text-[#a8a8a8]'>
+              <p className='mt-[6px] text-[14px] leading-[15px] text-[#6b6b6b] xl:absolute xl:top-[106px] xl:left-1/2 xl:mt-0 xl:h-[22px] xl:w-[278px] xl:-translate-x-1/2 dark:text-[#a8a8a8]'>
                 {stat.label}
               </p>
-            </div>
+            </AnimateInView>
           ))}
         </div>
       </div>

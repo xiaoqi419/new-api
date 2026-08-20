@@ -39,35 +39,55 @@ export function AnimateInView(props: AnimateInViewProps) {
     once = true,
   } = props
 
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    if (mq.matches) {
-      el.classList.remove('opacity-0')
-      el.classList.add(`landing-animate-${animation}`)
-      return
+    const animationClass = `landing-animate-${animation}`
+    let observer: IntersectionObserver | null = null
+
+    const sync = (reducedMotion: boolean) => {
+      observer?.disconnect()
+      observer = null
+      el.classList.remove(animationClass)
+
+      if (reducedMotion) {
+        el.classList.remove('opacity-0')
+        return
+      }
+
+      el.classList.add('opacity-0')
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            el.classList.remove('opacity-0')
+            el.classList.add(animationClass)
+            if (once) observer?.unobserve(el)
+          } else if (!once) {
+            el.classList.add('opacity-0')
+            el.classList.remove(animationClass)
+          }
+        },
+        { threshold, rootMargin: '0px 0px -40px 0px' }
+      )
+      observer.observe(el)
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.remove('opacity-0')
-          el.classList.add(`landing-animate-${animation}`)
-          if (once) observer.unobserve(el)
-        } else if (!once) {
-          el.classList.add('opacity-0')
-          el.classList.remove(`landing-animate-${animation}`)
-        }
-      },
-      { threshold, rootMargin: '0px 0px -40px 0px' }
-    )
+    const handleMotionPreferenceChange = (event: MediaQueryListEvent) => {
+      sync(event.matches)
+    }
 
-    observer.observe(el)
-    return () => observer.disconnect()
+    sync(mq.matches)
+    mq.addEventListener('change', handleMotionPreferenceChange)
+
+    return () => {
+      observer?.disconnect()
+      mq.removeEventListener('change', handleMotionPreferenceChange)
+      el.classList.remove(animationClass)
+    }
   }, [threshold, once, animation])
 
   return (

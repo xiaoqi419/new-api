@@ -32,6 +32,22 @@
 - 未覆盖项：当前没有首页/theme 专用 Vitest；管理员自定义首页的 URL iframe、HTML/Markdown、模板 ID、section 开关和内容覆盖尚未在已认证管理员浏览器中逐分支打开；真实线上支付、回调、部署和发布仍属于 user-owned / blocked-online。上述事项不能写成已完成。
 - Git/发布状态：实现提交为 `8f0a66ac3`，Comet finish-policy 提交为 `4259c4a61`，Archive 提交为 `7fe96c433`；本工作树干净。由于目标工作树 `E:\code\torch-ai` 当前存在用户/其他 change 的未提交支付改动，Archive 采用 `finish: keep`，因此尚未合并到 `codex/p0-wallet-wechatpay`、推送、创建 PR、发布或部署；不得覆盖这些已有改动。
 
+## Features 01 像素与 Hover 修复（已接受并已归档）
+
+- Comet Native change `figma-home-pixel-animation-fix` 已由用户确认接受并完成 Archive；归档目录为 `docs/comet/archive/2026-08-20-figma-home-pixel-animation-fix`。Archive Runtime 为 `stateVersion 21`、iteration 4，A1-A66 全部通过。该 change 是上节已归档 `figma-home-theme-refresh` 的后续修复，不改变前一轮归档结论。
+- 统一页面中轴修复的桌面几何已验收：Features grid `1196x470`，Utility `1040x162`，Workflow 为 `1224` frame / `1130` card track，Stats 为 `1242` frame / `1184` card track。以 Figma `SnTAn1XXoaAvEQgG61mm38` 的节点 `38:63` / `6:94` 为基准，1920px 浅色和深色下 Features 四张卡各为 `598x235`，provider 六项保持单行，深色 security 本地资源显示正确。
+- iteration-1 独立 Verify（`gpt-5.6-luna` / `max`）曾退回到 Build：固定 API demo 面板中 footer metrics 与部分请求/响应内容可被遮挡；CC Switch 装饰会发起外部 favicon 请求；footer 标题未使用 i18n；Stats 的 animation frame 未在清理路径取消。iteration-2 修复后，四组 demo 均保持 `402x316` 固定面板，request/response 的 `scrollHeight <= clientHeight`，`34px` footer metrics 完整可见，Gemini 的 `usageMetadata` 存在；CC Switch 不再发起 favicon 请求，footer 标题已接入 i18n，Stats 的 rAF 已在清理时取消。
+- iteration-2 的 A60 由 iteration-3 修复：footer 第二行改用 `t('with {{siteName}}', { siteName: displayName })`，七个前端 locale 均补齐该文案。最终 A1-A66 全部通过（66/66）。
+- 连接 CTA 的认证回归已修复：登录态指向 `/workbench` 并显示 `Go to Dashboard`，未登录态仍指向 `/sign-up` 并显示 `Get Started`，模块不再整段消失。1920px 未登录浏览器确认 CTA 为 `1288x430`、`z-30`、完整阴影；CTA、Workflow、Stats 依次为 `z-30`、`z-20`、`z-10`，主要 section 间距均为 `100px`。
+- 1920/1440/1280/1279/1024/768/390 的浅色和深色浏览器验收均通过：所有主要模块卡片位于 viewport 内，页面无横向溢出，`document.scrollWidth === document.documentElement.clientWidth`，且未捕获 console warning/error。Workflow/Stats 仅在 `xl`（`>=1280px`）使用精确固定桌面几何，较小视口使用流式布局。
+- 首页导航和 footer 路由已验收：顶部外部“文档”链接已隐藏，站内 `/docs` 接入文档存在；未登录 footer CTA 实际点击抵达 `/sign-in`。登录态 footer `/dashboard` 与连接 CTA 的已登录分支保持条件实现和既有认证模式静态核对，未宣称真实认证会话点击或线上部署完成。
+- Hover 验收通过：浅色下四张卡均实际触发 `:hover`，显示 `rgba(17,17,17,.14)` 的 `0 10px 30px` shadow、ring 和 `z-index: 10`；深色 Secure & Reliable 卡显示 white/.14 ring 和 `rgba(0,0,0,.35)` shadow。卡片 transform、URL 与尺寸不变，无 overflow。
+- A11 通过 Playwright 拦截公开 `/api/home_page_content` 与 `/api/home_page_config`，确定性验证 URL iframe 的 `src` 与 `sandbox`、HTML open Shadow DOM marker、Markdown 渲染、`classic-landing` content override，以及 `features` / `cta` / `howItWorks` / `stats=false` 时对应章节缺失。该覆盖不等同于已认证管理员浏览器会话。
+- reduced-motion Chromium 验收：390x844、`reduce=true` 下 reveal 可见且 `animationName` 为 `none`，手动选中的 tab 在 5.2 秒内不自动轮换，Stats 的 `50+` / `100+` / `50+` / `10+` 立即显示，无水平溢出。
+- iteration-3 已接受的静态与构建证据包括受影响文件的 `oxfmt --check`、`oxlint`、`tsgo -b`、`git diff --check` 以及 Rsbuild production/classic build；本轮 Archive 未重跑 production/classic build，沿用该 iteration-3 已接受证据。
+- 模型降级事实：`gpt-5.6-luna` / `max` 两次真实返回 `503 No available channel`；`gpt-5.6-terra` / `xhigh` 前一轮验收尝试第一次并发流断开、第二次处于 pending-init；最终由 `gpt-5.6-sol` / `high` 独立验收成功。降级未改变产品、API、依赖或验收范围。
+- 未覆盖项与边界：登录态 footer `/dashboard` 未在真实认证会话中点击；custom-home 为公开 API 的确定性拦截验证，不等同管理员后台真实认证会话；真实线上支付、回调、部署和发布仍属 user-owned / blocked-online。此 change 未做 Git 提交、推送、合并、部署或线上验收。
+
 ## 最终前端门禁记录（2026-08-19）
 
 - `web`：`npx --yes bun run lint` 退出码 0，0 errors、1,682 warnings。warnings 为历史 warning-only 债务，本 child 未专项清理。

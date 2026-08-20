@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -99,8 +99,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     response: [
       '{',
       '  "output": [{ "type": "output_text", "text": <text> }],',
-      '  "usage": { "total_tokens": <tokens> }',
-      '}',
+      '  "usage": { "total_tokens": <tokens> } }',
     ],
     responseHighlights: ['<text>', '<tokens>'],
     tokens: 31,
@@ -116,9 +115,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     request: [
       '"model": "your-model",',
       '"max_tokens": 1024,',
-      '"messages": [',
-      '  { "role": "user", "content": "..." }',
-      ']',
+      '"messages": [{ "role": "user", "content": "..." }]',
     ],
     response: [
       '{',
@@ -146,8 +143,7 @@ const API_DEMOS: ApiDemoConfig[] = [
     response: [
       '{',
       '  "candidates": [{ "content": { "parts": [{ "text": <text> }] } }],',
-      '  "usageMetadata": { "totalTokenCount": <tokens> }',
-      '}',
+      '  "usageMetadata": { "totalTokenCount": <tokens> } }',
     ],
     responseHighlights: ['<text>', '<tokens>'],
     tokens: 25,
@@ -165,34 +161,76 @@ interface HeroTerminalDemoProps {
 
 export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [cycleKey, setCycleKey] = useState(0)
   const [transitioning, setTransitioning] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+  const automaticTransitionRef =
+    useRef<ReturnType<typeof setTimeout>>(undefined)
+  const manualTransitionRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    if (mq.matches) return
+    const updateMotionPreference = () => setPrefersReducedMotion(mq.matches)
 
-    intervalRef.current = setInterval(() => {
+    updateMotionPreference()
+    mq.addEventListener('change', updateMotionPreference)
+
+    return () => mq.removeEventListener('change', updateMotionPreference)
+  }, [])
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      if (manualTransitionRef.current) {
+        clearTimeout(manualTransitionRef.current)
+        manualTransitionRef.current = undefined
+      }
+      setTransitioning(false)
+      return
+    }
+
+    const cycleTimeout = setTimeout(() => {
       setTransitioning(true)
-      timeoutRef.current = setTimeout(() => {
+      automaticTransitionRef.current = setTimeout(() => {
         setActiveIndex((prev) => (prev + 1) % API_DEMOS.length)
         setTransitioning(false)
+        setCycleKey((prev) => prev + 1)
       }, TRANSITION_MS)
     }, CYCLE_INTERVAL)
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      clearTimeout(cycleTimeout)
+      if (automaticTransitionRef.current) {
+        clearTimeout(automaticTransitionRef.current)
+      }
+    }
+  }, [cycleKey, prefersReducedMotion])
+
+  useEffect(() => {
+    return () => {
+      if (manualTransitionRef.current) {
+        clearTimeout(manualTransitionRef.current)
+      }
     }
   }, [])
 
   const handleSelect = (index: number) => {
     if (index === activeIndex) return
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+
+    if (manualTransitionRef.current) clearTimeout(manualTransitionRef.current)
+
+    if (prefersReducedMotion) {
+      setActiveIndex(index)
+      setTransitioning(false)
+      return
+    }
+
     setTransitioning(true)
-    timeoutRef.current = setTimeout(() => {
+    setCycleKey((prev) => prev + 1)
+    manualTransitionRef.current = setTimeout(() => {
       setActiveIndex(index)
       setTransitioning(false)
     }, TRANSITION_MS)
@@ -205,7 +243,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
     <div className={cn('mx-auto w-full max-w-[402px]', props.className)}>
       <div
         className={cn(
-          'h-[316px] overflow-hidden rounded-[26px] border backdrop-blur-sm',
+          'flex h-[316px] flex-col overflow-hidden rounded-[26px] border backdrop-blur-sm',
           'border-black/[0.12] bg-white/[0.96] shadow-[0_30px_55px_-28px_rgba(15,23,42,0.28)]',
           'dark:border-white/[0.08] dark:bg-[#111111]/95 dark:shadow-[0_30px_55px_-28px_rgba(0,0,0,0.7)]'
         )}
@@ -213,9 +251,11 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
         {/* Tab strip */}
         <div
           className={cn(
-            'flex h-14 items-center gap-1 border-b px-3 sm:gap-1.5',
+            'flex h-14 shrink-0 items-center gap-1 border-b px-3 sm:gap-1.5',
             'border-black/[0.08] dark:border-white/[0.06]'
           )}
+          role='tablist'
+          aria-label='API request format'
         >
           {API_DEMOS.map((item, index) => {
             const tone = ACCENT_CLASSES[item.accent]
@@ -224,6 +264,8 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
               <button
                 key={item.id}
                 type='button'
+                role='tab'
+                aria-selected={isActive}
                 onClick={() => handleSelect(index)}
                 className={cn(
                   'relative -mb-px flex h-14 items-center gap-1.5 border-b-2 px-2 text-[10px] font-medium tracking-wide transition-colors sm:px-2.5 sm:text-[11px]',
@@ -247,7 +289,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
         {/* Endpoint row */}
         <div
           className={cn(
-            'flex items-center gap-2.5 border-b px-5 py-3',
+            'flex shrink-0 items-center gap-2.5 border-b px-5 py-3',
             'border-black/[0.08] dark:border-white/[0.05]'
           )}
         >
@@ -261,7 +303,7 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
           </span>
           <code
             className={cn(
-              'text-foreground/75 truncate font-mono text-[12.5px] transition-opacity duration-200',
+              'text-foreground/75 whitespace-nowrap font-mono text-[10px] transition-opacity duration-200',
               transitioning ? 'opacity-0' : 'opacity-100'
             )}
           >
@@ -269,8 +311,8 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
           </code>
         </div>
 
-        {/* Body — fixed rows so neither block shifts when switching demos */}
-        <div className='grid h-[205px] grid-rows-[1fr_1fr] overflow-hidden font-mono text-[10.5px] leading-[1.45] sm:text-[11px]'>
+        {/* Fixed rows preserve the outer bounds while showing the longest Gemini payload. */}
+        <div className='grid min-h-0 flex-1 grid-rows-[minmax(0,1.6fr)_minmax(0,1fr)] overflow-hidden font-mono text-[9px] leading-[1.2]'>
           {/* Request */}
           <RequestBlock demo={demo} transitioning={transitioning} />
 
@@ -280,9 +322,8 @@ export function HeroTerminalDemo(props: HeroTerminalDemoProps) {
 
         {/* Footer metrics */}
         <div
-          aria-hidden='true'
           className={cn(
-            'hidden items-center justify-between border-t px-5 py-2.5',
+            'flex h-[34px] shrink-0 items-center justify-between border-t px-5 py-2',
             'border-black/[0.08] bg-black/[0.025] dark:border-white/[0.05] dark:bg-white/[0.02]'
           )}
         >
@@ -317,11 +358,11 @@ function RequestBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
   const { demo, transitioning } = props
 
   return (
-    <div className='relative px-5 py-4'>
+    <div className='relative px-5 py-[3px]'>
       <SectionLabel>Request</SectionLabel>
       <div
         className={cn(
-          'mt-2 transition-opacity duration-200',
+          'mt-0.5 transition-opacity duration-200',
           transitioning ? 'opacity-0' : 'opacity-100'
         )}
       >
@@ -358,14 +399,14 @@ function ResponseBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
   return (
     <div
       className={cn(
-        'relative border-t px-5 py-4',
+        'relative border-t px-5 py-[3px]',
         'border-border/40 bg-muted/20 dark:border-white/[0.05] dark:bg-white/[0.015]'
       )}
     >
       <SectionLabel>Response</SectionLabel>
       <div
         className={cn(
-          'mt-2 transition-opacity duration-200',
+          'mt-0.5 transition-opacity duration-200',
           transitioning ? 'opacity-0' : 'opacity-100'
         )}
       >
@@ -379,7 +420,7 @@ function ResponseBlock(props: { demo: ApiDemoConfig; transitioning: boolean }) {
 
 function SectionLabel(props: { children: ReactNode }) {
   return (
-    <span className='text-foreground/70 font-sans text-[10px] font-semibold tracking-[0.18em] uppercase'>
+    <span className='text-foreground/70 font-sans text-[9px] font-semibold tracking-[0.18em] uppercase'>
       {props.children}
     </span>
   )

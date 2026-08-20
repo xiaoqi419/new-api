@@ -19,13 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useTranslation } from 'react-i18next'
 
 import { AnimateInView } from '@/components/animate-in-view'
-import {
-  DollarSign,
-  Gauge,
-  HeartHandshake,
-  Shield,
-  Users,
-} from '@/components/icons'
+import { DollarSign, Gauge, HeartHandshake, Users } from '@/components/icons'
 
 import { getFeatureIcon } from '../../lib/icon-mapper'
 import type { FeaturesContent } from '../../types'
@@ -43,12 +37,12 @@ function FeatureVisual({
   const { t } = useTranslation()
   if (kind === 'providers') {
     return (
-      <div className='mt-8 flex flex-wrap gap-2 rounded-[34px] bg-white p-2 dark:bg-[#1c1c1c]'>
+      <div className='mt-8 flex flex-wrap gap-2 rounded-[33px] bg-white p-2 min-[1272px]:absolute min-[1272px]:top-[154px] min-[1272px]:left-[calc(50%-3px)] min-[1272px]:mt-0 min-[1272px]:w-max min-[1272px]:-translate-x-1/2 min-[1272px]:flex-nowrap dark:bg-[#1c1c1c]'>
         {['OpenAI', 'Claude', 'Gemini', 'DeepSeek', 'Qwen', 'Llama'].map(
           (provider) => (
             <span
               key={provider}
-              className='rounded-[18px] bg-[#f6f6f4] px-[18px] py-2 text-[11px] font-medium text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'
+              className='shrink-0 rounded-[18px] bg-[#f6f6f4] px-[18px] py-2 text-[12px] leading-[13px] font-medium whitespace-nowrap text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'
             >
               {provider}
             </span>
@@ -59,31 +53,63 @@ function FeatureVisual({
   }
   if (kind === 'security') {
     return (
-      <div className='relative mt-5 flex h-[76px] items-center justify-end pr-5'>
-        <div className='flex size-[76px] items-center justify-center rounded-full bg-[#d4ff1f]/30 text-[#2f00e5] dark:bg-[#2f00e5]/20'>
-          <Shield className='size-8' strokeWidth={1.5} />
+      <div className='mt-5 flex h-[76px] items-center justify-end pr-5 min-[1272px]:absolute min-[1272px]:top-[120px] min-[1272px]:left-[434px] min-[1272px]:mt-0 min-[1272px]:block min-[1272px]:size-[76px] min-[1272px]:p-0'>
+        <div className='relative size-[76px]'>
+          <img
+            aria-hidden
+            alt=''
+            className='size-[76px] dark:hidden'
+            src='/assets/home-figma/light/asset-13.svg'
+          />
+          <img
+            aria-hidden
+            alt=''
+            className='hidden size-[76px] dark:block'
+            src='/assets/home-figma/dark/asset-10.svg'
+          />
+          <img
+            aria-hidden
+            alt=''
+            className='absolute top-[22px] left-[22px] size-8 dark:hidden'
+            src='/assets/home-figma/light/asset-01.svg'
+          />
+          <img
+            aria-hidden
+            alt=''
+            className='absolute top-[22px] left-[22px] hidden size-8 dark:block'
+            src='/assets/home-figma/dark/asset-01.svg'
+          />
+          <img
+            aria-hidden
+            alt=''
+            className='absolute top-px left-[59px] h-[14px] w-[17px] dark:hidden'
+            src='/assets/home-figma/light/asset-07.svg'
+          />
+          <img
+            aria-hidden
+            alt=''
+            className='absolute top-px left-[59px] hidden h-[14px] w-[17px] dark:block'
+            src='/assets/home-figma/dark/asset-02.svg'
+          />
         </div>
-        <span className='absolute top-0 right-4 text-2xl text-[#d4ff1f]'>
-          ✦
-        </span>
       </div>
     )
   }
   if (kind === 'coverage') {
     return (
-      <div className='mt-5 space-y-2.5'>
+      <div className='mt-5 space-y-2.5 min-[1272px]:absolute min-[1272px]:top-[121px] min-[1272px]:left-[34px] min-[1272px]:mt-0 min-[1272px]:w-[480px]'>
         {[t('Load Balancing'), t('Rate Limiting'), t('Cost Tracking')].map(
           (label, index) => (
-            <div key={label} className='flex items-center gap-3'>
+            <div key={label} className='flex items-center min-[1272px]:w-full'>
               <span
-                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${index === 1 ? 'bg-[#d4ff1f] text-[#0e0e0e]' : 'bg-[#ecece8] text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'}`}
+                className={`mr-3 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] leading-3 font-bold min-[1272px]:mr-[120px] ${index === 1 ? 'bg-[#d4ff1f] text-[#0e0e0e]' : 'bg-[#ecece8] text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'}`}
               >
                 {index + 1}
               </span>
               <span
-                className={`h-2 flex-1 rounded-full ${index === 1 ? 'bg-[#d4ff1f]' : 'bg-[#e0e0db] dark:bg-[#3a3a3a]'}`}
+                className={`h-2 flex-1 rounded-full min-[1272px]:w-[270px] min-[1272px]:flex-none ${index === 1 ? 'bg-[#d4ff1f]/90' : 'bg-[#e0e0db]/65 dark:bg-[#3a3a3a]'}`}
               />
-              <span className='w-[70px] text-xs text-[#6b6b6b] dark:text-[#b8b8b8]'>
+              <span className='ml-3 w-[70px] text-xs leading-[14px] text-[#6b6b6b] min-[1272px]:ml-[14px] min-[1272px]:w-auto min-[1272px]:whitespace-nowrap dark:text-[#b8b8b8]'>
                 {label}
               </span>
             </div>
@@ -93,16 +119,16 @@ function FeatureVisual({
     )
   }
   return (
-    <div className='mt-6 flex flex-wrap gap-2 rounded-[30px] bg-white p-2 dark:bg-[#1c1c1c]'>
+    <div className='mt-6 flex flex-wrap gap-2 rounded-[30px] bg-white p-2 min-[1272px]:absolute min-[1272px]:top-[144px] min-[1272px]:left-[34px] min-[1272px]:mt-0 min-[1272px]:w-max min-[1272px]:flex-nowrap dark:bg-[#1c1c1c]'>
       {['API', 'SDK', 'CLI', 'Docs'].map((tag) => (
         <span
           key={tag}
-          className='rounded-[44px] bg-[#f6f6f4] px-3 py-1.5 text-xs font-semibold text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'
+          className='flex h-[25px] w-[50px] shrink-0 items-center justify-center rounded-[44px] bg-[#f6f6f4] px-[10px] py-[6px] text-[12px] leading-[13px] font-semibold text-[#6b6b6b] dark:bg-[#292929] dark:text-[#b8b8b8]'
         >
           {tag}
         </span>
       ))}
-      <span className='rounded-[14px] bg-[#d4ff1f]/20 px-3 py-1.5 text-xs font-semibold text-[#0e0e0e] dark:text-white'>
+      <span className='h-[25px] shrink-0 rounded-[14px] bg-[#d4ff1f]/20 px-[10px] py-[6px] text-[12px] leading-[13px] font-semibold whitespace-nowrap text-[#0e0e0e] dark:text-white'>
         {t('Multi-protocol Compatible')}
       </span>
     </div>
@@ -178,49 +204,61 @@ export function Features(props: FeaturesProps) {
 
   return (
     <section
-      className={`relative z-10 bg-white px-6 py-24 text-[#0e0e0e] md:pt-[75px] md:pb-[100px] dark:bg-[#1f1f1f] dark:text-white ${props.className ?? ''}`}
+      className={`relative z-10 bg-white px-6 py-24 text-[#0e0e0e] min-[1272px]:pt-0 min-[1272px]:pb-[100px] dark:bg-[#1f1f1f] dark:text-white ${props.className ?? ''}`}
     >
-      <div className='relative mx-auto max-w-[1248px] md:translate-x-[5px] dark:md:-translate-x-[21px]'>
+      <div className='relative mx-auto max-w-[1248px] min-[1272px]:h-[770px]'>
         <p
           aria-hidden
-          className='pointer-events-none absolute top-[-30px] left-0 h-[210px] w-[360px] overflow-hidden text-[206px] leading-[206px] font-black text-[#e8e8e0] opacity-36 dark:text-[rgba(71,69,69,0.72)]'
+          className='pointer-events-none absolute top-0 left-0 z-0 h-[210px] w-[360px] overflow-hidden text-[206px] leading-[206px] font-black text-[#e8e8e0] opacity-36 dark:text-[rgba(71,69,69,0.72)]'
         >
           01
         </p>
-        <AnimateInView className='mb-[68px] pl-0 md:pl-[58px]'>
-          <p className='mb-2 text-[15px] leading-[17px] font-medium text-[#6b6b6b] dark:text-[#a0a0a0]'>
+        <AnimateInView className='relative z-10 mb-[68px] pl-0 min-[1272px]:absolute min-[1272px]:top-[105px] min-[1272px]:left-[58px] min-[1272px]:mb-0 min-[1272px]:w-[430px] min-[1272px]:p-0'>
+          <p className='mb-2 text-[15px] leading-[17px] font-medium text-[#6b6b6b] min-[1272px]:mb-[6px] min-[1272px]:h-[22px] dark:text-[#a0a0a0]'>
             {content?.eyebrow ?? t('Core Features')}
           </p>
-          <h2 className='text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black tracking-normal md:w-[430px] md:text-[48px] md:leading-[51px]'>
+          <h2 className='text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black tracking-normal min-[1272px]:h-[110px] min-[1272px]:w-[430px] min-[1272px]:text-[48px] min-[1272px]:leading-[51px]'>
             {content?.headingLine1 ?? t('Built for developers,')}
             <br />
             {content?.headingLine2 ?? t('designed for scale')}
           </h2>
         </AnimateInView>
-        <div className='mx-auto grid max-w-[1196px] overflow-hidden rounded-[34px] border border-black/[0.08] bg-[#ecece8] shadow-[0_18px_36px_rgba(0,0,0,0.06)] md:mx-0 md:ml-[52px] md:h-[470px] md:grid-cols-2 md:grid-rows-[repeat(2,235px)] dark:border-white/[0.08] dark:bg-[#303030] dark:shadow-[0_18px_36px_rgba(0,0,0,0.24)]'>
-          {bentoCards.map((card, index) => (
-            <AnimateInView
-              key={card.num}
-              delay={index * 80}
-              animation='fade-up'
-              className={`h-auto min-h-0 overflow-hidden p-7 md:h-[235px] md:p-[34px] ${index === 1 ? 'bg-white dark:bg-[#292929]' : 'bg-[#fafaf8] dark:bg-[#242424]'}`}
-            >
-              <div className='mb-2 text-[15px] leading-[17px] font-bold text-[#b8b8b8] dark:text-[#777]'>
-                {index === 1 ? (
-                  <span className='text-[#d4ff1f]'>{card.num}</span>
-                ) : (
-                  card.num
-                )}
-              </div>
-              <h3 className='text-[22px] leading-6 font-bold'>{card.title}</h3>
-              <p className='mt-2 max-w-[520px] text-[15px] leading-[22px] text-[#6b6b6b] dark:text-[#b8b8b8]'>
-                {card.desc}
-              </p>
-              <FeatureVisual kind={card.kind} />
-            </AnimateInView>
-          ))}
+        <div className='mx-auto grid max-w-[1196px] overflow-hidden rounded-[34px] border border-white/[0.9] bg-white/[0.62] shadow-[0_18px_36px_rgba(0,0,0,0.06)] min-[1272px]:absolute min-[1272px]:top-[300px] min-[1272px]:left-1/2 min-[1272px]:h-[470px] min-[1272px]:w-[1196px] min-[1272px]:max-w-none min-[1272px]:-translate-x-1/2 min-[1272px]:grid-cols-[repeat(2,598px)] min-[1272px]:grid-rows-[repeat(2,235px)] dark:border-white/[0.08] dark:bg-[#303030] dark:shadow-[0_18px_36px_rgba(0,0,0,0.24)]'>
+          {bentoCards.map((card, index) => {
+            const desktopCardPosition = [
+              'min-[1272px]:top-[-1px] min-[1272px]:left-[-1px]',
+              'min-[1272px]:top-[-1px] min-[1272px]:left-[597px]',
+              'min-[1272px]:top-[234px] min-[1272px]:left-[-1px]',
+              'min-[1272px]:top-[234px] min-[1272px]:left-[597px]',
+            ][index]
+            return (
+              <AnimateInView
+                key={card.num}
+                delay={index * 80}
+                animation='fade-up'
+                className={`relative z-0 h-auto min-h-0 overflow-hidden p-7 ring-1 ring-transparent transition-[box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:shadow-[0_10px_30px_rgba(17,17,17,0.14)] hover:ring-black/[0.10] motion-reduce:transition-none min-[1272px]:absolute min-[1272px]:h-[235px] min-[1272px]:w-[598px] min-[1272px]:p-0 dark:hover:shadow-[0_10px_30px_rgba(0,0,0,0.35)] dark:hover:ring-white/[0.14] ${desktopCardPosition} ${index === 1 ? 'bg-white dark:bg-[#292929]' : 'bg-transparent dark:bg-[#242424]'}`}
+              >
+                <div className='mb-2 text-[15px] leading-[17px] font-bold text-[#b8b8b8] min-[1272px]:absolute min-[1272px]:top-[24px] min-[1272px]:left-[34px] min-[1272px]:mb-0 dark:text-[#777]'>
+                  {index === 1 ? (
+                    <span className='text-[#d4ff1f]'>{card.num}</span>
+                  ) : (
+                    card.num
+                  )}
+                </div>
+                <h3 className='text-[22px] leading-6 font-bold min-[1272px]:absolute min-[1272px]:top-[48px] min-[1272px]:left-[34px] min-[1272px]:w-[530px]'>
+                  {card.title}
+                </h3>
+                <p className='mt-2 max-w-[520px] text-[15px] leading-[22px] text-[#6b6b6b] min-[1272px]:absolute min-[1272px]:top-[82px] min-[1272px]:left-[34px] min-[1272px]:mt-0 min-[1272px]:w-[530px] min-[1272px]:max-w-none dark:text-[#b8b8b8]'>
+                  {card.desc}
+                </p>
+                <FeatureVisual kind={card.kind} />
+              </AnimateInView>
+            )
+          })}
         </div>
-        <div className='mx-auto mt-10 grid max-w-[1040px] grid-cols-2 gap-4 md:mx-0 md:mt-[100px] md:ml-[86px] md:grid-cols-[repeat(4,minmax(0,230px))] md:justify-start md:gap-10 dark:md:ml-[112px]'>
+      </div>
+      <div className='mx-auto max-w-[1248px]'>
+        <div className='mx-auto mt-10 grid max-w-[1040px] grid-cols-2 gap-4 md:mt-[100px] md:grid-cols-[repeat(4,minmax(0,230px))] md:gap-10'>
           {additionalFeatures.map((feature, index) => (
             <AnimateInView
               key={feature.title}

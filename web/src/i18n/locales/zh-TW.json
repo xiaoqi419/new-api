@@ -2,6 +2,7 @@
   "translation": {
     "Connect your models": "連接你的模型",
     "with New API": "與 New API",
+    "with {{siteName}}": "與 {{siteName}}",
     "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "從 API 金鑰、協定相容到用量與權限管理，以統一閘道降低整合成本。",
     "More control, lower cost": "更低成本，更強控制",
     "360": "360",

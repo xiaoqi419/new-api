@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 interface FooterLink {
   text: string
@@ -79,7 +80,10 @@ function FooterLinkItem(props: { link: FooterLink }) {
 // Renders User Agreement / Privacy Policy links inline with the parent's
 // copyright row when either is configured in System Settings → Site. Emits
 // fragmented siblings so the parent flex container's gap controls spacing.
-function LegalLinks(props: { leadingSeparator?: boolean }) {
+function LegalLinks(props: {
+  leadingSeparator?: boolean
+  variant?: 'inline' | 'home'
+}) {
   const { t } = useTranslation()
   const { status } = useStatus()
   const items: { key: string; label: string; href: string }[] = []
@@ -99,6 +103,26 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
   }
   if (items.length === 0) {
     return null
+  }
+  if (props.variant === 'home') {
+    return (
+      <>
+        {items.map((item) => (
+          <Link
+            key={item.key}
+            to={item.href}
+            className={cn(
+              'footer-home-legal-link hover:text-foreground focus-visible:ring-ring rounded-sm transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+              item.key === 'user-agreement'
+                ? 'footer-home-terms'
+                : 'footer-home-privacy'
+            )}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </>
+    )
   }
   return (
     <>
@@ -151,6 +175,7 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
 
 export function Footer(props: FooterProps) {
   const { t } = useTranslation()
+  const { auth } = useAuthStore()
   const {
     systemName,
     logo: systemLogo,
@@ -161,6 +186,7 @@ export function Footer(props: FooterProps) {
   const displayLogo = systemLogo || props.logo || '/logo.png'
   const displayName = systemName || props.name || 'New API'
   const isDemoSiteMode = Boolean(demoSiteEnabled)
+  const isAuthenticated = Boolean(auth.user)
   const currentYear = new Date().getFullYear()
 
   const fallbackColumns = useMemo<FooterColumnProps[]>(
@@ -254,7 +280,7 @@ export function Footer(props: FooterProps) {
         props.className
       )}
     >
-      <div className='mx-auto max-w-6xl px-6 py-12 md:py-16'>
+      <div className='footer-default-content mx-auto max-w-6xl px-6 py-12 md:py-16'>
         <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
           {/* Brand column */}
           <div className='shrink-0'>
@@ -296,7 +322,7 @@ export function Footer(props: FooterProps) {
 
         {/* Copyright + optional legal links inline on the left, project
             attribution on the right; wraps on narrow screens. */}
-        <div className='border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
+        <div className='footer-default-meta border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
           <div className='text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
             <span>
               &copy; {currentYear} {displayName}.{' '}
@@ -305,6 +331,25 @@ export function Footer(props: FooterProps) {
             <LegalLinks leadingSeparator />
           </div>
           <ProjectAttribution currentYear={currentYear} />
+        </div>
+      </div>
+      <div className='footer-home-content'>
+        <h2 className='footer-home-heading'>
+          <span>{t('Connect your models')}</span>
+          <span>{t('with {{siteName}}', { siteName: displayName })}</span>
+        </h2>
+        <Link
+          to={isAuthenticated ? '/dashboard' : '/sign-in'}
+          className='footer-home-cta'
+        >
+          {displayName}
+        </Link>
+        <div className='footer-home-legal'>
+          <LegalLinks variant='home' />
+          <span className='footer-home-copyright'>
+            &copy; {currentYear} {displayName}.{' '}
+            {props.copyright ?? t('footer.defaultCopyright')}
+          </span>
         </div>
       </div>
     </footer>

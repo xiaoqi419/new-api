@@ -57,9 +57,6 @@ export function useTopNavLinks(): TopNavLink[] {
     )
   }, [status])
 
-  // Documentation link (may be external)
-  const docsLink: string | undefined = status?.docs_link as string | undefined
-
   const isAuthed = !!auth?.user
 
   const links: TopNavLink[] = []
@@ -114,16 +111,6 @@ export function useTopNavLinks(): TopNavLink[] {
       title: t('API Documentation'),
       href: '/docs',
       icon: navIconNameFor(icons, 'docs'),
-    })
-  }
-
-  // External docs link (controlled independently by `externalDocs`)
-  if (modules?.externalDocs !== false && docsLink) {
-    links.push({
-      title: t('Docs'),
-      href: docsLink,
-      external: true,
-      icon: navIconNameFor(icons, 'externalDocs'),
     })
   }
 
