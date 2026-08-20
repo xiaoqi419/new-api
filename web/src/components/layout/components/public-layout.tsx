@@ -27,6 +27,8 @@ import { PublicHeader, type PublicHeaderProps } from './public-header'
 type PublicLayoutProps = {
   children: React.ReactNode
   showMainContainer?: boolean
+  /** Opt a public page into the marketing/home shell without changing its route. */
+  publicSurface?: 'home' | 'business'
   navContent?: React.ReactNode
   headerProps?: Omit<PublicHeaderProps, 'navContent'>
   navLinks?: TopNavLink[]
@@ -40,7 +42,8 @@ type PublicLayoutProps = {
 export function PublicLayout(props: PublicLayoutProps) {
   const { visible: promoVisible } = usePromoBanner()
   const pathname = useRouterState().location.pathname
-  const publicSurface = pathname === '/' ? 'home' : 'business'
+  const publicSurface =
+    props.publicSurface ?? (pathname === '/' ? 'home' : 'business')
 
   return (
     <div
@@ -62,6 +65,7 @@ export function PublicLayout(props: PublicLayoutProps) {
         logo={props.logo}
         siteName={props.siteName}
         {...props.headerProps}
+        visualSurface={publicSurface}
       />
 
       {props.showMainContainer !== false ? (

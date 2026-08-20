@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260820-c88d25b2b',
+    date: '2026-08-20',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '模型广场列表页按新版 Figma 重构：浅深色 Hero、模型搜索、叠放装饰卡、固定比较工作区、筛选面板与模型卡片在桌面和移动端使用统一布局语言；原有筛选、价格口径、三种视图和详情跳转保持可用。',
+          '模型广场 Hero 装饰卡已按 Figma 源节点校正渐变向量与映射 stop。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260820-home-refresh',
     date: '2026-08-20',
     changes: [
