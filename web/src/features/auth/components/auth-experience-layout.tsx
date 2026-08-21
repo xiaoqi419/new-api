@@ -108,29 +108,76 @@ export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
               {description}
             </p>
 
-            <ul
-              className='mt-8 grid grid-cols-4 overflow-hidden rounded-[6px] border border-white/10 bg-white/[0.02]'
-              aria-label={t('AI models supported')}
-            >
-              {MODEL_FAMILIES.map(({ name, Icon }) => (
-                <li
-                  key={name}
-                  className='flex h-16 min-w-0 items-center justify-center gap-2 border-r border-white/10 px-2'
-                >
-                  <Icon size={19} aria-hidden='true' />
-                  <span className='min-w-0 truncate text-xs font-medium text-white/75'>
-                    {name}
+            <div className='relative mt-8 min-w-0'>
+              <style data-auth-motion-styles='model-connection'>
+                {`
+                  @keyframes auth-model-connection-flow {
+                    from {
+                      transform: translateX(-125%);
+                    }
+
+                    to {
+                      transform: translateX(425%);
+                    }
+                  }
+
+                  .auth-model-connection-track {
+                    background: color-mix(in oklab, var(--primary) 36%, transparent);
+                  }
+
+                  .auth-model-connection-flow {
+                    animation: auth-model-connection-flow 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                    background: linear-gradient(
+                      90deg,
+                      transparent,
+                      color-mix(in oklab, var(--primary) 92%, transparent),
+                      transparent
+                    );
+                  }
+
+                  @media (prefers-reduced-motion: reduce) {
+                    .auth-model-connection-flow {
+                      animation: none;
+                      opacity: 0.56;
+                      transform: none;
+                    }
+                  }
+                `}
+              </style>
+              <div
+                data-auth-motion='model-connection'
+                aria-hidden='true'
+                className='pointer-events-none absolute inset-x-3 bottom-3 z-20 h-px overflow-hidden'
+              >
+                <span className='auth-model-connection-track absolute inset-0' />
+                <span className='auth-model-connection-flow absolute inset-y-0 left-0 w-[30%]' />
+              </div>
+              <ul
+                className='relative z-10 grid grid-cols-4 overflow-hidden rounded-[6px] border border-white/10 bg-white/[0.02]'
+                aria-label={t('AI models supported')}
+              >
+                {MODEL_FAMILIES.map(({ name, Icon }) => (
+                  <li
+                    key={name}
+                    className='flex h-16 min-w-0 items-center justify-center gap-2 border-r border-white/10 px-2'
+                  >
+                    <Icon size={19} aria-hidden='true' />
+                    <span className='min-w-0 truncate text-xs font-medium text-white/75'>
+                      {name}
+                    </span>
+                  </li>
+                ))}
+                <li className='flex h-16 min-w-0 items-center justify-center gap-2 px-2'>
+                  <Sparkles
+                    className='text-primary size-[18px] shrink-0'
+                    aria-hidden='true'
+                  />
+                  <span className='text-xs font-semibold text-white/75'>
+                    40+
                   </span>
                 </li>
-              ))}
-              <li className='flex h-16 min-w-0 items-center justify-center gap-2 px-2'>
-                <Sparkles
-                  className='text-primary size-[18px] shrink-0'
-                  aria-hidden='true'
-                />
-                <span className='text-xs font-semibold text-white/75'>40+</span>
-              </li>
-            </ul>
+              </ul>
+            </div>
           </div>
 
           <footer className='relative z-10 flex min-w-0 flex-wrap items-end justify-between gap-4 border-t border-white/10 pt-5'>

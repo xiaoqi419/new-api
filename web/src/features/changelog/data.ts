@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260822-7792801d6',
+    date: '2026-08-22',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '登录与注册页的模型能力提示新增单轨流动连接：Claude、Codex、Gemini 与更多模型之间的接入关系更直观，同时尊重“减少动态效果”系统偏好。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260814-1b22caa61',
     date: '2026-08-14',
     changes: [

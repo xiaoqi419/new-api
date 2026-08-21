@@ -239,7 +239,28 @@ describe('authentication experience layout', () => {
     for (const model of ['Claude', 'Codex', 'Gemini', '40+']) {
       assert.ok(models.textContent?.includes(model))
     }
-    assert.equal(brand.querySelector('[data-auth-motion]'), null)
+    const motion = brand.querySelector<HTMLElement>(
+      '[data-auth-motion="model-connection"]'
+    )
+    const motionStyles = brand.querySelector<HTMLStyleElement>(
+      'style[data-auth-motion-styles="model-connection"]'
+    )
+    assert.ok(motion)
+    assert.equal(motion.getAttribute('aria-hidden'), 'true')
+    assert.match(motion.className, /pointer-events-none/)
+    assert.match(motion.className, /absolute/)
+    assert.equal(motion.closest('a,button'), null)
+    assert.ok(motionStyles)
+    assert.match(motionStyles.textContent ?? '', /var\(--primary\)/)
+    assert.match(
+      motionStyles.textContent ?? '',
+      /@keyframes auth-model-connection-flow/
+    )
+    assert.match(
+      motionStyles.textContent ?? '',
+      /@media \(prefers-reduced-motion: reduce\)/
+    )
+    assert.match(motionStyles.textContent ?? '', /animation: none/)
     assert.equal(
       brand.textContent?.includes('AI Development Tools Gateway'),
       false
