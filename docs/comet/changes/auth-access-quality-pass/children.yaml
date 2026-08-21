@@ -1,0 +1,17 @@
+schema: comet.native.children.v1
+children:
+  - name: personalize-login-copy
+    depends_on: []
+    covers: [A1, A2, A15, A18, A23]
+  - name: bound-test-email-timeout
+    depends_on: []
+    covers: [A3, A4, A5, A19, A24]
+  - name: unify-password-recovery-visuals
+    depends_on: []
+    covers: [A6, A7, A8, A16, A20]
+  - name: animate-auth-model-connections
+    depends_on: []
+    covers: [A9, A10, A11, A21]
+  - name: enforce-mainland-web-access
+    depends_on: []
+    covers: [A12, A13, A14, A17, A22, A25]
