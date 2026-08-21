@@ -38,9 +38,25 @@ export type AmountResponse = ApiResponse<string>
 export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
 }
+export type EpayCheckoutType = 'qrcode' | 'payurl' | 'urlscheme'
+export interface EpayCheckoutData {
+  trade_no: string
+  gateway_trade_no?: string
+  checkout_type: EpayCheckoutType
+  checkout_value: string
+  payment_method: string
+  money: string
+}
+export type EpayCheckoutResponse = ApiResponse<EpayCheckoutData>
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AlipayPaymentResponse = ApiResponse<
   { qr_code?: string; trade_no?: string } | string
+>
+export type WechatPaymentResponse = ApiResponse<
+  { qr_code?: string; h5_url?: string; trade_no?: string } | string
+>
+export type WechatJsapiPrepareResponse = ApiResponse<
+  { authorize_url?: string } | string
 >
 export interface TradeStatusData {
   status?: string
@@ -163,6 +179,16 @@ export interface TopupInfo {
   enable_alipay_topup?: boolean
   /** Minimum topup amount advertised for direct Alipay */
   alipay_min_topup?: number
+  /** Whether the direct WeChat Pay merchant integration is enabled */
+  enable_wechatpay_topup?: boolean
+  /** Whether Native QR payments are available */
+  wechatpay_native?: boolean
+  /** Whether H5 payments are available */
+  wechatpay_h5?: boolean
+  /** Whether JSAPI payments are available inside WeChat */
+  wechatpay_jsapi?: boolean
+  /** Minimum topup amount advertised for direct WeChat Pay */
+  wechatpay_min_topup?: number
   /** Whether redemption code usage is enabled */
   enable_redemption?: boolean
   /** Whether compliance confirmation has been completed */
@@ -197,6 +223,22 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
+}
+
+export type WechatPaymentRequestScene = 'native' | 'h5'
+
+export interface WechatPaymentRequest {
+  /** Topup amount */
+  amount: number
+  /** Direct WeChat Pay method identifier */
+  payment_method: 'wechatpay'
+  /** WeChat Pay checkout scene */
+  scene: WechatPaymentRequestScene
+}
+
+export interface WechatJsapiPrepareRequest {
+  /** Topup amount */
+  amount: number
 }
 
 /**

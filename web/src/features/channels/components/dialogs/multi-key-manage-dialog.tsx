@@ -235,6 +235,14 @@ export function MultiKeyManageDialog({
 
   if (!currentRow) return null
 
+  let multiKeyModeLabel: string | undefined
+  if (currentRow.channel_info?.multi_key_mode) {
+    multiKeyModeLabel =
+      currentRow.channel_info.multi_key_mode === 'random'
+        ? t('Random')
+        : t('Polling')
+  }
+
   return (
     <>
       <Dialog
@@ -248,13 +256,9 @@ export function MultiKeyManageDialog({
               variant='neutral'
               copyable={false}
             />
-            {currentRow.channel_info?.multi_key_mode && (
+            {multiKeyModeLabel && (
               <StatusBadge
-                label={
-                  currentRow.channel_info.multi_key_mode === 'random'
-                    ? t('Random')
-                    : t('Polling')
-                }
+                label={multiKeyModeLabel}
                 variant='neutral'
                 copyable={false}
               />
@@ -294,12 +298,10 @@ export function MultiKeyManageDialog({
           {/* Toolbar */}
           <div className='flex shrink-0 items-center justify-between'>
             <Select
-              items={[
-                ...MULTI_KEY_FILTER_OPTIONS.map((option) => ({
-                  value: option.value,
-                  label: t(option.label),
-                })),
-              ]}
+              items={MULTI_KEY_FILTER_OPTIONS.map((option) => ({
+                value: option.value,
+                label: t(option.label),
+              }))}
               value={statusFilter === null ? 'all' : statusFilter.toString()}
               onValueChange={(v) => v !== null && handleStatusFilterChange(v)}
             >
@@ -378,15 +380,17 @@ export function MultiKeyManageDialog({
 
           {/* Table */}
           <div className='min-h-0 flex-1 overflow-auto rounded-md border'>
-            {isLoading ? (
+            {isLoading && (
               <div className='flex items-center justify-center py-12'>
                 <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
               </div>
-            ) : keys.length === 0 ? (
+            )}
+            {!isLoading && keys.length === 0 && (
               <div className='text-muted-foreground py-12 text-center'>
                 {t('No keys found')}
               </div>
-            ) : (
+            )}
+            {!isLoading && keys.length > 0 && (
               <StaticDataTable
                 className='rounded-none border-0'
                 tableClassName='min-w-[800px]'

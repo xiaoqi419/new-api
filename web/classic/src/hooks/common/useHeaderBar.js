@@ -111,7 +111,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
       if (cw) {
         cw.postMessage({ themeMode: actualTheme }, '*');
       }
-    } catch (e) {
+    } catch {
       // Silently ignore cross-origin or access errors
     }
   }, [actualTheme]);
@@ -127,7 +127,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
         if (cw) {
           cw.postMessage({ lang: normalizedLang }, '*');
         }
-      } catch (e) {
+      } catch {
         // Silently ignore cross-origin or access errors
       }
     };
@@ -167,7 +167,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
             if (userState?.user?.setting) {
               try {
                 settings = JSON.parse(userState.user.setting) || {};
-              } catch (e) {
+              } catch {
                 settings = {};
               }
             }

@@ -162,7 +162,7 @@ export const useDashboardCharts = (
           array.sort((a, b) => b.value - a.value);
           let sum = 0;
           for (let i = 0; i < array.length; i++) {
-            if (array[i].key == '其他') {
+            if (array[i].key === '其他') {
               continue;
             }
             let value = parseFloat(array[i].value);
@@ -392,7 +392,7 @@ export const useDashboardCharts = (
   // ========== 数据处理函数 ==========
   const generateModelColors = useCallback((uniqueModels, modelColors) => {
     const newModelColors = {};
-    Array.from(uniqueModels).forEach((modelName) => {
+    [...uniqueModels].forEach((modelName) => {
       newModelColors[modelName] =
         modelColorMap[modelName] ||
         modelColors[modelName] ||
@@ -443,7 +443,7 @@ export const useDashboardCharts = (
         updateMapValue(modelTotals, value.model, value.count);
       }
 
-      const newPieData = Array.from(modelTotals)
+      const newPieData = [...modelTotals]
         .map(([model, count]) => ({
           type: model,
           value: count,
@@ -459,7 +459,7 @@ export const useDashboardCharts = (
       let newLineData = [];
 
       chartTimePoints.forEach((time) => {
-        let timeData = Array.from(uniqueModels).map((model) => {
+        let timeData = [...uniqueModels].map((model) => {
           const key = `${time}-${model}`;
           const aggregated = aggregatedData.get(key);
           return {
@@ -499,7 +499,7 @@ export const useDashboardCharts = (
       // ===== 模型调用次数折线图 =====
       let modelLineData = [];
       chartTimePoints.forEach((time) => {
-        const timeData = Array.from(uniqueModels).map((model) => {
+        const timeData = [...uniqueModels].map((model) => {
           const key = `${time}-${model}`;
           const aggregated = aggregatedData.get(key);
           return {
@@ -514,7 +514,7 @@ export const useDashboardCharts = (
 
       // ===== 模型调用次数排行柱状图 =====
       const MAX_RANK_MODELS = 20;
-      const allRankData = Array.from(modelTotals)
+      const allRankData = [...modelTotals]
         .map(([model, count]) => ({
           Model: model,
           Count: count,

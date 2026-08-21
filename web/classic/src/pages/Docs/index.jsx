@@ -133,10 +133,10 @@ const GenericTable = ({ head, rows }) => (
       </tr>
     </thead>
     <tbody>
-      {rows.map((row, i) => (
-        <tr key={i}>
-          {row.map((cell, j) => (
-            <td key={j}>{renderInline(cell)}</td>
+      {rows.map((row) => (
+        <tr key={row.join('|')}>
+          {row.map((cell) => (
+            <td key={`${row.join('|')}-${cell}`}>{renderInline(cell)}</td>
           ))}
         </tr>
       ))}
@@ -163,16 +163,16 @@ const Block = ({ block }) => {
     case 'list':
       return (
         <ul className='app-docs-list'>
-          {block.items.map((it, i) => (
-            <li key={i}>{renderInline(it)}</li>
+          {block.items.map((it) => (
+            <li key={it}>{renderInline(it)}</li>
           ))}
         </ul>
       );
     case 'cards':
       return (
         <div className='app-docs-cards'>
-          {block.cards.map((c, i) => (
-            <div className='app-docs-card' key={i}>
+          {block.cards.map((c) => (
+            <div className='app-docs-card' key={c.title}>
               <h4>{c.title}</h4>
               <p>{c.desc}</p>
             </div>
@@ -204,8 +204,8 @@ const Section = ({ id, eyebrow, title, method, blocks, setRef }) => (
         </span>
       )}
     </h2>
-    {blocks.map((block, i) => (
-      <Block key={i} block={block} />
+    {blocks.map((block) => (
+      <Block key={JSON.stringify(block)} block={block} />
     ))}
   </section>
 );
@@ -476,7 +476,7 @@ const Docs = () => {
                 onClick={() => {
                   if (!activePage) return;
                   const { group, cat } = activePage;
-                  const safeName = cat.label.replace(/[\\/:*?"<>|]/g, '_');
+                  const safeName = cat.label.replaceAll(/[\\/:*?"<>|]/g, '_');
                   downloadTextAsFile(
                     buildCategoryMarkdown(serverAddress, group.id, cat.id),
                     `${safeName}.md`,

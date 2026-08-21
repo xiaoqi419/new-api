@@ -137,8 +137,8 @@ const AddEditSubscriptionModal = ({
           setGroupOptions([]);
         }
       })
-      .catch(() => setGroupOptions([]))
-      .finally(() => setGroupLoading(false));
+      .finally(() => setGroupLoading(false))
+      .catch(() => setGroupOptions([]));
   }, [visible]);
 
   const submit = async (values) => {
@@ -188,7 +188,7 @@ const AddEditSubscriptionModal = ({
           showError(res.data?.message || t('创建失败'));
         }
       }
-    } catch (e) {
+    } catch {
       showError(t('请求失败'));
     } finally {
       setLoading(false);
@@ -196,8 +196,7 @@ const AddEditSubscriptionModal = ({
   };
 
   return (
-    <>
-      <SideSheet
+    <SideSheet
         placement={placement}
         title={
           <Space>
@@ -545,8 +544,7 @@ const AddEditSubscriptionModal = ({
             )}
           </Form>
         </Spin>
-      </SideSheet>
-    </>
+    </SideSheet>
   );
 };
 

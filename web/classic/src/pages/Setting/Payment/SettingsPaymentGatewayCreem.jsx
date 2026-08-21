@@ -75,7 +75,7 @@ export default function SettingsPaymentGatewayCreem(props) {
       try {
         const parsedProducts = JSON.parse(currentInputs.CreemProducts);
         setProducts(parsedProducts);
-      } catch (e) {
+      } catch {
         setProducts([]);
       }
     }
@@ -132,7 +132,7 @@ export default function SettingsPaymentGatewayCreem(props) {
         setOriginInputs({ ...inputs });
         props.refresh?.();
       }
-    } catch (error) {
+    } catch {
       showError(t('更新失败'));
     }
     setLoading(false);

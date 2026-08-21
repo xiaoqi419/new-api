@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo, useState } from 'react';
 import {
   Badge,
   Button,
@@ -29,44 +28,57 @@ import {
   Tag,
   Tooltip,
   Typography,
-} from '@douyinfe/semi-ui';
-import { API, showError, showSuccess, renderQuota } from '../../helpers';
-import { getCurrencyConfig } from '../../helpers/render';
-import { RefreshCw, Sparkles } from 'lucide-react';
-import SubscriptionPurchaseModal from './modals/SubscriptionPurchaseModal';
+} from '@douyinfe/semi-ui'
+import { RefreshCw, Sparkles } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+
+import { API, showError, showSuccess, renderQuota } from '../../helpers'
+import { getCurrencyConfig } from '../../helpers/render'
 import {
   formatSubscriptionDuration,
   formatSubscriptionResetPeriod,
-} from '../../helpers/subscriptionFormat';
+} from '../../helpers/subscriptionFormat'
+import { openClassicSubscriptionEpay } from './lib/epay-checkout'
+import EpayCheckoutModal from './modals/EpayCheckoutModal'
+import SubscriptionPurchaseModal from './modals/SubscriptionPurchaseModal'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 // 过滤易支付方式
 function getEpayMethods(payMethods = []) {
   return (payMethods || []).filter(
-    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem',
-  );
+    (m) =>
+      m?.type &&
+      ![
+        'stripe',
+        'creem',
+        'alipay_direct',
+        'wechatpay',
+        'waffo',
+        'waffo_pancake',
+      ].includes(m.type) &&
+      !m.type.startsWith('waffo:')
+  )
 }
 
-// 提交易支付表单
-function submitEpayForm({ url, params }) {
-  const form = document.createElement('form');
-  form.action = url;
-  form.method = 'POST';
-  const isSafari =
-    navigator.userAgent.indexOf('Safari') > -1 &&
-    navigator.userAgent.indexOf('Chrome') < 1;
-  if (!isSafari) form.target = '_blank';
-  Object.keys(params || {}).forEach((key) => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = key;
-    input.value = params[key];
-    form.appendChild(input);
-  });
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
+// eslint-disable-next-line react/only-export-components -- production payment flow is exported for entry regression tests
+export async function requestClassicSubscriptionEpayCheckout({
+  api,
+  planId,
+  paymentMethod,
+  money,
+  onCheckout,
+}) {
+  const response = await api.post('/api/subscription/epay/pay', {
+    plan_id: planId,
+    payment_method: paymentMethod,
+  })
+  const message = response.data?.message
+  const data = response.data?.data
+  const opened =
+    message === 'success' &&
+    openClassicSubscriptionEpay(data, { paymentMethod, money }, onCheckout)
+  return { message, data, opened }
 }
 
 const SubscriptionPlansCard = ({
@@ -84,172 +96,212 @@ const SubscriptionPlansCard = ({
   reloadSubscriptionSelf,
   withCard = true,
 }) => {
-  const [open, setOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paying, setPaying] = useState(false);
-  const [selectedEpayMethod, setSelectedEpayMethod] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const [open, setOpen] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [paying, setPaying] = useState(false)
+  const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
+  const [epayCheckout, setEpayCheckout] = useState(null)
+  const [epayCheckoutOpen, setEpayCheckoutOpen] = useState(false)
+  const [epayRetry, setEpayRetry] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
+  const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods])
 
   const openBuy = (p) => {
-    setSelectedPlan(p);
-    setSelectedEpayMethod(epayMethods?.[0]?.type || '');
-    setOpen(true);
-  };
+    setSelectedPlan(p)
+    setSelectedEpayMethod(epayMethods?.[0]?.type || '')
+    setOpen(true)
+  }
 
   const closeBuy = () => {
-    setOpen(false);
-    setSelectedPlan(null);
-    setPaying(false);
-  };
+    setOpen(false)
+    setSelectedPlan(null)
+    setPaying(false)
+  }
 
   const handleRefresh = async () => {
-    setRefreshing(true);
+    setRefreshing(true)
     try {
-      await reloadSubscriptionSelf?.();
+      await reloadSubscriptionSelf?.()
     } finally {
-      setRefreshing(false);
+      setRefreshing(false)
     }
-  };
+  }
 
   const payStripe = async () => {
     if (!selectedPlan?.plan?.stripe_price_id) {
-      showError(t('该套餐未配置 Stripe'));
-      return;
+      showError(t('该套餐未配置 Stripe'))
+      return
     }
-    setPaying(true);
+    setPaying(true)
     try {
       const res = await API.post('/api/subscription/stripe/pay', {
         plan_id: selectedPlan.plan.id,
-      });
+      })
       if (res.data?.message === 'success') {
-        window.open(res.data.data?.pay_link, '_blank');
-        showSuccess(t('已打开支付页面'));
-        closeBuy();
+        window.open(res.data.data?.pay_link, '_blank')
+        showSuccess(t('已打开支付页面'))
+        closeBuy()
       } else {
         const errorMsg =
           typeof res.data?.data === 'string'
             ? res.data.data
-            : res.data?.message || t('支付失败');
-        showError(errorMsg);
+            : res.data?.message || t('支付失败')
+        showError(errorMsg)
       }
-    } catch (e) {
-      showError(t('支付请求失败'));
+    } catch {
+      showError(t('支付请求失败'))
     } finally {
-      setPaying(false);
+      setPaying(false)
     }
-  };
+  }
 
   const payCreem = async () => {
     if (!selectedPlan?.plan?.creem_product_id) {
-      showError(t('该套餐未配置 Creem'));
-      return;
+      showError(t('该套餐未配置 Creem'))
+      return
     }
-    setPaying(true);
+    setPaying(true)
     try {
       const res = await API.post('/api/subscription/creem/pay', {
         plan_id: selectedPlan.plan.id,
-      });
+      })
       if (res.data?.message === 'success') {
-        window.open(res.data.data?.checkout_url, '_blank');
-        showSuccess(t('已打开支付页面'));
-        closeBuy();
+        window.open(res.data.data?.checkout_url, '_blank')
+        showSuccess(t('已打开支付页面'))
+        closeBuy()
       } else {
         const errorMsg =
           typeof res.data?.data === 'string'
             ? res.data.data
-            : res.data?.message || t('支付失败');
-        showError(errorMsg);
+            : res.data?.message || t('支付失败')
+        showError(errorMsg)
       }
-    } catch (e) {
-      showError(t('支付请求失败'));
+    } catch {
+      showError(t('支付请求失败'))
     } finally {
-      setPaying(false);
+      setPaying(false)
     }
-  };
+  }
 
   const payEpay = async () => {
     if (!selectedEpayMethod) {
-      showError(t('请选择支付方式'));
-      return;
+      showError(t('请选择支付方式'))
+      return
     }
-    setPaying(true);
+    setPaying(true)
     try {
-      const res = await API.post('/api/subscription/epay/pay', {
-        plan_id: selectedPlan.plan.id,
-        payment_method: selectedEpayMethod,
-      });
-      if (res.data?.message === 'success') {
-        submitEpayForm({ url: res.data.url, params: res.data.data });
-        showSuccess(t('已发起支付'));
-        closeBuy();
+      const result = await requestClassicSubscriptionEpayCheckout({
+        api: API,
+        planId: selectedPlan.plan.id,
+        paymentMethod: selectedEpayMethod,
+        money: selectedPlan.plan.price_amount,
+        onCheckout: (value) => {
+          setEpayCheckout(value)
+          setEpayCheckoutOpen(true)
+        },
+      })
+      if (result.opened) {
+        setEpayRetry({
+          plan: selectedPlan,
+          paymentMethod: selectedEpayMethod,
+        })
+        closeBuy()
       } else {
-        const errorMsg =
-          typeof res.data?.data === 'string'
-            ? res.data.data
-            : res.data?.message || t('支付失败');
-        showError(errorMsg);
+        let errorMessage = t('支付请求失败')
+        if (result.message !== 'success') {
+          errorMessage =
+            typeof result.data === 'string'
+              ? result.data
+              : result.message || errorMessage
+        }
+        showError(errorMessage)
       }
-    } catch (e) {
-      showError(t('支付请求失败'));
+    } catch {
+      showError(t('支付请求失败'))
     } finally {
-      setPaying(false);
+      setPaying(false)
     }
-  };
+  }
+
+  const retryEpayCheckout = async () => {
+    const retry = epayRetry
+    setEpayCheckoutOpen(false)
+    setEpayCheckout(null)
+    if (!retry?.plan?.plan?.id || !retry.paymentMethod) return
+    setPaying(true)
+    try {
+      const result = await requestClassicSubscriptionEpayCheckout({
+        api: API,
+        planId: retry.plan.plan.id,
+        paymentMethod: retry.paymentMethod,
+        money: retry.plan.plan.price_amount,
+        onCheckout: (value) => {
+          setEpayCheckout(value)
+          setEpayCheckoutOpen(true)
+        },
+      })
+      if (!result.opened) {
+        showError(t('支付请求失败'))
+      }
+    } catch {
+      showError(t('支付请求失败'))
+    } finally {
+      setPaying(false)
+    }
+  }
 
   // 当前订阅信息 - 支持多个订阅
-  const hasActiveSubscription = activeSubscriptions.length > 0;
-  const hasAnySubscription = allSubscriptions.length > 0;
-  const disableSubscriptionPreference = !hasActiveSubscription;
+  const hasActiveSubscription = activeSubscriptions.length > 0
+  const hasAnySubscription = allSubscriptions.length > 0
+  const disableSubscriptionPreference = !hasActiveSubscription
   const isSubscriptionPreference =
     billingPreference === 'subscription_first' ||
-    billingPreference === 'subscription_only';
+    billingPreference === 'subscription_only'
   const displayBillingPreference =
     disableSubscriptionPreference && isSubscriptionPreference
       ? 'wallet_first'
-      : billingPreference;
+      : billingPreference
   const subscriptionPreferenceLabel =
-    billingPreference === 'subscription_only' ? t('仅用订阅') : t('优先订阅');
+    billingPreference === 'subscription_only' ? t('仅用订阅') : t('优先订阅')
 
   const planPurchaseCountMap = useMemo(() => {
-    const map = new Map();
-    (allSubscriptions || []).forEach((sub) => {
-      const planId = sub?.subscription?.plan_id;
-      if (!planId) return;
-      map.set(planId, (map.get(planId) || 0) + 1);
-    });
-    return map;
-  }, [allSubscriptions]);
+    const map = new Map()
+    ;(allSubscriptions || []).forEach((sub) => {
+      const planId = sub?.subscription?.plan_id
+      if (!planId) return
+      map.set(planId, (map.get(planId) || 0) + 1)
+    })
+    return map
+  }, [allSubscriptions])
 
   const planTitleMap = useMemo(() => {
-    const map = new Map();
-    (plans || []).forEach((p) => {
-      const plan = p?.plan;
-      if (!plan?.id) return;
-      map.set(plan.id, plan.title || '');
-    });
-    return map;
-  }, [plans]);
+    const map = new Map()
+    ;(plans || []).forEach((p) => {
+      const plan = p?.plan
+      if (!plan?.id) return
+      map.set(plan.id, plan.title || '')
+    })
+    return map
+  }, [plans])
 
-  const getPlanPurchaseCount = (planId) =>
-    planPurchaseCountMap.get(planId) || 0;
+  const getPlanPurchaseCount = (planId) => planPurchaseCountMap.get(planId) || 0
 
   // 计算单个订阅的剩余天数
   const getRemainingDays = (sub) => {
-    if (!sub?.subscription?.end_time) return 0;
-    const now = Date.now() / 1000;
-    const remaining = sub.subscription.end_time - now;
-    return Math.max(0, Math.ceil(remaining / 86400));
-  };
+    if (!sub?.subscription?.end_time) return 0
+    const now = Date.now() / 1000
+    const remaining = sub.subscription.end_time - now
+    return Math.max(0, Math.ceil(remaining / 86400))
+  }
 
   // 计算单个订阅的使用进度
   const getUsagePercent = (sub) => {
-    const total = Number(sub?.subscription?.amount_total || 0);
-    const used = Number(sub?.subscription?.amount_used || 0);
-    if (total <= 0) return 0;
-    return Math.round((used / total) * 100);
-  };
+    const total = Number(sub?.subscription?.amount_total || 0)
+    const used = Number(sub?.subscription?.amount_used || 0)
+    if (total <= 0) return 0
+    return Math.round((used / total) * 100)
+  }
 
   const cardContent = (
     <>
@@ -379,23 +431,54 @@ const SubscriptionPlansCard = ({
                 <Divider margin={8} />
                 <div className='max-h-64 overflow-y-auto pr-1 semi-table-body'>
                   {allSubscriptions.map((sub, subIndex) => {
-                    const isLast = subIndex === allSubscriptions.length - 1;
-                    const subscription = sub.subscription;
-                    const totalAmount = Number(subscription?.amount_total || 0);
-                    const usedAmount = Number(subscription?.amount_used || 0);
+                    const isLast = subIndex === allSubscriptions.length - 1
+                    const subscription = sub.subscription
+                    const totalAmount = Number(subscription?.amount_total || 0)
+                    const usedAmount = Number(subscription?.amount_used || 0)
                     const remainAmount =
                       totalAmount > 0
                         ? Math.max(0, totalAmount - usedAmount)
-                        : 0;
+                        : 0
                     const planTitle =
-                      planTitleMap.get(subscription?.plan_id) || '';
-                    const remainDays = getRemainingDays(sub);
-                    const usagePercent = getUsagePercent(sub);
-                    const now = Date.now() / 1000;
-                    const isExpired = (subscription?.end_time || 0) < now;
-                    const isCancelled = subscription?.status === 'cancelled';
+                      planTitleMap.get(subscription?.plan_id) || ''
+                    const remainDays = getRemainingDays(sub)
+                    const usagePercent = getUsagePercent(sub)
+                    const now = Date.now() / 1000
+                    const isExpired = (subscription?.end_time || 0) < now
+                    const isCancelled = subscription?.status === 'cancelled'
                     const isActive =
-                      subscription?.status === 'active' && !isExpired;
+                      subscription?.status === 'active' && !isExpired
+                    let subscriptionStatus
+                    if (isActive) {
+                      subscriptionStatus = (
+                        <Tag
+                          color='white'
+                          size='small'
+                          shape='circle'
+                          prefixIcon={<Badge dot type='success' />}
+                        >
+                          {t('生效')}
+                        </Tag>
+                      )
+                    } else if (isCancelled) {
+                      subscriptionStatus = (
+                        <Tag color='white' size='small' shape='circle'>
+                          {t('已作废')}
+                        </Tag>
+                      )
+                    } else {
+                      subscriptionStatus = (
+                        <Tag color='white' size='small' shape='circle'>
+                          {t('已过期')}
+                        </Tag>
+                      )
+                    }
+                    let endDateLabel = t('过期于')
+                    if (isActive) {
+                      endDateLabel = t('至')
+                    } else if (isCancelled) {
+                      endDateLabel = t('作废于')
+                    }
 
                     return (
                       <div key={subscription?.id || subIndex}>
@@ -407,24 +490,7 @@ const SubscriptionPlansCard = ({
                                 ? `${planTitle} · ${t('订阅')} #${subscription?.id}`
                                 : `${t('订阅')} #${subscription?.id}`}
                             </span>
-                            {isActive ? (
-                              <Tag
-                                color='white'
-                                size='small'
-                                shape='circle'
-                                prefixIcon={<Badge dot type='success' />}
-                              >
-                                {t('生效')}
-                              </Tag>
-                            ) : isCancelled ? (
-                              <Tag color='white' size='small' shape='circle'>
-                                {t('已作废')}
-                              </Tag>
-                            ) : (
-                              <Tag color='white' size='small' shape='circle'>
-                                {t('已过期')}
-                              </Tag>
-                            )}
+                            {subscriptionStatus}
                           </div>
                           {isActive && (
                             <span className='text-gray-500'>
@@ -433,20 +499,16 @@ const SubscriptionPlansCard = ({
                           )}
                         </div>
                         <div className='text-xs text-gray-500 mb-2'>
-                          {isActive
-                            ? t('至')
-                            : isCancelled
-                              ? t('作废于')
-                              : t('过期于')}{' '}
+                          {endDateLabel}{' '}
                           {new Date(
-                            (subscription?.end_time || 0) * 1000,
+                            (subscription?.end_time || 0) * 1000
                           ).toLocaleString()}
                         </div>
                         {isActive && subscription?.next_reset_time > 0 && (
                           <div className='text-xs text-gray-500 mb-2'>
                             {t('下一次重置')}:{' '}
                             {new Date(
-                              subscription.next_reset_time * 1000,
+                              subscription.next_reset_time * 1000
                             ).toLocaleString()}
                           </div>
                         )}
@@ -473,7 +535,7 @@ const SubscriptionPlansCard = ({
                         </div>
                         {!isLast && <Divider margin={12} />}
                       </div>
-                    );
+                    )
                   })}
                 </div>
               </>
@@ -488,28 +550,28 @@ const SubscriptionPlansCard = ({
           {plans.length > 0 ? (
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 w-full px-1'>
               {plans.map((p, index) => {
-                const plan = p?.plan;
-                const totalAmount = Number(plan?.total_amount || 0);
-                const { symbol, rate } = getCurrencyConfig();
-                const price = Number(plan?.price_amount || 0);
-                const convertedPrice = price * rate;
+                const plan = p?.plan
+                const totalAmount = Number(plan?.total_amount || 0)
+                const { symbol, rate } = getCurrencyConfig()
+                const price = Number(plan?.price_amount || 0)
+                const convertedPrice = price * rate
                 const displayPrice = convertedPrice.toFixed(
-                  Number.isInteger(convertedPrice) ? 0 : 2,
-                );
-                const isPopular = index === 0 && plans.length > 1;
-                const limit = Number(plan?.max_purchase_per_user || 0);
-                const limitLabel = limit > 0 ? `${t('限购')} ${limit}` : null;
+                  Number.isInteger(convertedPrice) ? 0 : 2
+                )
+                const isPopular = index === 0 && plans.length > 1
+                const limit = Number(plan?.max_purchase_per_user || 0)
+                const limitLabel = limit > 0 ? `${t('限购')} ${limit}` : null
                 const totalLabel =
                   totalAmount > 0
                     ? `${t('总额度')}: ${renderQuota(totalAmount)}`
-                    : `${t('总额度')}: ${t('不限')}`;
+                    : `${t('总额度')}: ${t('不限')}`
                 const upgradeLabel = plan?.upgrade_group
                   ? `${t('升级分组')}: ${plan.upgrade_group}`
-                  : null;
+                  : null
                 const resetLabel =
                   formatSubscriptionResetPeriod(plan, t) === t('不重置')
                     ? null
-                    : `${t('额度重置')}: ${formatSubscriptionResetPeriod(plan, t)}`;
+                    : `${t('额度重置')}: ${formatSubscriptionResetPeriod(plan, t)}`
                 const planBenefits = [
                   {
                     label: `${t('有效期')}: ${formatSubscriptionDuration(plan, t)}`,
@@ -523,7 +585,7 @@ const SubscriptionPlansCard = ({
                     : { label: totalLabel },
                   limitLabel ? { label: limitLabel } : null,
                   upgradeLabel ? { label: upgradeLabel } : null,
-                ].filter(Boolean);
+                ].filter(Boolean)
 
                 return (
                   <Card
@@ -584,7 +646,7 @@ const SubscriptionPlansCard = ({
                               <Badge dot type='tertiary' />
                               <span>{item.label}</span>
                             </div>
-                          );
+                          )
                           if (!item.tooltip) {
                             return (
                               <div
@@ -593,7 +655,7 @@ const SubscriptionPlansCard = ({
                               >
                                 {content}
                               </div>
-                            );
+                            )
                           }
                           return (
                             <Tooltip key={item.label} content={item.tooltip}>
@@ -601,7 +663,7 @@ const SubscriptionPlansCard = ({
                                 {content}
                               </div>
                             </Tooltip>
-                          );
+                          )
                         })}
                       </div>
 
@@ -610,11 +672,11 @@ const SubscriptionPlansCard = ({
 
                         {/* 购买按钮 */}
                         {(() => {
-                          const count = getPlanPurchaseCount(p?.plan?.id);
-                          const reached = limit > 0 && count >= limit;
+                          const count = getPlanPurchaseCount(p?.plan?.id)
+                          const reached = limit > 0 && count >= limit
                           const tip = reached
                             ? t('已达到购买上限') + ` (${count}/${limit})`
-                            : '';
+                            : ''
                           const buttonEl = (
                             <Button
                               theme='outline'
@@ -622,24 +684,25 @@ const SubscriptionPlansCard = ({
                               block
                               disabled={reached}
                               onClick={() => {
-                                if (!reached) openBuy(p);
+                                if (!reached) openBuy(p)
                               }}
                             >
                               {reached ? t('已达上限') : t('立即订阅')}
                             </Button>
-                          );
-                          return reached ? (
-                            <Tooltip content={tip} position='top'>
-                              {buttonEl}
-                            </Tooltip>
-                          ) : (
-                            buttonEl
-                          );
+                          )
+                          if (reached) {
+                            return (
+                              <Tooltip content={tip} position='top'>
+                                {buttonEl}
+                              </Tooltip>
+                            )
+                          }
+                          return buttonEl
                         })()}
                       </div>
                     </div>
                   </Card>
-                );
+                )
               })}
             </div>
           ) : (
@@ -650,7 +713,7 @@ const SubscriptionPlansCard = ({
         </Space>
       )}
     </>
-  );
+  )
 
   return (
     <>
@@ -685,8 +748,30 @@ const SubscriptionPlansCard = ({
         onPayCreem={payCreem}
         onPayEpay={payEpay}
       />
-    </>
-  );
-};
 
-export default SubscriptionPlansCard;
+      <EpayCheckoutModal
+        t={t}
+        visible={epayCheckoutOpen}
+        checkout={epayCheckout}
+        getStatus={async (tradeNo) => {
+          const response = await API.get(
+            `/api/subscription/epay/status?trade_no=${encodeURIComponent(tradeNo)}`
+          )
+          return response.data
+        }}
+        onSuccess={async () => {
+          setEpayCheckoutOpen(false)
+          setEpayCheckout(null)
+          await reloadSubscriptionSelf?.()
+        }}
+        onCancel={() => {
+          setEpayCheckoutOpen(false)
+          setEpayCheckout(null)
+        }}
+        onRetry={retryEpayCheckout}
+      />
+    </>
+  )
+}
+
+export default SubscriptionPlansCard

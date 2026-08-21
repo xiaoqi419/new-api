@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -27,10 +28,106 @@ import (
 
 const groupBuyPayDesc = "拼团充值"
 
+type groupBuyPaymentMethod struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+func normalizeGroupBuyScene(scene string) string {
+	if strings.EqualFold(strings.TrimSpace(scene), "h5") {
+		return "h5"
+	}
+	return "native"
+}
+
+func availableGroupBuyPaymentMethods(scene string) []groupBuyPaymentMethod {
+	methods := make([]groupBuyPaymentMethod, 0)
+	if !common.GroupBuyEnabled {
+		return methods
+	}
+
+	seen := make(map[string]struct{})
+	if isGroupBuyWechatPayEnabled(scene) {
+		methods = append(methods, groupBuyPaymentMethod{Name: "微信支付", Type: model.PaymentMethodWechatPay})
+		seen[model.PaymentMethodWechatPay] = struct{}{}
+	}
+	if isAlipayTopUpEnabled() {
+		methods = append(methods, groupBuyPaymentMethod{Name: "支付宝", Type: model.PaymentMethodAlipay})
+		seen[model.PaymentMethodAlipay] = struct{}{}
+	}
+	if !isEpayTopUpEnabled() {
+		return methods
+	}
+
+	for _, configured := range operation_setting.PayMethods {
+		method := groupBuyPaymentMethod{
+			Name: strings.TrimSpace(configured["name"]),
+			Type: strings.TrimSpace(configured["type"]),
+		}
+		if method.Name == "" || !isSupportedGroupBuyEpayMethod(method.Type) {
+			continue
+		}
+		if _, exists := seen[method.Type]; exists {
+			continue
+		}
+		seen[method.Type] = struct{}{}
+		methods = append(methods, method)
+	}
+	return methods
+}
+
+func isSupportedGroupBuyEpayMethod(paymentMethod string) bool {
+	if paymentMethod == "" {
+		return false
+	}
+	switch paymentMethod {
+	case model.PaymentMethodWechatPay,
+		model.PaymentMethodAlipay,
+		model.PaymentMethodStripe,
+		model.PaymentMethodCreem,
+		model.PaymentMethodWaffo,
+		model.PaymentMethodWaffoPancake,
+		model.PaymentMethodBalance:
+		return false
+	default:
+		return true
+	}
+}
+
+func isGroupBuyWechatPayEnabled(scene string) bool {
+	if !isWechatPayTopUpEnabled() {
+		return false
+	}
+	if normalizeGroupBuyScene(scene) == "h5" {
+		return setting.WechatPayH5
+	}
+	return setting.WechatPayNative
+}
+
+func isConfiguredGroupBuyEpayMethod(paymentMethod string) bool {
+	if !isSupportedGroupBuyEpayMethod(paymentMethod) {
+		return false
+	}
+	for _, configured := range operation_setting.PayMethods {
+		if strings.TrimSpace(configured["name"]) == "" {
+			continue
+		}
+		if strings.TrimSpace(configured["type"]) == paymentMethod {
+			return true
+		}
+	}
+	return false
+}
+
 // GetGroupBuyInfo 返回拼团功能开关与可用套餐（登录用户）。
 func GetGroupBuyInfo(c *gin.Context) {
+	scene := normalizeGroupBuyScene(c.Query("scene"))
 	if !common.GroupBuyEnabled {
-		common.ApiSuccess(c, gin.H{"enabled": false, "packages": []interface{}{}})
+		common.ApiSuccess(c, gin.H{
+			"enabled":         false,
+			"packages":        []interface{}{},
+			"payment_methods": availableGroupBuyPaymentMethods(scene),
+		})
 		return
 	}
 	packages, err := model.GetGroupBuyPackages(true)
@@ -38,7 +135,11 @@ func GetGroupBuyInfo(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	common.ApiSuccess(c, gin.H{"enabled": true, "packages": packages})
+	common.ApiSuccess(c, gin.H{
+		"enabled":         true,
+		"packages":        packages,
+		"payment_methods": availableGroupBuyPaymentMethods(scene),
+	})
 }
 
 type groupBuyCreateRequest struct {
@@ -58,10 +159,14 @@ type groupBuyCancelRequest struct {
 }
 
 // resolveGroupBuyProvider 校验并返回支付方式对应的支付网关标识。
-func resolveGroupBuyProvider(paymentMethod string) (string, error) {
+func resolveGroupBuyProvider(paymentMethod, scene string) (string, error) {
+	paymentMethod = strings.TrimSpace(paymentMethod)
+	if paymentMethod == "" {
+		return "", fmt.Errorf("支付方式不存在")
+	}
 	switch paymentMethod {
 	case model.PaymentMethodWechatPay:
-		if !isWechatPayTopUpEnabled() {
+		if !isGroupBuyWechatPayEnabled(scene) {
 			return "", fmt.Errorf("管理员未开启微信支付")
 		}
 		return model.PaymentProviderWechatPay, nil
@@ -71,11 +176,11 @@ func resolveGroupBuyProvider(paymentMethod string) (string, error) {
 		}
 		return model.PaymentProviderAlipay, nil
 	default:
+		if !isConfiguredGroupBuyEpayMethod(paymentMethod) {
+			return "", fmt.Errorf("支付方式不存在或不支持拼团支付")
+		}
 		if !isEpayTopUpEnabled() {
 			return "", fmt.Errorf("管理员未开启在线充值")
-		}
-		if !operation_setting.ContainsPayMethod(paymentMethod) {
-			return "", fmt.Errorf("支付方式不存在")
 		}
 		return model.PaymentProviderEpay, nil
 	}
@@ -92,7 +197,9 @@ func CreateGroupBuy(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
-	provider, err := resolveGroupBuyProvider(req.PaymentMethod)
+	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
+	req.Scene = normalizeGroupBuyScene(req.Scene)
+	provider, err := resolveGroupBuyProvider(req.PaymentMethod, req.Scene)
 	if err != nil {
 		common.ApiErrorMsg(c, err.Error())
 		return
@@ -119,6 +226,10 @@ func CreateGroupBuy(c *gin.Context) {
 
 	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
 	if err != nil {
+		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
+		if provider == model.PaymentProviderEpay {
+			failGroupBuyEpayCheckout(c.Request.Context(), tradeNo)
+		}
 		common.ApiErrorMsg(c, err.Error())
 		return
 	}
@@ -137,7 +248,9 @@ func JoinGroupBuy(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
-	provider, err := resolveGroupBuyProvider(req.PaymentMethod)
+	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
+	req.Scene = normalizeGroupBuyScene(req.Scene)
+	provider, err := resolveGroupBuyProvider(req.PaymentMethod, req.Scene)
 	if err != nil {
 		common.ApiErrorMsg(c, err.Error())
 		return
@@ -155,6 +268,10 @@ func JoinGroupBuy(c *gin.Context) {
 
 	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
 	if err != nil {
+		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
+		if provider == model.PaymentProviderEpay {
+			failGroupBuyEpayCheckout(c.Request.Context(), tradeNo)
+		}
 		common.ApiErrorMsg(c, err.Error())
 		return
 	}
@@ -174,6 +291,12 @@ func CancelGroupBuyPayment(c *gin.Context) {
 		return
 	}
 	common.ApiSuccess(c, nil)
+}
+
+func releaseGroupBuyPaymentReservation(c *gin.Context, userId int, tradeNo string) {
+	if err := model.ReleaseGroupBuyReservation(userId, tradeNo); err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("拼团支付失败后释放预占失败 trade_no=%s error=%q", tradeNo, err.Error()))
+	}
 }
 
 // GetGroupBuyDetail 返回拼团详情与进度（登录用户）。
@@ -307,12 +430,21 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 		}
 		return data, nil
 	default:
-		payURL, params, err := groupBuyEpay(tradeNo, payMoney, paymentMethod)
+		data, err := groupBuyEpayMAPI(c, tradeNo, payMoney, paymentMethod)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("拼团 易支付下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
 			return nil, fmt.Errorf("拉起支付失败")
 		}
-		return gin.H{"epay_url": payURL, "epay_params": params, "trade_no": tradeNo}, nil
+		return data, nil
+	}
+}
+
+// failGroupBuyEpayCheckout prevents a failed MAPI checkout from remaining
+// pending after the caller has released its group-buy reservation.
+func failGroupBuyEpayCheckout(ctx context.Context, tradeNo string) {
+	if err := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); err != nil &&
+		!errors.Is(err, model.ErrTopUpStatusInvalid) {
+		logger.LogError(ctx, fmt.Sprintf("拼团 易支付订单标记失败 trade_no=%s error=%q", tradeNo, err.Error()))
 	}
 }
 
@@ -389,27 +521,42 @@ func groupBuyAlipay(ctx context.Context, tradeNo string, payMoney float64) (gin.
 	}, nil
 }
 
-func groupBuyEpay(tradeNo string, payMoney float64, paymentMethod string) (string, map[string]string, error) {
-	client := GetEpayClient()
-	if client == nil {
-		return "", nil, fmt.Errorf("当前管理员未配置支付信息")
+func groupBuyEpayMAPI(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+	mapiClient, err := service.NewEpayMAPIClient(GetEpayClient(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("当前管理员未配置支付信息")
 	}
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, _ := url.Parse(paymentReturnPath("/console/log?show_history=true"))
-	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
-	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           paymentMethod,
-		ServiceTradeNo: tradeNo,
-		Name:           groupBuyPayDesc,
-		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
-		Device:         epay.PC,
-		NotifyUrl:      notifyUrl,
-		ReturnUrl:      returnUrl,
+	returnURL, err := url.Parse(paymentReturnPath("/console/log?show_history=true"))
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	notifyURL, err := url.Parse(callBackAddress + "/api/user/epay/notify")
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	money := decimal.NewFromFloat(payMoney).StringFixed(2)
+	checkout, err := mapiClient.CreateCheckout(c.Request.Context(), service.EpayMAPIRequest{
+		PaymentMethod: paymentMethod,
+		TradeNo:       tradeNo,
+		Name:          groupBuyPayDesc,
+		Money:         money,
+		ClientIP:      c.ClientIP(),
+		Device:        epay.PC,
+		NotifyURL:     notifyURL,
+		ReturnURL:     returnURL,
 	})
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	return uri, params, nil
+	return gin.H{
+		"trade_no":         tradeNo,
+		"gateway_trade_no": checkout.GatewayTradeNo,
+		"checkout_type":    checkout.CheckoutType,
+		"checkout_value":   checkout.CheckoutValue,
+		"payment_method":   paymentMethod,
+		"money":            money,
+	}, nil
 }
 
 func maskUsername(name string) string {

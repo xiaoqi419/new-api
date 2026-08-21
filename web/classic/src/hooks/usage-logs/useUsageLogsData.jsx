@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@douyinfe/semi-ui';
 import {
@@ -186,6 +186,8 @@ export const useLogsData = () => {
     useState(null);
   const [showParamOverrideModal, setShowParamOverrideModal] = useState(false);
   const [paramOverrideTarget, setParamOverrideTarget] = useState(null);
+  const loadLogsRef = useRef(null);
+  const handleEyeClickRef = useRef(null);
 
   // Initialize default column visibility
   const initDefaultColumns = () => {
@@ -226,7 +228,7 @@ export const useLogsData = () => {
     if (Object.keys(visibleColumns).length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns));
     }
-  }, [visibleColumns]);
+  }, [STORAGE_KEY, visibleColumns]);
 
   useEffect(() => {
     localStorage.setItem(BILLING_DISPLAY_MODE_STORAGE_KEY, billingDisplayMode);
@@ -323,6 +325,7 @@ export const useLogsData = () => {
     setShowStat(true);
     setLoadingStat(false);
   };
+  handleEyeClickRef.current = handleEyeClick;
 
   // User info function
   const showUserInfoFunc = async (userId) => {
@@ -742,12 +745,12 @@ export const useLogsData = () => {
       logType: formLogType,
     } = getFormValues();
 
-    const currentLogType =
-      customLogType !== null
-        ? customLogType
-        : formLogType !== undefined
-          ? formLogType
-          : logType;
+    let currentLogType = logType;
+    if (customLogType !== null) {
+      currentLogType = customLogType;
+    } else if (formLogType !== undefined) {
+      currentLogType = formLogType;
+    }
 
     let localStartTimestamp = Date.parse(start_timestamp) / 1000;
     let localEndTimestamp = Date.parse(end_timestamp) / 1000;
@@ -771,11 +774,12 @@ export const useLogsData = () => {
     }
     setLoading(false);
   };
+  loadLogsRef.current = loadLogs;
 
   // Page handlers
   const handlePageChange = (page) => {
     setActivePage(page);
-    loadLogs(page, pageSize).then((r) => {});
+    return loadLogs(page, pageSize);
   };
 
   const handlePageSizeChange = async (size) => {
@@ -811,7 +815,7 @@ export const useLogsData = () => {
     const localPageSize =
       parseInt(localStorage.getItem('page-size')) || ITEMS_PER_PAGE;
     setPageSize(localPageSize);
-    loadLogs(activePage, localPageSize)
+    loadLogsRef.current(1, localPageSize)
       .then()
       .catch((reason) => {
         showError(reason);
@@ -821,7 +825,7 @@ export const useLogsData = () => {
   // Initialize statistics when formApi is available
   useEffect(() => {
     if (formApi) {
-      handleEyeClick();
+      void handleEyeClickRef.current();
     }
   }, [formApi]);
 

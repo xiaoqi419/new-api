@@ -1,0 +1,8 @@
+{
+  "kind": "verifier-unavailable",
+  "summary": "Independent semantic verifier was unavailable. The Runtime verifier operation remained running without a response for more than fifteen minutes, and a separate read-only verifier attempt failed with 429 Too Many Requests. Existing builder evidence and local checks remain recorded, but no independent verifier verdict is claimed.",
+  "stateVersion": 4,
+  "iteration": 1,
+  "attempt": 1,
+  "verifierExecutionRef": "skill-coordinated:verifier:6327441e-8f5b-4d98-9ae8-990f888e9092"
+}

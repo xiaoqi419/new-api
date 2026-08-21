@@ -22,7 +22,12 @@ import {
   DEFAULT_PAYMENT_TYPE,
   DEFAULT_MIN_TOPUP,
 } from '../constants'
-import type { PaymentMethod, PresetAmount, TopupInfo } from '../types'
+import type {
+  EpayCheckoutData,
+  PaymentMethod,
+  PresetAmount,
+  TopupInfo,
+} from '../types'
 
 // ============================================================================
 // Payment Processing Functions
@@ -74,16 +79,144 @@ export function submitPaymentForm(
  */
 export function isSafePaymentRedirectUrl(value: string): boolean {
   const trimmed = value.trim()
-  if (!trimmed) {
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
     return false
   }
   try {
     const url = new URL(trimmed)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      Boolean(url.hostname)
+    )
   } catch {
     return false
   }
 }
+
+/**
+ * Epay checkout values are gateway-controlled. QR values remain inert, while
+ * URL and app-scheme values must pass a narrow allowlist before being encoded
+ * into the in-site QR code.
+ */
+export function isSafeEpayCheckoutTarget(
+  checkoutType: string,
+  value: string,
+  paymentMethod: string
+): boolean {
+  if (checkoutType === 'payurl') {
+    return isSafePaymentRedirectUrl(value)
+  }
+  if (checkoutType !== 'urlscheme') {
+    return false
+  }
+
+  const normalizedValue = value.trim().toLowerCase()
+  if (paymentMethod === PAYMENT_TYPES.ALIPAY) {
+    return (
+      normalizedValue.startsWith('alipay://') ||
+      normalizedValue.startsWith('alipays://')
+    )
+  }
+  if (paymentMethod === PAYMENT_TYPES.WECHAT) {
+    return (
+      normalizedValue.startsWith('weixin://') ||
+      normalizedValue.startsWith('wxp://')
+    )
+  }
+  return false
+}
+
+interface EpayCheckoutFallback {
+  tradeNo?: string
+  paymentMethod?: string
+  money?: string | number
+}
+
+export function getEpayCheckoutData(
+  value: unknown,
+  fallback: EpayCheckoutFallback = {}
+): EpayCheckoutData | null {
+  if (!value || typeof value !== 'object') return null
+  const fields = value as Record<string, unknown>
+  let checkoutType = fields.checkout_type
+  let checkoutValue = fields.checkout_value
+  if (!checkoutType && typeof fields.pay_url === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.pay_url
+  } else if (!checkoutType && typeof fields.payurl === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.payurl
+  } else if (!checkoutType && typeof fields.qr_code === 'string') {
+    checkoutType = 'qrcode'
+    checkoutValue = fields.qr_code
+  }
+  const tradeNo = fields.trade_no ?? fallback.tradeNo
+  const paymentMethod = fields.payment_method ?? fallback.paymentMethod
+  const money = fields.money ?? fallback.money
+  if (
+    (checkoutType !== 'qrcode' &&
+      checkoutType !== 'payurl' &&
+      checkoutType !== 'urlscheme') ||
+    typeof checkoutValue !== 'string' ||
+    !checkoutValue.trim() ||
+    typeof tradeNo !== 'string' ||
+    !tradeNo.trim() ||
+    typeof paymentMethod !== 'string' ||
+    !paymentMethod.trim() ||
+    (typeof money !== 'string' && typeof money !== 'number')
+  ) {
+    return null
+  }
+  if (
+    fallback.paymentMethod &&
+    paymentMethod.trim() !== fallback.paymentMethod.trim()
+  ) {
+    return null
+  }
+  if (fallback.money !== undefined) {
+    const responseMoney = Number(money)
+    const expectedMoney = Number(fallback.money)
+    if (
+      !Number.isFinite(responseMoney) ||
+      !Number.isFinite(expectedMoney) ||
+      responseMoney !== expectedMoney
+    ) {
+      return null
+    }
+  }
+  if (
+    checkoutType !== 'qrcode' &&
+    !isSafeEpayCheckoutTarget(checkoutType, checkoutValue, paymentMethod.trim())
+  ) {
+    return null
+  }
+  const gatewayTradeNo = fields.gateway_trade_no
+  return {
+    trade_no: tradeNo.trim(),
+    ...(typeof gatewayTradeNo === 'string' && gatewayTradeNo.trim()
+      ? { gateway_trade_no: gatewayTradeNo.trim() }
+      : {}),
+    checkout_type: checkoutType,
+    checkout_value: checkoutValue.trim(),
+    payment_method: paymentMethod.trim(),
+    money: String(money),
+  }
+}
+
+export function openEpayCheckout(
+  value: unknown,
+  fallback: EpayCheckoutFallback,
+  setCheckout: (checkout: EpayCheckoutData) => void
+): boolean {
+  const checkout = getEpayCheckoutData(value, fallback)
+  if (!checkout) return false
+  setCheckout(checkout)
+  return true
+}
+
+export const openWalletEpayCheckout = openEpayCheckout
+export const openSubscriptionEpayCheckout = openEpayCheckout
+export const openGroupBuyEpayCheckout = openEpayCheckout
 
 /**
  * Check if payment method is Stripe
@@ -100,6 +233,15 @@ export function isStripePayment(paymentType: string): boolean {
  */
 export function isAlipayDirectPayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.ALIPAY_DIRECT
+}
+
+/**
+ * Check if payment method is the direct WeChat Pay merchant integration.
+ *
+ * Distinct from PAYMENT_TYPES.WECHAT, which is an epay aggregator channel.
+ */
+export function isWechatDirectPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.WECHAT_DIRECT
 }
 
 /**
@@ -125,6 +267,7 @@ export interface PaymentProcessors {
   waffo: (topupAmount: number, payMethodIndex: number) => Promise<boolean>
   waffoPancake: (topupAmount: number) => Promise<boolean>
   alipay: (topupAmount: number) => Promise<boolean>
+  wechat: (topupAmount: number) => Promise<boolean>
 }
 
 export async function dispatchSelectedPayment(
@@ -148,7 +291,25 @@ export async function dispatchSelectedPayment(
     return processors.alipay(topupAmount)
   }
 
+  if (isWechatDirectPayment(paymentMethod.type)) {
+    return processors.wechat(topupAmount)
+  }
+
   return processors.regular(topupAmount, paymentMethod.type)
+}
+
+/**
+ * Whether the standard amount and payment-method controls should be shown.
+ */
+export function hasConfigurableTopup(topupInfo: TopupInfo | null): boolean {
+  return Boolean(
+    topupInfo?.enable_online_topup ||
+    topupInfo?.enable_stripe_topup ||
+    topupInfo?.enable_alipay_topup ||
+    topupInfo?.enable_wechatpay_topup ||
+    topupInfo?.enable_waffo_topup ||
+    topupInfo?.enable_waffo_pancake_topup
+  )
 }
 
 /**
@@ -178,6 +339,10 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
 
   if (topupInfo.enable_alipay_topup) {
     return PAYMENT_TYPES.ALIPAY_DIRECT
+  }
+
+  if (topupInfo.enable_wechatpay_topup) {
+    return PAYMENT_TYPES.WECHAT_DIRECT
   }
 
   return DEFAULT_PAYMENT_TYPE
@@ -211,6 +376,10 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
   // alipay_min_topup — that one is advertised per method and enforced by the
   // per-button floor.
   if (topupInfo.enable_alipay_topup) {
+    return topupInfo.min_topup || DEFAULT_MIN_TOPUP
+  }
+
+  if (topupInfo.enable_wechatpay_topup) {
     return topupInfo.min_topup || DEFAULT_MIN_TOPUP
   }
 

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Spin } from '@douyinfe/semi-ui';
 import SettingsPerformance from '../../pages/Setting/Performance/SettingsPerformance';
 import { API, showError, toBoolean } from '../../helpers';
@@ -32,48 +32,48 @@ const PerformanceSetting = () => {
 
   let [loading, setLoading] = useState(false);
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
-      data.forEach((item) => {
-        if (typeof inputs[item.key] === 'boolean') {
-          newInputs[item.key] = toBoolean(item.value);
-        } else {
-          newInputs[item.key] = item.value;
-        }
+      setInputs((currentInputs) => {
+        const newInputs = {};
+        data.forEach((item) => {
+          if (typeof currentInputs[item.key] === 'boolean') {
+            newInputs[item.key] = toBoolean(item.value);
+          } else {
+            newInputs[item.key] = item.value;
+          }
+        });
+        return newInputs;
       });
-      setInputs(newInputs);
     } else {
       showError(message);
     }
-  };
+  }, []);
 
-  async function onRefresh() {
+  const onRefresh = useCallback(async () => {
     try {
       setLoading(true);
       await getOptions();
-    } catch (error) {
+    } catch {
       showError('刷新失败');
     } finally {
       setLoading(false);
     }
-  }
+  }, [getOptions]);
 
   useEffect(() => {
-    onRefresh();
-  }, []);
+    void onRefresh();
+  }, [onRefresh]);
 
   return (
-    <>
-      <Spin spinning={loading} size='large'>
-        {/* 性能设置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <SettingsPerformance options={inputs} refresh={onRefresh} />
-        </Card>
-      </Spin>
-    </>
+    <Spin spinning={loading} size='large'>
+      {/* 性能设置 */}
+      <Card style={{ marginTop: '10px' }}>
+        <SettingsPerformance options={inputs} refresh={onRefresh} />
+      </Card>
+    </Spin>
   );
 };
 

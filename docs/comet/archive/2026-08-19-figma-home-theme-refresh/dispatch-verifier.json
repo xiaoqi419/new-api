@@ -1,0 +1,96 @@
+{
+  "kind": "dispatch-verifier",
+  "checks": [
+    {
+      "id": "figma-home-oxfmt",
+      "name": "affected homepage/theme formatting",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$files = @('src/features/home/components/sections/hero.tsx','src/features/home/components/sections/features.tsx','src/features/home/components/sections/cta.tsx','src/features/home/components/sections/how-it-works.tsx','src/features/home/components/sections/stats.tsx','src/features/home/components/hero-terminal-demo.tsx','src/features/home/templates/classic-landing.tsx','src/components/layout/components/public-layout.tsx','src/components/layout/components/public-header.tsx','src/components/layout/components/public-navigation.tsx','src/components/layout/components/footer.tsx','src/components/theme-switch.tsx','src/context/theme-provider.tsx','src/features/changelog/data.ts'); & .\\node_modules\\.bin\\oxfmt.exe --check $files; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-oxlint",
+      "name": "affected homepage/theme lint",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$files = @('src/features/home/components/sections/hero.tsx','src/features/home/components/sections/features.tsx','src/features/home/components/sections/cta.tsx','src/features/home/components/sections/how-it-works.tsx','src/features/home/components/sections/stats.tsx','src/features/home/components/hero-terminal-demo.tsx','src/features/home/templates/classic-landing.tsx','src/components/layout/components/public-layout.tsx','src/components/layout/components/public-header.tsx','src/components/layout/components/public-navigation.tsx','src/components/layout/components/footer.tsx','src/components/theme-switch.tsx','src/context/theme-provider.tsx','src/features/changelog/data.ts'); & .\\node_modules\\.bin\\oxlint.exe -c .oxlintrc.json $files; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-typecheck",
+      "name": "homepage/theme TypeScript typecheck",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "& .\\node_modules\\.bin\\tsgo.exe -b; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-default-build",
+      "name": "default frontend production build",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "& .\\node_modules\\.bin\\rsbuild.exe build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-classic-build",
+      "name": "classic frontend production build",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location classic; & .\\node_modules\\.bin\\rsbuild.exe build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-diff-check",
+      "name": "repository diff whitespace check",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "figma-home-local-assets",
+      "name": "homepage runtime uses local assets",
+      "executable": "pwsh.exe",
+      "argv": [
+        "-NoProfile",
+        "-Command",
+        "$matches = @(rg -n 'www\\.figma\\.com/api/mcp/asset' web/src/features/home/components web/src/features/home/templates 2>$null); if ($matches.Count -gt 0) { $matches | Write-Error; exit 1 }; if (-not (Test-Path web/public/assets/home-figma/light/node-6-2-export.png)) { throw 'Missing light Figma export' }; if (-not (Test-Path web/public/assets/home-figma/dark/node-44-2-export.png)) { throw 'Missing dark Figma export' }"
+      ],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    }
+  ]
+}

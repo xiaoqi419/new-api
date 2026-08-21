@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   API,
+  getChannelModels,
   showError,
   showInfo,
   showSuccess,
@@ -47,13 +48,22 @@ import {
   IconCode,
   IconSetting,
 } from '@douyinfe/semi-icons';
-import { getChannelModels } from '../../../../helpers';
 import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
 
 const MODEL_MAPPING_EXAMPLE = {
   'gpt-3.5-turbo': 'gpt-3.5-turbo-0125',
+};
+
+const INITIAL_TAG_INPUTS = {
+  tag: '',
+  new_tag: null,
+  model_mapping: null,
+  groups: [],
+  models: [],
+  param_override: null,
+  header_override: null,
 };
 
 const EditTagModal = (props) => {
@@ -65,16 +75,7 @@ const EditTagModal = (props) => {
   const [groupOptions, setGroupOptions] = useState([]);
   const [customModel, setCustomModel] = useState('');
   const [modelSearchValue, setModelSearchValue] = useState('');
-  const originInputs = {
-    tag: '',
-    new_tag: null,
-    model_mapping: null,
-    groups: [],
-    models: [],
-    param_override: null,
-    header_override: null,
-  };
-  const [inputs, setInputs] = useState(originInputs);
+  const [inputs, setInputs] = useState(INITIAL_TAG_INPUTS);
   const modelSearchMatchedCount = useMemo(() => {
     const keyword = modelSearchValue.trim();
     if (!keyword) {
@@ -95,7 +96,6 @@ const EditTagModal = (props) => {
     });
   }, [modelSearchMatchedCount, modelSearchValue, t]);
   const formApiRef = useRef(null);
-  const getInitValues = () => ({ ...originInputs });
 
   const handleInputChange = (name, value) => {
     setInputs((inputs) => ({ ...inputs, [name]: value }));
@@ -298,7 +298,8 @@ const EditTagModal = (props) => {
         const res = await API.get(`/api/channel/tag/models?tag=${tag}`);
         if (res?.data?.success) {
           const models = res.data.data ? res.data.data.split(',') : [];
-          handleInputChange('models', models);
+          setInputs((currentInputs) => ({ ...currentInputs, models }));
+          formApiRef.current?.setValue('models', models);
         } else {
           showError(res.data.message);
         }
@@ -309,20 +310,20 @@ const EditTagModal = (props) => {
       }
     };
 
-    fetchModels().then();
-    fetchGroups().then();
-    fetchTagModels().then();
+    void fetchModels();
+    void fetchGroups();
+    void fetchTagModels();
     setModelSearchValue('');
     if (formApiRef.current) {
       formApiRef.current.setValues({
-        ...getInitValues(),
+        ...INITIAL_TAG_INPUTS,
         tag: tag,
         new_tag: tag,
       });
     }
 
     setInputs({
-      ...originInputs,
+      ...INITIAL_TAG_INPUTS,
       tag: tag,
       new_tag: tag,
     });
@@ -413,7 +414,7 @@ const EditTagModal = (props) => {
     >
       <Form
         key={tag || 'edit'}
-        initValues={getInitValues()}
+        initValues={{ ...INITIAL_TAG_INPUTS }}
         getFormApi={(api) => (formApiRef.current = api)}
         onSubmit={handleSave}
       >

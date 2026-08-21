@@ -114,18 +114,24 @@ const ExtendDurationModal = ({
     const totalGPUs = Number(details?.total_gpus) || 0;
     const totalContainers = Number(details?.total_containers) || 0;
     const baseGpusPerContainer = Number(details?.gpus_per_container) || 0;
-    const resolvedGpusPerContainer =
-      baseGpusPerContainer > 0
-        ? baseGpusPerContainer
-        : totalContainers > 0 && totalGPUs > 0
-          ? Math.max(1, Math.round(totalGPUs / totalContainers))
-          : 0;
-    const resolvedReplicaCount =
-      totalContainers > 0
-        ? totalContainers
-        : resolvedGpusPerContainer > 0 && totalGPUs > 0
-          ? Math.max(1, Math.round(totalGPUs / resolvedGpusPerContainer))
-          : 0;
+    let resolvedGpusPerContainer = 0;
+    if (baseGpusPerContainer > 0) {
+      resolvedGpusPerContainer = baseGpusPerContainer;
+    } else if (totalContainers > 0 && totalGPUs > 0) {
+      resolvedGpusPerContainer = Math.max(
+        1,
+        Math.round(totalGPUs / totalContainers),
+      );
+    }
+    let resolvedReplicaCount = 0;
+    if (totalContainers > 0) {
+      resolvedReplicaCount = totalContainers;
+    } else if (resolvedGpusPerContainer > 0 && totalGPUs > 0) {
+      resolvedReplicaCount = Math.max(
+        1,
+        Math.round(totalGPUs / resolvedGpusPerContainer),
+      );
+    }
     const locationIds = Array.isArray(details?.locations)
       ? details.locations
           .map((location) =>
@@ -268,14 +274,16 @@ const ExtendDurationModal = ({
     .toString()
     .toUpperCase();
 
-  const estimatedTotalCost =
-    typeof priceData.estimated_cost === 'number'
-      ? priceData.estimated_cost
-      : typeof priceData.EstimatedCost === 'number'
-        ? priceData.EstimatedCost
-        : typeof breakdown.total_cost === 'number'
-          ? breakdown.total_cost
-          : breakdown.TotalCost;
+  let estimatedTotalCost = breakdown.TotalCost;
+  if (typeof breakdown.total_cost === 'number') {
+    estimatedTotalCost = breakdown.total_cost;
+  }
+  if (typeof priceData.EstimatedCost === 'number') {
+    estimatedTotalCost = priceData.EstimatedCost;
+  }
+  if (typeof priceData.estimated_cost === 'number') {
+    estimatedTotalCost = priceData.estimated_cost;
+  }
   const hourlyRate =
     typeof breakdown.hourly_rate === 'number'
       ? breakdown.hourly_rate
@@ -290,6 +298,21 @@ const ExtendDurationModal = ({
   const gpuCount =
     deploymentDetails?.total_gpus || deployment?.hardware_quantity || 0;
   const containers = deploymentDetails?.total_containers || 0;
+  let priceStatus = <Text type='secondary'>{t('加载详情中...')}</Text>;
+  if (deploymentDetails) {
+    priceStatus = <Text type='secondary'>{t('请输入延长时长')}</Text>;
+  }
+  if (priceError) {
+    priceStatus = <Text type='danger'>{priceError}</Text>;
+  }
+  if (costLoading) {
+    priceStatus = (
+      <Space align='center' className='justify-center'>
+        <Spin size='small' />
+        <Text type='secondary'>{t('计算费用中...')}</Text>
+      </Space>
+    );
+  }
 
   return (
     <Modal
@@ -503,18 +526,7 @@ const ExtendDurationModal = ({
             </div>
           ) : (
             <div className='text-center text-gray-500 py-4'>
-              {costLoading ? (
-                <Space align='center' className='justify-center'>
-                  <Spin size='small' />
-                  <Text type='secondary'>{t('计算费用中...')}</Text>
-                </Space>
-              ) : priceError ? (
-                <Text type='danger'>{priceError}</Text>
-              ) : deploymentDetails ? (
-                <Text type='secondary'>{t('请输入延长时长')}</Text>
-              ) : (
-                <Text type='secondary'>{t('加载详情中...')}</Text>
-              )}
+              {priceStatus}
             </div>
           )}
         </Card>

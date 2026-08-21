@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { CanvasStudio } from '@/features/canvas'
+import { ComingSoon } from '@/components/coming-soon'
 
 export const Route = createFileRoute('/_authenticated/canvas/')({
-  component: CanvasStudio,
+  component: ComingSoon,
 })

@@ -27,11 +27,13 @@ import { BillingHistoryDialog } from './components/dialogs/billing-history-dialo
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { PaymentQrDialog } from './components/dialogs/payment-qr-dialog'
+import { EpayCheckoutDialog } from './components/dialogs/epay-checkout-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
 import { DEFAULT_DISCOUNT_RATE, PAYMENT_TYPES } from './constants'
+import { getTradeStatus } from './api'
 import {
   useTopupInfo,
   usePayment,
@@ -41,6 +43,7 @@ import {
   useWaffoPayment,
   useWaffoPancakePayment,
   useAlipayPayment,
+  useWechatPayment,
 } from './hooks'
 import {
   getDefaultPaymentType,
@@ -96,6 +99,9 @@ export function Wallet(props: WalletProps) {
     processing,
     calculatePaymentAmount,
     processPayment,
+    epayCheckout,
+    retryEpayCheckout,
+    closeEpayCheckout,
   } = usePayment()
   const {
     affiliateLink,
@@ -114,6 +120,12 @@ export function Wallet(props: WalletProps) {
     qrOrder: alipayQrOrder,
     closeAlipayQr,
   } = useAlipayPayment()
+  const {
+    processing: wechatProcessing,
+    processWechatPayment,
+    qrOrder: wechatQrOrder,
+    closeWechatQr,
+  } = useWechatPayment(topupInfo)
 
   // Fetch and refresh user data
   const fetchUser = useCallback(async () => {
@@ -215,6 +227,7 @@ export function Wallet(props: WalletProps) {
         waffo: processWaffoPayment,
         waffoPancake: processWaffoPancakePayment,
         alipay: processAlipayPayment,
+        wechat: processWechatPayment,
       }
     )
 
@@ -367,7 +380,11 @@ export function Wallet(props: WalletProps) {
         paymentMethod={selectedPaymentMethod}
         calculating={calculating}
         processing={
-          processing || waffoProcessing || pancakeProcessing || alipayProcessing
+          processing ||
+          waffoProcessing ||
+          pancakeProcessing ||
+          alipayProcessing ||
+          wechatProcessing
         }
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
@@ -401,6 +418,29 @@ export function Wallet(props: WalletProps) {
         provider='alipay'
         onClose={(paid) => {
           closeAlipayQr()
+          if (paid) void fetchUser()
+        }}
+      />
+
+      <EpayCheckoutDialog
+        open={epayCheckout !== null}
+        checkout={epayCheckout}
+        getStatus={getTradeStatus}
+        onClose={closeEpayCheckout}
+        onSuccess={async () => {
+          closeEpayCheckout()
+          await fetchUser()
+        }}
+        onRetry={() => void retryEpayCheckout()}
+      />
+
+      <PaymentQrDialog
+        open={wechatQrOrder !== null}
+        qrCode={wechatQrOrder?.qrCode ?? ''}
+        tradeNo={wechatQrOrder?.tradeNo ?? ''}
+        provider='wechat'
+        onClose={(paid) => {
+          closeWechatQr()
           if (paid) void fetchUser()
         }}
       />

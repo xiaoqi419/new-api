@@ -28,8 +28,13 @@ import type {
   RedemptionResponse,
   AmountResponse,
   PaymentResponse,
+  EpayCheckoutResponse,
   StripePaymentResponse,
   AlipayPaymentResponse,
+  WechatPaymentRequest,
+  WechatPaymentResponse,
+  WechatJsapiPrepareRequest,
+  WechatJsapiPrepareResponse,
   TradeStatusResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
@@ -124,6 +129,18 @@ export async function requestPayment(
 }
 
 /**
+ * Create an in-site checkout for an Epay aggregation payment.
+ */
+export async function requestEpayCheckout(
+  request: PaymentRequest
+): Promise<EpayCheckoutResponse> {
+  const res = await api.post('/api/user/epay/checkout', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
  * Request Stripe payment
  */
 export async function requestStripePayment(
@@ -142,6 +159,30 @@ export async function requestAlipayPayment(
   request: PaymentRequest
 ): Promise<AlipayPaymentResponse> {
   const res = await api.post('/api/user/alipay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request a direct WeChat Pay Native or H5 order.
+ */
+export async function requestWechatPayment(
+  request: WechatPaymentRequest
+): Promise<WechatPaymentResponse> {
+  const res = await api.post('/api/user/wechatpay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Prepare a direct WeChat Pay JSAPI authorization redirect.
+ */
+export async function requestWechatJsapiPrepare(
+  request: WechatJsapiPrepareRequest
+): Promise<WechatJsapiPrepareResponse> {
+  const res = await api.post('/api/user/wechatpay/jsapi/prepare', request, {
     skipBusinessError: true,
   } as Record<string, unknown>)
   return res.data

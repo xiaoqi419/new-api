@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Empty } from '@douyinfe/semi-ui';
 import CardTable from '../../common/ui/CardTable';
 import {
@@ -51,10 +51,10 @@ const RedemptionsTable = (redemptionsData) => {
   const [deletingRecord, setDeletingRecord] = useState(null);
 
   // Handle show delete modal
-  const showDeleteRedemptionModal = (record) => {
+  const showDeleteRedemptionModal = useCallback((record) => {
     setDeletingRecord(record);
     setShowDeleteModal(true);
-  };
+  }, []);
 
   // Get all columns
   const columns = useMemo(() => {

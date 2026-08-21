@@ -80,7 +80,7 @@ const UserRanking = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);

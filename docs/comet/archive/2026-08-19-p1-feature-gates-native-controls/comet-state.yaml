@@ -1,0 +1,399 @@
+schema: comet.native.v4
+name: p1-feature-gates-native-controls
+language: zh-CN
+phase: archive
+status: done
+state_version: 10
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: current
+  change_branch: codex/p0-wallet-wechatpay
+  target_branch: codex/p0-wallet-wechatpay
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：普通用户侧边栏不再出现 `Asset Library`、`Infinite Canvas`、`Become an Agent`；已经激活代理
+      owner 仍能看到 `Agent Console`，管理员仍能看到 `Agent Management`。
+    result: passed
+    reason:
+      text: Public sidebar gates are absent while active Agent Console and admin Agent
+        Management are preserved; focused test passed.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：已登录用户直接访问 `/asset-library`、`/canvas`、`/agent-apply`
+      时不会加载对应业务页面或调用其业务查询，而是显示 `ComingSoon` 状态；其他路由不受影响。
+    result: passed
+    reason:
+      text: All three direct route modules render ComingSoon without importing
+        business features; focused test passed.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：视频生成页面不显示素材库选择器；手工填写 `asset://...` 仍能保留并提交，历史任务引用不被改写。
+    result: passed
+    reason:
+      text: Video asset selector is absent; manual and historical asset:// values
+        remain unchanged and submit through existing string state; focused test
+        passed.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：代理管理“状态”、钱包调账“类型”和代理控制台“支付方式”下拉均使用 Base UI `Select` 的弹出菜单，不再打开浏览器原生选项菜单。
+    result: passed
+    reason:
+      text: All three target dropdowns use the project Base UI Select and no relevant
+        NativeSelect/native select remains.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：视频引用编辑器的公开 URL 输入外观与项目 `Input` 一致；发票隐藏文件选择 input 的上传行为保持不变。
+    result: passed
+    reason:
+      text: Public reference URL fields use project Input while the hidden invoice PDF
+        file input and upload path remain unchanged.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：`/changelog` 顶部存在本次二开汇总条目，明确列出已开发能力、四需求中的排行/并发/兜底/发票和暂时屏蔽项。
+    result: passed
+    reason:
+      text: The newest changelog entry covers developed features, ranking,
+        concurrency, fallback, invoice, temporary gates, internal access, and
+        asset:// compatibility.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：维护状态文档准确区分本地已通过、待线上验收、部分实现暂不公开、设计中/未实现，不再把已有代理代码写成完全未实现。
+    result: passed
+    reason:
+      text: Maintenance docs now accurately distinguish local pass, online acceptance,
+        partial/private, designed/unimplemented, and the current acceptance-loop
+        lifecycle without claiming final acceptance/archive.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: A8：受影响前端定向测试、类型检查、相关 lint 和生产构建通过；未引入新的 lint error。
+    result: passed
+    reason:
+      text: "Runtime and independent verifier checks passed: focused tests, typecheck,
+        affected lint/format, production build, serial Go embed build, and diff
+        checks."
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: A9：桌面与移动浏览器验证菜单、三个受限直达路由、代理下拉、视频素材选择器和 changelog，确认没有布局重叠或原生下拉残留。
+    result: passed
+    reason:
+      text: Desktop/mobile browser evidence and final source/bundle review cover
+        gates, ComingSoon routes, Base UI popups, selector removal, changelog,
+        and no overflow/native select residual.
+      truncated: false
+builder_handoff:
+  candidate_id: ba77fac9-7a40-4fc4-a581-d70415ef2c90
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:c5b56a87-ab44-4dd7-9d1d-1cfbdeaaa5f8
+  iteration: 2
+  summary:
+    text: 修复 A7 维护文档生命周期表述：两份维护文档现在将 p1-feature-gates-native-controls 记录为实现已完成、处于
+      A1-A9 验收循环，迭代 1 的 A1-A6/A8-A9 已通过，A7 仅因文档表述过时退回修正，当前尚未最终接受或归档。同步记录既有
+      SQLite acceptance DB 的 agents AutoMigrate invalid DDL/unbalanced brackets
+      风险、NODE_TYPE=slave 本地运行边界。
+    truncated: false
+  addressed_acceptance_ids:
+    - A7
+  checks:
+    - name:
+        text: maintenance lifecycle wording check
+        truncated: false
+      result: passed
+      note:
+        text: rg confirms stale Build/待主代理验收 wording is absent and current
+          acceptance-loop wording is present.
+        truncated: false
+    - name:
+        text: maintenance documents diff check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check -- docs/torch-ai-second-development-status.md
+          docs/torch-ai-maintenance-status.md.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: A1-A6 and A8-A9 retain the independent Verify pass evidence from iteration
+        1; this repair only changes documentation.
+      truncated: false
+    - text: SQLite master migration risk and unauthenticated final protected-video
+        browser recheck remain documented limits.
+      truncated: false
+    - text: The full format:check remains blocked by the pre-existing missing classic
+        Tailwind theme.css dependency.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-19T07:25:26.859Z
+blockers: []
+verification:
+  candidate_id: ba77fac9-7a40-4fc4-a581-d70415ef2c90
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:d2845b93-fd78-468e-aba4-111118cbcc2b
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: maintenance-lifecycle
+      name:
+        text: maintenance lifecycle wording
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -NonInteractive
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $stale = rg -n '仍在 Build|待主代理验收|本轮入口屏蔽待验收|尚待主代理'
+            docs/torch-ai-second-development-status.md
+            docs/torch-ai-maintenance-status.md; if ($LASTEXITCODE -eq 0) { exit
+            1 }; exit 0
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 152
+    - id: maintenance-diff
+      name:
+        text: maintenance documents diff check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: --
+          truncated: false
+        - text: docs/torch-ai-second-development-status.md
+          truncated: false
+        - text: docs/torch-ai-maintenance-status.md
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 41
+    - id: focused-tests
+      name:
+        text: focused Bun regression tests
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: bun
+          truncated: false
+        - text: test
+          truncated: false
+        - text: src/lib/__tests__/feature-visibility.test.ts
+          truncated: false
+        - text: src/features/video-generation/components/__tests__/asset-url-input.test.tsx
+          truncated: false
+        - text: src/hooks/__tests__/use-sidebar-data.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5518
+    - id: frontend-typecheck
+      name:
+        text: frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2059
+    - id: affected-lint
+      name:
+        text: affected-file lint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/agents/index.tsx
+          truncated: false
+        - text: src/features/agent-console/index.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/video-generation/components/asset-url-input.tsx
+          truncated: false
+        - text: src/features/video-generation/components/reference-media-editor.tsx
+          truncated: false
+        - text: src/features/video-generation/index.tsx
+          truncated: false
+        - text: src/hooks/use-sidebar-data.ts
+          truncated: false
+        - text: src/routes/_authenticated/agent-apply/index.tsx
+          truncated: false
+        - text: src/routes/_authenticated/asset-library/index.tsx
+          truncated: false
+        - text: src/routes/_authenticated/canvas/index.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 317
+    - id: affected-format
+      name:
+        text: affected-file format
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: src/features/agents/index.tsx
+          truncated: false
+        - text: src/features/agent-console/index.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/video-generation/components/asset-url-input.tsx
+          truncated: false
+        - text: src/features/video-generation/components/reference-media-editor.tsx
+          truncated: false
+        - text: src/features/video-generation/index.tsx
+          truncated: false
+        - text: src/hooks/use-sidebar-data.ts
+          truncated: false
+        - text: src/routes/_authenticated/agent-apply/index.tsx
+          truncated: false
+        - text: src/routes/_authenticated/asset-library/index.tsx
+          truncated: false
+        - text: src/routes/_authenticated/canvas/index.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 347
+    - id: frontend-build
+      name:
+        text: frontend production build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 8289
+    - id: go-embed-build
+      name:
+        text: Go embed build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+        - text: -o
+          truncated: false
+        - text: bin/torch-ai-local.exe
+          truncated: false
+        - text: .
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 834
+    - id: git-diff-check
+      name:
+        text: diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 70
+  summary:
+    text: Iteration 2 passes A1-A9. The A7 lifecycle-document contradiction from
+      iteration 1 is corrected; all Runtime checks and independent semantic
+      review pass.
+    truncated: false
+  risks:
+    - text: Hidden selector data loading still invokes loadAssetOptions and
+        /api/ark_asset; this is an unnecessary private-library request and can
+        be a separate approved cleanup.
+      truncated: false
+    - text: The final rebuilt protected video page was not reopened in an
+        authenticated browser session; current source, bundle, and prior browser
+        evidence cover the behavior.
+      truncated: false
+    - text: Existing acceptance SQLite DB master AutoMigrate risk, full classic
+        format-check dependency gap, and online merchant acceptance remain
+        documented limits.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-19T07:35:47.051Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+    summary:
+      text: "A1-A6 and A8-A9 pass. A7 fails only because the maintenance document
+        lifecycle label is stale: it says Build after Runtime entered Verify."
+      truncated: false
+    completed_at: 2026-08-19T07:13:58.790Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Iteration 2 passes A1-A9. The A7 lifecycle-document contradiction from
+        iteration 1 is corrected; all Runtime checks and independent semantic
+        review pass.
+      truncated: false
+    completed_at: 2026-08-19T07:35:47.051Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-19T05:46:54.907Z

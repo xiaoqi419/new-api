@@ -258,7 +258,7 @@ const SettingsFAQ = ({ options, refresh }) => {
     if (options['console_setting.faq'] !== undefined) {
       parseFAQ(options['console_setting.faq']);
     }
-  }, [options['console_setting.faq']]);
+  }, [options]);
 
   useEffect(() => {
     const enabledStr = options['console_setting.faq_enabled'];
@@ -267,7 +267,7 @@ const SettingsFAQ = ({ options, refresh }) => {
         ? true
         : enabledStr === 'true' || enabledStr === true,
     );
-  }, [options['console_setting.faq_enabled']]);
+  }, [options]);
 
   const handleToggleEnabled = async (checked) => {
     const newValue = checked ? 'true' : 'false';

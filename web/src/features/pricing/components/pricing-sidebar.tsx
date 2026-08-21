@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 /*
@@ -26,7 +25,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { getLobeIcon } from '@/lib/lobe-icon'
 import { getGroupRatioClassName } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +33,7 @@ import {
   FILTER_ALL,
   QUOTA_TYPES,
   getEndpointTypeLabels,
+  getModalityFilterLabels,
   getQuotaTypeLabels,
 } from '../constants'
 import { parseTags } from '../lib/filters'
@@ -47,7 +46,6 @@ type FilterOption = {
   count?: number
   suffix?: string
   suffixClassName?: string
-  icon?: ReactNode
 }
 
 type FilterSectionProps = {
@@ -63,11 +61,13 @@ export interface PricingSidebarProps {
   vendorFilter: string
   groupFilter: string
   tagFilter: string
+  modalityFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
   onTagChange: (value: string) => void
+  onModalityChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
@@ -102,19 +102,18 @@ function FilterChip(props: {
       type='button'
       onClick={props.onClick}
       className={cn(
-        'group inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-all',
+        'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111]',
         props.active
-          ? 'border-primary/30 bg-accent text-accent-foreground shadow-sm'
-          : 'border-border/70 bg-background text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'
+          ? 'border-[#111] bg-[#111] text-white dark:border-[#f6f6f4] dark:bg-[#f6f6f4] dark:text-[#111]'
+          : 'border-transparent bg-[#f3f4f6] text-[#525252] hover:border-[#e2e2de] hover:bg-white hover:text-[#111] dark:bg-white/8 dark:text-[#a8a8a8] dark:hover:border-white/15 dark:hover:bg-white/12 dark:hover:text-white'
       )}
       title={props.option.label}
     >
-      {props.option.icon && (
-        <span className='shrink-0'>{props.option.icon}</span>
-      )}
       <span className='truncate'>{props.option.label}</span>
       {(props.option.suffix || props.option.count != null) && (
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[12px]', suffixClass)}>
+        <span
+          className={cn('rounded-md px-1.5 py-0.5 text-[12px]', suffixClass)}
+        >
           {props.option.suffix ?? props.option.count}
         </span>
       )}
@@ -126,16 +125,16 @@ function FilterSection(props: FilterSectionProps) {
   return (
     <Collapsible
       defaultOpen
-      className='border-border/70 border-b pb-3 last:border-b-0'
+      className='border-b border-[#eef1f4] py-1 last:border-b-0 dark:border-white/12'
     >
-      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2.5 text-left'>
-        <span className='text-foreground text-sm font-semibold'>
+      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2 text-left focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-[#111]'>
+        <span className='text-foreground text-[13px] font-semibold'>
           {props.title}
         </span>
         <ChevronDown className='text-muted-foreground size-4 transition-transform group-data-[panel-open]:rotate-180' />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className='flex flex-wrap gap-1.5'>
+        <div className='flex flex-wrap gap-1.5 pb-2.5'>
           {props.options.map((option) => (
             <FilterChip
               key={option.value}
@@ -150,46 +149,11 @@ function FilterSection(props: FilterSectionProps) {
   )
 }
 
-function VendorRow(props: {
-  option: FilterOption
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type='button'
-      onClick={props.onClick}
-      title={props.option.label}
-      className={cn(
-        'group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-        props.active
-          ? 'bg-accent text-accent-foreground font-medium'
-          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-      )}
-    >
-      {props.option.icon ? (
-        <span className='flex size-5 shrink-0 items-center justify-center'>
-          {props.option.icon}
-        </span>
-      ) : (
-        <span className='bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold uppercase'>
-          {props.option.label.slice(0, 1)}
-        </span>
-      )}
-      <span className='flex-1 truncate'>{props.option.label}</span>
-      {props.option.count != null && (
-        <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
-          {props.option.count}
-        </span>
-      )}
-    </button>
-  )
-}
-
 export function PricingSidebar(props: PricingSidebarProps) {
   const { t } = useTranslation()
   const quotaTypeLabels = getQuotaTypeLabels(t)
   const endpointTypeLabels = getEndpointTypeLabels(t)
+  const modalityLabels = getModalityFilterLabels(t)
 
   const vendorOptions: FilterOption[] = [
     {
@@ -205,7 +169,6 @@ export function PricingSidebar(props: PricingSidebarProps) {
           props.models,
           (model) => model.vendor_name === vendor.name
         ),
-        icon: vendor.icon ? getLobeIcon(vendor.icon, 14) : undefined,
       }))
       .filter((vendor) => vendor.count > 0),
   ]
@@ -283,19 +246,29 @@ export function PricingSidebar(props: PricingSidebarProps) {
       .filter((option) => option.count > 0),
   ]
 
+  const modalityOptions: FilterOption[] = Object.entries(modalityLabels).map(
+    ([value, label]) => ({
+      value,
+      label,
+    })
+  )
+
   return (
-    <aside className={cn('rounded-xl border p-3', props.className)}>
-      <div className='mb-1.5 flex items-center justify-between gap-2'>
-        <h2 className='text-foreground text-sm font-semibold'>
-          {t('Providers')}
-        </h2>
+    <aside
+      className={cn(
+        'hover-scrollbar overflow-y-auto rounded-[24px] border border-[#eef1f4] bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.12)] dark:border-white/12 dark:bg-[#111] xl:p-6',
+        props.className
+      )}
+    >
+      <div className='mb-2 flex items-center justify-between gap-2'>
+        <h2 className='text-foreground text-base font-bold'>{t('Filter')}</h2>
         {props.hasActiveFilters && (
           <Button
             type='button'
             variant='ghost'
             size='sm'
             onClick={props.onClearFilters}
-            className='text-muted-foreground h-6 gap-1 px-1.5 text-xs'
+            className='text-muted-foreground h-7 gap-1 rounded-full px-2 text-xs'
           >
             <RotateCcw className='size-3' />
             {t('Reset')}
@@ -303,51 +276,44 @@ export function PricingSidebar(props: PricingSidebarProps) {
         )}
       </div>
 
-      <div className='hover-scrollbar flex max-h-[calc(100dvh-16rem)] flex-col gap-0.5 overflow-y-auto'>
-        {vendorOptions.map((option) => (
-          <VendorRow
-            key={option.value}
-            option={option}
-            active={props.vendorFilter === option.value}
-            onClick={() => props.onVendorChange(option.value)}
-          />
-        ))}
+      <div className='space-y-1'>
+        <FilterSection
+          title={t('Groups')}
+          value={props.groupFilter}
+          options={groupOptions}
+          onChange={props.onGroupChange}
+        />
+        <FilterSection
+          title={t('Providers')}
+          value={props.vendorFilter}
+          options={vendorOptions}
+          onChange={props.onVendorChange}
+        />
+        <FilterSection
+          title={t('Model Tags')}
+          value={props.tagFilter}
+          options={tagOptions}
+          onChange={props.onTagChange}
+        />
+        <FilterSection
+          title={t('Pricing Type')}
+          value={props.quotaTypeFilter}
+          options={quotaOptions}
+          onChange={props.onQuotaTypeChange}
+        />
+        <FilterSection
+          title={t('Endpoint Type')}
+          value={props.endpointTypeFilter}
+          options={endpointOptions}
+          onChange={props.onEndpointTypeChange}
+        />
+        <FilterSection
+          title={t('Modalities')}
+          value={props.modalityFilter}
+          options={modalityOptions}
+          onChange={props.onModalityChange}
+        />
       </div>
-
-      <Collapsible className='border-border/70 mt-3 border-t pt-1'>
-        <CollapsibleTrigger className='group text-muted-foreground hover:text-foreground flex w-full items-center justify-between py-2 text-left transition-colors'>
-          <span className='text-xs font-medium'>{t('More filters')}</span>
-          <ChevronDown className='size-4 transition-transform group-data-[panel-open]:rotate-180' />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className='space-y-1 pt-1'>
-            <FilterSection
-              title={t('Groups')}
-              value={props.groupFilter}
-              options={groupOptions}
-              onChange={props.onGroupChange}
-            />
-            <FilterSection
-              title={t('Model Tags')}
-              value={props.tagFilter}
-              options={tagOptions}
-              onChange={props.onTagChange}
-            />
-            <FilterSection
-              title={t('Pricing Type')}
-              value={props.quotaTypeFilter}
-              options={quotaOptions}
-              onChange={props.onQuotaTypeChange}
-            />
-            <FilterSection
-              title={t('Endpoint Type')}
-              value={props.endpointTypeFilter}
-              options={endpointOptions}
-              onChange={props.onEndpointTypeChange}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
     </aside>
   )
 }

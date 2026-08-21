@@ -595,7 +595,13 @@ func TrySettleGroupBuyOrder(tradeNo, expectedProvider, callerIp string) (handled
 // grantGroupBuySuccessTx 在事务内将拼团置为成功，并按 tierAmount 给全部已支付成员发放额度。
 // 返回需在事务外补充缓存/日志/返现的成员列表。
 func grantGroupBuySuccessTx(tx *gorm.DB, groupBuy *GroupBuy, tierAmount int64) ([]completedMember, error) {
-	quotaPerShare := common.QuotaFromDecimal(decimal.NewFromInt(tierAmount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+	if math.IsNaN(common.QuotaPerUnit) || math.IsInf(common.QuotaPerUnit, 0) || common.QuotaPerUnit <= 0 {
+		return nil, errors.New("额度单位配置错误")
+	}
+	quotaPerShare, clamp := common.QuotaFromDecimalChecked(decimal.NewFromInt(tierAmount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+	if clamp != nil {
+		return nil, clamp
+	}
 	if quotaPerShare <= 0 {
 		return nil, errors.New("无效的拼团额度")
 	}

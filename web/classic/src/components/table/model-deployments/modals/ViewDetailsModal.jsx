@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   Typography,
@@ -57,6 +57,8 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
   const [loading, setLoading] = useState(false);
   const [containers, setContainers] = useState([]);
   const [containersLoading, setContainersLoading] = useState(false);
+  const fetchDetailsRef = useRef(null);
+  const fetchContainersRef = useRef(null);
 
   const fetchDetails = async () => {
     if (!deployment?.id) return;
@@ -100,10 +102,13 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
     }
   };
 
+  fetchDetailsRef.current = fetchDetails;
+  fetchContainersRef.current = fetchContainers;
+
   useEffect(() => {
     if (visible && deployment?.id) {
-      fetchDetails();
-      fetchContainers();
+      fetchDetailsRef.current?.();
+      fetchContainersRef.current?.();
     } else if (!visible) {
       setDetails(null);
       setContainers([]);
@@ -137,6 +142,7 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
   };
 
   const statusConfig = getStatusConfig(deployment?.status);
+  const containerEventKeyCounts = new Map();
 
   return (
     <Modal
@@ -168,7 +174,8 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
         <div className='flex items-center justify-center py-12'>
           <Spin size='large' tip={t('加载详情中...')} />
         </div>
-      ) : details ? (
+      ) : null}
+      {details ? (
         <div className='space-y-4 max-h-[600px] overflow-y-auto'>
           {/* Basic Info */}
           <Card
@@ -391,12 +398,14 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
               <div className='flex items-center justify-center py-6'>
                 <Spin tip={t('加载容器信息中...')} />
               </div>
-            ) : containers.length === 0 ? (
+            ) : null}
+            {!containersLoading && containers.length === 0 ? (
               <Empty
                 description={t('暂无容器信息')}
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
-            ) : (
+            ) : null}
+            {!containersLoading && containers.length > 0 ? (
               <div className='space-y-3'>
                 {containers.map((ctr) => (
                   <Card
@@ -455,28 +464,45 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
                           {t('最近事件')}
                         </Text>
                         <div className='space-y-2 max-h-32 overflow-y-auto'>
-                          {ctr.events.map((event, index) => (
-                            <div
-                              key={`${ctr.container_id}-${event.time}-${index}`}
-                              className='flex gap-3 text-xs font-mono'
-                            >
-                              <span className='text-gray-500 min-w-[140px]'>
-                                {event.time
-                                  ? timestamp2string(event.time)
-                                  : '--'}
-                              </span>
-                              <span className='text-gray-700 break-all flex-1'>
-                                {event.message || '--'}
-                              </span>
-                            </div>
-                          ))}
+                          {ctr.events.map((event) => {
+                            const eventIdentity = JSON.stringify({
+                              containerId: ctr.container_id ?? null,
+                              time: event?.time ?? null,
+                              message: event?.message ?? null,
+                              status: ctr.status ?? null,
+                            });
+                            const occurrence =
+                              (containerEventKeyCounts.get(eventIdentity) ?? 0) +
+                              1;
+                            containerEventKeyCounts.set(
+                              eventIdentity,
+                              occurrence,
+                            );
+                            const eventKey = `${eventIdentity}\u001f${occurrence}`;
+
+                            return (
+                              <div
+                                key={eventKey}
+                                className='flex gap-3 text-xs font-mono'
+                              >
+                                <span className='text-gray-500 min-w-[140px]'>
+                                  {event.time
+                                    ? timestamp2string(event.time)
+                                    : '--'}
+                                </span>
+                                <span className='text-gray-700 break-all flex-1'>
+                                  {event.message || '--'}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
                   </Card>
                 ))}
               </div>
-            )}
+            ) : null}
           </Card>
 
           {/* Location Information */}
@@ -588,12 +614,13 @@ const ViewDetailsModal = ({ visible, onCancel, deployment, t }) => {
             </div>
           </Card>
         </div>
-      ) : (
+      ) : null}
+      {!loading && !details ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description={t('无法获取容器详情')}
         />
-      )}
+      ) : null}
     </Modal>
   );
 };

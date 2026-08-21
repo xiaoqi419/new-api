@@ -216,7 +216,7 @@ const RiskAcknowledgementModal = React.memo(function RiskAcknowledgementModal({
           >
             {checklist.map((item, index) => (
               <Checkbox
-                key={`risk-check-${index}`}
+                key={item}
                 checked={!!checkedItems[index]}
                 onChange={(event) => {
                   handleChecklistChange(index, event.target.checked);
@@ -243,17 +243,17 @@ const RiskAcknowledgementModal = React.memo(function RiskAcknowledgementModal({
             </div>
             {hasSegmentedRequiredText ? (
               <div className='flex flex-wrap items-center gap-2'>
-                {normalizedRequiredTextParts.map((part, index) =>
+                {normalizedRequiredTextParts.map((part) =>
                   part.type === 'static' ? (
                     <span
-                      key={`static-${index}`}
+                      key={`static-${part.text}`}
                       className='select-none rounded-md border border-gray-200 bg-white px-2 py-1 font-mono text-sm text-gray-500'
                     >
                       {part.text}
                     </span>
                   ) : (
                     <Input
-                      key={`input-${index}`}
+                      key={`input-${part.inputIndex}`}
                       value={typedTextParts[part.inputIndex ?? 0] ?? ''}
                       onChange={(value) =>
                         handleTextPartChange(part.inputIndex ?? 0, value)

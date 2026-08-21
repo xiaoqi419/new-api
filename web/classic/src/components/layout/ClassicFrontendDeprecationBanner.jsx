@@ -33,7 +33,7 @@ const ClassicFrontendDeprecationBanner = () => {
   const [visible, setVisible] = useState(() => {
     try {
       return localStorage.getItem(DISMISS_STORAGE_KEY) !== '1';
-    } catch (_) {
+    } catch {
       return true;
     }
   });
@@ -58,7 +58,7 @@ const ClassicFrontendDeprecationBanner = () => {
       onOk: () => {
         try {
           localStorage.setItem(DISMISS_STORAGE_KEY, '1');
-        } catch (_) {}
+        } catch {}
         setVisible(false);
       },
     });

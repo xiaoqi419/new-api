@@ -22,17 +22,16 @@ import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
-import { cn } from '@/lib/utils'
 
 import {
   LoadingSkeleton,
   EmptyState,
   GroupView,
-  SearchBar,
   PricingTable,
   PricingSidebar,
   PricingToolbar,
   ModelCardGrid,
+  PricingHero,
 } from './components'
 import {
   DEFAULT_TOKEN_UNIT,
@@ -43,7 +42,6 @@ import {
   QUOTA_TYPES,
   SORT_OPTIONS,
   VIEW_MODES,
-  getModalityFilterLabels,
 } from './constants'
 import { useFilters } from './hooks/use-filters'
 import { usePricingData } from './hooks/use-pricing-data'
@@ -92,8 +90,6 @@ export function Pricing() {
     clearFilters,
     clearSearch,
   } = useFilters(models || [])
-
-  const modalityLabels = getModalityFilterLabels(t)
 
   const handleModelClick = useCallback(
     (modelName: string, sourceGroup?: string) => {
@@ -156,6 +152,29 @@ export function Pricing() {
     clearSearch()
   }, [clearFilters, clearSearch])
 
+  const filterPanelProps = {
+    quotaTypeFilter,
+    endpointTypeFilter,
+    vendorFilter,
+    groupFilter,
+    tagFilter,
+    modalityFilter,
+    onQuotaTypeChange: setQuotaTypeFilter,
+    onEndpointTypeChange: setEndpointTypeFilter,
+    onVendorChange: setVendorFilter,
+    onGroupChange: setGroupFilter,
+    onTagChange: setTagFilter,
+    onModalityChange: setModalityFilter,
+    vendors: vendors || [],
+    groups: availableGroups,
+    groupRatios: groupRatio,
+    tags: availableTags,
+    models: models || [],
+    hasActiveFilters,
+    activeFilterCount,
+    onClearFilters: clearFilters,
+  }
+
   const renderPricingContent = () => {
     if (filteredModels.length === 0) {
       return (
@@ -210,83 +229,30 @@ export function Pricing() {
     )
   }
 
-  if (isLoading) {
-    return (
-      <PublicLayout showMainContainer={false}>
-        <div className='mx-auto w-full max-w-[1800px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
-          <LoadingSkeleton viewMode={viewMode} />
-        </div>
-      </PublicLayout>
-    )
-  }
-
   return (
-    <PublicLayout showMainContainer={false}>
-      <div className='relative'>
-        <PageTransition className='relative mx-auto w-full max-w-[1800px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
-          <header className='mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between'>
-            <div className='flex items-baseline gap-2'>
-              <h1 className='text-xl font-bold tracking-tight sm:text-2xl'>
-                {t('Model Square')}
-              </h1>
-              <span className='text-muted-foreground text-xs sm:text-sm'>
-                {t('This site currently has {{count}} models enabled', {
-                  count: models?.length || 0,
-                })}
-              </span>
-            </div>
-            <SearchBar
-              value={searchInput}
-              onChange={setSearchInput}
-              onClear={clearSearch}
-              placeholder={t(
-                'Search model name, provider, endpoint, or tag...'
-              )}
-              className='w-full sm:max-w-sm'
-            />
-          </header>
+    <PublicLayout
+      showMainContainer={false}
+      publicSurface='home'
+      headerProps={{ className: 'top-3 xl:top-6' }}
+    >
+      <main className='min-h-svh overflow-visible bg-white dark:bg-[#1f1f1f]'>
+        <PageTransition className='relative pb-12 xl:pb-[169px]'>
+          <PricingHero
+            modelCount={isLoading ? undefined : models?.length}
+            searchValue={searchInput}
+            onSearchChange={setSearchInput}
+            onClearSearch={clearSearch}
+          />
 
-          <div className='grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]'>
-            <PricingSidebar
-              quotaTypeFilter={quotaTypeFilter}
-              endpointTypeFilter={endpointTypeFilter}
-              vendorFilter={vendorFilter}
-              groupFilter={groupFilter}
-              tagFilter={tagFilter}
-              onQuotaTypeChange={setQuotaTypeFilter}
-              onEndpointTypeChange={setEndpointTypeFilter}
-              onVendorChange={setVendorFilter}
-              onGroupChange={setGroupFilter}
-              onTagChange={setTagFilter}
-              vendors={vendors || []}
-              groups={availableGroups}
-              groupRatios={groupRatio}
-              tags={availableTags}
-              models={models || []}
-              hasActiveFilters={hasActiveFilters}
-              onClearFilters={clearFilters}
-              className='hover-scrollbar sticky top-4 hidden max-h-[calc(100dvh-2rem)] self-start overflow-y-auto xl:block'
-            />
+          <section className='relative z-10 mx-auto mt-[-48px] w-full max-w-[1132px] px-4 pb-12 sm:px-6 xl:mt-[-124px] xl:grid xl:h-[552px] xl:grid-cols-[356px_742px] xl:gap-[34px] xl:px-0 xl:pb-0'>
+            <aside className='hidden h-[552px] xl:block'>
+              <PricingSidebar {...filterPanelProps} className='h-full' />
+            </aside>
 
-            <main className='min-w-0 space-y-4'>
-              <div className='flex flex-wrap items-center gap-1.5'>
-                {Object.entries(modalityLabels).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type='button'
-                    onClick={() => setModalityFilter(value)}
-                    className={cn(
-                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                      modalityFilter === value
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/70 text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
+            <section
+              aria-label={t('Model Square')}
+              className='flex min-w-0 flex-col rounded-[24px] border border-[#eef1f4] bg-white p-4 shadow-[0_18px_40px_rgba(0,0,0,0.12)] sm:p-6 xl:h-[552px] xl:p-7 dark:border-white/12 dark:bg-[#111]'
+            >
               <PricingToolbar
                 filteredCount={filteredModels.length}
                 totalCount={models?.length}
@@ -298,31 +264,20 @@ export function Pricing() {
                 onRechargePriceChange={setShowRechargePrice}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
-                quotaTypeFilter={quotaTypeFilter}
-                endpointTypeFilter={endpointTypeFilter}
-                vendorFilter={vendorFilter}
-                groupFilter={groupFilter}
-                tagFilter={tagFilter}
-                onQuotaTypeChange={setQuotaTypeFilter}
-                onEndpointTypeChange={setEndpointTypeFilter}
-                onVendorChange={setVendorFilter}
-                onGroupChange={setGroupFilter}
-                onTagChange={setTagFilter}
-                vendors={vendors || []}
-                groups={availableGroups}
-                groupRatios={groupRatio}
-                tags={availableTags}
-                models={models || []}
-                hasActiveFilters={hasActiveFilters}
-                activeFilterCount={activeFilterCount}
-                onClearFilters={clearFilters}
+                {...filterPanelProps}
               />
 
-              {renderPricingContent()}
-            </main>
-          </div>
+              <div className='hover-scrollbar mt-5 min-h-0 flex-1 overflow-y-auto pr-1'>
+                {isLoading ? (
+                  <LoadingSkeleton viewMode={viewMode} />
+                ) : (
+                  renderPricingContent()
+                )}
+              </div>
+            </section>
+          </section>
         </PageTransition>
-      </div>
+      </main>
     </PublicLayout>
   )
 }

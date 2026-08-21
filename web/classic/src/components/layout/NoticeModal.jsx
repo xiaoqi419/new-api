@@ -50,7 +50,7 @@ const NoticeModal = ({
 
   const [statusState] = useContext(StatusContext);
 
-  const announcements = statusState?.status?.announcements || [];
+  const announcements = statusState?.status?.announcements;
 
   const unreadSet = useMemo(() => new Set(unreadKeys), [unreadKeys]);
 
@@ -169,12 +169,12 @@ const NoticeModal = ({
     return (
       <div className='max-h-[55vh] overflow-y-auto pr-2 card-content-scroll'>
         <Timeline mode='left'>
-          {processedAnnouncements.map((item, idx) => {
+          {processedAnnouncements.map((item) => {
             const htmlContent = marked.parse(item.content || '');
             const htmlExtra = item.extra ? marked.parse(item.extra) : '';
             return (
               <Timeline.Item
-                key={idx}
+                key={item.key}
                 type={item.type}
                 time={`${item.relative ? item.relative + ' ' : ''}${item.time}`}
                 extra={

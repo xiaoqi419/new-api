@@ -49,10 +49,10 @@ const tierBounds = (item) => {
     };
   }
   return {
-    minCount: tiers[0].count,
-    maxCount: tiers[tiers.length - 1].count,
-    floor: tiers[0].per_share_amount,
-    best: tiers[tiers.length - 1].per_share_amount,
+    minCount: tiers.at(0).count,
+    maxCount: tiers.at(-1).count,
+    floor: tiers.at(0).per_share_amount,
+    best: tiers.at(-1).per_share_amount,
   };
 };
 
@@ -180,7 +180,7 @@ const GroupBuyHall = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
@@ -194,6 +194,59 @@ const GroupBuyHall = () => {
   }, []);
 
   const goDetail = (groupNo) => navigate(`/console/groupbuy?no=${groupNo}`);
+
+  let hallContent;
+  if (!enabled) {
+    hallContent = (
+      <Banner
+        type='info'
+        closeIcon={null}
+        description={t('管理员未开启拼团充值')}
+      />
+    );
+  } else if (loading) {
+    hallContent = (
+      <div className='mt-[60px] flex justify-center'>
+        <Spin size='large' />
+      </div>
+    );
+  } else if (items.length === 0) {
+    hallContent = (
+      <Empty
+        title={t('暂无进行中的拼团')}
+        description={t('去钱包管理发起一个新的拼团吧')}
+        style={{ marginTop: 60 }}
+      />
+    );
+  } else {
+    hallContent = (
+      <>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+          {items.map((item) => (
+            <HallCard
+              key={item.group_no}
+              item={item}
+              t={t}
+              onJoin={goDetail}
+            />
+          ))}
+        </div>
+        {total > PAGE_SIZE && (
+          <div className='flex justify-center mt-6'>
+            <Pagination
+              currentPage={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPageChange={(p) => {
+                setPage(p);
+                load(p);
+              }}
+            />
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className='mt-[60px] px-2 max-w-6xl mx-auto pb-8'>
@@ -211,49 +264,7 @@ const GroupBuyHall = () => {
         </Button>
       </div>
 
-      {!enabled ? (
-        <Banner
-          type='info'
-          closeIcon={null}
-          description={t('管理员未开启拼团充值')}
-        />
-      ) : loading ? (
-        <div className='mt-[60px] flex justify-center'>
-          <Spin size='large' />
-        </div>
-      ) : items.length === 0 ? (
-        <Empty
-          title={t('暂无进行中的拼团')}
-          description={t('去钱包管理发起一个新的拼团吧')}
-          style={{ marginTop: 60 }}
-        />
-      ) : (
-        <>
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {items.map((item) => (
-              <HallCard
-                key={item.group_no}
-                item={item}
-                t={t}
-                onJoin={goDetail}
-              />
-            ))}
-          </div>
-          {total > PAGE_SIZE && (
-            <div className='flex justify-center mt-6'>
-              <Pagination
-                currentPage={page}
-                pageSize={PAGE_SIZE}
-                total={total}
-                onPageChange={(p) => {
-                  setPage(p);
-                  load(p);
-                }}
-              />
-            </div>
-          )}
-        </>
-      )}
+      {hallContent}
     </div>
   );
 };

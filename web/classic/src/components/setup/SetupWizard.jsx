@@ -38,6 +38,8 @@ const SetupWizard = () => {
   });
   const [currentStep, setCurrentStep] = useState(0);
   const formRef = useRef(null);
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const [formData, setFormData] = useState({
     username: '',
@@ -74,32 +76,32 @@ const SetupWizard = () => {
   ];
 
   useEffect(() => {
+    const fetchSetupStatus = async () => {
+      try {
+        const res = await API.get('/api/setup');
+        const { success, data } = res.data;
+        if (success) {
+          setSetupStatus(data);
+
+          // If setup is already completed, redirect to home
+          if (data.status) {
+            window.location.href = '/';
+            return;
+          }
+
+          // 设置当前步骤 - 默认从数据库检查开始
+          setCurrentStep(0);
+        } else {
+          showError(tRef.current('获取初始化状态失败'));
+        }
+      } catch (error) {
+        console.error('Failed to fetch setup status:', error);
+        showError(tRef.current('获取初始化状态失败'));
+      }
+    };
+
     fetchSetupStatus();
   }, []);
-
-  const fetchSetupStatus = async () => {
-    try {
-      const res = await API.get('/api/setup');
-      const { success, data } = res.data;
-      if (success) {
-        setSetupStatus(data);
-
-        // If setup is already completed, redirect to home
-        if (data.status) {
-          window.location.href = '/';
-          return;
-        }
-
-        // 设置当前步骤 - 默认从数据库检查开始
-        setCurrentStep(0);
-      } else {
-        showError(t('获取初始化状态失败'));
-      }
-    } catch (error) {
-      console.error('Failed to fetch setup status:', error);
-      showError(t('获取初始化状态失败'));
-    }
-  };
 
   const handleUsageModeChange = (e) => {
     const nextMode = e?.target?.value ?? e;
@@ -203,7 +205,7 @@ const SetupWizard = () => {
     setLoading(true);
 
     // Submit to backend
-    API.post('/api/setup', formValues)
+    return API.post('/api/setup', formValues)
       .then((res) => {
         const { success, message } = res.data;
 

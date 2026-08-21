@@ -53,6 +53,45 @@ import SubscriptionPlansCard from './SubscriptionPlansCard';
 
 const { Text } = Typography;
 
+function renderPaymentMethodIcon(payMethod, actualTheme) {
+  if (payMethod.type === 'alipay' || payMethod.type === 'alipay_direct') {
+    return <SiAlipay size={18} color='#1677FF' />;
+  }
+  if (payMethod.type === 'wxpay' || payMethod.type === 'wechatpay') {
+    return <SiWechat size={18} color='#07C160' />;
+  }
+  if (payMethod.type === 'stripe') {
+    return <SiStripe size={18} color='#635BFF' />;
+  }
+  if (payMethod.icon) {
+    return (
+      <img
+        src={payMethod.icon}
+        alt={payMethod.name}
+        style={{ width: 18, height: 18, objectFit: 'contain' }}
+      />
+    );
+  }
+  if (payMethod.type === 'waffo_pancake') {
+    const logo = actualTheme === 'dark'
+      ? '/waffo-logo-dark.svg'
+      : '/waffo-logo-light.svg';
+    return (
+      <img
+        src={logo}
+        alt='Waffo'
+        style={{ width: 18, height: 18, objectFit: 'contain' }}
+      />
+    );
+  }
+  return (
+    <CreditCard
+      size={18}
+      color={payMethod.color || 'var(--semi-color-text-2)'}
+    />
+  );
+}
+
 const RechargeCard = ({
   t,
   enableOnlineTopUp,
@@ -109,6 +148,14 @@ const RechargeCard = ({
   const [activeTab, setActiveTab] = useState('topup');
   const shouldShowSubscription =
     !subscriptionLoading && subscriptionPlans.length > 0;
+  const topupEnabled =
+    enableOnlineTopUp ||
+    enableStripeTopUp ||
+    enableCreemTopUp ||
+    enableWaffoTopUp ||
+    enableWaffoPancakeTopUp ||
+    enableWechatPayTopUp ||
+    enableAlipayTopUp;
   const regularPayMethods = payMethods || [];
 
   useEffect(() => {
@@ -228,18 +275,17 @@ const RechargeCard = ({
         }
       >
         {/* 在线充值表单 */}
-        {statusLoading ? (
-          <div className='py-8 flex justify-center'>
-            <Spin size='large' />
-          </div>
-        ) : enableOnlineTopUp ||
-          enableStripeTopUp ||
-          enableCreemTopUp ||
-          enableWaffoTopUp ||
-          enableWaffoPancakeTopUp ||
-          enableWechatPayTopUp ||
-          enableAlipayTopUp ? (
-          <Form
+        {(() => {
+          if (statusLoading) {
+            return (
+              <div className='py-8 flex justify-center'>
+                <Spin size='large' />
+              </div>
+            );
+          }
+          if (topupEnabled) {
+            return (
+              <Form
             getFormApi={(api) => (onlineFormApiRef.current = api)}
             initValues={{ topUpCount: topUpCount }}
           >
@@ -279,7 +325,7 @@ const RechargeCard = ({
                         }
                       }}
                       onBlur={(e) => {
-                        const value = parseInt(e.target.value);
+                        const value = Number.parseInt(e.target.value);
                         if (!value || value < 1) {
                           setTopUpCount(1);
                           getAmount(1);
@@ -287,7 +333,9 @@ const RechargeCard = ({
                       }}
                       formatter={(value) => (value ? `${value}` : '')}
                       parser={(value) =>
-                        value ? parseInt(value.replace(/[^\d]/g, '')) : 0
+                        value
+                          ? Number.parseInt(value.replaceAll(/[^\d]/g, ''))
+                          : 0
                       }
                       extraText={
                         <Skeleton
@@ -355,72 +403,30 @@ const RechargeCard = ({
                                 loading={
                                   paymentLoading && payWay === payMethod.type
                                 }
-                                icon={
-                                  payMethod.type === 'alipay' ||
-                                  payMethod.type === 'alipay_direct' ? (
-                                    <SiAlipay size={18} color='#1677FF' />
-                                  ) : payMethod.type === 'wxpay' ||
-                                    payMethod.type === 'wechatpay' ? (
-                                    <SiWechat size={18} color='#07C160' />
-                                  ) : payMethod.type === 'stripe' ? (
-                                    <SiStripe size={18} color='#635BFF' />
-                                  ) : payMethod.icon ? (
-                                    <img
-                                      src={payMethod.icon}
-                                      alt={payMethod.name}
-                                      style={{
-                                        width: 18,
-                                        height: 18,
-                                        objectFit: 'contain',
-                                      }}
-                                    />
-                                  ) : payMethod.type === 'waffo_pancake' ? (
-                                    <img
-                                      src={
-                                        actualTheme === 'dark'
-                                          ? '/waffo-logo-dark.svg'
-                                          : '/waffo-logo-light.svg'
-                                      }
-                                      alt='Waffo'
-                                      style={{
-                                        width: 18,
-                                        height: 18,
-                                        objectFit: 'contain',
-                                      }}
-                                    />
-                                  ) : (
-                                    <CreditCard
-                                      size={18}
-                                      color={
-                                        payMethod.color ||
-                                        'var(--semi-color-text-2)'
-                                      }
-                                    />
-                                  )
-                                }
+                                icon={renderPaymentMethodIcon(
+                                  payMethod,
+                                  actualTheme,
+                                )}
                                 className='!rounded-lg !px-4 !py-2'
                               >
                                 {payMethod.name}
                               </Button>
                             );
 
-                            return disabled &&
-                              minTopupVal > Number(topUpCount || 0) ? (
-                              <Tooltip
-                                content={
-                                  t('此支付方式最低充值金额为') +
-                                  ' ' +
-                                  minTopupVal
-                                }
-                                key={payMethod.type}
-                              >
-                                {buttonEl}
-                              </Tooltip>
-                            ) : (
-                              <React.Fragment key={payMethod.type}>
-                                {buttonEl}
-                              </React.Fragment>
-                            );
+                            if (
+                              disabled &&
+                              minTopupVal > Number(topUpCount || 0)
+                            ) {
+                              return (
+                                <Tooltip
+                                  content={`${t('此支付方式最低充值金额为')} ${minTopupVal}`}
+                                  key={payMethod.type}
+                                >
+                                  {buttonEl}
+                                </Tooltip>
+                              );
+                            }
+                            return buttonEl;
                           })}
                         </Space>
                       </Form.Slot>
@@ -458,7 +464,7 @@ const RechargeCard = ({
                   }
                 >
                   <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'>
-                    {presetAmounts.map((preset, index) => {
+                    {presetAmounts.map((preset) => {
                       const discount =
                         preset.discount ||
                         topupInfo?.discount?.[preset.value] ||
@@ -478,7 +484,7 @@ const RechargeCard = ({
                           const s = JSON.parse(statusStr);
                           usdRate = s?.usd_exchange_rate || 7;
                         }
-                      } catch (e) {}
+                      } catch {}
 
                       let displayValue = preset.value; // 显示的数量
                       let displayActualPay = actualPay;
@@ -500,7 +506,7 @@ const RechargeCard = ({
 
                       return (
                         <Card
-                          key={index}
+                          key={preset.value}
                           style={{
                             cursor: 'pointer',
                             border:
@@ -563,9 +569,9 @@ const RechargeCard = ({
               {enableCreemTopUp && creemProducts.length > 0 && (
                 <Form.Slot label={t('Creem 充值')}>
                   <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3'>
-                    {creemProducts.map((product, index) => (
+                    {creemProducts.map((product) => (
                       <Card
-                        key={index}
+                        key={`${product.name}:${product.price}:${product.quota}:${product.currency}`}
                         onClick={() => creemPreTopUp(product)}
                         className='cursor-pointer !rounded-2xl transition-all hover:shadow-md border-gray-200 hover:border-gray-300'
                         bodyStyle={{ textAlign: 'center', padding: '16px' }}
@@ -586,17 +592,20 @@ const RechargeCard = ({
                 </Form.Slot>
               )}
             </div>
-          </Form>
-        ) : (
-          <Banner
-            type='info'
-            description={t(
-              '管理员未开启在线充值功能，请联系管理员开启或使用兑换码充值。',
-            )}
-            className='!rounded-xl'
-            closeIcon={null}
-          />
-        )}
+              </Form>
+            );
+          }
+          return (
+            <Banner
+              type='info'
+              description={t(
+                '管理员未开启在线充值功能，请联系管理员开启或使用兑换码充值。',
+              )}
+              className='!rounded-xl'
+              closeIcon={null}
+            />
+          );
+        })()}
       </Card>
 
       {/* 兑换码充值 */}

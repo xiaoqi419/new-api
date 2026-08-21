@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Banner, Button, Card, Spin, Tabs } from '@douyinfe/semi-ui';
 import SettingsGeneralPayment from '../../pages/Setting/Payment/SettingsGeneralPayment';
 import SettingsPaymentGateway from '../../pages/Setting/Payment/SettingsPaymentGateway';
@@ -143,7 +143,7 @@ const PaymentSetting = () => {
                 null,
                 2,
               );
-            } catch (error) {
+            } catch {
               newInputs[item.key] = item.value;
             }
             break;
@@ -154,7 +154,7 @@ const PaymentSetting = () => {
                 null,
                 2,
               );
-            } catch (error) {
+            } catch {
               newInputs['AmountOptions'] = item.value;
             }
             break;
@@ -165,7 +165,7 @@ const PaymentSetting = () => {
                 null,
                 2,
               );
-            } catch (error) {
+            } catch {
               newInputs['AmountDiscount'] = item.value;
             }
             break;
@@ -211,15 +211,17 @@ const PaymentSetting = () => {
     try {
       setLoading(true);
       await getOptions();
-    } catch (error) {
+    } catch {
       showError(t('刷新失败'));
     } finally {
       setLoading(false);
     }
   }
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
 
   useEffect(() => {
-    onRefresh();
+    void onRefreshRef.current();
   }, []);
 
   const confirmCompliance = async () => {
@@ -234,14 +236,13 @@ const PaymentSetting = () => {
       } else {
         showError(res.data.message || t('确认失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('确认失败'));
     }
   };
 
   return (
-    <>
-      <Spin spinning={loading} size='large'>
+    <Spin spinning={loading} size='large'>
         <Card style={{ marginTop: '10px' }}>
           {!complianceConfirmed ? (
             <Banner
@@ -366,8 +367,7 @@ const PaymentSetting = () => {
           onCancel={() => setComplianceVisible(false)}
           onConfirm={confirmCompliance}
         />
-      </Spin>
-    </>
+    </Spin>
   );
 };
 

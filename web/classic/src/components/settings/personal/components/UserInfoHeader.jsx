@@ -50,6 +50,12 @@ const UserInfoHeader = ({ t, userState }) => {
     }
     return 'NA';
   };
+  let userRole = t('普通用户');
+  if (isRoot()) {
+    userRole = t('超级管理员');
+  } else if (isAdmin()) {
+    userRole = t('管理员');
+  }
 
   return (
     <Card
@@ -80,31 +86,13 @@ const UserInfoHeader = ({ t, userState }) => {
                     {getUsername()}
                   </div>
                   <div className='flex flex-wrap items-center gap-2'>
-                    {isRoot() ? (
-                      <Tag
-                        size='large'
-                        shape='circle'
-                        style={{ color: 'white' }}
-                      >
-                        {t('超级管理员')}
-                      </Tag>
-                    ) : isAdmin() ? (
-                      <Tag
-                        size='large'
-                        shape='circle'
-                        style={{ color: 'white' }}
-                      >
-                        {t('管理员')}
-                      </Tag>
-                    ) : (
-                      <Tag
-                        size='large'
-                        shape='circle'
-                        style={{ color: 'white' }}
-                      >
-                        {t('普通用户')}
-                      </Tag>
-                    )}
+                    <Tag
+                      size='large'
+                      shape='circle'
+                      style={{ color: 'white' }}
+                    >
+                      {userRole}
+                    </Tag>
                     <Tag size='large' shape='circle' style={{ color: 'white' }}>
                       ID: {userState?.user?.id}
                     </Tag>

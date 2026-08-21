@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useCallback, useRef } from 'react';
+import React, { useContext, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Toast, Modal } from '@douyinfe/semi-ui';
@@ -59,7 +59,7 @@ import {
 } from '../../components/playground/OptimizedComponents';
 import ChatArea from '../../components/playground/ChatArea';
 import FloatingButtons from '../../components/playground/FloatingButtons';
-import { PlaygroundProvider } from '../../contexts/PlaygroundContext';
+import { PlaygroundProvider } from '../../contexts/PlaygroundProvider';
 
 // 生成头像
 const generateAvatarDataUrl = (username) => {
@@ -81,7 +81,7 @@ const Playground = () => {
   const { t } = useTranslation();
   const [userState] = useContext(UserContext);
   const isMobile = useIsMobile();
-  const styleState = { isMobile };
+  const styleState = useMemo(() => ({ isMobile }), [isMobile]);
   const [searchParams] = useSearchParams();
 
   const state = usePlaygroundState();

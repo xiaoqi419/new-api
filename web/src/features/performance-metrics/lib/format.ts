@@ -77,26 +77,25 @@ const SUCCESS_RATE_DOT_CLASS: Record<SuccessRateLevel, string> = {
   unknown: 'bg-muted-foreground',
 }
 
-/* VChart 走 canvas 渲染，拿不到 var()，只能给原始色值。因此这里必须按主题分两套，
- * 并跟 web/src/styles/theme.css 里的语义 token 保持同步——之前只存了一套亮色值，
- * 暗色图表实际画的是亮色描点。 */
+/* VChart canvas cannot resolve CSS variables. Keep these explicit values in
+ * sync with the light/dark business semantic tokens in theme.css. */
 const SUCCESS_RATE_HEX_COLOR: Record<
   'light' | 'dark',
   Record<SuccessRateLevel, string>
 > = {
   light: {
-    excellent: '#006c43', // --success
-    good: '#006c43', // --success
-    warning: '#8f4c00', // --warning
-    critical: '#bc0c20', // --destructive
-    unknown: '#5b4a52', // --muted-foreground
+    excellent: '#16c784', // --business-success
+    good: '#16c784', // --business-success
+    warning: '#f4b740', // --business-warning
+    critical: '#ef4444', // --business-destructive
+    unknown: '#5b6b78', // --business-muted-foreground
   },
   dark: {
-    excellent: '#1ec189', // --success
-    good: '#1ec189', // --success
-    warning: '#f5a420', // --warning
-    critical: '#ff7a73', // --destructive
-    unknown: '#b5aaaf', // --muted-foreground
+    excellent: '#16c784', // --business-success
+    good: '#16c784', // --business-success
+    warning: '#f4b740', // --business-warning
+    critical: '#ef4444', // --business-destructive
+    unknown: '#b0bbc5', // --business-muted-foreground
   },
 }
 

@@ -21,10 +21,18 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 	if quotaToAdd <= 0 {
 		return false, errors.New("无效的充值额度")
 	}
+	maxCurrentQuota, err := topUpQuotaMaxCurrent(quotaToAdd)
+	if err != nil {
+		return false, err
+	}
 	if agentId <= 0 {
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
-			return false, err
+		result := tx.Model(&User{}).Where("id = ? AND quota <= ?", userId, maxCurrentQuota).
+			Update("quota", gorm.Expr("quota + ?", quotaToAdd))
+		if result.Error != nil {
+			return false, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return false, ErrTopUpQuotaLimitExceeded
 		}
 		return true, nil
 	}
@@ -35,7 +43,10 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 	}
 
 	// 结算扣款额度 = 用户到账额度 × cost_ratio（int32 饱和，绝不产生负扣款）
-	settleQuota := common.QuotaRound(float64(quotaToAdd) * agent.CostRatio)
+	settleQuota, quotaErr := common.QuotaRoundStrict(float64(quotaToAdd) * agent.CostRatio)
+	if quotaErr != nil {
+		return false, quotaErr
+	}
 	if settleQuota < 0 {
 		settleQuota = 0
 	}
@@ -52,9 +63,13 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 		}
 	}
 
-	if err := tx.Model(&User{}).Where("id = ?", userId).
-		Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
-		return false, err
+	userCredit := tx.Model(&User{}).Where("id = ? AND quota <= ?", userId, maxCurrentQuota).
+		Update("quota", gorm.Expr("quota + ?", quotaToAdd))
+	if userCredit.Error != nil {
+		return false, userCredit.Error
+	}
+	if userCredit.RowsAffected == 0 {
+		return false, ErrTopUpQuotaLimitExceeded
 	}
 
 	var balanceAfter int
@@ -120,6 +135,7 @@ func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, payment
 	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		refCol = `"trade_no"`
 	}
+	var userId int
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
 		if e := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(topUp).Error; e != nil {
@@ -137,12 +153,16 @@ func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, payment
 		if paymentMethodOverride != "" && topUp.PaymentMethod != paymentMethodOverride {
 			topUp.PaymentMethod = paymentMethodOverride
 		}
+		userId = topUp.UserId
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e
 	})
 	if err != nil {
 		return false, err
+	}
+	if credited {
+		syncCreditUserQuotaCache(userId, quotaToAdd, "paid topup")
 	}
 	return credited, nil
 }
@@ -178,7 +198,11 @@ func TryCompleteAgentPrepay(tradeNo, expectedProvider, callerIp string) (handled
 		}
 
 		// 预充 1:1，钱包入账额度 = 订单额度 × QuotaPerUnit（int32 饱和保护）
-		creditQuota = common.QuotaFromFloat(float64(locked.Amount) * common.QuotaPerUnit)
+		var quotaErr error
+		creditQuota, quotaErr = common.QuotaFromFloatStrict(float64(locked.Amount) * common.QuotaPerUnit)
+		if quotaErr != nil {
+			return quotaErr
+		}
 		if creditQuota <= 0 {
 			return errors.New("无效的预充额度")
 		}
@@ -243,7 +267,10 @@ func PreCheckAgentWalletForTopup(agentId int, quotaToAdd int) (ok bool, err erro
 	if agent.Status != AgentStatusActive {
 		return false, errors.New("代理未开通或已停用")
 	}
-	settleQuota := common.QuotaRound(float64(quotaToAdd) * agent.CostRatio)
+	settleQuota, quotaErr := common.QuotaRoundStrict(float64(quotaToAdd) * agent.CostRatio)
+	if quotaErr != nil {
+		return false, quotaErr
+	}
 	if settleQuota < 0 {
 		settleQuota = 0
 	}
@@ -266,6 +293,7 @@ func ResettleHeldTopups(agentId int) {
 
 	for _, topUp := range held {
 		creditedQuota := topUp.HeldQuota
+		resettled := false
 		err := DB.Transaction(func(tx *gorm.DB) error {
 			locked := &TopUp{}
 			if err := lockForUpdate(tx).Where("id = ?", topUp.Id).First(locked).Error; err != nil {
@@ -288,7 +316,11 @@ func ResettleHeldTopups(agentId int) {
 			locked.Status = common.TopUpStatusSuccess
 			locked.CompleteTime = common.GetTimestamp()
 			locked.HeldQuota = 0
-			return tx.Save(locked).Error
+			if err := tx.Save(locked).Error; err != nil {
+				return err
+			}
+			resettled = true
+			return nil
 		})
 		if err != nil {
 			if errors.Is(err, errStopResettle) {
@@ -297,6 +329,10 @@ func ResettleHeldTopups(agentId int) {
 			common.SysError("failed to resettle held topup: " + err.Error())
 			break
 		}
+		if !resettled {
+			continue
+		}
+		syncCreditUserQuotaCache(topUp.UserId, creditedQuota, "agent held topup resettlement")
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("代理补足额度后自动补发充值，到账额度: %v", logger.FormatQuota(creditedQuota)), "", topUp.PaymentMethod, "agent_resettle")
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, creditedQuota)
 		GrantTopupLotteryCards(topUp.UserId, creditedQuota)

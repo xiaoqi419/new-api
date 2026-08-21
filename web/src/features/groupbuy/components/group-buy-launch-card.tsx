@@ -30,6 +30,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TitledCard } from '@/components/ui/titled-card'
+import { getTradeStatus } from '@/features/wallet/api'
+import { EpayCheckoutDialog } from '@/features/wallet/components/dialogs/epay-checkout-dialog'
 import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 
 import { useGroupBuyLaunch } from '../hooks/use-group-buy-launch'
@@ -43,10 +45,14 @@ export function GroupBuyLaunchCard() {
     payWay,
     setPayWay,
     payOptions,
+    loading: paymentMethodsLoading,
     submittingId,
     create,
     qrPay,
     closeQrPay,
+    epayCheckout,
+    closeEpayCheckout,
+    retryEpayCheckout,
   } = useGroupBuyPayment({ redirectAfterPay: true })
 
   if (!enabled || packages.length === 0) return null
@@ -71,6 +77,7 @@ export function GroupBuyLaunchCard() {
             items={payOptions}
             value={payWay}
             onValueChange={(v) => v && setPayWay(v)}
+            disabled={paymentMethodsLoading || payOptions.length === 0}
           >
             <SelectTrigger className='h-8 w-[160px]'>
               <SelectValue>{currentPayLabel}</SelectValue>
@@ -86,6 +93,12 @@ export function GroupBuyLaunchCard() {
             </SelectContent>
           </Select>
         </div>
+
+        {!paymentMethodsLoading && payOptions.length === 0 && (
+          <p className='text-destructive text-sm' role='status'>
+            {t('No payment methods available. Please contact administrator.')}
+          </p>
+        )}
 
         <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
           {packages.map((pkg) => {
@@ -128,8 +141,12 @@ export function GroupBuyLaunchCard() {
                 </span>
                 <Button
                   className='mt-1'
-                  disabled={payOptions.length === 0 || submittingId === pkg.id}
-                  onClick={() => create(pkg.id)}
+                  disabled={
+                    paymentMethodsLoading ||
+                    payOptions.length === 0 ||
+                    submittingId === pkg.id
+                  }
+                  onClick={() => create(pkg.id, info.price)}
                 >
                   {submittingId === pkg.id && (
                     <Loader2 className='mr-2 size-4 animate-spin' />
@@ -148,6 +165,15 @@ export function GroupBuyLaunchCard() {
         tradeNo={qrPay.tradeNo}
         provider={qrPay.provider}
         onClose={closeQrPay}
+      />
+
+      <EpayCheckoutDialog
+        open={epayCheckout !== null}
+        checkout={epayCheckout}
+        getStatus={getTradeStatus}
+        onClose={() => closeEpayCheckout(false)}
+        onSuccess={() => closeEpayCheckout(true)}
+        onRetry={retryEpayCheckout}
       />
     </>
   )

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Input, Typography, Button, Switch } from '@douyinfe/semi-ui';
 import { IconFile } from '@douyinfe/semi-icons';
 import { FileText, Plus, X, Image } from 'lucide-react';
@@ -31,7 +31,32 @@ const ImageUrlInput = ({
   disabled = false,
 }) => {
   const { t } = useTranslation();
+  const imageUrlKeysRef = useRef([]);
+  const nextImageUrlKeyRef = useRef(0);
+  while (imageUrlKeysRef.current.length < imageUrls.length) {
+    imageUrlKeysRef.current.push(
+      `image-url-${nextImageUrlKeyRef.current++}`,
+    );
+  }
+  if (imageUrlKeysRef.current.length > imageUrls.length) {
+    imageUrlKeysRef.current.length = imageUrls.length;
+  }
+  let imageStatusText = `${t('已添加')} ${imageUrls.length} ${t('张图片')}`;
+  if (!imageEnabled) {
+    imageStatusText = disabled
+      ? t('图片功能在自定义请求体模式下不可用')
+      : t('启用后可添加图片URL进行多模态对话');
+  } else if (imageUrls.length === 0) {
+    imageStatusText = disabled
+      ? t('图片功能在自定义请求体模式下不可用')
+      : t('点击 + 按钮添加图片URL进行多模态对话');
+  } else if (disabled) {
+    imageStatusText += ` (${t('自定义模式下不可用')})`;
+  }
   const handleAddImageUrl = () => {
+    imageUrlKeysRef.current.push(
+      `image-url-${nextImageUrlKeyRef.current++}`,
+    );
     const newUrls = [...imageUrls, ''];
     onImageUrlsChange(newUrls);
   };
@@ -43,6 +68,7 @@ const ImageUrlInput = ({
   };
 
   const handleRemoveImageUrl = (index) => {
+    imageUrlKeysRef.current.splice(index, 1);
     const newUrls = imageUrls.filter((_, i) => i !== index);
     onImageUrlsChange(newUrls);
   };
@@ -88,30 +114,18 @@ const ImageUrlInput = ({
         </div>
       </div>
 
-      {!imageEnabled ? (
-        <Typography.Text className='text-xs text-gray-500 mb-2 block'>
-          {disabled
-            ? t('图片功能在自定义请求体模式下不可用')
-            : t('启用后可添加图片URL进行多模态对话')}
-        </Typography.Text>
-      ) : imageUrls.length === 0 ? (
-        <Typography.Text className='text-xs text-gray-500 mb-2 block'>
-          {disabled
-            ? t('图片功能在自定义请求体模式下不可用')
-            : t('点击 + 按钮添加图片URL进行多模态对话')}
-        </Typography.Text>
-      ) : (
-        <Typography.Text className='text-xs text-gray-500 mb-2 block'>
-          {t('已添加')} {imageUrls.length} {t('张图片')}
-          {disabled ? ` (${t('自定义模式下不可用')})` : ''}
-        </Typography.Text>
-      )}
+      <Typography.Text className='text-xs text-gray-500 mb-2 block'>
+        {imageStatusText}
+      </Typography.Text>
 
       <div
         className={`space-y-2 max-h-32 overflow-y-auto image-list-scroll ${!imageEnabled || disabled ? 'opacity-50' : ''}`}
       >
         {imageUrls.map((url, index) => (
-          <div key={index} className='flex items-center gap-2'>
+          <div
+            key={imageUrlKeysRef.current[index]}
+            className='flex items-center gap-2'
+          >
             <div className='flex-1'>
               <Input
                 placeholder={`https://example.com/image${index + 1}.jpg`}

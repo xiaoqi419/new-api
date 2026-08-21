@@ -1,5 +1,9 @@
 {
   "translation": {
+    "Connect your models": "連接你的模型",
+    "with New API": "與 New API",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "從 API 金鑰、協定相容到用量與權限管理，以統一閘道降低整合成本。",
+    "More control, lower cost": "更低成本，更強控制",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_other": " + Web搜尋 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}",
     " + 图片生成调用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}": " + 圖片生成調用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}",
     " + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_other": " + 檔案搜尋 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}",
@@ -3677,6 +3681,17 @@
     "默认折叠侧边栏": "預設摺疊側邊欄",
     "默认测试模型": "預設測試模型",
     "默认用户消息": "你好",
-    "默认补全倍率": "預設補全倍率"
+    "默认补全倍率": "預設補全倍率",
+    "支付成功": "支付成功",
+    "支付已过期": "付款已過期",
+    "支付状态检查超时": "付款狀態檢查逾時",
+    "等待支付": "等待付款",
+    "打开支付宝": "開啟支付寶",
+    "打开微信": "開啟微信",
+    "打开支付页面": "開啟付款頁面",
+    "支付收银台": "付款收銀台",
+    "返回": "返回",
+    "刷新支付状态": "重新整理付款狀態",
+    "支付二维码": "付款 QR Code"
   }
 }

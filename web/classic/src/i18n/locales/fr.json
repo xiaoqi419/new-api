@@ -1,5 +1,9 @@
 {
   "translation": {
+    "Connect your models": "Connectez vos modèles",
+    "with New API": "avec New API",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "Des clés API à la compatibilité des protocoles, en passant par l'usage et les permissions, réduisez les coûts d'intégration avec une passerelle unifiée.",
+    "More control, lower cost": "Plus de contrôle, moins de coûts",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_many": " + Recherche Web {{count}} fois / 1K fois * {{symbol}}{{price}} * {{ratioType}} {{ratio}}",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_one": " + Recherche Web {{count}} fois / 1K fois * {{symbol}}{{price}} * {{ratioType}} {{ratio}}",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_other": " + Recherche Web {{count}} fois / 1K fois * {{symbol}}{{price}} * {{ratioType}} {{ratio}}",
@@ -3684,6 +3688,17 @@
     "默认折叠侧边栏": "Réduire la barre latérale par défaut",
     "默认测试模型": "Modèle de test par défaut",
     "默认用户消息": "Bonjour",
-    "默认补全倍率": "Taux de complétion par défaut"
+    "默认补全倍率": "Taux de complétion par défaut",
+    "支付成功": "Paiement réussi",
+    "支付已过期": "Paiement expiré",
+    "支付状态检查超时": "Délai de vérification du paiement dépassé",
+    "等待支付": "En attente du paiement",
+    "打开支付宝": "Ouvrir Alipay",
+    "打开微信": "Ouvrir WeChat",
+    "打开支付页面": "Ouvrir la page de paiement",
+    "支付收银台": "Caisse de paiement",
+    "返回": "Retour",
+    "刷新支付状态": "Actualiser le statut du paiement",
+    "支付二维码": "Code QR de paiement"
   }
 }

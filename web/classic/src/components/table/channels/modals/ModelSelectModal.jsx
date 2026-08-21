@@ -56,13 +56,13 @@ const ModelSelectModal = ({
     return String(model ?? '');
   };
   const normalizeModelList = (modelList = []) =>
-    Array.from(
+    [...
       new Set(
         (modelList || [])
           .map((model) => getModelName(model).trim())
           .filter(Boolean),
       ),
-    );
+    ];
 
   const normalizedSelected = useMemo(
     () => (selected || []).map(getModelName),
@@ -78,13 +78,13 @@ const ModelSelectModal = ({
     typeof model === 'string' ? model.trim() : '';
   const normalizedRedirectModels = useMemo(
     () =>
-      Array.from(
+      [...
         new Set(
           (redirectModels || [])
             .map((model) => normalizeModelName(model))
             .filter(Boolean),
         ),
-      ),
+      ],
     [redirectModels],
   );
   const normalizedRedirectSourceSet = useMemo(
@@ -285,10 +285,10 @@ const ModelSelectModal = ({
         key={`${categoryKeyPrefix}_${categoryEntries.length}`}
         defaultActiveKey={[]}
       >
-        {categoryEntries.map(([key, categoryData], index) => (
+        {categoryEntries.map(([key, categoryData]) => (
           <Collapse.Panel
-            key={`${categoryKeyPrefix}_${index}`}
-            itemKey={`${categoryKeyPrefix}_${index}`}
+            key={`${categoryKeyPrefix}_${key}`}
+            itemKey={`${categoryKeyPrefix}_${key}`}
             header={`${categoryData.label} (${categoryData.models.length})`}
             extra={
               <Checkbox
@@ -426,12 +426,12 @@ const ModelSelectModal = ({
       >
         <div className='flex items-center justify-end gap-2'>
           {(() => {
-            const currentModels =
-              activeTab === 'new'
-                ? newModels
-                : activeTab === 'removed'
-                  ? removedModels
-                  : existingModels;
+            let currentModels = existingModels;
+            if (activeTab === 'new') {
+              currentModels = newModels;
+            } else if (activeTab === 'removed') {
+              currentModels = removedModels;
+            }
             const currentSelected = currentModels.filter((model) =>
               checkedList.includes(model),
             ).length;

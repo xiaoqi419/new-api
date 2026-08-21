@@ -17,37 +17,40 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export const useNotifications = (statusState) => {
   const [noticeVisible, setNoticeVisible] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const announcements = statusState?.status?.announcements || [];
+  const announcements = useMemo(
+    () => statusState?.status?.announcements || [],
+    [statusState?.status?.announcements],
+  );
 
   // Helper functions
   const getAnnouncementKey = (a) =>
     `${a?.publishDate || ''}-${(a?.content || '').slice(0, 30)}`;
 
-  const calculateUnreadCount = () => {
+  const calculateUnreadCount = useCallback(() => {
     if (!announcements.length) return 0;
     let readKeys = [];
     try {
       readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-    } catch (_) {
+    } catch {
       readKeys = [];
     }
     const readSet = new Set(readKeys);
     return announcements.filter((a) => !readSet.has(getAnnouncementKey(a)))
       .length;
-  };
+  }, [announcements]);
 
   const getUnreadKeys = () => {
     if (!announcements.length) return [];
     let readKeys = [];
     try {
       readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-    } catch (_) {
+    } catch {
       readKeys = [];
     }
     const readSet = new Set(readKeys);
@@ -59,7 +62,7 @@ export const useNotifications = (statusState) => {
   // Effects
   useEffect(() => {
     setUnreadCount(calculateUnreadCount());
-  }, [announcements]);
+  }, [calculateUnreadCount]);
 
   // Actions
   const handleNoticeOpen = () => {
@@ -72,12 +75,12 @@ export const useNotifications = (statusState) => {
       let readKeys = [];
       try {
         readKeys = JSON.parse(localStorage.getItem('notice_read_keys')) || [];
-      } catch (_) {
+      } catch {
         readKeys = [];
       }
-      const mergedKeys = Array.from(
+      const mergedKeys = [...
         new Set([...readKeys, ...announcements.map(getAnnouncementKey)]),
-      );
+      ];
       localStorage.setItem('notice_read_keys', JSON.stringify(mergedKeys));
     }
     setUnreadCount(0);

@@ -17,8 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
-import { describe, test } from 'node:test'
 
+import { describe, test } from 'vitest'
+
+import { NON_EPAY_PAY_METHODS } from '../constants'
 import { resolveCheckoutClose } from './use-group-buy-payment'
 
 describe('Group buy checkout close', () => {
@@ -62,5 +64,11 @@ describe('Group buy checkout close', () => {
       resolveCheckoutClose({ paid: false, tradeNo: '', groupNo: 'GB123' }),
       { releaseTradeNo: null, navigateToGroup: null }
     )
+  })
+})
+
+describe('Group buy payment method classification', () => {
+  test('classifies creem as non-Epay so it is excluded from Epay options', () => {
+    assert.equal(NON_EPAY_PAY_METHODS.has('creem'), true)
   })
 })

@@ -16,17 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useTranslation } from 'react-i18next'
-
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 import type { SelectOption } from '../types'
 
@@ -38,8 +28,6 @@ interface AssetUrlInputProps {
 }
 
 export function AssetUrlInput(props: AssetUrlInputProps) {
-  const { t } = useTranslation()
-
   return (
     <div className='flex gap-2'>
       <Input
@@ -48,26 +36,6 @@ export function AssetUrlInput(props: AssetUrlInputProps) {
         placeholder={props.placeholder}
         className='flex-1'
       />
-      {props.assetOptions.length > 0 && (
-        <Select
-          items={props.assetOptions}
-          value={null}
-          onValueChange={(v) => v && props.onChange(v)}
-        >
-          <SelectTrigger className='w-36 shrink-0'>
-            <SelectValue placeholder={t('Asset Library')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {props.assetOptions.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      )}
     </div>
   )
 }

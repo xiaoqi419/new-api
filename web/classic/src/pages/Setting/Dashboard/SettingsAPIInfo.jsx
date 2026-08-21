@@ -208,7 +208,7 @@ const SettingsAPIInfo = ({ options, refresh }) => {
     if (apiInfoStr !== undefined) {
       parseApiInfo(apiInfoStr);
     }
-  }, [options['console_setting.api_info'], options.ApiInfo]);
+  }, [options]);
 
   useEffect(() => {
     const enabledStr = options['console_setting.api_info_enabled'];
@@ -217,7 +217,7 @@ const SettingsAPIInfo = ({ options, refresh }) => {
         ? true
         : enabledStr === 'true' || enabledStr === true,
     );
-  }, [options['console_setting.api_info_enabled']]);
+  }, [options]);
 
   const handleToggleEnabled = async (checked) => {
     const newValue = checked ? 'true' : 'false';

@@ -43,10 +43,10 @@ const SkeletonWrapper = ({
       ? 'flex items-center gap-1 p-1 w-full rounded-md'
       : 'flex items-center gap-1 p-2 rounded-md';
 
-    return Array(count)
-      .fill(null)
-      .map((_, index) => (
-        <div key={index} className={skeletonLinkClasses}>
+    return Array.from({ length: count }, (_, index) => ({
+      id: `navigation-skeleton-${index}`,
+    })).map((item) => (
+        <div key={item.id} className={skeletonLinkClasses}>
           <Skeleton
             loading={true}
             active
@@ -145,11 +145,11 @@ const SkeletonWrapper = ({
 
   // 侧边栏导航项骨架屏 (图标 + 文本)
   const renderSidebarNavItemSkeleton = () => {
-    return Array(count)
-      .fill(null)
-      .map((_, index) => (
+    return Array.from({ length: count }, (_, index) => ({
+      id: `sidebar-navigation-skeleton-${index}`,
+    })).map((item) => (
         <div
-          key={index}
+          key={item.id}
           className={`flex items-center p-2 mb-1 rounded-md ${className}`}
         >
           {/* 图标骨架屏 */}
@@ -321,8 +321,11 @@ const SkeletonWrapper = ({
                     }
                   />
                 </div>
-                {sec.itemWidths.map((w, i) => (
-                  <NavRow key={`${sec.key}-${i}`} labelWidth={w} />
+                {sec.itemWidths.map((width, index) => ({
+                  id: `${sec.key}-${index}`,
+                  width,
+                })).map((item) => (
+                  <NavRow key={item.id} labelWidth={item.width} />
                 ))}
               </div>
             ) : (
@@ -341,8 +344,11 @@ const SkeletonWrapper = ({
                     }
                   />
                 </div>
-                {sec.itemWidths.map((w, i) => (
-                  <NavRow key={`${sec.key}-${i}`} labelWidth={w} />
+                {sec.itemWidths.map((width, index) => ({
+                  id: `${sec.key}-${index}`,
+                  width,
+                })).map((item) => (
+                  <NavRow key={item.id} labelWidth={item.width} />
                 ))}
               </div>
             )}

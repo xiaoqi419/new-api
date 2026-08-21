@@ -19,6 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { useSearch } from '@tanstack/react-router'
 import { useMemo, useCallback, useState } from 'react'
 
+import { useDebounce } from '@/hooks/use-debounce'
+
 import {
   FILTER_ALL,
   SORT_OPTIONS,
@@ -70,6 +72,7 @@ export function useFilters(models: PricingModel[]) {
   }))
 
   const searchInput = filterState.search || ''
+  const debouncedSearchInput = useDebounce(searchInput, 200)
   const sortBy = filterState.sort || SORT_OPTIONS.NAME
   const vendorFilter = filterState.vendor || FILTER_ALL
   const groupFilter = filterState.group || FILTER_ALL
@@ -156,7 +159,7 @@ export function useFilters(models: PricingModel[]) {
     if (!models || models.length === 0) return []
 
     return filterAndSortModels(models, {
-      search: searchInput,
+      search: debouncedSearchInput,
       vendor: vendorFilter,
       group: groupFilter,
       quotaType: quotaTypeFilter,
@@ -167,7 +170,7 @@ export function useFilters(models: PricingModel[]) {
     })
   }, [
     models,
-    searchInput,
+    debouncedSearchInput,
     vendorFilter,
     groupFilter,
     quotaTypeFilter,
@@ -183,8 +186,16 @@ export function useFilters(models: PricingModel[]) {
       groupFilter !== FILTER_ALL ||
       quotaTypeFilter !== QUOTA_TYPES.ALL ||
       endpointTypeFilter !== ENDPOINT_TYPES.ALL ||
-      tagFilter !== FILTER_ALL,
-    [vendorFilter, groupFilter, quotaTypeFilter, endpointTypeFilter, tagFilter]
+      tagFilter !== FILTER_ALL ||
+      modalityFilter !== MODALITY_FILTERS.ALL,
+    [
+      vendorFilter,
+      groupFilter,
+      quotaTypeFilter,
+      endpointTypeFilter,
+      tagFilter,
+      modalityFilter,
+    ]
   )
 
   const activeFilterCount = useMemo(
@@ -193,8 +204,16 @@ export function useFilters(models: PricingModel[]) {
       (groupFilter !== FILTER_ALL ? 1 : 0) +
       (quotaTypeFilter !== QUOTA_TYPES.ALL ? 1 : 0) +
       (endpointTypeFilter !== ENDPOINT_TYPES.ALL ? 1 : 0) +
-      (tagFilter !== FILTER_ALL ? 1 : 0),
-    [vendorFilter, groupFilter, quotaTypeFilter, endpointTypeFilter, tagFilter]
+      (tagFilter !== FILTER_ALL ? 1 : 0) +
+      (modalityFilter !== MODALITY_FILTERS.ALL ? 1 : 0),
+    [
+      vendorFilter,
+      groupFilter,
+      quotaTypeFilter,
+      endpointTypeFilter,
+      tagFilter,
+      modalityFilter,
+    ]
   )
 
   const clearFilters = useCallback(() => {

@@ -49,6 +49,7 @@ import {
   getPaymentIcon,
   getMaxTopupAmount,
   getMinTopupAmount,
+  hasConfigurableTopup,
   calculatePresetPricing,
 } from '../lib'
 import type {
@@ -137,13 +138,10 @@ export function RechargeFormCard({
     }
   }
 
-  const hasConfigurableTopup =
-    topupInfo?.enable_online_topup ||
-    topupInfo?.enable_stripe_topup ||
-    topupInfo?.enable_alipay_topup ||
-    enableWaffoTopup ||
-    enableWaffoPancakeTopup
-  const hasAnyTopup = hasConfigurableTopup || enableCreemTopup
+  const configurableTopupAvailable =
+    hasConfigurableTopup(topupInfo) ||
+    Boolean(enableWaffoTopup || enableWaffoPancakeTopup)
+  const hasAnyTopup = configurableTopupAvailable || enableCreemTopup
   const hasStandardPaymentMethods =
     Array.isArray(topupInfo?.pay_methods) && topupInfo.pay_methods.length > 0
   const hasWaffoPaymentMethods =
@@ -228,7 +226,7 @@ export function RechargeFormCard({
       {/* Online Topup Section */}
       {hasAnyTopup ? (
         <div className='space-y-4 sm:space-y-6'>
-          {hasConfigurableTopup && (
+          {configurableTopupAvailable && (
             <>
               {presetAmounts.length > 0 && (
                 <div className='space-y-2.5 sm:space-y-3'>

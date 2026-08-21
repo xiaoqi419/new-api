@@ -81,6 +81,7 @@ export function UserAuthForm({
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
   const [isCaptchaDialogOpen, setIsCaptchaDialogOpen] = useState(false)
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
   const loginFailedMessage = t('Login failed')
 
   const { status } = useStatus()
@@ -126,12 +127,18 @@ export function UserAuthForm({
     data: z.infer<typeof loginFormSchema>,
     captchaSolution: ClickCaptchaSolution | null
   ) {
+    const submittedTurnstileToken = turnstileToken
+    if (isTurnstileEnabled) {
+      setTurnstileToken('')
+      setTurnstileWidgetKey((current) => current + 1)
+    }
+
     setIsLoading(true)
     try {
       const res = await login({
         username: data.username,
         password: data.password,
-        turnstile: turnstileToken,
+        turnstile: submittedTurnstileToken,
         captcha: toCaptchaQuery(captchaSolution),
       })
 
@@ -357,10 +364,14 @@ export function UserAuthForm({
 
             {/* Turnstile */}
             {isTurnstileEnabled && (
-              <Turnstile
-                siteKey={turnstileSiteKey}
-                onVerify={setTurnstileToken}
-              />
+              <div className='mt-2'>
+                <Turnstile
+                  key={turnstileWidgetKey}
+                  siteKey={turnstileSiteKey}
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                />
+              </div>
             )}
           </>
         )}

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -53,6 +53,7 @@ export default function SettingsSidebarModulesUser() {
 
   // 使用useSidebar钩子获取刷新方法
   const { refreshUserConfig } = useSidebar();
+  const generateDefaultConfigRef = useRef(null);
 
   // 如果没有边栏设置权限，不显示此组件
   if (!permissionsLoading && !hasSidebarSettingsPermission()) {
@@ -113,6 +114,7 @@ export default function SettingsSidebarModulesUser() {
 
     return defaultConfig;
   };
+  generateDefaultConfigRef.current = generateDefaultConfig;
 
   // 用户个人左侧边栏模块设置
   const [sidebarModulesUser, setSidebarModulesUser] = useState({});
@@ -205,7 +207,7 @@ export default function SettingsSidebarModulesUser() {
             const mergedAdminConf = mergeAdminConfig(adminConf);
             setAdminConfig(mergedAdminConf);
             console.log('加载管理员边栏配置:', mergedAdminConf);
-          } catch (error) {
+          } catch {
             const mergedAdminConf = mergeAdminConfig(null);
             setAdminConfig(mergedAdminConf);
             console.log(
@@ -251,14 +253,14 @@ export default function SettingsSidebarModulesUser() {
           console.log('权限过滤后的用户配置:', filteredUserConf);
         } else {
           // 如果用户没有配置，使用权限过滤后的默认配置
-          const defaultConfig = generateDefaultConfig();
+          const defaultConfig = generateDefaultConfigRef.current();
           setSidebarModulesUser(defaultConfig);
           console.log('用户无配置，使用默认配置:', defaultConfig);
         }
       } catch (error) {
         console.error('加载边栏配置失败:', error);
         // 出错时也使用默认配置
-        const defaultConfig = generateDefaultConfig();
+        const defaultConfig = generateDefaultConfigRef.current();
         setSidebarModulesUser(defaultConfig);
       }
     };

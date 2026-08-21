@@ -332,8 +332,9 @@ function formatTokenHint(n: number | string | null | undefined): string {
 
 function formatNumberDraft(value: number | string): string {
   if (value === '') return ''
-  if (typeof value === 'number')
+  if (typeof value === 'number') {
     return Number.isFinite(value) ? String(value) : '0'
+  }
   return value
 }
 
@@ -436,12 +437,10 @@ function ConditionRow({ condition, onChange, onRemove }: ConditionRowProps) {
   return (
     <div className='flex items-center gap-2'>
       <Select
-        items={[
-          ...CONDITION_INPUT_OPTIONS.map((option) => ({
-            value: option.value,
-            label: t(option.labelKey),
-          })),
-        ]}
+        items={CONDITION_INPUT_OPTIONS.map((option) => ({
+          value: option.value,
+          label: t(option.labelKey),
+        }))}
         value={condition.var}
         onValueChange={(value) =>
           onChange({ ...condition, var: value as TierConditionInput['var'] })
@@ -544,7 +543,6 @@ type VisualTierCardProps = {
   total: number
   onChange: (next: VisualTier) => void
   onRemove: () => void
-  onAddCondition: () => void
 }
 
 function VisualTierCard({
@@ -553,10 +551,29 @@ function VisualTierCard({
   total,
   onChange,
   onRemove,
-  onAddCondition,
 }: VisualTierCardProps) {
   const { t } = useTranslation()
   const cacheMode = getTierCacheMode(tier)
+  const conditionEntriesRef = useRef(
+    tier.conditions.map((condition, index) => ({
+      id: `condition-${index}`,
+      condition,
+    }))
+  )
+  const nextConditionIdRef = useRef(conditionEntriesRef.current.length)
+  const conditionEntries = tier.conditions.map((condition, index) => {
+    const existing = conditionEntriesRef.current.at(index)
+    if (existing) {
+      existing.condition = condition
+      return existing
+    }
+    const entry = {
+      id: `condition-${nextConditionIdRef.current++}`,
+      condition,
+    }
+    return entry
+  })
+  conditionEntriesRef.current = conditionEntries
 
   const handleConditionChange = (
     conditionIndex: number,
@@ -568,9 +585,33 @@ function VisualTierCard({
   }
 
   const handleConditionRemove = (conditionIndex: number) => {
+    conditionEntriesRef.current.splice(conditionIndex, 1)
     onChange({
       ...tier,
       conditions: tier.conditions.filter((_, i) => i !== conditionIndex),
+    })
+  }
+
+  const handleAddCondition = () => {
+    if (tier.conditions.length >= 2) return
+    // Prefer `len` (input length) over `p`/`c` for tier conditions because
+    // `p` is subject to auto-exclusion when sub-categories like `cr` are
+    // priced separately, which can misroute long-input requests into shorter
+    // tiers when cache-hits reduce the effective `p`.
+    const usedVars = new Set(tier.conditions.map((item) => item.var))
+    const nextVar: TierConditionInput['var'] = usedVars.has('len') ? 'c' : 'len'
+    const condition: TierConditionInput = {
+      var: nextVar,
+      op: '<',
+      value: 200000,
+    }
+    conditionEntriesRef.current.push({
+      id: `condition-${nextConditionIdRef.current++}`,
+      condition,
+    })
+    onChange({
+      ...tier,
+      conditions: [...tier.conditions, condition],
     })
   }
 
@@ -652,7 +693,7 @@ function VisualTierCard({
           <Button
             variant='ghost'
             size='sm'
-            onClick={onAddCondition}
+            onClick={handleAddCondition}
             disabled={tier.conditions.length >= 2}
             className='h-7 px-2 text-xs'
           >
@@ -665,9 +706,9 @@ function VisualTierCard({
             {t('Always matches (default tier).')}
           </p>
         ) : (
-          tier.conditions.map((condition, conditionIndex) => (
+          conditionEntries.map(({ id, condition }, conditionIndex) => (
             <ConditionRow
-              key={conditionIndex}
+              key={id}
               condition={condition}
               onChange={(next) => handleConditionChange(conditionIndex, next)}
               onRemove={() => handleConditionRemove(conditionIndex)}
@@ -780,10 +821,28 @@ function VisualEditor({ visualConfig, onChange }: VisualEditorProps) {
     () => normalizeVisualConfig(visualConfig),
     [visualConfig]
   )
+  const tierEntriesRef = useRef(
+    config.tiers.map((tier, index) => ({ id: `tier-${index}`, tier }))
+  )
+  const nextTierIdRef = useRef(tierEntriesRef.current.length)
+  const tierEntries = config.tiers.map((tier, index) => {
+    const existing = tierEntriesRef.current.at(index)
+    if (existing) {
+      existing.tier = tier
+      return existing
+    }
+    return { id: `tier-${nextTierIdRef.current++}`, tier }
+  })
+  tierEntriesRef.current = tierEntries
 
   const handleTierChange = (index: number, next: VisualTier) => {
     const tiers = [...config.tiers]
-    tiers[index] = normalizeVisualTier(next)
+    const normalizedTier = normalizeVisualTier(next)
+    tiers[index] = normalizedTier
+    const entry = tierEntriesRef.current.at(index)
+    if (entry) {
+      entry.tier = normalizedTier
+    }
     onChange({ ...config, tiers })
   }
 
@@ -794,50 +853,34 @@ function VisualEditor({ visualConfig, onChange }: VisualEditorProps) {
     // upper-bound condition so the expression compiles into a sane two-tier
     // shape with an immediately useful fallback.
     if (lastIndex >= 0 && tiers[lastIndex].conditions.length === 0) {
-      tiers[lastIndex] = normalizeVisualTier({
+      const normalizedTier = normalizeVisualTier({
         ...tiers[lastIndex],
         conditions: [{ var: 'len', op: '<', value: 200000 }],
       })
+      tiers[lastIndex] = normalizedTier
+      const lastEntry = tierEntriesRef.current.at(lastIndex)
+      if (lastEntry) {
+        lastEntry.tier = normalizedTier
+      }
     }
-    tiers.push(
-      normalizeVisualTier({
-        label: `tier_${tiers.length + 1}`,
-        conditions: [],
-        input_unit_cost: 0,
-        output_unit_cost: 0,
-      })
-    )
+    const tier = normalizeVisualTier({
+      label: `tier_${tiers.length + 1}`,
+      conditions: [],
+      input_unit_cost: 0,
+      output_unit_cost: 0,
+    })
+    tiers.push(tier)
+    tierEntriesRef.current.push({
+      id: `tier-${nextTierIdRef.current++}`,
+      tier,
+    })
     onChange({ ...config, tiers })
   }
 
   const handleRemoveTier = (index: number) => {
     const tiers = config.tiers.filter((_, i) => i !== index)
+    tierEntriesRef.current.splice(index, 1)
     onChange({ ...config, tiers: tiers.length > 0 ? tiers : config.tiers })
-  }
-
-  const handleAddCondition = (index: number) => {
-    const tier = config.tiers[index]
-    if (tier.conditions.length >= 2) return
-    // Prefer `len` (input length) over `p`/`c` for tier conditions because
-    // `p` is subject to auto-exclusion when sub-categories like `cr` are
-    // priced separately, which can misroute long-input requests into shorter
-    // tiers when cache-hits reduce the effective `p`.
-    const usedVars = new Set(tier.conditions.map((c) => c.var))
-    const nextVar: TierConditionInput['var'] = usedVars.has('len') ? 'c' : 'len'
-    onChange({
-      ...config,
-      tiers: config.tiers.map((current, i) =>
-        i === index
-          ? {
-              ...current,
-              conditions: [
-                ...tier.conditions,
-                { var: nextVar, op: '<', value: 200000 },
-              ],
-            }
-          : current
-      ),
-    })
   }
 
   return (
@@ -847,15 +890,14 @@ function VisualEditor({ visualConfig, onChange }: VisualEditorProps) {
           'Each tier supports up to 2 conditions. The last tier without conditions is the fallback.'
         )}
       </p>
-      {config.tiers.map((tier, index) => (
+      {tierEntries.map(({ id, tier }, index) => (
         <VisualTierCard
-          key={index}
+          key={id}
           tier={tier}
           index={index}
           total={config.tiers.length}
           onChange={(next) => handleTierChange(index, next)}
           onRemove={() => handleRemoveTier(index)}
-          onAddCondition={() => handleAddCondition(index)}
         />
       ))}
       <Button
@@ -967,12 +1009,12 @@ function RuleConditionRow({
         return timeFunc
     }
   }
-  const sourceLabel =
-    condition.source === SOURCE_PARAM
-      ? t('Body param')
-      : condition.source === SOURCE_HEADER
-        ? t('Header')
-        : t('Time')
+  let sourceLabel = t('Time')
+  if (condition.source === SOURCE_PARAM) {
+    sourceLabel = t('Body param')
+  } else if (condition.source === SOURCE_HEADER) {
+    sourceLabel = t('Header')
+  }
 
   const handleSourceChange = (source: string) => {
     if (source === SOURCE_TIME) {
@@ -992,12 +1034,10 @@ function RuleConditionRow({
   const renderTimeCondition = (timeCond: TimeCondition) => (
     <>
       <Select
-        items={[
-          ...TIME_FUNCS.map((fn) => ({
-            value: fn,
-            label: getTimeFuncLabel(fn),
-          })),
-        ]}
+        items={TIME_FUNCS.map((fn) => ({
+          value: fn,
+          label: getTimeFuncLabel(fn),
+        }))}
         value={timeCond.timeFunc}
         onValueChange={(value) =>
           onChange({ ...timeCond, timeFunc: value as TimeFunc })
@@ -1017,12 +1057,10 @@ function RuleConditionRow({
         </SelectContent>
       </Select>
       <Select
-        items={[
-          ...COMMON_TIMEZONES.map((tz) => ({
-            value: tz.value,
-            label: tz.label,
-          })),
-        ]}
+        items={COMMON_TIMEZONES.map((tz) => ({
+          value: tz.value,
+          label: tz.label,
+        }))}
         value={timeCond.timezone}
         onValueChange={(value) =>
           value !== null && onChange({ ...timeCond, timezone: value })
@@ -1045,12 +1083,10 @@ function RuleConditionRow({
         </SelectContent>
       </Select>
       <Select
-        items={[
-          ...matchOptions.map((option) => ({
-            value: option.value,
-            label: getMatchLabel(option.value),
-          })),
-        ]}
+        items={matchOptions.map((option) => ({
+          value: option.value,
+          label: getMatchLabel(option.value),
+        }))}
         value={timeCond.mode}
         onValueChange={(v) => v !== null && handleModeChange(v)}
       >
@@ -1111,12 +1147,10 @@ function RuleConditionRow({
         className='w-44'
       />
       <Select
-        items={[
-          ...matchOptions.map((option) => ({
-            value: option.value,
-            label: getMatchLabel(option.value),
-          })),
-        ]}
+        items={matchOptions.map((option) => ({
+          value: option.value,
+          label: getMatchLabel(option.value),
+        }))}
         value={phCond.mode}
         onValueChange={(v) => v !== null && handleModeChange(v)}
       >
@@ -1202,6 +1236,25 @@ function RuleGroupCard({
   onRemove,
 }: RuleGroupCardProps) {
   const { t } = useTranslation()
+  const conditionEntriesRef = useRef(
+    group.conditions.map((condition, index) => ({
+      id: `rule-condition-${index}`,
+      condition,
+    }))
+  )
+  const nextConditionIdRef = useRef(conditionEntriesRef.current.length)
+  const conditionEntries = group.conditions.map((condition, index) => {
+    const existing = conditionEntriesRef.current.at(index)
+    if (existing) {
+      existing.condition = condition
+      return existing
+    }
+    return {
+      id: `rule-condition-${nextConditionIdRef.current++}`,
+      condition,
+    }
+  })
+  conditionEntriesRef.current = conditionEntries
 
   const handleConditionChange = (
     conditionIndex: number,
@@ -1209,16 +1262,32 @@ function RuleGroupCard({
   ) => {
     const conditions = [...group.conditions]
     conditions[conditionIndex] = next
+    const entry = conditionEntriesRef.current.at(conditionIndex)
+    if (entry) {
+      entry.condition = next
+    }
     onChange({ ...group, conditions })
   }
 
   const handleAddCondition = (timeMode: boolean) => {
+    const condition = timeMode
+      ? createEmptyTimeCondition()
+      : createEmptyCondition()
+    conditionEntriesRef.current.push({
+      id: `rule-condition-${nextConditionIdRef.current++}`,
+      condition,
+    })
     onChange({
       ...group,
-      conditions: [
-        ...group.conditions,
-        timeMode ? createEmptyTimeCondition() : createEmptyCondition(),
-      ],
+      conditions: [...group.conditions, condition],
+    })
+  }
+
+  const handleConditionRemove = (conditionIndex: number) => {
+    conditionEntriesRef.current.splice(conditionIndex, 1)
+    onChange({
+      ...group,
+      conditions: group.conditions.filter((_, index) => index !== conditionIndex),
     })
   }
 
@@ -1239,19 +1308,12 @@ function RuleGroupCard({
       </div>
 
       <div className='space-y-2'>
-        {group.conditions.map((condition, conditionIndex) => (
+        {conditionEntries.map(({ id, condition }, conditionIndex) => (
           <RuleConditionRow
-            key={conditionIndex}
+            key={id}
             condition={condition}
             onChange={(next) => handleConditionChange(conditionIndex, next)}
-            onRemove={() =>
-              onChange({
-                ...group,
-                conditions: group.conditions.filter(
-                  (_, i) => i !== conditionIndex
-                ),
-              })
-            }
+            onRemove={() => handleConditionRemove(conditionIndex)}
           />
         ))}
         <div className='flex flex-wrap gap-2'>
@@ -1650,6 +1712,25 @@ export const TieredPricingEditor = memo(function TieredPricingEditor({
     RequestRuleGroup[]
   >(() => tryParseRequestRuleExpr(currentRequestRuleExpr) || [])
   const initRef = useRef(false)
+  const requestRuleGroupEntriesRef = useRef(
+    requestRuleGroups.map((group, index) => ({
+      id: `rule-group-${index}`,
+      group,
+    }))
+  )
+  const nextRuleGroupIdRef = useRef(requestRuleGroupEntriesRef.current.length)
+  const requestRuleGroupEntries = requestRuleGroups.map((group, index) => {
+    const existing = requestRuleGroupEntriesRef.current.at(index)
+    if (existing) {
+      existing.group = group
+      return existing
+    }
+    return {
+      id: `rule-group-${nextRuleGroupIdRef.current++}`,
+      group,
+    }
+  })
+  requestRuleGroupEntriesRef.current = requestRuleGroupEntries
 
   useEffect(() => {
     if (initRef.current) return
@@ -1835,33 +1916,42 @@ export const TieredPricingEditor = memo(function TieredPricingEditor({
               </Alert>
             ) : (
               <>
-                {requestRuleGroups.map((group, groupIndex) => (
+                {requestRuleGroupEntries.map(({ id, group }, groupIndex) => (
                   <RuleGroupCard
-                    key={groupIndex}
+                    key={id}
                     group={group}
                     index={groupIndex}
                     onChange={(next) => {
                       const updated = [...requestRuleGroups]
                       updated[groupIndex] = next
+                      const entry = requestRuleGroupEntriesRef.current.at(
+                        groupIndex
+                      )
+                      if (entry) {
+                        entry.group = next
+                      }
                       handleRuleGroupsChange(updated)
                     }}
-                    onRemove={() =>
+                    onRemove={() => {
+                      requestRuleGroupEntriesRef.current.splice(groupIndex, 1)
                       handleRuleGroupsChange(
-                        requestRuleGroups.filter((_, i) => i !== groupIndex)
+                        requestRuleGroups.filter((_, index) => index !== groupIndex)
                       )
-                    }
+                    }}
                   />
                 ))}
                 <Button
                   variant='outline'
                   size='sm'
                   className='h-9 w-36 justify-center'
-                  onClick={() =>
-                    handleRuleGroupsChange([
-                      ...requestRuleGroups,
-                      createEmptyRuleGroup(),
-                    ])
-                  }
+                  onClick={() => {
+                    const group = createEmptyRuleGroup()
+                    requestRuleGroupEntriesRef.current.push({
+                      id: `rule-group-${nextRuleGroupIdRef.current++}`,
+                      group,
+                    })
+                    handleRuleGroupsChange([...requestRuleGroups, group])
+                  }}
                 >
                   <Plus className='mr-2 h-4 w-4' />
                   {t('Add rule group')}

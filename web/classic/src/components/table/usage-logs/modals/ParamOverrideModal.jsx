@@ -101,12 +101,24 @@ const ParamOverrideModal = ({
   paramOverrideTarget,
   t,
 }) => {
-  const lines = Array.isArray(paramOverrideTarget?.lines)
-    ? paramOverrideTarget.lines
-    : [];
+  const lines = useMemo(() => {
+    return Array.isArray(paramOverrideTarget?.lines)
+      ? paramOverrideTarget.lines
+      : [];
+  }, [paramOverrideTarget?.lines]);
 
   const parsedLines = useMemo(() => {
-    return lines.map(parseAuditLine);
+    const duplicateCounts = new Map();
+    return lines.map((line) => {
+      const parsedLine = parseAuditLine(line);
+      if (!parsedLine) {
+        return null;
+      }
+      const baseKey = `${parsedLine.action}-${parsedLine.content}`;
+      const count = duplicateCounts.get(baseKey) || 0;
+      duplicateCounts.set(baseKey, count + 1);
+      return { ...parsedLine, key: `${baseKey}-${count}` };
+    });
   }, [lines]);
 
   const copyAll = async () => {
@@ -205,14 +217,14 @@ const ParamOverrideModal = ({
               paddingRight: 2,
             }}
           >
-            {parsedLines.map((item, index) => {
+            {parsedLines.map((item) => {
               if (!item) {
                 return null;
               }
 
               return (
                 <div
-                  key={`${item.action}-${index}`}
+                  key={item.key}
                   style={{
                     padding: '10px 12px',
                     borderRadius: 10,

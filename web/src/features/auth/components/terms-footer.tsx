@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
@@ -48,20 +49,22 @@ export function TermsFooter({
 
   const agreementLink = {
     label: t('User Agreement'),
-    href: '/user-agreement',
+    to: '/user-agreement' as const,
   }
   const privacyLink = {
     label: t('Privacy Policy'),
-    href: '/privacy-policy',
+    to: '/privacy-policy' as const,
   }
 
-  const activeLinks =
-    hasUserAgreement || hasPrivacyPolicy
-      ? ([
-          hasUserAgreement ? agreementLink : null,
-          hasPrivacyPolicy ? privacyLink : null,
-        ].filter(Boolean) as Array<{ label: string; href: string }>)
-      : [agreementLink, privacyLink]
+  const activeLinks: Array<typeof agreementLink | typeof privacyLink> = []
+
+  if (hasUserAgreement) {
+    activeLinks.push(agreementLink)
+  }
+
+  if (hasPrivacyPolicy) {
+    activeLinks.push(privacyLink)
+  }
 
   const [firstLink, secondLink] = activeLinks
 
@@ -69,23 +72,23 @@ export function TermsFooter({
     <p className={cn('text-muted-foreground text-center text-xs', className)}>
       {text}{' '}
       {firstLink && (
-        <a
-          href={firstLink.href}
+        <Link
+          to={firstLink.to}
           className='hover:text-primary underline underline-offset-4'
         >
           {firstLink.label}
-        </a>
+        </Link>
       )}
       {secondLink && (
         <>
           {' '}
           {t('and')}{' '}
-          <a
-            href={secondLink.href}
+          <Link
+            to={secondLink.to}
             className='hover:text-primary underline underline-offset-4'
           >
             {secondLink.label}
-          </a>
+          </Link>
         </>
       )}
       .

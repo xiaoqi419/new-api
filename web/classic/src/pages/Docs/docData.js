@@ -2201,9 +2201,12 @@ const codeFenceLang = (label) => {
     l.includes('响应') ||
     l.includes('成功') ||
     l.includes('失败')
-  )
+  ) {
     return 'json';
-  if (l.includes('curl')) return 'bash';
+  }
+  if (l.includes('curl')) {
+    return 'bash';
+  }
   if (l.includes('python')) return 'python';
   if (l.includes('node')) return 'javascript';
   if (l.includes('header')) return 'http';
@@ -2211,7 +2214,7 @@ const codeFenceLang = (label) => {
 };
 
 const mdCell = (text) =>
-  typeof text === 'string' ? text.replace(/\|/g, '\\|').replace(/\n/g, ' ') : text;
+  typeof text === 'string' ? text.replaceAll('|', '\\|').replaceAll('\n', ' ') : text;
 
 const blocksToMarkdown = (blocks, lines) => {
   (blocks || []).forEach((b) => {
@@ -2282,5 +2285,5 @@ export const buildCategoryMarkdown = (baseUrl, groupId, catId) => {
   } else {
     blocksToMarkdown(cat.blocks, lines);
   }
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+  return lines.join('\n').replaceAll(/\n{3,}/g, '\n\n').trim() + '\n';
 };

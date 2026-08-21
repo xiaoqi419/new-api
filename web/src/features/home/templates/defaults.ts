@@ -48,7 +48,6 @@ export function getDefaultClassicContent(t: TFunction): ClassicLandingContent {
         {
           name: 'CC Switch',
           url: 'https://ccswitch.io',
-          iconUrl: 'https://ccswitch.io/favicon.png',
         },
       ],
     },

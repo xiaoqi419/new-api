@@ -1,11 +1,39 @@
-import { resolve } from 'node:path'
+/*
+Copyright (C) 2023-2026 QuantumNous
 
-// Vitest does not read Rsbuild aliases; keep React component tests on the same
-// `@` -> `src` import contract used by the application build.
-export default {
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { defineConfig } from 'vitest/config'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+export default defineConfig({
   resolve: {
     alias: {
-      '@': resolve(process.cwd(), 'src'),
+      '@': path.resolve(__dirname, './src'),
     },
   },
-}
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    clearMocks: true,
+    restoreMocks: true,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+  },
+})

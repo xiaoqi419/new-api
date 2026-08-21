@@ -1,0 +1,554 @@
+schema: comet.native.v4
+name: login-page-design
+language: zh-CN
+phase: archive
+status: done
+state_version: 33
+brief: brief.md
+spec_changes:
+  - capability: login-page
+    operation: create
+    source: specs/login-page/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/figma-model-square-refresh
+  target_branch: comet/figma-model-square-refresh
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 3
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 登录页在桌面端展示品牌面板和认证卡片，在窄屏展示无横向溢出的单栏布局。
+    result: passed
+    reason:
+      text: Desktop split and 390px/320px single-column layouts pass without
+        horizontal overflow.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 桌面品牌面板以图形 Logo、去重后的大标题、配置描述或七语言默认描述、配置统计和无连线的 Claude/Codex/Gemini/40+
+      模型横向带填充主视觉，不显示重复系统名称、轮廓字水印、模型拓扑、折线路由或中心网关图；模型名称只用于表达已支持的模型生态，不依赖真实
+      provider 配置，也不代表登录 OAuth provider 数量；减少动态效果时场景保持清晰静态状态。
+    result: passed
+    reason:
+      text: The desktop brand scene contains the icon-only mark, de-duplicated content
+        and unconnected model rail without topology or watermark; reduced motion
+        remains readable.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 系统状态关闭某个 OAuth/Passkey/密码登录能力时，对应控件不显示，其他入口仍可用。
+    result: passed
+    reason:
+      text: Password, Passkey and provider entry points remain conditional on
+        SystemStatus.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 用户可从登录页进入注册和忘记密码；登录表单提交仍调用既有 API，并保留 redirect 和 2FA 分支。
+    result: passed
+    reason:
+      text: Registration, forgot-password, login API, redirect and 2FA branches remain
+        intact.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 登录页在浅色、深色和七种前端语言下均可读，认证区域跟随首页当前主题 token、不残留旧粉色，控件具有可访问名称、键盘焦点和稳定尺寸。
+    result: passed
+    reason:
+      text: Auth semantics inherit current --home-* tokens; fresh light/dark
+        screenshots contain no legacy pink auth surface.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: 验证码、Turnstile、OAuth、Passkey 的现有对话框/流程未被视觉改造破坏。
+    result: passed
+    reason:
+      text: Captcha, Turnstile, OAuth and Passkey composition remains connected
+        through the unchanged auth flow.
+      truncated: false
+  - id: A7
+    source: specs/login-page/spec.md
+    text: Desktop sign-in - **WHEN** 用户在宽屏打开 `/sign-in` - **THEN** 左侧仅显示系统图形
+      Logo，认证卡片显示完整 Logo/系统名称，并显示登录页配置中的品牌标题/描述/统计信息（若有） - **AND**
+      后台标题与系统名称不同时使用后台配置值；标题为空或与系统名称重复时显示已有七语言产品价值标题；描述使用后台配置值，描述为空时显示已有七语言默认产品描述
+      - **AND** Claude、Codex、Gemini 和 40+ 模型项位于同一条无连线横向带，不显示折线路由、模型拓扑或中心网关图 -
+      **AND** 品牌面板不显示重复系统名称或穿过内容的轮廓字水印，标题、描述、模型带和统计信息互不遮挡 - **AND**
+      认证区域的背景、卡片、控件和装饰信号跟随首页当前浅色/深色主题 token，不显示旧粉色 auth palette - **AND**
+      品牌内容和模型项错峰入场，模型带具有低频扫光，背景扫描缓慢移动；`prefers-reduced-motion` 下所有动画停止并保留静态可读内容
+      - **AND** 模型横向带仅是支持能力示意，不作为登录 provider 或实时上游状态列表 - **AND**
+      认证卡片具有锐利轮廓和品牌信号线 - **AND** 登录卡片宽度受限，表单、provider 和底部协议文案保持清晰垂直节奏
+    result: passed
+    reason:
+      text: Desktop configuration fallbacks, theme inheritance, CSS motion, content
+        hierarchy and card limits match the scenario.
+      truncated: false
+  - id: A8
+    source: specs/login-page/spec.md
+    text: Mobile sign-in - **WHEN** 用户在窄屏打开 `/sign-in` - **THEN**
+      品牌面板折叠为紧凑品牌标识，登录卡片适配屏幕宽度 - **AND** 大面积品牌文字、模型横向带和装饰动效不在移动端渲染为可见场景 -
+      **AND** 页面不产生横向滚动，所有主要控件保持可操作
+    result: passed
+    reason:
+      text: Mobile hides the large brand scene and retains an operable overflow-free
+        single-column card.
+      truncated: false
+  - id: A9
+    source: specs/login-page/spec.md
+    text: Conditional providers - **WHEN** 服务端状态关闭某个 provider 或密码登录 - **THEN**
+      对应入口不显示或保持现有禁用语义 - **AND** 其他可用认证入口和协议文案仍正常显示
+    result: passed
+    reason:
+      text: Provider and password availability remains driven by existing status
+        fields.
+      truncated: false
+  - id: A10
+    source: specs/login-page/spec.md
+    text: Password login submission - **WHEN** 用户填写用户名或邮箱和密码并提交 - **THEN** 继续调用现有
+      login API - **AND** 成功响应继续遵循 redirect 或跳转到 2FA - **AND**
+      失败响应继续通过现有错误提示机制反馈
+    result: passed
+    reason:
+      text: Password submission retains login API, captcha payload, 2FA, redirect and
+        failure feedback behavior.
+      truncated: false
+  - id: A11
+    source: specs/login-page/spec.md
+    text: Auth navigation - **WHEN** 用户点击注册、忘记密码或协议链接 - **THEN** 使用现有类型安全路由进入对应页面
+    result: passed
+    reason:
+      text: TermsFooter now uses typed TanStack Link/to navigation for both registered
+        agreement routes; a real memory-router test clicks User Agreement and
+        verifies the resulting pathname.
+      truncated: false
+  - id: A12
+    source: specs/login-page/spec.md
+    text: Keyboard and labels - **WHEN** 用户仅使用键盘浏览页面 - **THEN** 登录输入、密码可见性、provider
+      按钮、提交按钮和导航链接均可聚焦和操作 - **AND** 输入控件具有稳定的 label/placeholder 语义
+    result: passed
+    reason:
+      text: Inputs, visibility controls, provider controls, submit and navigation
+        remain labeled and keyboard-operable.
+      truncated: false
+  - id: A13
+    source: specs/login-page/spec.md
+    text: Theme and locale - **WHEN** 用户切换主题或语言 - **THEN** 登录页继续使用首页当前主题
+      token，旧粉色或脱离主题的装饰色不重新出现，文字不溢出、不遮挡相邻控件
+    result: passed
+    reason:
+      text: All seven locales contain the new keys; long configured text is contained
+        and theme tokens remain current.
+      truncated: false
+  - id: A14
+    source: specs/login-page/spec.md
+    text: 登录页 MUST 在桌面端呈现品牌面板和认证区域，在移动端以单栏方式呈现；任何视口不得出现横向溢出或互相遮挡。品牌面板 MUST
+      使用与首页同源的黑色、荧光绿、紫色和多彩品牌色，以图形 Logo、去重后的大尺寸标题、完整描述、配置统计和无连线的
+      Claude/Codex/Gemini/40+ 模型横向带构成编辑式科技场景。
+    result: passed
+    reason:
+      text: The responsive editorial brand scene follows the homepage palette and
+        contains no overlap or route topology.
+      truncated: false
+  - id: A15
+    source: specs/login-page/spec.md
+    text: 登录页 MUST 继续根据 `SystemStatus` 展示密码登录、Passkey、OAuth、微信、Telegram、OIDC、自定义
+      OAuth、Turnstile 和点击验证码入口。
+    result: passed
+    reason:
+      text: All SystemStatus-controlled authentication entry points remain present.
+      truncated: false
+  - id: A16
+    source: specs/login-page/spec.md
+    text: 登录页 MUST 保留注册、忘记密码、协议链接、键盘焦点和可访问名称。
+    result: passed
+    reason:
+      text: Registration, forgot-password and agreement links use Link and retain
+        accessible names/focus behavior.
+      truncated: false
+  - id: A17
+    source: specs/login-page/spec.md
+    text: 登录页 MUST 兼容当前浅色、深色和七种前端语言，不得硬编码仅适用于英文的布局宽度或文案。
+    result: passed
+    reason:
+      text: Visible copy is localized across seven languages and layout containment is
+        not English-specific.
+      truncated: false
+  - id: A18
+    source: specs/login-page/spec.md
+    text: 主要实现文件：`web/src/features/auth/auth-layout.tsx`、`web/src/features/auth/components/auth-card.tsx`、登录/注册页面的组合层和必要的
+      auth 样式。
+    result: passed
+    reason:
+      text: Implementation stays within the specified authentication composition,
+        style and test boundaries.
+      truncated: false
+  - id: A19
+    source: specs/login-page/spec.md
+    text: 认证 API、redirect helper、OAuth hook、Passkey API、验证码 hook 不在本 change 中重构。
+    result: passed
+    reason:
+      text: No authentication API, redirect, OAuth, Passkey or captcha hook was
+        refactored.
+      truncated: false
+  - id: A20
+    source: specs/login-page/spec.md
+    text: 动效使用 CSS，不新增 Three.js、React Three Fiber、Drei、GSAP、Canvas RAF 或指针跟随逻辑。
+    result: passed
+    reason:
+      text: Motion is CSS-only; no Three.js, GSAP, Canvas RAF or pointer-follow
+        dependency was introduced.
+      truncated: false
+  - id: A21
+    source: specs/login-page/spec.md
+    text: 测试文件放在对应模块的 `__tests__/` 目录。
+    result: passed
+    reason:
+      text: Both layout and TermsFooter regressions live under the corresponding auth
+        __tests__ directories.
+      truncated: false
+builder_handoff:
+  candidate_id: dbb80f96-e408-4e4e-b6b1-81fee03f4381
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:528c68a3-c0dd-426a-b60f-e566ea5be5d9
+  iteration: 2
+  summary:
+    text: Repaired the sole failed acceptance A11. TermsFooter now uses generated
+      TanStack Router typed Link navigation for /user-agreement and
+      /privacy-policy while preserving conditional status rendering, i18n, link
+      order, styling and accessibility. Added a real memory-router regression
+      covering enabled-link filtering, SPA navigation, both links, and the
+      no-footer state.
+    truncated: false
+  addressed_acceptance_ids:
+    - A11
+  checks:
+    - name:
+        text: Focused TermsFooter regression
+        truncated: false
+      result: passed
+      note:
+        text: 3 tests passed using a real TanStack memory router, including click
+          navigation to /user-agreement.
+        truncated: false
+    - name:
+        text: Full auth Vitest suite
+        truncated: false
+      result: passed
+      note:
+        text: 7 files and 36 tests passed after the typed-link repair. jsdom emitted
+          only its known unimplemented scrollTo notice.
+        truncated: false
+    - name:
+        text: Scoped oxfmt
+        truncated: false
+      result: passed
+      note:
+        text: TermsFooter and its new regression test use the correct format.
+        truncated: false
+    - name:
+        text: Scoped oxlint
+        truncated: false
+      result: passed
+      note:
+        text: No lint findings in TermsFooter or its regression test.
+        truncated: false
+    - name:
+        text: TypeScript build
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b validates both Link targets against the generated route tree.
+        truncated: false
+    - name:
+        text: Production frontend build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild production bundle completed successfully.
+        truncated: false
+    - name:
+        text: Residual anchor search
+        truncated: false
+      result: passed
+      note:
+        text: TermsFooter contains no bare <a>, href prop or href link-data field.
+        truncated: false
+    - name:
+        text: Git whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check completed successfully.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: jsdom logs its existing not-implemented Window.scrollTo notice when the
+        real memory router navigates; all assertions pass and browser navigation
+        is unaffected.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-20T20:52:29.081Z
+blockers: []
+verification:
+  candidate_id: dbb80f96-e408-4e4e-b6b1-81fee03f4381
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:2b8d1cdd-141b-441a-9db2-613b655a63a3
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: auth-vitest
+      name:
+        text: Full auth Vitest
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\vitest.cmd run src/features/auth --reporter=dot
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1842
+    - id: auth-oxlint
+      name:
+        text: Changed auth oxlint
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\oxlint.cmd -c .oxlintrc.json
+            src/features/auth/auth-layout.tsx
+            src/features/auth/components/auth-card.tsx
+            src/features/auth/components/terms-footer.tsx
+            src/features/auth/components/__tests__/terms-footer.test.tsx
+            src/features/auth/__tests__/auth-layout.test.tsx
+            src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 131
+    - id: auth-oxfmt
+      name:
+        text: Changed auth oxfmt
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\oxfmt.cmd --check src/features/auth/auth-layout.tsx
+            src/features/auth/components/auth-card.tsx
+            src/features/auth/components/terms-footer.tsx
+            src/features/auth/components/__tests__/terms-footer.test.tsx
+            src/features/auth/__tests__/auth-layout.test.tsx
+            src/features/changelog/data.ts src/styles/theme-presets.css
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 380
+    - id: web-tsgo
+      name:
+        text: Web TypeScript build
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\tsgo.cmd -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2471
+    - id: web-rsbuild
+      name:
+        text: Web production build
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\rsbuild.cmd build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5736
+    - id: auth-browser
+      name:
+        text: Auth responsive, theme and reduced-motion browser QA
+        truncated: false
+      argv_display:
+        - text: C:\Users\pekilove\AppData\Local\Temp\login-page-refined-qa.mjs
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 11515
+  summary:
+    text: Independent read-only verification passes all A1-A21. The A11 repair uses
+      typed Link navigation with a real-router click regression; full auth
+      tests, types, formatting, lint, production build, six responsive/theme
+      browser scenarios and screenshot review all pass.
+    truncated: false
+  risks:
+    - text: Privacy Policy shares the same typed Link implementation and is
+        typechecked/rendered but the focused regression only clicks User
+        Agreement; this is a low-risk test granularity gap.
+      truncated: false
+    - text: The local unauthenticated status request emits the existing expected 401
+        without page exceptions or overlays.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-20T20:59:41.212Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Verifier review identified a newly introduced non-zero letter-spacing
+        utility in the stats label; removing it keeps the candidate aligned with
+        the frontend style constraint, then rerun checks before Verify.
+      truncated: false
+    completed_at: 2026-08-20T18:30:53.158Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Verifier review also identified a pre-existing negative letter-spacing
+        utility in the adjusted AuthCard title; removing it enforces the
+        project-wide zero-letter-spacing rule, then rerun checks before Verify.
+      truncated: false
+    completed_at: 2026-08-20T18:33:31.417Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Runtime Verify found only an oxfmt failure in auth-card.tsx after the
+        zero-letter-spacing cleanup; formatted the file and will rerun the
+        complete required checks.
+      truncated: false
+    completed_at: 2026-08-20T18:35:36.634Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A4
+    summary:
+      text: A1, A2, A3, and A5 pass. A4 fails because configurable brand names and
+        hero titles lack long-word containment; add min-w-0 and overflow
+        wrapping, then repeat layout and runtime verification.
+      truncated: false
+    completed_at: 2026-08-20T18:40:15.434Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: User requested a stronger technology and art direction after reviewing the
+        restrained SaaS candidate. Preserve the verified authentication and
+        responsive contracts, but redesign the visual surface with a sharper
+        routing-signal composition and more distinctive technical identity.
+      truncated: false
+    completed_at: 2026-08-20T18:51:40.580Z
+  - goal_cycle: 1
+    iteration: 6
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-20T19:28:48.019Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-20T20:26:40.831Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A11
+    summary:
+      text: Theme inheritance, responsive layout, authentication behavior,
+        localization and motion all pass. A11 fails because two registered
+        internal agreement routes still use bare anchors in TermsFooter; replace
+        them with typed TanStack Links and rerun verification.
+      truncated: false
+    completed_at: 2026-08-20T20:46:46.420Z
+  - goal_cycle: 3
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passes all A1-A21. The A11 repair uses
+        typed Link navigation with a real-router click regression; full auth
+        tests, types, formatting, lint, production build, six responsive/theme
+        browser scenarios and screenshot review all pass.
+      truncated: false
+    completed_at: 2026-08-20T20:59:41.212Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-20T18:07:06.702Z

@@ -203,6 +203,23 @@
         "no-console": "off",
         "prefer-node-protocol": "off"
       }
+    },
+    {
+      "files": ["src/features/canvas/index.tsx"],
+      "rules": {
+        "react/iframe-missing-sandbox": "off"
+      }
+    },
+    {
+      "files": [
+        "src/routes/_authenticated/chat/$chatId.tsx",
+        "classic/src/pages/Chat/index.jsx",
+        "classic/src/pages/About/index.jsx",
+        "classic/src/pages/Home/index.jsx"
+      ],
+      "rules": {
+        "react/iframe-missing-sandbox": "off"
+      }
     }
   ]
 }
