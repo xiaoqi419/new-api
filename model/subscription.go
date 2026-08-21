@@ -255,6 +255,18 @@ func GetSubscriptionOrderByTradeNo(tradeNo string) *SubscriptionOrder {
 	return &order
 }
 
+// GetSubscriptionOrderByTradeNoAndUserId returns a subscription order only when it belongs to userId.
+func GetSubscriptionOrderByTradeNoAndUserId(tradeNo string, userId int) *SubscriptionOrder {
+	if tradeNo == "" || userId <= 0 {
+		return nil
+	}
+	var order SubscriptionOrder
+	if err := DB.Where("trade_no = ? AND user_id = ?", tradeNo, userId).First(&order).Error; err != nil {
+		return nil
+	}
+	return &order
+}
+
 // User subscription instance
 type UserSubscription struct {
 	Id     int `json:"id"`
@@ -607,7 +619,7 @@ func refreshSubscriptionUserGroupCache(userId int, operation string) {
 
 // Complete a subscription order (idempotent). Creates a UserSubscription snapshot from the plan.
 // expectedPaymentProvider guards against cross-gateway callback attacks (empty skips the check).
-// actualPaymentMethod updates the order's PaymentMethod to reflect the real payment type used (empty skips update).
+// actualPaymentMethod must match the pending order's PaymentMethod when supplied (empty skips the check).
 func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedPaymentProvider string, actualPaymentMethod string) error {
 	if tradeNo == "" {
 		return errors.New("tradeNo is empty")
@@ -634,6 +646,9 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 		}
 		if order.Status != common.TopUpStatusPending {
 			return ErrSubscriptionOrderStatusInvalid
+		}
+		if actualPaymentMethod != "" && order.PaymentMethod != actualPaymentMethod {
+			return ErrPaymentMethodMismatch
 		}
 		plan, err := GetSubscriptionPlanById(order.PlanId)
 		if err != nil {
@@ -662,9 +677,6 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string, expectedP
 		order.CompleteTime = common.GetTimestamp()
 		if providerPayload != "" {
 			order.ProviderPayload = providerPayload
-		}
-		if actualPaymentMethod != "" && order.PaymentMethod != actualPaymentMethod {
-			order.PaymentMethod = actualPaymentMethod
 		}
 		if err := tx.Save(&order).Error; err != nil {
 			return err
@@ -725,6 +737,16 @@ func upsertSubscriptionTopUpTx(tx *gorm.DB, order *SubscriptionOrder) error {
 }
 
 func ExpireSubscriptionOrder(tradeNo string, expectedPaymentProvider string) error {
+	return updatePendingSubscriptionOrderStatus(tradeNo, expectedPaymentProvider, common.TopUpStatusExpired)
+}
+
+// FailPendingSubscriptionOrder marks only a matching pending order as failed.
+// This is used when checkout creation fails after the local order has been created.
+func FailPendingSubscriptionOrder(tradeNo string, expectedPaymentProvider string) error {
+	return updatePendingSubscriptionOrderStatus(tradeNo, expectedPaymentProvider, common.TopUpStatusFailed)
+}
+
+func updatePendingSubscriptionOrderStatus(tradeNo string, expectedPaymentProvider string, status string) error {
 	if tradeNo == "" {
 		return errors.New("tradeNo is empty")
 	}
@@ -743,7 +765,7 @@ func ExpireSubscriptionOrder(tradeNo string, expectedPaymentProvider string) err
 		if order.Status != common.TopUpStatusPending {
 			return nil
 		}
-		order.Status = common.TopUpStatusExpired
+		order.Status = status
 		order.CompleteTime = common.GetTimestamp()
 		return tx.Save(&order).Error
 	})

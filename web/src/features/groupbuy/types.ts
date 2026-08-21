@@ -128,6 +128,11 @@ export interface PaymentResultData {
   epay_url?: string
   epay_params?: Record<string, string>
   group_no?: string
+  checkout_type?: 'qrcode' | 'payurl' | 'urlscheme'
+  checkout_value?: string
+  gateway_trade_no?: string
+  payment_method?: string
+  money?: string | number
 }
 
 // ============================================================================

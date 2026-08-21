@@ -3,10 +3,10 @@ package controller
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -227,6 +227,9 @@ func CreateGroupBuy(c *gin.Context) {
 	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
 	if err != nil {
 		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
+		if provider == model.PaymentProviderEpay {
+			failGroupBuyEpayCheckout(c.Request.Context(), tradeNo)
+		}
 		common.ApiErrorMsg(c, err.Error())
 		return
 	}
@@ -266,6 +269,9 @@ func JoinGroupBuy(c *gin.Context) {
 	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
 	if err != nil {
 		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
+		if provider == model.PaymentProviderEpay {
+			failGroupBuyEpayCheckout(c.Request.Context(), tradeNo)
+		}
 		common.ApiErrorMsg(c, err.Error())
 		return
 	}
@@ -424,12 +430,21 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 		}
 		return data, nil
 	default:
-		payURL, params, err := groupBuyEpay(tradeNo, payMoney, paymentMethod)
+		data, err := groupBuyEpayMAPI(c, tradeNo, payMoney, paymentMethod)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("拼团 易支付下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
 			return nil, fmt.Errorf("拉起支付失败")
 		}
-		return gin.H{"epay_url": payURL, "epay_params": params, "trade_no": tradeNo}, nil
+		return data, nil
+	}
+}
+
+// failGroupBuyEpayCheckout prevents a failed MAPI checkout from remaining
+// pending after the caller has released its group-buy reservation.
+func failGroupBuyEpayCheckout(ctx context.Context, tradeNo string) {
+	if err := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); err != nil &&
+		!errors.Is(err, model.ErrTopUpStatusInvalid) {
+		logger.LogError(ctx, fmt.Sprintf("拼团 易支付订单标记失败 trade_no=%s error=%q", tradeNo, err.Error()))
 	}
 }
 
@@ -506,27 +521,42 @@ func groupBuyAlipay(ctx context.Context, tradeNo string, payMoney float64) (gin.
 	}, nil
 }
 
-func groupBuyEpay(tradeNo string, payMoney float64, paymentMethod string) (string, map[string]string, error) {
-	client := GetEpayClient()
-	if client == nil {
-		return "", nil, fmt.Errorf("当前管理员未配置支付信息")
+func groupBuyEpayMAPI(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+	mapiClient, err := service.NewEpayMAPIClient(GetEpayClient(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("当前管理员未配置支付信息")
 	}
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, _ := url.Parse(paymentReturnPath("/console/log?show_history=true"))
-	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
-	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           paymentMethod,
-		ServiceTradeNo: tradeNo,
-		Name:           groupBuyPayDesc,
-		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
-		Device:         epay.PC,
-		NotifyUrl:      notifyUrl,
-		ReturnUrl:      returnUrl,
+	returnURL, err := url.Parse(paymentReturnPath("/console/log?show_history=true"))
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	notifyURL, err := url.Parse(callBackAddress + "/api/user/epay/notify")
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	money := decimal.NewFromFloat(payMoney).StringFixed(2)
+	checkout, err := mapiClient.CreateCheckout(c.Request.Context(), service.EpayMAPIRequest{
+		PaymentMethod: paymentMethod,
+		TradeNo:       tradeNo,
+		Name:          groupBuyPayDesc,
+		Money:         money,
+		ClientIP:      c.ClientIP(),
+		Device:        epay.PC,
+		NotifyURL:     notifyURL,
+		ReturnURL:     returnURL,
 	})
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	return uri, params, nil
+	return gin.H{
+		"trade_no":         tradeNo,
+		"gateway_trade_no": checkout.GatewayTradeNo,
+		"checkout_type":    checkout.CheckoutType,
+		"checkout_value":   checkout.CheckoutValue,
+		"payment_method":   paymentMethod,
+		"money":            money,
+	}, nil
 }
 
 func maskUsername(name string) string {

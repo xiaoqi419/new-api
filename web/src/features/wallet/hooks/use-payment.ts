@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import i18next from 'i18next'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -26,6 +26,7 @@ import {
   calculateWaffoAmount,
   calculateWaffoPancakeAmount,
   requestPayment,
+  requestEpayCheckout,
   requestStripePayment,
   isApiSuccess,
 } from '../api'
@@ -33,9 +34,11 @@ import {
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
-  submitPaymentForm,
+  isAlipayDirectPayment,
+  isWechatDirectPayment,
+  openWalletEpayCheckout,
 } from '../lib'
-import type { AmountRequest, AmountResponse } from '../types'
+import type { AmountRequest, AmountResponse, EpayCheckoutData } from '../types'
 
 // ============================================================================
 // Payment Hook
@@ -83,6 +86,13 @@ export function usePayment() {
   const [amount, setAmount] = useState<number>(0)
   const [calculating, setCalculating] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [epayCheckout, setEpayCheckout] = useState<EpayCheckoutData | null>(
+    null
+  )
+  const lastEpayRequestRef = useRef<{
+    amount: number
+    paymentType: string
+  } | null>(null)
 
   // Calculate payment amount
   const calculatePaymentAmount = useCallback(
@@ -112,41 +122,66 @@ export function usePayment() {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
-        const amount = Math.floor(topupAmount)
+        const requestAmount = Math.floor(topupAmount)
+        lastEpayRequestRef.current = { amount: topupAmount, paymentType }
 
-        const response = isStripe
-          ? await requestStripePayment({
-              amount,
-              payment_method: 'stripe',
-            })
-          : await requestPayment({
-              amount,
-              payment_method: paymentType,
-            })
+        const isDirectPayment =
+          isAlipayDirectPayment(paymentType) ||
+          isWechatDirectPayment(paymentType)
+        if (isStripe) {
+          const response = await requestStripePayment({
+            amount: requestAmount,
+            payment_method: 'stripe',
+          })
+          if (!isApiSuccess(response)) {
+            toast.error(response.message || i18next.t('Payment request failed'))
+            return false
+          }
+
+          // Handle Stripe payment
+          if (response.data?.pay_link) {
+            window.open(response.data.pay_link, '_blank')
+            toast.success(i18next.t('Redirecting to payment page...'))
+            return true
+          }
+
+          return false
+        }
+
+        if (isDirectPayment) {
+          const response = await requestPayment({
+            amount: requestAmount,
+            payment_method: paymentType,
+          })
+          if (!isApiSuccess(response)) {
+            toast.error(response.message || i18next.t('Payment request failed'))
+          }
+          return false
+        }
+
+        const response = await requestEpayCheckout({
+          amount: requestAmount,
+          payment_method: paymentType,
+        })
 
         if (!isApiSuccess(response)) {
           toast.error(response.message || i18next.t('Payment request failed'))
           return false
         }
 
-        // Handle Stripe payment
-        if (isStripe && response.data?.pay_link) {
-          window.open(response.data.pay_link as string, '_blank')
-          toast.success(i18next.t('Redirecting to payment page...'))
-          return true
+        const opened = openWalletEpayCheckout(
+          response.data,
+          {
+            paymentMethod: paymentType,
+            ...(amount > 0 ? { money: amount } : {}),
+          },
+          setEpayCheckout
+        )
+        if (!opened) {
+          toast.error(i18next.t('Payment request failed'))
+          return false
         }
-
-        // Handle non-Stripe payment
-        if (!isStripe && response.data) {
-          const url = (response as unknown as { url?: string }).url
-          if (url) {
-            submitPaymentForm(url, response.data)
-            toast.success(i18next.t('Redirecting to payment page...'))
-            return true
-          }
-        }
-
-        return false
+        return true
       } catch {
         toast.error(i18next.t('Payment request failed'))
         return false
@@ -154,8 +189,19 @@ export function usePayment() {
         setProcessing(false)
       }
     },
-    []
+    [amount]
   )
+
+  const retryEpayCheckout = useCallback(async () => {
+    const request = lastEpayRequestRef.current
+    if (!request) return false
+    setEpayCheckout(null)
+    return processPayment(request.amount, request.paymentType)
+  }, [processPayment])
+
+  const closeEpayCheckout = useCallback(() => {
+    setEpayCheckout(null)
+  }, [])
 
   return {
     amount,
@@ -163,6 +209,9 @@ export function usePayment() {
     processing,
     calculatePaymentAmount,
     processPayment,
+    epayCheckout,
+    retryEpayCheckout,
+    closeEpayCheckout,
     setAmount,
   }
 }

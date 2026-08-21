@@ -28,6 +28,7 @@ import type {
   RedemptionResponse,
   AmountResponse,
   PaymentResponse,
+  EpayCheckoutResponse,
   StripePaymentResponse,
   AlipayPaymentResponse,
   WechatPaymentRequest,
@@ -125,6 +126,18 @@ export async function requestPayment(
     ...res.data,
     url: res.data.url || (res as unknown as { url?: string }).url,
   }
+}
+
+/**
+ * Create an in-site checkout for an Epay aggregation payment.
+ */
+export async function requestEpayCheckout(
+  request: PaymentRequest
+): Promise<EpayCheckoutResponse> {
+  const res = await api.post('/api/user/epay/checkout', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
 }
 
 /**

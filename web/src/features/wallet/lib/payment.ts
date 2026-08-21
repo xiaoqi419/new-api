@@ -22,7 +22,12 @@ import {
   DEFAULT_PAYMENT_TYPE,
   DEFAULT_MIN_TOPUP,
 } from '../constants'
-import type { PaymentMethod, PresetAmount, TopupInfo } from '../types'
+import type {
+  EpayCheckoutData,
+  PaymentMethod,
+  PresetAmount,
+  TopupInfo,
+} from '../types'
 
 // ============================================================================
 // Payment Processing Functions
@@ -87,6 +92,131 @@ export function isSafePaymentRedirectUrl(value: string): boolean {
     return false
   }
 }
+
+/**
+ * Epay checkout values are gateway-controlled. QR values remain inert, while
+ * URL and app-scheme values must pass a narrow allowlist before being encoded
+ * into the in-site QR code.
+ */
+export function isSafeEpayCheckoutTarget(
+  checkoutType: string,
+  value: string,
+  paymentMethod: string
+): boolean {
+  if (checkoutType === 'payurl') {
+    return isSafePaymentRedirectUrl(value)
+  }
+  if (checkoutType !== 'urlscheme') {
+    return false
+  }
+
+  const normalizedValue = value.trim().toLowerCase()
+  if (paymentMethod === PAYMENT_TYPES.ALIPAY) {
+    return (
+      normalizedValue.startsWith('alipay://') ||
+      normalizedValue.startsWith('alipays://')
+    )
+  }
+  if (paymentMethod === PAYMENT_TYPES.WECHAT) {
+    return (
+      normalizedValue.startsWith('weixin://') ||
+      normalizedValue.startsWith('wxp://')
+    )
+  }
+  return false
+}
+
+interface EpayCheckoutFallback {
+  tradeNo?: string
+  paymentMethod?: string
+  money?: string | number
+}
+
+export function getEpayCheckoutData(
+  value: unknown,
+  fallback: EpayCheckoutFallback = {}
+): EpayCheckoutData | null {
+  if (!value || typeof value !== 'object') return null
+  const fields = value as Record<string, unknown>
+  let checkoutType = fields.checkout_type
+  let checkoutValue = fields.checkout_value
+  if (!checkoutType && typeof fields.pay_url === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.pay_url
+  } else if (!checkoutType && typeof fields.payurl === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.payurl
+  } else if (!checkoutType && typeof fields.qr_code === 'string') {
+    checkoutType = 'qrcode'
+    checkoutValue = fields.qr_code
+  }
+  const tradeNo = fields.trade_no ?? fallback.tradeNo
+  const paymentMethod = fields.payment_method ?? fallback.paymentMethod
+  const money = fields.money ?? fallback.money
+  if (
+    (checkoutType !== 'qrcode' &&
+      checkoutType !== 'payurl' &&
+      checkoutType !== 'urlscheme') ||
+    typeof checkoutValue !== 'string' ||
+    !checkoutValue.trim() ||
+    typeof tradeNo !== 'string' ||
+    !tradeNo.trim() ||
+    typeof paymentMethod !== 'string' ||
+    !paymentMethod.trim() ||
+    (typeof money !== 'string' && typeof money !== 'number')
+  ) {
+    return null
+  }
+  if (
+    fallback.paymentMethod &&
+    paymentMethod.trim() !== fallback.paymentMethod.trim()
+  ) {
+    return null
+  }
+  if (fallback.money !== undefined) {
+    const responseMoney = Number(money)
+    const expectedMoney = Number(fallback.money)
+    if (
+      !Number.isFinite(responseMoney) ||
+      !Number.isFinite(expectedMoney) ||
+      responseMoney !== expectedMoney
+    ) {
+      return null
+    }
+  }
+  if (
+    checkoutType !== 'qrcode' &&
+    !isSafeEpayCheckoutTarget(checkoutType, checkoutValue, paymentMethod.trim())
+  ) {
+    return null
+  }
+  const gatewayTradeNo = fields.gateway_trade_no
+  return {
+    trade_no: tradeNo.trim(),
+    ...(typeof gatewayTradeNo === 'string' && gatewayTradeNo.trim()
+      ? { gateway_trade_no: gatewayTradeNo.trim() }
+      : {}),
+    checkout_type: checkoutType,
+    checkout_value: checkoutValue.trim(),
+    payment_method: paymentMethod.trim(),
+    money: String(money),
+  }
+}
+
+export function openEpayCheckout(
+  value: unknown,
+  fallback: EpayCheckoutFallback,
+  setCheckout: (checkout: EpayCheckoutData) => void
+): boolean {
+  const checkout = getEpayCheckoutData(value, fallback)
+  if (!checkout) return false
+  setCheckout(checkout)
+  return true
+}
+
+export const openWalletEpayCheckout = openEpayCheckout
+export const openSubscriptionEpayCheckout = openEpayCheckout
+export const openGroupBuyEpayCheckout = openEpayCheckout
 
 /**
  * Check if payment method is Stripe

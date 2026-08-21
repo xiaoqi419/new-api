@@ -6306,6 +6306,21 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Payment checkout": "Paiement",
+    "Complete this payment without leaving the current page.": "Effectuez ce paiement sans quitter la page actuelle.",
+    "Payment completed. Returning to the previous page.": "Paiement effectué. Retour à la page précédente.",
+    "Payment failed. You can retry or return.": "Échec du paiement. Vous pouvez réessayer ou revenir en arrière.",
+    "Payment expired. You can retry or return.": "Le paiement a expiré. Vous pouvez réessayer ou revenir en arrière.",
+    "Payment status check timed out": "Délai de vérification du paiement dépassé",
+    "Payment status check timed out. You can refresh manually.": "Le délai de vérification du paiement est dépassé. Vous pouvez actualiser manuellement.",
+    "Waiting for payment": "En attente du paiement",
+    "Scan the QR code to complete your payment.": "Scannez le code QR pour effectuer le paiement.",
+    "Open Alipay": "Ouvrir Alipay",
+    "Open WeChat": "Ouvrir WeChat",
+    "Open payment page": "Ouvrir la page de paiement",
+    "Refresh payment status": "Actualiser le statut du paiement",
+    "Order number": "Numéro de commande",
+    "Payment QR code": "Code QR de paiement"
   }
 }

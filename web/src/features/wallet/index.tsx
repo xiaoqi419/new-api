@@ -27,11 +27,13 @@ import { BillingHistoryDialog } from './components/dialogs/billing-history-dialo
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { PaymentQrDialog } from './components/dialogs/payment-qr-dialog'
+import { EpayCheckoutDialog } from './components/dialogs/epay-checkout-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
 import { DEFAULT_DISCOUNT_RATE, PAYMENT_TYPES } from './constants'
+import { getTradeStatus } from './api'
 import {
   useTopupInfo,
   usePayment,
@@ -97,6 +99,9 @@ export function Wallet(props: WalletProps) {
     processing,
     calculatePaymentAmount,
     processPayment,
+    epayCheckout,
+    retryEpayCheckout,
+    closeEpayCheckout,
   } = usePayment()
   const {
     affiliateLink,
@@ -415,6 +420,18 @@ export function Wallet(props: WalletProps) {
           closeAlipayQr()
           if (paid) void fetchUser()
         }}
+      />
+
+      <EpayCheckoutDialog
+        open={epayCheckout !== null}
+        checkout={epayCheckout}
+        getStatus={getTradeStatus}
+        onClose={closeEpayCheckout}
+        onSuccess={async () => {
+          closeEpayCheckout()
+          await fetchUser()
+        }}
+        onRetry={() => void retryEpayCheckout()}
       />
 
       <PaymentQrDialog

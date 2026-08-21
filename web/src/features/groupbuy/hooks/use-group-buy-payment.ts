@@ -18,10 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate } from '@tanstack/react-router'
 import i18next from 'i18next'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { PaymentQrProvider } from '@/features/wallet/components/dialogs/payment-qr-dialog'
+import { openGroupBuyEpayCheckout } from '@/features/wallet/lib/payment'
+import type { EpayCheckoutData } from '@/features/wallet/types'
 
 import {
   cancelGroupBuyPayment,
@@ -29,7 +31,7 @@ import {
   getGroupBuyInfo,
   joinGroupBuy,
 } from '../api'
-import { PAY_ALIPAY, PAY_WECHAT } from '../constants'
+import { NON_EPAY_PAY_METHODS, PAY_ALIPAY, PAY_WECHAT } from '../constants'
 import { isSafeHttpUrl } from '../lib'
 import { detectGroupBuyScene } from '../lib/payment-scene'
 import type { GroupBuyPayMethod, PaymentResultData } from '../types'
@@ -105,23 +107,6 @@ export function resolveCheckoutClose(params: {
   return { releaseTradeNo: tradeNo || null, navigateToGroup: null }
 }
 
-function submitEpayForm(action: string, params: Record<string, string>) {
-  const form = document.createElement('form')
-  form.action = action
-  form.method = 'POST'
-  form.target = '_blank'
-  for (const key of Object.keys(params)) {
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = key
-    input.value = params[key]
-    form.appendChild(input)
-  }
-  document.body.appendChild(form)
-  form.submit()
-  document.body.removeChild(form)
-}
-
 export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   const { onPaid, redirectAfterPay } = options
   const navigate = useNavigate()
@@ -136,6 +121,15 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     tradeNo: '',
     provider: 'wechat',
   })
+  const [epayCheckout, setEpayCheckout] = useState<EpayCheckoutData | null>(
+    null
+  )
+  const epayGroupNoRef = useRef<string | undefined>(undefined)
+  const epayRetryRef = useRef<
+    | { kind: 'create'; value: number; money?: string | number }
+    | { kind: 'join'; value: string; money?: string | number }
+    | null
+  >(null)
 
   useEffect(() => {
     let active = true
@@ -179,7 +173,19 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   )
 
   const handlePayData = useCallback(
-    (data: PaymentResultData, groupNo?: string) => {
+    (data: PaymentResultData, groupNo?: string, money?: string | number) => {
+      const isEpay = !NON_EPAY_PAY_METHODS.has(payWay)
+      const opened = isEpay
+        ? openGroupBuyEpayCheckout(
+            data,
+            { paymentMethod: payWay, money },
+            setEpayCheckout
+          )
+        : false
+      if (opened) {
+        epayGroupNoRef.current = groupNo ?? data.group_no
+        return
+      }
       if (data.qr_code) {
         setQrPay({
           open: true,
@@ -190,23 +196,13 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
         })
         return
       }
-      if (data.pay_url && isSafeHttpUrl(data.pay_url)) {
-        window.open(data.pay_url, '_blank')
-        if (redirectAfterPay) goDetail(groupNo)
-        return
-      }
-      if (data.epay_url) {
-        submitEpayForm(data.epay_url, data.epay_params ?? {})
-        if (redirectAfterPay) goDetail(groupNo)
-        return
-      }
       toast.error(i18next.t('Payment request failed'))
     },
-    [goDetail, redirectAfterPay, payWay]
+    [payWay]
   )
 
   const create = useCallback(
-    async (packageId: number) => {
+    async (packageId: number, money?: string | number) => {
       if (!payOptions.some((option) => option.value === payWay)) {
         toast.error(
           i18next.t(
@@ -229,11 +225,16 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
           typeof res.data !== 'string'
         ) {
           const data = res.data
-          if (data.h5_url && isSafeHttpUrl(data.h5_url)) {
+          if (
+            payWay === PAY_WECHAT &&
+            data.h5_url &&
+            isSafeHttpUrl(data.h5_url)
+          ) {
             window.location.href = data.h5_url
             return
           }
-          handlePayData(data, data.group_no)
+          epayRetryRef.current = { kind: 'create', value: packageId, money }
+          handlePayData(data, data.group_no, money)
         } else {
           toast.error(
             typeof res.data === 'string'
@@ -251,7 +252,7 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   )
 
   const join = useCallback(
-    async (groupNo: string) => {
+    async (groupNo: string, money?: string | number) => {
       if (!payOptions.some((option) => option.value === payWay)) {
         toast.error(
           i18next.t(
@@ -274,11 +275,16 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
           typeof res.data !== 'string'
         ) {
           const data = res.data
-          if (data.h5_url && isSafeHttpUrl(data.h5_url)) {
+          if (
+            payWay === PAY_WECHAT &&
+            data.h5_url &&
+            isSafeHttpUrl(data.h5_url)
+          ) {
             window.location.href = data.h5_url
             return
           }
-          handlePayData(data, groupNo)
+          epayRetryRef.current = { kind: 'join', value: groupNo, money }
+          handlePayData(data, groupNo, money)
         } else {
           toast.error(
             typeof res.data === 'string'
@@ -294,6 +300,37 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     },
     [payWay, payOptions, scene, handlePayData]
   )
+
+  const closeEpayCheckout = useCallback(
+    (paid: boolean) => {
+      const checkout = epayCheckout
+      setEpayCheckout(null)
+      if (paid) {
+        onPaid?.(epayGroupNoRef.current)
+        if (redirectAfterPay) goDetail(epayGroupNoRef.current)
+        return
+      }
+      if (checkout?.trade_no) {
+        void cancelGroupBuyPayment(checkout.trade_no).catch(() => undefined)
+      }
+    },
+    [epayCheckout, goDetail, onPaid, redirectAfterPay]
+  )
+
+  const retryEpayCheckout = useCallback(async () => {
+    const action = epayRetryRef.current
+    const previousTradeNo = epayCheckout?.trade_no
+    setEpayCheckout(null)
+    if (previousTradeNo) {
+      await cancelGroupBuyPayment(previousTradeNo).catch(() => undefined)
+    }
+    if (!action) return
+    if (action.kind === 'create') {
+      await create(action.value, action.money)
+    } else {
+      await join(action.value, action.money)
+    }
+  }, [create, epayCheckout?.trade_no, join])
 
   const closeQrPay = useCallback(
     (paid: boolean) => {
@@ -325,6 +362,9 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     join,
     qrPay,
     closeQrPay,
+    epayCheckout,
+    closeEpayCheckout,
+    retryEpayCheckout,
     scene,
   }
 }

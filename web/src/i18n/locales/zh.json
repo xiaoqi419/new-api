@@ -6306,6 +6306,21 @@
     "Zero retention": "零数据保留",
     "Zhipu": "智谱",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Payment checkout": "支付收银台",
+    "Complete this payment without leaving the current page.": "无需离开当前页面即可完成支付。",
+    "Payment completed. Returning to the previous page.": "支付已完成，正在返回上一页。",
+    "Payment failed. You can retry or return.": "支付失败。你可以重试或返回。",
+    "Payment expired. You can retry or return.": "支付已过期。你可以重试或返回。",
+    "Payment status check timed out": "支付状态查询超时",
+    "Payment status check timed out. You can refresh manually.": "支付状态查询超时，你可以手动刷新。",
+    "Waiting for payment": "等待支付",
+    "Scan the QR code to complete your payment.": "请扫描二维码完成支付。",
+    "Open Alipay": "打开支付宝",
+    "Open WeChat": "打开微信",
+    "Open payment page": "打开支付页面",
+    "Refresh payment status": "刷新支付状态",
+    "Order number": "订单号",
+    "Payment QR code": "支付二维码"
   }
 }

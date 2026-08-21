@@ -6306,6 +6306,21 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Thu phóng"
+    "Zoom": "Thu phóng",
+    "Payment checkout": "Thanh toán",
+    "Complete this payment without leaving the current page.": "Hoàn tất thanh toán mà không cần rời khỏi trang hiện tại.",
+    "Payment completed. Returning to the previous page.": "Đã thanh toán. Đang quay lại trang trước.",
+    "Payment failed. You can retry or return.": "Thanh toán thất bại. Bạn có thể thử lại hoặc quay lại.",
+    "Payment expired. You can retry or return.": "Thanh toán đã hết hạn. Bạn có thể thử lại hoặc quay lại.",
+    "Payment status check timed out": "Kiểm tra trạng thái thanh toán đã hết thời gian",
+    "Payment status check timed out. You can refresh manually.": "Kiểm tra trạng thái thanh toán đã hết thời gian. Bạn có thể làm mới thủ công.",
+    "Waiting for payment": "Đang chờ thanh toán",
+    "Scan the QR code to complete your payment.": "Quét mã QR để hoàn tất thanh toán.",
+    "Open Alipay": "Mở Alipay",
+    "Open WeChat": "Mở WeChat",
+    "Open payment page": "Mở trang thanh toán",
+    "Refresh payment status": "Làm mới trạng thái thanh toán",
+    "Order number": "Mã đơn hàng",
+    "Payment QR code": "Mã QR thanh toán"
   }
 }

@@ -3688,6 +3688,17 @@
     "默认折叠侧边栏": "Réduire la barre latérale par défaut",
     "默认测试模型": "Modèle de test par défaut",
     "默认用户消息": "Bonjour",
-    "默认补全倍率": "Taux de complétion par défaut"
+    "默认补全倍率": "Taux de complétion par défaut",
+    "支付成功": "Paiement réussi",
+    "支付已过期": "Paiement expiré",
+    "支付状态检查超时": "Délai de vérification du paiement dépassé",
+    "等待支付": "En attente du paiement",
+    "打开支付宝": "Ouvrir Alipay",
+    "打开微信": "Ouvrir WeChat",
+    "打开支付页面": "Ouvrir la page de paiement",
+    "支付收银台": "Caisse de paiement",
+    "返回": "Retour",
+    "刷新支付状态": "Actualiser le statut du paiement",
+    "支付二维码": "Code QR de paiement"
   }
 }

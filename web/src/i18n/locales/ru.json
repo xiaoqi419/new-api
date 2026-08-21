@@ -6306,6 +6306,21 @@
     "Zero retention": "Без хранения данных",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Масштаб"
+    "Zoom": "Масштаб",
+    "Payment checkout": "Оплата",
+    "Complete this payment without leaving the current page.": "Завершите оплату, не покидая текущую страницу.",
+    "Payment completed. Returning to the previous page.": "Оплата завершена. Возвращаемся на предыдущую страницу.",
+    "Payment failed. You can retry or return.": "Не удалось выполнить оплату. Повторите попытку или вернитесь назад.",
+    "Payment expired. You can retry or return.": "Срок оплаты истёк. Повторите попытку или вернитесь назад.",
+    "Payment status check timed out": "Истекло время проверки статуса оплаты",
+    "Payment status check timed out. You can refresh manually.": "Истекло время проверки статуса оплаты. Обновите данные вручную.",
+    "Waiting for payment": "Ожидание оплаты",
+    "Scan the QR code to complete your payment.": "Отсканируйте QR-код, чтобы завершить оплату.",
+    "Open Alipay": "Открыть Alipay",
+    "Open WeChat": "Открыть WeChat",
+    "Open payment page": "Открыть страницу оплаты",
+    "Refresh payment status": "Обновить статус оплаты",
+    "Order number": "Номер заказа",
+    "Payment QR code": "QR-код для оплаты"
   }
 }
