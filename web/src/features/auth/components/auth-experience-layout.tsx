@@ -36,7 +36,7 @@ const MODEL_FAMILIES = [
 
 type AuthExperienceLayoutProps = {
   children: React.ReactNode
-  page: 'sign-in' | 'sign-up'
+  page: 'sign-in' | 'sign-up' | 'forgot-password' | 'reset-password'
 }
 
 export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
@@ -52,7 +52,14 @@ export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
     config.description ||
     t('Connect through OpenAI, Claude, Gemini, and other compatible API routes')
   const stats = config.stats ?? []
-  const formLabel = props.page === 'sign-up' ? t('Sign up') : t('Sign in')
+  let formLabel = t('Sign in')
+  if (props.page === 'sign-up') {
+    formLabel = t('Sign up')
+  } else if (props.page === 'forgot-password') {
+    formLabel = t('Forgot password')
+  } else if (props.page === 'reset-password') {
+    formLabel = t('Reset password')
+  }
 
   return (
     <main

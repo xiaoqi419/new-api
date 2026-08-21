@@ -1,0 +1,468 @@
+schema: comet.native.v4
+name: unify-password-recovery-visuals
+language: zh-CN
+phase: archive
+status: active
+state_version: 10
+brief: brief.md
+spec_changes:
+  - capability: password-recovery-visuals
+    operation: create
+    source: specs/password-recovery-visuals/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/unify-password-recovery-visuals
+  target_branch: comet/auth-access-quality-pass
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：忘记密码和重置密码确认页均使用与登录/注册相同的暗色点阵认证体验外壳，桌面为双栏面板，表单区使用同一主题色、边框、阴影和紧凑密度。
+    result: passed
+    reason:
+      text: Both recovery pages now use AuthExperienceLayout, and their AuthCard
+        treatment matches the existing sign-in page.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：忘记密码的邮箱输入、Turnstile、点击验证码、发送邮件、倒计时、成功/错误反馈保持原有行为；重置确认页的 email/token
+      校验、生成密码、复制、倒计时和返回登录保持原有行为。
+    result: passed
+    reason:
+      text: The scoped diff changes only layout integration; the existing schema,
+        captcha, API, countdown, toast, copy, and navigation paths remain
+        present.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：两个页面在 320px 及以上宽度无横向滚动，表单与中文、长英文文案均不会遮挡控件；桌面品牌叙事区与移动端品牌标识保持当前认证体验的响应式规则。
+    result: passed
+    reason:
+      text: The shared shell has overflow-x-hidden and min-w-0 constraints, and the
+        focused DOM regression asserts the recovery pages use them.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：找回和重置页面使用已有翻译键并在七种现有语言中可解析；本 change 不新增未翻译的用户可见文字。
+    result: passed
+    reason:
+      text: All 18 recovery-related translation keys resolve in en, zh, zh-TW, fr, ru,
+        ja, and vi.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：其他认证回调页面仍使用其原有外壳与行为，不受此次视觉统一影响。
+    result: passed
+    reason:
+      text: The scoped diff does not modify callback, OAuth, or 2FA page
+        implementations.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：聚焦布局/行为测试、格式检查、受影响文件 lint、类型检查和生产构建通过。
+    result: passed
+    reason:
+      text: Focused tests, affected-file lint and format checks, typecheck, and
+        production build all passed.
+      truncated: false
+  - id: A7
+    source: specs/password-recovery-visuals/spec.md
+    text: 忘记密码与密码重置确认是公共认证流程的一部分，必须使用和登录、注册一致的认证体验：暗色点阵背景、桌面双栏容器、品牌叙事区、受限宽度的表单区以及基于当前主题
+      token 的边框、阴影和控件颜色。移动端隐藏桌面叙事区并在表单区显示品牌标识，表单内容保持可读且可操作。
+    result: passed
+    reason:
+      text: Both pages use the existing shared dark dot-grid, responsive two-column
+        authentication shell with the form region and mobile brand mark.
+      truncated: false
+  - id: A8
+    source: specs/password-recovery-visuals/spec.md
+    text: 共享认证体验外壳支持 `forgot-password` 和 `reset-password` 页面标识，并为表单区域提供与页面一致的可访问名称。
+    result: passed
+    reason:
+      text: AuthExperienceLayout explicitly supports forgot-password and
+        reset-password and assigns translated form-region labels.
+      truncated: false
+  - id: A9
+    source: specs/password-recovery-visuals/spec.md
+    text: 两个页面均在根容器保留横向溢出保护，面板、品牌区、表单区和卡片内容均允许窄屏收缩。
+    result: passed
+    reason:
+      text: The root, panel, regions, content wrapper, card headings, and descriptions
+        retain the specified horizontal-overflow and shrink constraints.
+      truncated: false
+  - id: A10
+    source: specs/password-recovery-visuals/spec.md
+    text: 桌面面板保持现有双栏阈值、最大宽度、点阵装饰、品牌叙事和主题色；不新增独立视觉主题或覆盖全局亮色设置。
+    result: passed
+    reason:
+      text: The implementation reuses the pre-existing shared shell and sign-in card
+        classes without adding a separate theme or global style override.
+      truncated: false
+  - id: A11
+    source: specs/password-recovery-visuals/spec.md
+    text: 320px 及以上视口中，长中文和英文标题、说明、表单标签、提示、按钮与状态文案不得使页面产生横向滚动或遮挡控件。
+    result: passed
+    reason:
+      text: Narrow-layout protections are present in the shared shell and cards,
+        including min-w-0, break-words, constrained content width, and overflow
+        protection.
+      truncated: false
+  - id: A12
+    source: specs/password-recovery-visuals/spec.md
+    text: 忘记密码页面继续使用现有表单 schema、邮件发送 API、Turnstile、点击验证码、倒计时和 toast
+      反馈；视觉改动不得改变请求参数、触发顺序或禁用条件。
+    result: passed
+    reason:
+      text: ForgotPasswordForm remains unchanged and retains its existing Zod schema,
+        email API, Turnstile, click captcha, countdown, and toast behavior.
+      truncated: false
+  - id: A13
+    source: specs/password-recovery-visuals/spec.md
+    text: 重置确认页面继续从既有路由搜索参数读取 email 与 token，保留无效链接提示、重置请求、倒计时、生成密码、复制和返回登录流程。
+    result: passed
+    reason:
+      text: The reset route still forwards email and token search parameters, and
+        ResetPasswordConfirm retains reset API, invalid-link, countdown, copy,
+        and sign-in navigation flows.
+      truncated: false
+  - id: A14
+    source: specs/password-recovery-visuals/spec.md
+    text: 登录、注册、OAuth、2FA 和其他认证回调页面不因该 change 切换外壳或修改业务行为。
+    result: passed
+    reason:
+      text: No login, sign-up, OAuth, 2FA, or callback business behavior was changed;
+        existing sign-in layout regressions also pass.
+      truncated: false
+  - id: A15
+    source: specs/password-recovery-visuals/spec.md
+    text: 页面继续通过 `useTranslation()` 使用已有的“Forgot password”“Reset
+      password”及重置反馈键，所有现有七种语言均须可解析。
+    result: passed
+    reason:
+      text: The pages continue to use useTranslation with existing recovery keys,
+        verified across all seven supported locale bundles.
+      truncated: false
+  - id: A16
+    source: specs/password-recovery-visuals/spec.md
+    text: changelog 最新条目记录找回与重置页面的可见体验统一。
+    result: passed
+    reason:
+      text: The recovery visual-unification note is the first item in the newest
+        changelog entry.
+      truncated: false
+  - id: A17
+    source: specs/password-recovery-visuals/spec.md
+    text: 组件回归测试覆盖两个页面接入共享体验外壳、正确页面语义、关键控件保留及窄屏横向溢出保护。
+    result: passed
+    reason:
+      text: The new focused regression test covers both pages, their shell identifiers
+        and labels, preserved controls, dot-grid decoration, and narrow-screen
+        overflow constraints.
+      truncated: false
+  - id: A18
+    source: specs/password-recovery-visuals/spec.md
+    text: 静态搜索确认两个页面不再使用旧 `AuthLayout`，并保留原有业务 API、验证码、token 与导航调用。
+    result: passed
+    reason:
+      text: Static search confirms both target pages import AuthExperienceLayout and
+        no longer reference AuthLayout while the original recovery APIs and
+        navigation calls remain.
+      truncated: false
+  - id: A19
+    source: specs/password-recovery-visuals/spec.md
+    text: 受影响的聚焦测试、格式检查、lint、类型检查和生产构建必须通过。
+    result: passed
+    reason:
+      text: Focused Vitest, oxlint, oxfmt, tsgo typecheck, and Rsbuild production
+        build all completed successfully.
+      truncated: false
+builder_handoff:
+  candidate_id: 19d1d223-25cf-4a80-b0c0-ca1d3db6eebf
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:72d40f8a-1608-43f8-bd08-5d59a2b916c7
+  iteration: 2
+  summary:
+    text: "Infrastructure recovery only: no business code changed after the prior
+      verifier execution error. The existing candidate continues to address
+      A1-A19 by unifying the forgotten-password and reset-confirmation pages
+      with the shared authentication experience, retaining their existing flows,
+      tests, translations, and changelog entry. The verifier command plan has
+      been corrected to use the installed local executable entrypoints and the
+      actual reset-password-confirm path."
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+  checks:
+    - name:
+        text: focused password recovery and sign-in Vitest suite
+        truncated: false
+      result: passed
+      note:
+        text: Passed in the worktree before recovery.
+        truncated: false
+    - name:
+        text: affected-file oxlint
+        truncated: false
+      result: passed
+      note:
+        text: Passed against auth-experience-layout, forgot-password, and
+          reset-password-confirm sources and tests.
+        truncated: false
+    - name:
+        text: affected-file oxfmt
+        truncated: false
+      result: passed
+      note:
+        text: Passed against the same files, including the actual reset-password-confirm
+          path.
+        truncated: false
+    - name:
+        text: frontend TypeScript build
+        truncated: false
+      result: passed
+      note:
+        text: Passed using web/node_modules/@typescript/native-preview/bin/tsgo with the
+          local Node executable.
+        truncated: false
+    - name:
+        text: frontend production build
+        truncated: false
+      result: passed
+      note:
+        text: Passed using web/node_modules/@rsbuild/core/bin/rsbuild.js with the local
+          Node executable.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: Passed before recovery.
+        truncated: false
+    - name:
+        text: seven-locale key verification
+        truncated: false
+      result: passed
+      note:
+        text: Existing recovery keys resolve in en, zh, zh-TW, fr, ru, ja, and vi.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No real-browser screenshot was captured at a 320px viewport; focused
+        DOM/static assertions cover the narrow-screen constraints.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T20:20:54.848Z
+blockers: []
+verification:
+  candidate_id: 19d1d223-25cf-4a80-b0c0-ca1d3db6eebf
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:ced90246-dc6d-4d96-bb49-cf1c91fce844
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: password-recovery-tests
+      name:
+        text: Password recovery and sign-in layout regressions
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: vitest@3.2.4
+          truncated: false
+        - text: run
+          truncated: false
+        - text: src/features/auth/__tests__/password-recovery-layout.test.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 9481
+    - id: password-recovery-lint
+      name:
+        text: Targeted password recovery lint
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\.worktrees\unify-password-recovery-visuals\web\node_modules\oxlint\bin\oxlint
+          truncated: false
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/forgot-password/index.tsx
+          truncated: false
+        - text: src/features/auth/reset-password-confirm/index.tsx
+          truncated: false
+        - text: src/features/auth/__tests__/password-recovery-layout.test.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: vitest.config.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 207
+    - id: password-recovery-format
+      name:
+        text: Targeted password recovery format
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\.worktrees\unify-password-recovery-visuals\web\node_modules\oxfmt\bin\oxfmt
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/forgot-password/index.tsx
+          truncated: false
+        - text: src/features/auth/reset-password-confirm/index.tsx
+          truncated: false
+        - text: src/features/auth/__tests__/password-recovery-layout.test.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: vitest.config.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 444
+    - id: frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\.worktrees\unify-password-recovery-visuals\web\node_modules\@typescript\native-preview\bin\tsgo
+          truncated: false
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5063
+    - id: frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\.worktrees\unify-password-recovery-visuals\web\node_modules\@rsbuild\core\bin\rsbuild.js
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 7195
+    - id: diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 190
+  summary:
+    text: Independent verification passed all 19 acceptance criteria for the
+      password recovery visual unification candidate.
+    truncated: false
+  risks:
+    - text: No real-browser screenshot was captured at a 320px viewport; focused DOM
+        and static layout checks cover the specified shrink and overflow
+        constraints.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T20:35:13.633Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-21T20:04:00.638Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Initial verifier plan used unresolved npx executables; candidate
+        unchanged, return to Build to submit the verified canonical check plan.
+      truncated: false
+    completed_at: 2026-08-21T20:17:00.040Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent verification passed all 19 acceptance criteria for the
+        password recovery visual unification candidate.
+      truncated: false
+    completed_at: 2026-08-21T20:35:13.633Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-21T19:33:37.063Z
