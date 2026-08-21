@@ -3,7 +3,7 @@ name: enforce-mainland-web-access
 language: zh-CN
 phase: archive
 status: active
-state_version: 6
+state_version: 7
 brief: brief.md
 spec_changes:
   - capability: mainland-web-access
@@ -13,7 +13,7 @@ workspace:
   isolation: worktree
   change_branch: comet/enforce-mainland-web-access
   target_branch: comet/auth-access-quality-pass
-  finish: null
+  finish: merge
 loop:
   stage: archive-ready
   goal_cycle: 1
