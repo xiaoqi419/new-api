@@ -96,5 +96,20 @@
   "WeChat payment QR code": "WeChat payment QR code",
   "When {{count}} people join, each gets": "When {{count}} people join, each gets",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
-  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"
+  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends",
+  "Payment checkout": "Payment checkout",
+  "Complete this payment without leaving the current page.": "Complete this payment without leaving the current page.",
+  "Payment completed. Returning to the previous page.": "Payment completed. Returning to the previous page.",
+  "Payment failed. You can retry or return.": "Payment failed. You can retry or return.",
+  "Payment expired. You can retry or return.": "Payment expired. You can retry or return.",
+  "Payment status check timed out": "Payment status check timed out",
+  "Payment status check timed out. You can refresh manually.": "Payment status check timed out. You can refresh manually.",
+  "Waiting for payment": "Waiting for payment",
+  "Scan the QR code to complete your payment.": "Scan the QR code to complete your payment.",
+  "Open Alipay": "Open Alipay",
+  "Open WeChat": "Open WeChat",
+  "Open payment page": "Open payment page",
+  "Refresh payment status": "Refresh payment status",
+  "Order number": "Order number",
+  "Payment QR code": "Payment QR code"
 }

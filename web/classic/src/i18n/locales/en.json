@@ -3834,6 +3834,17 @@
     "默认折叠侧边栏": "Default collapse sidebar",
     "默认测试模型": "Default Test Model",
     "默认用户消息": "Default User Message",
-    "默认补全倍率": "Default completion ratio"
+    "默认补全倍率": "Default completion ratio",
+    "支付成功": "Payment successful",
+    "支付已过期": "Payment expired",
+    "支付状态检查超时": "Payment status check timed out",
+    "等待支付": "Waiting for payment",
+    "打开支付宝": "Open Alipay",
+    "打开微信": "Open WeChat",
+    "打开支付页面": "Open payment page",
+    "支付收银台": "Payment checkout",
+    "返回": "Back",
+    "刷新支付状态": "Refresh payment status",
+    "支付二维码": "Payment QR code"
   }
 }

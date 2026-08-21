@@ -4222,6 +4222,16 @@
     "默认折叠侧边栏": "Mặc định thu gọn thanh bên",
     "默认测试模型": "Mô hình kiểm tra mặc định",
     "默认用户消息": "Xin chào",
-    "默认补全倍率": "Tỷ lệ hoàn thành mặc định"
+    "默认补全倍率": "Tỷ lệ hoàn thành mặc định",
+    "支付成功": "Thanh toán thành công",
+    "支付已过期": "Thanh toán đã hết hạn",
+    "支付状态检查超时": "Đã hết thời gian kiểm tra trạng thái thanh toán",
+    "等待支付": "Đang chờ thanh toán",
+    "打开支付宝": "Mở Alipay",
+    "打开微信": "Mở WeChat",
+    "打开支付页面": "Mở trang thanh toán",
+    "支付收银台": "Cổng thanh toán",
+    "刷新支付状态": "Làm mới trạng thái thanh toán",
+    "支付二维码": "Mã QR thanh toán"
   }
 }

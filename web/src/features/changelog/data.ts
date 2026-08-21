@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260821-in-modal-payment',
+    date: '2026-08-21',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 Epay 聚合支付仍可能跳转新页面的问题：钱包充值、订阅购买、拼团创建和参团现在统一在当前页面的收银台弹窗中展示二维码与订单状态，并兼容安全的历史支付地址响应。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260820-home-refresh',
     date: '2026-08-20',
     changes: [
@@ -52,6 +64,20 @@ export const CHANGELOG: ChangelogEntry[] = [
           '首页「01 核心功能」按新版 Figma 精确对齐标题、2×2 功能网格与卡内视觉;桌面保持单行 provider,窄屏自动切换单列。',
           '首页按新版 Figma 信息架构重排:统一 API 网关 hero、模型连接 CTA、功能 bento、三步接入与用量统计在浅色和深色主题下保持稳定的响应式布局。',
           '经典首页同步统一黑白、紫色与荧光黄视觉语言,并补齐七种语言的首页文案。',
+        ],
+      },
+    ],
+  },
+  {
+    // Candidate tag is anchored to the current baseline; replace the suffix
+    // with the release image SHA when this change is published.
+    version: '20260819-4a8eb9830',
+    date: '2026-08-19',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '钱包充值、订阅购买和拼团支付的 Epay 聚合支付已改为站内二维码 checkout，并支持订单状态轮询与失败重试。',
         ],
       },
     ],

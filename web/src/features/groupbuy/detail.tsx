@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 /*
@@ -31,6 +32,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
+import { getTradeStatus } from '@/features/wallet/api'
+import { EpayCheckoutDialog } from '@/features/wallet/components/dialogs/epay-checkout-dialog'
 import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 import { formatTimestampToDate } from '@/lib/format'
 
@@ -91,6 +94,9 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
     join,
     qrPay,
     closeQrPay,
+    epayCheckout,
+    closeEpayCheckout,
+    retryEpayCheckout,
   } = useGroupBuyPayment({ onPaid })
 
   const tiers = resolveTiers(detail)
@@ -106,7 +112,17 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
   const minCountReached = paid >= minCount
   const remaining = Math.max(0, cap - paid)
   const percent = Math.min(100, Math.round((paid / cap) * 100))
-  const expired = detail.expire_time * 1000 < Date.now()
+  const [observedAt, setObservedAt] = useState(() => Date.now())
+  useEffect(() => {
+    const expiresAt = detail.expire_time * 1000
+    const remaining = expiresAt - Date.now()
+    const timer = window.setTimeout(
+      () => setObservedAt(Date.now()),
+      Math.max(0, Math.min(remaining + 1, 60_000))
+    )
+    return () => window.clearTimeout(timer)
+  }, [detail.expire_time, observedAt])
+  const expired = detail.expire_time * 1000 < observedAt
   const currentAmount = detail.current_amount || tiers[0].per_share_amount
   const canJoin =
     detail.status === 'pending' && !detail.joined && !expired && remaining > 0
@@ -251,7 +267,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
                   onPayWayChange={setPayWay}
                   payOptions={payOptions}
                   submitting={submittingId === detail.group_no}
-                  onJoin={() => void join(detail.group_no)}
+                  onJoin={() => void join(detail.group_no, price)}
                   shareLink={shareLink}
                 />
               </div>
@@ -303,6 +319,15 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
         tradeNo={qrPay.tradeNo}
         provider={qrPay.provider}
         onClose={closeQrPay}
+      />
+
+      <EpayCheckoutDialog
+        open={epayCheckout !== null}
+        checkout={epayCheckout}
+        getStatus={getTradeStatus}
+        onClose={() => closeEpayCheckout(false)}
+        onSuccess={() => closeEpayCheckout(true)}
+        onRetry={retryEpayCheckout}
       />
     </>
   )

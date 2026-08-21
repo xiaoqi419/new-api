@@ -114,6 +114,14 @@ export interface SubscriptionPayResponse {
   url?: string
 }
 
+export interface SubscriptionStatusResponse {
+  success?: boolean
+  message?: string
+  data?: {
+    status?: string
+  }
+}
+
 export interface CreateUserSubscriptionRequest {
   plan_id: number
 }

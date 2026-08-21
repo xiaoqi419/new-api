@@ -35,6 +35,7 @@ export const NON_EPAY_PAY_METHODS = new Set<string>([
   'stripe',
   'waffo',
   'waffo_pancake',
+  'creem',
 ])
 
 /** Admin list page size. */

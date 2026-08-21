@@ -46,7 +46,20 @@
 - reduced-motion Chromium 验收：390x844、`reduce=true` 下 reveal 可见且 `animationName` 为 `none`，手动选中的 tab 在 5.2 秒内不自动轮换，Stats 的 `50+` / `100+` / `50+` / `10+` 立即显示，无水平溢出。
 - iteration-3 已接受的静态与构建证据包括受影响文件的 `oxfmt --check`、`oxlint`、`tsgo -b`、`git diff --check` 以及 Rsbuild production/classic build；本轮 Archive 未重跑 production/classic build，沿用该 iteration-3 已接受证据。
 - 模型降级事实：`gpt-5.6-luna` / `max` 两次真实返回 `503 No available channel`；`gpt-5.6-terra` / `xhigh` 前一轮验收尝试第一次并发流断开、第二次处于 pending-init；最终由 `gpt-5.6-sol` / `high` 独立验收成功。降级未改变产品、API、依赖或验收范围。
-- 未覆盖项与边界：登录态 footer `/dashboard` 未在真实认证会话中点击；custom-home 为公开 API 的确定性拦截验证，不等同管理员后台真实认证会话；真实线上支付、回调、部署和发布仍属 user-owned / blocked-online。此 change 未做 Git 提交、推送、合并、部署或线上验收。
+- 未覆盖项与边界：登录态 footer `/dashboard` 未在真实认证会话中点击；custom-home 为公开 API 的确定性拦截验证，不等同管理员后台真实认证会话；真实线上支付、回调、部署和发布仍属 user-owned / blocked-online。源提交 `788c6c332` 已通过 merge commit `c88d25b2b` 合入 `codex/p0-wallet-wechatpay`；仍未推送、创建 PR、发布、部署或线上验收。
+
+## Epay 站内 Checkout 已归档（2026-08-20）
+
+- Comet Native change `epay-in-site-checkout` 已完成 **iteration 5 独立 Luna/max Verify 并归档**，正式留档位于 `docs/comet/archive/2026-08-19-epay-in-site-checkout/`。A1-A61 全部通过；iteration 5 修复 classic checkout 在 timeout 状态错误显示 Retry 的问题，timeout 仅保留 Return 和手动 Refresh，只有 `failed`/`expired` 才允许 Retry，避免重复创建 pending 订单。
+- 普通用户侧的钱包充值、订阅购买、拼团创建和参团，选择 Epay 聚合渠道（至少 `alipay`、`wxpay`）后均改为当前页面内 checkout：服务端先创建本地 pending 订单，再向配置网关的 `/mapi.php` 发起带签名的 MAPI 请求，前端展示二维码并轮询本人订单状态。
+- 钱包复用 `GET /api/user/topup/status`；订阅新增按当前用户隔离的 `GET /api/subscription/epay/status`；拼团沿用本人 TopUp 状态和现有取消接口，关闭未支付 checkout 会释放预占名额。异步 Epay notify 仍是钱包入账、订阅开通、拼团结算和返利的唯一结算入口。
+- default 与 classic 的普通用户 Epay 分支均移除自动提交 `/submit.php` 表单；二维码使用现有 `qrcode.react`，`payurl` 和 `urlscheme` 只有在安全 allowlist 通过且用户明确点击时才允许打开。Stripe、Creem、Waffo、官方支付宝/微信直连及代理控制台预充值仍保持原行为，不在本 change 范围。
+- 后端新增 MAPI 客户端、失败条件回收和订阅用户隔离测试；default 前端增加响应归一化校验，非法 checkout payload 不进入状态。顶部 changelog 已记录本功能，当前候选版本暂锚定为 `20260819-4a8eb9830`，发布镜像时必须替换为实际镜像 SHA。
+- iteration 5 的实际证据为：default checkout focused test **10/10**、group-buy payment hook tests **5/5**；classic 回归测试未执行，原因是本地 harness 无法解析 `vitest/config` 且 `bun`/`bunx` 不可用，不宣称 classic 测试通过。A8/A13/A14/A60 的浏览器、完整 classic harness、完整 typecheck/build 仍按用户接受的本地延期记录；A61 仍为用户负责的真实 Epay 商户线上验收。
+- A1-A61 的验收结果和正式 `verification.md` 已由 Runtime 保存。iteration 1-4 的历史证据仍保留在归档 Runtime state，不替代 iteration 5 的独立 Verify；当前不伪造浏览器、真实商户或完整 classic 测试证据。
+- A1-A7、A9-A12、A15-A48、A50-A59 保持此前本地通过证据；A8、A13、A14、A60 仍是 **blocked-local**，具体缺口为桌面/390px 浏览器视觉、classic Vitest harness、default typecheck 与 default 生产 build 未完整执行。不得把这些环境门禁伪写为 passed。
+- 待线上验收（**user-owned / blocked-online**）：真实 Epay 商户凭据、二维码生成、实际扫码扣款、平台异步通知公网可达、签名验证、钱包到账、订阅开通、拼团结算/返利、退款和代理租户回调由用户在线上环境完成。localhost 不具备平台回调可达性，本地代理不伪造线上证据。
+- 已知限制：刷新浏览器不保证恢复同一二维码；观察 timeout 只停止前端轮询，不会擅自修改服务端 pending 订单。iteration 5 已确保 timeout 不显示重新建单 Retry。Epay change 已归档，但当前工作区仍有 Epay 与其他用户已有未提交改动；未推送、未创建 PR、未发布、未部署。
 
 ## 最终前端门禁记录（2026-08-19）
 
