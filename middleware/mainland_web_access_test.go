@@ -75,6 +75,58 @@ func TestMainlandWebAccessBlocksTrustedChinaWebsiteDocuments(t *testing.T) {
 	}
 }
 
+func TestMainlandWebAccessBlocksTrustedChinaHTMLPrefixCollisionsBeforeNoRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	require.NoError(t, i18n.Init())
+	t.Setenv(mainlandWebAccessCountryHeaderEnv, "CF-IPCountry")
+	t.Setenv("TRUSTED_PROXIES", "192.0.2.0/24")
+
+	router := gin.New()
+	router.Use(MainlandWebAccess())
+	router.NoRoute(func(c *gin.Context) {
+		c.String(http.StatusNotFound, "relay fallback")
+	})
+
+	for _, target := range []string{"/api-login", "/v1-docs", "/assets-page"} {
+		t.Run(target, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, target, nil)
+			request.RemoteAddr = "192.0.2.10:8443"
+			request.Header.Set("Accept", "text/html,application/xhtml+xml")
+			request.Header.Set("CF-IPCountry", "CN")
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+
+			assert.Equal(t, http.StatusUnavailableForLegalReasons, recorder.Code)
+			assert.NotContains(t, recorder.Body.String(), "relay fallback")
+		})
+	}
+}
+
+func TestMainlandWebAccessBlocksPrefixCollisionsBeforeFrontendBaseURLRedirect(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	require.NoError(t, i18n.Init())
+	t.Setenv(mainlandWebAccessCountryHeaderEnv, "CF-IPCountry")
+	t.Setenv("TRUSTED_PROXIES", "192.0.2.0/24")
+
+	router := gin.New()
+	router.NoRoute(func(c *gin.Context) {
+		if BlockMainlandWebAccess(c) {
+			return
+		}
+		c.Redirect(http.StatusMovedPermanently, "https://frontend.example.test"+c.Request.RequestURI)
+	})
+
+	for _, target := range []string{"/api-login", "/v1-docs", "/assets-page"} {
+		t.Run(target, func(t *testing.T) {
+			response := requestMainlandWebAccess(router, target, "192.0.2.10:8443", "CN", "en")
+
+			assert.Equal(t, http.StatusUnavailableForLegalReasons, response.Code)
+			assert.Empty(t, response.Header().Get("Location"))
+		})
+	}
+}
+
 func TestMainlandWebAccessFailsOpenForUntrustedOrUnknownSignals(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	require.NoError(t, i18n.Init())
@@ -143,7 +195,7 @@ func TestMainlandWebAccessLeavesServiceAndStaticPathsUnblocked(t *testing.T) {
 	t.Setenv("TRUSTED_PROXIES", "192.0.2.0/24")
 	router := newMainlandWebAccessTestRouter()
 
-	for _, target := range []string{"/api/status", "/v1/models", "/assets/app.js", "/logo.svg", "/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"} {
+	for _, target := range []string{"/api", "/api/", "/api/status", "/v1", "/v1/", "/v1/models", "/assets", "/assets/", "/assets/app.js", "/logo.svg", "/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"} {
 		t.Run(target, func(t *testing.T) {
 			response := requestMainlandWebAccess(router, target, "192.0.2.10:8443", "CN", "en")
 

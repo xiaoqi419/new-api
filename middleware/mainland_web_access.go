@@ -75,15 +75,12 @@ func isDirectWebsiteDocumentRequest(request *http.Request) bool {
 		return false
 	}
 	path := strings.ToLower(request.URL.Path)
-	return path == "/" || strings.HasSuffix(path, ".html")
+	return path == "/" || strings.HasSuffix(path, ".html") || strings.Contains(strings.ToLower(request.Header.Get("Accept")), "text/html")
 }
 
 func isMainlandWebAccessExemptPath(path string) bool {
-	if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/v1") || strings.HasPrefix(path, "/assets") {
-		return true
-	}
-	for _, healthPath := range []string{"/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"} {
-		if path == healthPath || strings.HasPrefix(path, healthPath+"/") {
+	for _, exemptPath := range []string{"/api", "/v1", "/assets", "/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"} {
+		if path == exemptPath || strings.HasPrefix(path, exemptPath+"/") {
 			return true
 		}
 	}
