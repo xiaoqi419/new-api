@@ -19,19 +19,21 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { AuthLayout } from '../auth-layout'
 import { AuthCard } from '../components/auth-card'
+import { AuthExperienceLayout } from '../components/auth-experience-layout'
 import { ForgotPasswordForm } from './components/forgot-password-form'
 
 export function ForgotPassword() {
   const { t } = useTranslation()
   return (
-    <AuthLayout showMobileBrandMark={false}>
+    <AuthExperienceLayout page='forgot-password'>
       <AuthCard
+        showBrand={false}
         title={t('Forgot password')}
         description={t(
           'Enter your registered email and we will send you a link to reset your password.'
         )}
+        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
       >
         <ForgotPasswordForm />
 
@@ -45,6 +47,6 @@ export function ForgotPassword() {
           </Link>
         </p>
       </AuthCard>
-    </AuthLayout>
+    </AuthExperienceLayout>
   )
 }
