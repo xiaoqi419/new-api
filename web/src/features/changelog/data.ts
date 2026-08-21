@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260822-7792801d6',
+    date: '2026-08-22',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '官网现在可以由可信反向代理的地区信号限制中国大陆访问：命中后网站页面会返回主题化 451，API、中转、静态资源和健康检查不受影响。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260814-1b22caa61',
     date: '2026-08-14',
     changes: [

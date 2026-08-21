@@ -132,6 +132,19 @@ Gin 默认会信任所有代理提供的客户端 IP 请求头。本项目改为
 
 Gin 只在请求的直连来源属于可信代理时解析客户端 IP 请求头，并从转发链右侧向左寻找首个非可信地址。因此常见 Nginx `$proxy_add_x_forwarded_for` 链中的公网客户端地址会阻止更左侧的伪造前缀生效。默认信任私网的残余风险是：能够从同一私网直接访问应用的其他机器或容器仍可伪造这些请求头；需要消除此风险时应使用 `none` 或配置精确代理地址。
 
+### 中国大陆官网页面限制（可选）
+
+需要根据反向代理提供的国家代码限制官网 HTML 页面时，同时设置精确的 `TRUSTED_PROXIES` 和 `MAINLAND_WEB_ACCESS_COUNTRY_HEADER`。例如，代理地址为 `192.0.2.10` 且注入 `CF-IPCountry` 时：
+
+```text
+TRUSTED_PROXIES=192.0.2.10
+MAINLAND_WEB_ACCESS_COUNTRY_HEADER=CF-IPCountry
+```
+
+只有直连 TCP 对端命中这份显式 IP/CIDR 列表，且配置 header 的值为 `CN`（忽略大小写和两端空白）时，网站 HTML、登录、注册、文档和画布 SPA 回退才返回主题化 HTTP 451。空的 country-header 配置会关闭该策略；`TRUSTED_PROXIES` 的默认兼容列表、`none`、`*`、无效列表或不匹配的对端都会 fail-open，即使请求自行携带国家 header 也不会触发策略。判断不使用 GeoIP、`ClientIP()`、`X-Forwarded-For` 或其他转发地址。
+
+`/api`、`/v1`、`/assets`、静态非 HTML 资源，以及 `/health`、`/healthz`、`/ready`、`/readyz`、`/live`、`/livez` 和 `/metrics` 不受此策略限制。
+
 Redis 限流使用原子 Lua 固定窗口，替代旧的近似滑动窗口 List 实现。这是有意的语义变化：窗口边界两侧可分别打满一次，极短时间内通过量最高约为配置值的两倍。例如 `20 次/20 分钟` 在边界可通过约 40 次。帐户级 Session 上限和签发窗口继续控制数据库增长；如未来需要严格抑制边界突发，需单独迁移为 ZSET 滑动窗口。
 
 用户级模型成功请求限流仍使用原有 Redis List 近似滑动窗口，但列表时间戳统一写为 UTC。滚动升级期间，旧节点写入的本地时间字符串和新节点写入的 UTC 字符串无法从格式上区分，可能在一个模型限流窗口内临时误放行或误拒绝。所有节点升级完成并经过一个完整窗口后会自然收敛；本次升级不会切换 Key 或主动删除现有列表。

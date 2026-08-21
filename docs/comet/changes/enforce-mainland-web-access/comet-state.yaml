@@ -1,0 +1,525 @@
+schema: comet.native.v4
+name: enforce-mainland-web-access
+language: zh-CN
+phase: archive
+status: active
+state_version: 6
+brief: brief.md
+spec_changes:
+  - capability: mainland-web-access
+    operation: create
+    source: specs/mainland-web-access/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/enforce-mainland-web-access
+  target_branch: comet/auth-access-quality-pass
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: With `MAINLAND_WEB_ACCESS_COUNTRY_HEADER` configured and a matching
+      explicit `TRUSTED_PROXIES` peer, a case-insensitive country value of `CN`
+      returns HTTP 451 and localized themed HTML for `/`, `/index.html`, login,
+      registration, documentation, main SPA, and canvas SPA fallback routes."
+    result: passed
+    reason:
+      text: Focused Gin tests return 451 for trusted, trimmed/case-insensitive CN on
+        root, direct index.html, login, registration, documentation, main SPA,
+        and canvas SPA boundaries; source places the guard before static serving
+        and fallback output.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: A direct client, a peer outside the explicit proxy list, and a
+      default/blank, `none`, wildcard, malformed, or missing trusted-proxy
+      configuration cannot make a supplied country header authoritative."
+    result: passed
+    reason:
+      text: The trust parser rejects blank, none, wildcard, malformed, and nonmatching
+        peers; focused cases confirm client-supplied CN remains fail-open unless
+        the direct peer matches an explicit list.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: Non-CN values, absent country values, disabled country-header
+      configuration, unknown peer addresses, and unparsable remote addresses
+      continue to the pre-existing response path."
+    result: passed
+    reason:
+      text: Focused cases cover non-CN, missing country, disabled policy, untrusted
+        peer, default proxy configuration, and unparsable peer; all retain the
+        existing fallback response.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: `/api`, `/v1`, `/assets`, static non-document resources, and
+      health/metrics paths are not changed to HTTP 451 for any country signal."
+    result: passed
+    reason:
+      text: Focused cases keep API, relay, assets, a static SVG, and all specified
+        health/metrics paths at their existing successful responses; the path
+        exemption is evaluated before rendering 451.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: The 451 response uses backend i18n for English, Simplified Chinese,
+      and Traditional Chinese, sends non-cacheable HTML, and chooses a
+      conservative dark/blue palette for the current `classic` or default theme
+      without pink styling."
+    result: passed
+    reason:
+      text: Renderer sets 451, HTML content type, no-store, restrictive CSP, escaped
+        backend i18n strings, and default/classic theme-specific blue palettes
+        without the pink value; locale and theme tests pass.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: Focused Go tests cover trusted CN, non-CN, unknown, disabled, and
+      spoofed-header cases across direct-document and SPA-fallback boundaries;
+      affected formatting, Go tests, and frontend changelog checks pass."
+    result: passed
+    reason:
+      text: Runtime Go tests, Go vet, changed-file gofmt, diff whitespace, and
+        targeted changelog lint/format all passed; focused output covers
+        trusted, untrusted, disabled, and service-boundary cases.
+      truncated: false
+  - id: A7
+    source: specs/mainland-web-access/spec.md
+    text: The embedded website server can enforce a mainland-China website access
+      policy without changing API relay behavior. The policy is disabled unless
+      `MAINLAND_WEB_ACCESS_COUNTRY_HEADER` is set to the name of the reverse
+      proxy header that carries the country code.
+    result: passed
+    reason:
+      text: The policy is opt-in because it returns false when
+        MAINLAND_WEB_ACCESS_COUNTRY_HEADER is blank; it is only attached to
+        website/static and fallback boundaries.
+      truncated: false
+  - id: A8
+    source: specs/mainland-web-access/spec.md
+    text: "When enabled, the server reads that header only if all of the following
+      are true:"
+    result: passed
+    reason:
+      text: The country header is evaluated only after country value, explicit
+        proxy-list parsing, and direct-peer validation all succeed.
+      truncated: false
+  - id: A9
+    source: specs/mainland-web-access/spec.md
+    text: "`TRUSTED_PROXIES` is an explicit, non-empty comma-separated list of
+      concrete IP addresses or CIDRs."
+    result: passed
+    reason:
+      text: explicitTrustedProxyPrefixes requires a nonempty comma-separated set and
+        parses each concrete address or CIDR.
+      truncated: false
+  - id: A10
+    source: specs/mainland-web-access/spec.md
+    text: The list is not `none`, does not contain `*`, and every entry is a valid
+      IP address or CIDR.
+    result: passed
+    reason:
+      text: The parser rejects none, wildcard, blank entries, and every malformed
+        address/CIDR list rather than partially trusting it.
+      truncated: false
+  - id: A11
+    source: specs/mainland-web-access/spec.md
+    text: The direct TCP peer parsed from `Request.RemoteAddr` belongs to one of
+      those entries.
+    result: passed
+    reason:
+      text: The decision parses Request.RemoteAddr and requires netip prefix
+        containment for the direct TCP peer.
+      truncated: false
+  - id: A12
+    source: specs/mainland-web-access/spec.md
+    text: The configured header value trims and case-insensitively equals `CN`.
+    result: passed
+    reason:
+      text: Configured country values are trimmed and compared with CN using
+        EqualFold; focused tests exercise spaced lowercase cn.
+      truncated: false
+  - id: A13
+    source: specs/mainland-web-access/spec.md
+    text: The policy does not use `ClientIP()`, `X-Forwarded-For`, another forwarded
+      address, a GeoIP lookup, or a default/private trusted-proxy range to
+      decide whether a country header is authoritative. If any input cannot
+      establish trust, the request follows its existing path.
+    result: passed
+    reason:
+      text: Static review finds no ClientIP, X-Forwarded-For, forwarded address,
+        GeoIP, or Gin default trust decision in this policy; it only uses
+        Request.RemoteAddr and the explicit parser.
+      truncated: false
+  - id: A14
+    source: specs/mainland-web-access/spec.md
+    text: The policy is evaluated before static serving for root and direct HTML
+      document requests, including `/index.html`. It is also evaluated
+      immediately before the main SPA fallback, the canvas SPA fallback, and the
+      fallback used when `FRONTEND_BASE_URL` redirects website routes. Therefore
+      trusted `CN` requests cannot obtain website HTML or bypass the policy
+      through login, registration, documentation, canvas, or another SPA deep
+      link.
+    result: passed
+    reason:
+      text: The middleware is registered before both static servers for root/direct
+        HTML, and BlockMainlandWebAccess is called immediately before main,
+        canvas, and FRONTEND_BASE_URL fallback output.
+      truncated: false
+  - id: A15
+    source: specs/mainland-web-access/spec.md
+    text: "When the policy applies, the response is HTTP 451 with `text/html;
+      charset=utf-8`, `Cache-Control: no-store`, and a restrictive
+      inline-document security policy. The page uses the active `classic` or
+      default theme via `common.GetTheme()`, contains no pink palette, and
+      localizes its status, title, and explanation from backend i18n."
+    result: passed
+    reason:
+      text: The 451 renderer writes text/html charset utf-8, Cache-Control no-store,
+        restrictive inline-document CSP, and theme-aware escaped localized HTML
+        before Abort.
+      truncated: false
+  - id: A16
+    source: specs/mainland-web-access/spec.md
+    text: The policy never blocks API or relay paths beginning with `/api` or `/v1`,
+      static assets under `/assets`, or conventional health and metrics paths
+      (`/health`, `/healthz`, `/ready`, `/readyz`, `/live`, `/livez`, and
+      `/metrics`). Static non-document resources remain served by the existing
+      static middleware.
+    result: passed
+    reason:
+      text: Exemption code covers /api, /v1, /assets, listed health/metrics prefixes,
+        while direct non-document static resources are not intercepted by the
+        document middleware; focused cases pass.
+      truncated: false
+  - id: A17
+    source: specs/mainland-web-access/spec.md
+    text: "Operators enable the policy by configuring both variables with a proxy
+      they control. For example, a proxy at `192.0.2.10` that supplies
+      `CF-IPCountry` uses:"
+    result: passed
+    reason:
+      text: The deployment documentation and .env.example describe both variables and
+        provide the explicit 192.0.2.10 / CF-IPCountry operator configuration.
+      truncated: false
+  - id: A18
+    source: specs/mainland-web-access/spec.md
+    text: Leaving the country-header variable empty disables the policy.
+      `TRUSTED_PROXIES` compatibility defaults, `none`, wildcard entries,
+      malformed lists, or a direct peer outside the list leave the policy
+      fail-open even if a request presents `CN`.
+    result: passed
+    reason:
+      text: Static review and focused cases verify blank header configuration,
+        implicit defaults, none, wildcard, malformed lists, and nonmatching
+        peers fail open.
+      truncated: false
+  - id: A19
+    source: specs/mainland-web-access/spec.md
+    text: Focused tests prove trusted CN requests receive HTTP 451 on direct
+      document and SPA fallback paths.
+    result: passed
+    reason:
+      text: Focused verbose Go output proves trusted CN receives 451 for direct
+        root/index.html and main/canvas SPA fallback paths.
+      truncated: false
+  - id: A20
+    source: specs/mainland-web-access/spec.md
+    text: Tests prove trusted non-CN, missing values, disabled configuration,
+      untrusted direct clients, and malformed/implicit trusted-proxy
+      configuration do not trigger HTTP 451.
+    result: passed
+    reason:
+      text: Focused verbose Go output proves non-CN, missing, disabled, untrusted,
+        implicit, none, wildcard, malformed, and unparsable-peer scenarios do
+        not return 451.
+      truncated: false
+  - id: A21
+    source: specs/mainland-web-access/spec.md
+    text: Tests prove API, static asset, and health/metrics paths remain outside the
+      policy boundary.
+    result: passed
+    reason:
+      text: Focused verbose Go output proves API, v1, assets, static SVG, health,
+        readiness, liveness, and metrics paths remain outside the 451 boundary.
+      truncated: false
+  - id: A22
+    source: specs/mainland-web-access/spec.md
+    text: Locale tests or static assertions confirm the English, Simplified Chinese,
+      and Traditional Chinese backend message keys resolve.
+    result: passed
+    reason:
+      text: Focused locale test resolves the new English, Simplified Chinese, and
+        Traditional Chinese backend title and message keys.
+      truncated: false
+builder_handoff:
+  candidate_id: 902f9345-9eed-49d2-ab06-8f31a3f12dee
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:287a39e7-cd51-41c5-bfad-4c9d00cf752b
+  iteration: 1
+  summary:
+    text: Implemented opt-in mainland website access enforcement. A configured
+      country header is accepted only from a direct TCP peer that matches an
+      explicit concrete TRUSTED_PROXIES IP/CIDR entry; trusted CN requests
+      receive a localized theme-aware 451 page at direct HTML and SPA/redirect
+      fallback boundaries. API, relay, static non-document, and health/metrics
+      paths remain fail-open. Added deterministic middleware HTTP tests, backend
+      translations, deployment documentation, and the required changelog entry.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+  checks:
+    - name:
+        text: focused mainland web-access Go tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./middleware ./router ./common passed.
+        truncated: false
+    - name:
+        text: focused Go vet
+        truncated: false
+      result: passed
+      note:
+        text: go vet ./middleware ./router passed.
+        truncated: false
+    - name:
+        text: changed Go formatting
+        truncated: false
+      result: passed
+      note:
+        text: gofmt -d produced no output for changed Go files.
+        truncated: false
+    - name:
+        text: frontend changelog lint and format
+        truncated: false
+      result: passed
+      note:
+        text: Targeted oxlint and oxfmt checks passed using parent-workspace local
+          binaries because this child worktree has no web/node_modules.
+        truncated: false
+    - name:
+        text: git diff whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; Git emitted only the existing LF-to-CRLF checkout
+          warning for .env.example.
+        truncated: false
+    - name:
+        text: root package compile
+        truncated: false
+      result: failed
+      note:
+        text: go test . cannot start because this worktree lacks the existing generated
+          web/canvas/dist directory required by main.go's embed directive; this
+          is unrelated to the candidate source.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The child worktree has no web/node_modules and Bun is unavailable, so a
+        full frontend typecheck/build was not run. Only the modified changelog
+        file was linted and formatted with the parent workspace's installed
+        local binaries.
+      truncated: false
+    - text: A root-package compile is blocked by the absent generated web/canvas/dist
+        embed input in this worktree.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T20:46:17.885Z
+blockers: []
+verification:
+  candidate_id: 902f9345-9eed-49d2-ab06-8f31a3f12dee
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:9c576c88-7681-40a5-bf57-39d3a85e3f1e
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: mainland-web-access-go-test
+      name:
+        text: Mainland web-access Go tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./middleware
+          truncated: false
+        - text: ./router
+          truncated: false
+        - text: ./common
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 589
+    - id: mainland-web-access-go-vet
+      name:
+        text: Mainland web-access Go vet
+        truncated: false
+      argv_display:
+        - text: vet
+          truncated: false
+        - text: ./middleware
+          truncated: false
+        - text: ./router
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 525
+    - id: mainland-web-access-gofmt
+      name:
+        text: Changed Go source formatting
+        truncated: false
+      argv_display:
+        - text: -d
+          truncated: false
+        - text: middleware/mainland_web_access.go
+          truncated: false
+        - text: middleware/mainland_web_access_test.go
+          truncated: false
+        - text: router/main.go
+          truncated: false
+        - text: router/web-router.go
+          truncated: false
+        - text: i18n/keys.go
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 47
+    - id: mainland-web-access-diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 46
+    - id: mainland-web-access-changelog-lint
+      name:
+        text: Frontend changelog lint
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\web\node_modules\oxlint\bin\oxlint
+          truncated: false
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 74
+    - id: mainland-web-access-changelog-format
+      name:
+        text: Frontend changelog formatting
+        truncated: false
+      argv_display:
+        - text: E:\code\new-api\web\node_modules\oxfmt\bin\oxfmt
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 300
+  summary:
+    text: "Independent verifier reviewed the formal brief/spec, actual diff and
+      routing/trust paths, then Runtime checks. All A1-A22 pass: only an
+      explicit direct TCP peer can make the configured country header
+      authoritative, trusted CN website document and fallback paths receive
+      localized theme-aware 451, and API/relay/static/health boundaries remain
+      fail-open."
+    truncated: false
+  risks:
+    - text: Independent root-package compilation could not run because this worktree
+        lacks generated web/dist, web/classic/dist, and web/canvas/dist; direct
+        go test . independently confirms the missing canvas embed input. The
+        required router and middleware packages compile and test successfully.
+      truncated: false
+    - text: The worktree has no web/node_modules and Bun is unavailable. The only
+        frontend change is the changelog entry, which was checked with the
+        repository parent workspace local oxlint and oxfmt binaries; a full
+        frontend build was not run.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T20:56:50.424Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Independent verifier reviewed the formal brief/spec, actual diff and
+        routing/trust paths, then Runtime checks. All A1-A22 pass: only an
+        explicit direct TCP peer can make the configured country header
+        authoritative, trusted CN website document and fallback paths receive
+        localized theme-aware 451, and API/relay/static/health boundaries remain
+        fail-open."
+      truncated: false
+    completed_at: 2026-08-21T20:56:50.424Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-21T19:34:20.271Z

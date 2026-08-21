@@ -241,6 +241,13 @@ const (
 	MsgRateLimitTotalReached = "rate_limit.total_reached"
 )
 
+// Mainland website access messages
+const (
+	MsgMainlandWebAccessStatus  = "web_access.mainland_blocked_status"
+	MsgMainlandWebAccessTitle   = "web_access.mainland_blocked_title"
+	MsgMainlandWebAccessMessage = "web_access.mainland_blocked_message"
+)
+
 // Setting related messages
 const (
 	MsgSettingInvalidType      = "setting.invalid_type"
