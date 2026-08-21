@@ -1,0 +1,12 @@
+{
+  "schema": "comet.native.local-execution.v4",
+  "change": "redesign-login-experience",
+  "basedOnStateVersion": 19,
+  "workspace": {
+    "projectRoot": "E:\\code\\new-api\\.worktrees\\redesign-login-experience",
+    "worktreeRoot": "E:\\code\\new-api\\.worktrees\\redesign-login-experience",
+    "branch": "comet/redesign-login-experience"
+  },
+  "execution": null,
+  "checks": []
+}
