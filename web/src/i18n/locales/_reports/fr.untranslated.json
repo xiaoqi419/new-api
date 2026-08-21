@@ -24,10 +24,5 @@
   "to form group": "to form group",
   "Void this in-progress group buy and refund all paid members?": "Void this in-progress group buy and refund all paid members?",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
-  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends",
-  "Complete this payment without leaving the current page.": "Complete this payment without leaving the current page.",
-  "Payment completed. Returning to the previous page.": "Payment completed. Returning to the previous page.",
-  "Payment failed. You can retry or return.": "Payment failed. You can retry or return.",
-  "Payment expired. You can retry or return.": "Payment expired. You can retry or return.",
-  "Scan the QR code to complete your payment.": "Scan the QR code to complete your payment."
+  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"
 }

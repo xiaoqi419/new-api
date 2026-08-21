@@ -75,6 +75,22 @@ describe('group-buy payment selection', () => {
     ).toBe('native')
   })
 
+  test.each([
+    ['Mozilla/5.0 (X11; Linux x86_64)', 'native'],
+    ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile', 'h5'],
+  ] as const)(
+    'requests payment methods with the detected %s browser scene',
+    async (userAgent, expectedScene) => {
+      vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+
+      const { result } = renderHook(() => useGroupBuyPayment())
+
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      expect(result.current.scene).toBe(expectedScene)
+      expect(mocks.getGroupBuyInfo).toHaveBeenCalledWith(expectedScene)
+    }
+  )
+
   test('drops blank methods and keeps the first method for each trimmed type', () => {
     expect(
       normalizePaymentMethods([

@@ -95,20 +95,6 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    // Candidate tag is anchored to the current baseline; replace the suffix
-    // with the release image SHA when this change is published.
-    version: '20260819-4a8eb9830',
-    date: '2026-08-19',
-    changes: [
-      {
-        kind: 'improvement',
-        items: [
-          '钱包充值、订阅购买和拼团支付的 Epay 聚合支付已改为站内二维码 checkout，并支持订单状态轮询与失败重试。',
-        ],
-      },
-    ],
-  },
-  {
     version: '20260819-6acf55ae4',
     date: '2026-08-19',
     changes: [
