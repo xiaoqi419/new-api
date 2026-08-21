@@ -36,6 +36,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         kind: 'improvement',
         items: [
           '登录与注册页的模型能力提示新增单轨流动连接：Claude、Codex、Gemini 与更多模型之间的接入关系更直观，同时尊重“减少动态效果”系统偏好。',
+          '官网现在可以由可信反向代理的地区信号限制中国大陆访问：命中后网站页面会返回主题化 451，API、中转、静态资源和健康检查不受影响。',
         ],
       },
     ],

@@ -205,6 +205,11 @@ twofa.code_invalid: "驗證碼或備用碼不正確"
 rate_limit.reached: "您已達到請求數限制：{{.Minutes}}分鐘內最多請求{{.Max}}次"
 rate_limit.total_reached: "您已達到總請求數限制：{{.Minutes}}分鐘內最多請求{{.Max}}次，包括失敗次數"
 
+# 中國大陸網站存取訊息
+web_access.mainland_blocked_status: "451 區域存取受限"
+web_access.mainland_blocked_title: "此網站在您所在區域暫時無法存取"
+web_access.mainland_blocked_message: "中國大陸地區暫不提供此網站存取服務。"
+
 # Setting messages
 setting.invalid_type: "無效的預警類型"
 setting.webhook_empty: "Webhook位址不能為空"

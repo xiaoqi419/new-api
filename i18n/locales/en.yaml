@@ -204,6 +204,11 @@ twofa.code_invalid: "Verification code or backup code is incorrect"
 rate_limit.reached: "You have reached the request limit: maximum {{.Max}} requests in {{.Minutes}} minutes"
 rate_limit.total_reached: "You have reached the total request limit: maximum {{.Max}} requests in {{.Minutes}} minutes, including failed attempts"
 
+# Mainland website access messages
+web_access.mainland_blocked_status: "451 Unavailable For Legal Reasons"
+web_access.mainland_blocked_title: "This website is unavailable in your region"
+web_access.mainland_blocked_message: "Access to this website is unavailable from mainland China."
+
 # Setting messages
 setting.invalid_type: "Invalid warning type"
 setting.webhook_empty: "Webhook URL cannot be empty"
