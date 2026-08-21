@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: auth-access-quality-pass
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 3
 brief: brief.md
 children_contract_hash: cd9af01ac2e86fd15cae2e530ffbcba099b7f3141e10139a75f7427e0ed81791
 spec_changes:
@@ -16,7 +16,7 @@ workspace:
   target_branch: secondary-dev
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
   attempt: 0
@@ -25,7 +25,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: run-required-checks-and-dispatch-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -158,7 +158,47 @@ acceptance:
     text: 区域访问测试覆盖可信 CN、可信非 CN、未知地区、非可信伪造头、HTML 与 API 路径，并断言 HTTP 状态和放行边界。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 903efa6b-4133-4b1a-8fa1-462f0ee3f759
+  identity_provider: skill-coordinated
+  builder_execution_ref: native-parent-integration:df69f1fc-5441-4d24-8971-81d50ae5d790
+  iteration: 1
+  summary:
+    text: All five child changes, including enforce-mainland-web-access, are
+      archived and merged into the Supervisor branch. Advance the Supervisor to
+      independent integration verification; no navigation change is included.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+  checks: []
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T21:52:50.094Z
 blockers: []
 verification: null
 history: []
