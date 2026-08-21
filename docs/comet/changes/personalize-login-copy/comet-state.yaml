@@ -1,0 +1,480 @@
+schema: comet.native.v4
+name: personalize-login-copy
+language: zh-CN
+phase: archive
+status: active
+state_version: 12
+brief: brief.md
+spec_changes:
+  - capability: authentication-login-copy
+    operation: create
+    source: specs/authentication-login-copy/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/personalize-login-copy
+  target_branch: comet/auth-access-quality-pass
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 'A1: In Simplified Chinese, the sign-in title is exactly "欢迎回来 ！👋" and
+      the description is exactly "登录后进入AI的汪洋大海中~".'
+    result: passed
+    reason:
+      text: zh.json and the canonical Vitest regression render the exact required
+        title and description.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: English, Traditional Chinese, French, Japanese, Russian, and
+      Vietnamese provide natural localized equivalents; the title and
+      description retain the existing `min-w-0` and `break-words` constraints
+      needed at 320px."
+    result: passed
+    reason:
+      text: All six non-Simplified-Chinese dictionaries contain concise natural
+        equivalents, and AuthCard retains min-w-0 and break-words on both
+        elements.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A15: The new user-visible source keys are present in all seven locale
+      dictionaries and the latest changelog entry describes this update."
+    result: passed
+    reason:
+      text: The canonical locale contract verified both keys in all seven
+        dictionaries, and the top changelog entry describes the update.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A18: The sign-in card uses the localized title and description keys
+      rather than hard-coded Chinese text."
+    result: passed
+    reason:
+      text: SignIn passes both source keys through t() and contains no hard-coded
+        Chinese copy.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A23: The child changes only its assigned login-copy files and preserves
+      the existing authentication contract."
+    result: passed
+    reason:
+      text: Candidate content changes are limited to assigned login-copy, locale,
+        test, and changelog files; unrelated zero-line mode changes were
+        preserved, and authentication behavior was not changed.
+      truncated: false
+  - id: A6
+    source: specs/authentication-login-copy/spec.md
+    text: The sign-in card presents a localized welcome title and description that
+      make the next step clear without changing any authentication behavior.
+    result: passed
+    reason:
+      text: The sign-in card now presents localized welcome copy, with canonical
+        regression, typecheck, and production build checks passing.
+      truncated: false
+  - id: A7
+    source: specs/authentication-login-copy/spec.md
+    text: The sign-in page obtains both strings through `useTranslation()` and `t()`.
+    result: passed
+    reason:
+      text: SignIn imports useTranslation() and obtains both card strings through t().
+      truncated: false
+  - id: A8
+    source: specs/authentication-login-copy/spec.md
+    text: The title source key is `Welcome back! 👋`.
+    result: passed
+    reason:
+      text: The title call site and every locale dictionary use the exact key Welcome
+        back! 👋.
+      truncated: false
+  - id: A9
+    source: specs/authentication-login-copy/spec.md
+    text: The description source key is `Sign in to dive into the ocean of AI.`.
+    result: passed
+    reason:
+      text: The description call site and every locale dictionary use the exact source
+        key specified by the capability.
+      truncated: false
+  - id: A10
+    source: specs/authentication-login-copy/spec.md
+    text: In Simplified Chinese, the rendered title is exactly `欢迎回来 ！👋` and the
+      rendered description is exactly `登录后进入AI的汪洋大海中~`.
+    result: passed
+    reason:
+      text: The canonical Vitest suite passed the exact Simplified Chinese
+        rendered-string assertions.
+      truncated: false
+  - id: A11
+    source: specs/authentication-login-copy/spec.md
+    text: English, Traditional Chinese, French, Japanese, Russian, and Vietnamese
+      each provide a natural localized title and description in their existing
+      locale dictionary.
+    result: passed
+    reason:
+      text: Static review and the canonical locale contract confirm natural nonempty
+        title and description values for en, zh-TW, fr, ja, ru, and vi.
+      truncated: false
+  - id: A12
+    source: specs/authentication-login-copy/spec.md
+    text: "Every source key exists in all seven supported locale dictionaries: en,
+      zh, zh-TW, fr, ja, ru, and vi."
+    result: passed
+    reason:
+      text: The canonical locale contract parsed en, zh, zh-TW, fr, ja, ru, and vi and
+        found both source keys in each.
+      truncated: false
+  - id: A13
+    source: specs/authentication-login-copy/spec.md
+    text: The title remains the sign-in card heading and the description remains
+      supporting text.
+    result: passed
+    reason:
+      text: AuthCard continues to render the supplied title as an h1 and description
+        as a supporting p when sign-in hides duplicate branding.
+      truncated: false
+  - id: A14
+    source: specs/authentication-login-copy/spec.md
+    text: Both strings retain the card's existing `min-w-0` and `break-words`
+      constraints, so a 320px viewport can wrap long localized text without
+      horizontal overflow.
+    result: passed
+    reason:
+      text: The existing min-w-0 and break-words classes remain on the h1 and p, and
+        the regression test asserts both constraints.
+      truncated: false
+  - id: A15
+    source: specs/authentication-login-copy/spec.md
+    text: The emoji is text content in the heading and does not replace an
+      accessible label or control.
+    result: passed
+    reason:
+      text: The emoji is part of the translated title string rendered in the h1, not
+        an accessible control or replacement label.
+      truncated: false
+  - id: A16
+    source: specs/authentication-login-copy/spec.md
+    text: Password login, OAuth, Passkey, captcha, 2FA, redirect handling, terms,
+      and all existing sign-in form controls retain their current behavior.
+    result: passed
+    reason:
+      text: The production code diff changes only title and description inputs;
+        canonical regression coverage passed password, OAuth, Passkey, route,
+        and shared-layout checks.
+      truncated: false
+  - id: A17
+    source: specs/authentication-login-copy/spec.md
+    text: The sign-up page, password-recovery pages, shared authentication layout,
+      navigation, model animation, SMTP behavior, IP access behavior,
+      deployment, and backend APIs are outside this capability.
+    result: passed
+    reason:
+      text: No production changes touch sign-up, recovery, shared layout, navigation,
+        model animation, SMTP, IP access, deployment, or backend APIs.
+      truncated: false
+  - id: A18
+    source: specs/authentication-login-copy/spec.md
+    text: The newest changelog entry records the user-visible sign-in welcome copy
+      update.
+    result: passed
+    reason:
+      text: The newest changelog entry contains the user-visible sign-in welcome-copy
+        update.
+      truncated: false
+builder_handoff:
+  candidate_id: c9886772-4c53-45bc-a9b1-910d75ea1e9f
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:e93f7a0d-6f72-4a37-bcf5-328d25efd490
+  iteration: 2
+  summary:
+    text: Candidate unchanged. The prior verifier's initial required checks ran
+      before the worktree dependency junction existed; this Build return only
+      replaces that environment-invalid plan. Independent review confirmed the
+      login-copy implementation, all seven locales, regression coverage, and
+      changelog entry remain unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+  checks:
+    - name:
+        text: Independent focused sign-in Vitest regression
+        truncated: false
+      result: passed
+      note:
+        text: Runtime execution against the unchanged candidate passed 8 tests with the
+          temporary dependency junction.
+        truncated: false
+    - name:
+        text: Independent frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: Runtime tsgo -b passed with the temporary dependency junction.
+        truncated: false
+    - name:
+        text: Independent frontend production build
+        truncated: false
+      result: passed
+      note:
+        text: Runtime rsbuild build passed with the temporary dependency junction.
+        truncated: false
+    - name:
+        text: Independent locale contract
+        truncated: false
+      result: passed
+      note:
+        text: Runtime parsed both keys in en, zh, zh-TW, fr, ja, ru, and vi and verified
+          the exact zh values.
+        truncated: false
+    - name:
+        text: Git diff whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed after verification.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No browser viewport screenshot was run; the focused DOM regression test
+        verifies the retained min-w-0 and break-words safeguards.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T20:17:18.935Z
+blockers: []
+verification:
+  candidate_id: c9886772-4c53-45bc-a9b1-910d75ea1e9f
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:44017a9d-0579-4932-b459-d4eb747a1870
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: canonical-login-copy-tests
+      name:
+        text: Localized sign-in copy regression
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: npx.cmd --yes vitest@3.2.4 run --config
+            E:\code\new-api\.worktrees\personalize-login-copy\.comet\vitest.config.ts
+            --reporter=verbose
+            src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 110556
+    - id: canonical-login-copy-lint
+      name:
+        text: Targeted login copy lint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/auth/sign-in/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 689
+    - id: canonical-login-copy-format
+      name:
+        text: Targeted login copy format
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: src/features/auth/sign-in/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/i18n/locales/en.json
+          truncated: false
+        - text: src/i18n/locales/fr.json
+          truncated: false
+        - text: src/i18n/locales/ja.json
+          truncated: false
+        - text: src/i18n/locales/ru.json
+          truncated: false
+        - text: src/i18n/locales/vi.json
+          truncated: false
+        - text: src/i18n/locales/zh-TW.json
+          truncated: false
+        - text: src/i18n/locales/zh.json
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1411
+    - id: canonical-frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 27946
+    - id: canonical-frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 206598
+    - id: canonical-locale-contract
+      name:
+        text: Locale key and exact Simplified Chinese contract
+        truncated: false
+      argv_display:
+        - text: -e
+          truncated: false
+        - text: const fs=require('node:fs');const
+            langs=['en','zh','zh-TW','fr','ja','ru','vi'];const keys=['Welcome
+            back! 👋','Sign in to dive into the ocean of AI.'];for(const lang of
+            langs){const
+            t=JSON.parse(fs.readFileSync('src/i18n/locales/'+lang+'.json','utf8')).translation;for(const
+            key of keys){if(typeof t[key]!=='string'||t[key].trim()==='')throw
+            new Error(lang+' missing '+key)}if(lang==='zh'&&(t[keys[0]]!=='欢迎回来
+            ！👋'||t[keys[1]]!=='登录后进入AI的汪洋大海中~'))throw new Error('Simplified
+            Chinese contract mismatch')}
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 97
+    - id: canonical-diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 80
+  summary:
+    text: "Independent verification passed: full static review, canonical locale
+      contract, focused Vitest regression, target lint and format, frontend
+      typecheck, frontend production build, and diff whitespace check all
+      passed. The temporary dependency junction was fully restored."
+    truncated: false
+  risks:
+    - text: No browser viewport screenshot was run; the focused DOM regression test
+        verifies the retained min-w-0 and break-words safeguards.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T20:26:12.068Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier repeatedly
+        requested only equivalent checks"
+      truncated: false
+    completed_at: 2026-08-21T20:05:26.674Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-21T20:15:07.885Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Initial verifier plan ran before dependency junction; candidate unchanged,
+        return to Build to resubmit a correct canonical required-check plan.
+      truncated: false
+    completed_at: 2026-08-21T20:16:36.483Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Independent verification passed: full static review, canonical locale
+        contract, focused Vitest regression, target lint and format, frontend
+        typecheck, frontend production build, and diff whitespace check all
+        passed. The temporary dependency junction was fully restored."
+      truncated: false
+    completed_at: 2026-08-21T20:26:12.068Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-21T19:33:13.902Z
