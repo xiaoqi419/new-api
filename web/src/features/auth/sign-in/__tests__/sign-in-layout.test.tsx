@@ -22,6 +22,8 @@ import { Window } from 'happy-dom'
 // @ts-ignore -- Vitest is provided by the repository verification harness.
 import { afterAll, beforeEach, describe, test, vi } from 'vitest'
 
+import zh from '@/i18n/locales/zh.json'
+
 const { useStatusMock, useSystemConfigMock } = vi.hoisted(() => ({
   useStatusMock: vi.fn(),
   useSystemConfigMock: vi.fn(),
@@ -58,6 +60,7 @@ const { I18nextProvider, initReactI18next } = await import('react-i18next')
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, ...props }: React.ComponentProps<'a'> & { to: string }) =>
     createElement('a', { href: to, ...props }),
+  useSearch: () => ({ redirect: undefined }),
 }))
 
 vi.mock('@/hooks/use-status', () => ({
@@ -129,6 +132,7 @@ const { AuthExperienceLayout } =
   await import('../../components/auth-experience-layout')
 const { AuthTabs } = await import('../../components/auth-tabs')
 const { SignUp } = await import('../../sign-up')
+const { SignIn } = await import('../index')
 const { UserAuthForm } = await import('../components/user-auth-form')
 
 const reactTestGlobals = globalThis as typeof globalThis & {
@@ -139,7 +143,7 @@ reactTestGlobals.IS_REACT_ACT_ENVIRONMENT = true
 const i18n = createInstance()
 await i18n
   .use(initReactI18next)
-  .init({ lng: 'en', resources: { en: { translation: {} } } })
+  .init({ lng: 'en', resources: { en: { translation: {} }, zh } })
 
 async function renderNode(node: React.ReactNode) {
   const container = document.createElement('div')
@@ -162,7 +166,8 @@ async function removeNode({
 }
 
 describe('authentication experience layout', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en')
     document.documentElement.className = ''
     useStatusMock.mockReset()
     useSystemConfigMock.mockReset()
@@ -271,6 +276,23 @@ describe('authentication experience layout', () => {
         'Connect through OpenAI, Claude, Gemini, and other compatible API routes'
       )
     )
+
+    await removeNode(view)
+  })
+
+  test('renders the confirmed Simplified Chinese welcome copy with wrapping safeguards', async () => {
+    await i18n.changeLanguage('zh')
+
+    const view = await renderNode(createElement(SignIn))
+    const title = view.container.querySelector('h1')
+    const description = view.container.querySelector('h1 + p')
+
+    assert.equal(title?.textContent, '欢迎回来 ！👋')
+    assert.equal(description?.textContent, '登录后进入AI的汪洋大海中~')
+    assert.match(title?.className ?? '', /min-w-0/)
+    assert.match(title?.className ?? '', /break-words/)
+    assert.match(description?.className ?? '', /min-w-0/)
+    assert.match(description?.className ?? '', /break-words/)
 
     await removeNode(view)
   })
