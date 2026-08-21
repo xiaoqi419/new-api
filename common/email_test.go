@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +31,88 @@ type fakeSMTPServer struct {
 	messages          chan string
 	authCommands      chan string
 	startTLSCommands  chan string
+}
+
+type stalledSMTPMode int
+
+const (
+	stallSMTPGreeting stalledSMTPMode = iota
+	stallImplicitTLSHandshake
+	stallStartTLSHandshake
+)
+
+type stalledSMTPServer struct {
+	listener net.Listener
+	host     string
+	port     int
+	mode     stalledSMTPMode
+	closed   chan struct{}
+}
+
+func newStalledSMTPServer(t *testing.T, mode stalledSMTPMode) *stalledSMTPServer {
+	t.Helper()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	host, portText, err := net.SplitHostPort(listener.Addr().String())
+	require.NoError(t, err)
+	port, err := strconv.Atoi(portText)
+	require.NoError(t, err)
+
+	server := &stalledSMTPServer{
+		listener: listener,
+		host:     host,
+		port:     port,
+		mode:     mode,
+		closed:   make(chan struct{}),
+	}
+	go server.serve()
+	return server
+}
+
+func (s *stalledSMTPServer) close() {
+	select {
+	case <-s.closed:
+		return
+	default:
+		close(s.closed)
+		_ = s.listener.Close()
+	}
+}
+
+func (s *stalledSMTPServer) serve() {
+	conn, err := s.listener.Accept()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	if s.mode == stallSMTPGreeting || s.mode == stallImplicitTLSHandshake {
+		<-s.closed
+		return
+	}
+
+	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	if err := writeSMTPLine(rw, "220 fake.smtp.local ESMTP"); err != nil {
+		return
+	}
+	if _, err := rw.ReadString('\n'); err != nil {
+		return
+	}
+	if err := writeSMTPLine(rw, "250-fake.smtp.local"); err != nil {
+		return
+	}
+	if err := writeSMTPLine(rw, "250 STARTTLS"); err != nil {
+		return
+	}
+	if _, err := rw.ReadString('\n'); err != nil {
+		return
+	}
+	if err := writeSMTPLine(rw, "220 2.0.0 Ready to start TLS"); err != nil {
+		return
+	}
+	<-s.closed
 }
 
 func newFakeSMTPServer(t *testing.T) *fakeSMTPServer {
@@ -251,6 +334,7 @@ func withSMTPSettings(t *testing.T) {
 	originalSMTPAccount := SMTPAccount
 	originalSMTPFrom := SMTPFrom
 	originalSMTPToken := SMTPToken
+	originalSMTPTimeout := smtpOperationTimeout
 	originalSystemName := SystemName
 
 	t.Cleanup(func() {
@@ -263,8 +347,95 @@ func withSMTPSettings(t *testing.T) {
 		SMTPAccount = originalSMTPAccount
 		SMTPFrom = originalSMTPFrom
 		SMTPToken = originalSMTPToken
+		smtpOperationTimeout = originalSMTPTimeout
 		SystemName = originalSystemName
 	})
+}
+
+func requireSMTPTimeoutError(t *testing.T, err error, stage string) {
+	t.Helper()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), stage)
+	assert.Contains(t, err.Error(), "timeout")
+	var netErr net.Error
+	require.ErrorAs(t, err, &netErr)
+	assert.True(t, netErr.Timeout())
+}
+
+func assertSMTPErrorDoesNotLeak(t *testing.T, err error) {
+	t.Helper()
+	message := err.Error()
+	assert.NotContains(t, message, "smtp-token-secret")
+	assert.NotContains(t, message, "smtp-account@example.com")
+	assert.NotContains(t, message, "receiver@example.com")
+	assert.NotContains(t, message, "private subject")
+	assert.NotContains(t, message, "private body")
+}
+
+func TestSendEmailTimesOutWhenSMTPGreetingStalls(t *testing.T) {
+	server := newStalledSMTPServer(t, stallSMTPGreeting)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = server.host
+	SMTPPort = server.port
+	SMTPSSLEnabled = false
+	SMTPStartTLSEnabled = false
+	SMTPInsecureSkipVerify = true
+	SMTPForceAuthLogin = false
+	SMTPAccount = "smtp-account@example.com"
+	SMTPFrom = "smtp-account@example.com"
+	SMTPToken = "smtp-token-secret"
+	SystemName = "New API"
+	smtpOperationTimeout = 100 * time.Millisecond
+
+	err := SendEmail("private subject", "receiver@example.com", "<p>private body</p>")
+	requireSMTPTimeoutError(t, err, "greeting")
+	assertSMTPErrorDoesNotLeak(t, err)
+}
+
+func TestSendEmailTimesOutWhenImplicitTLSHandshakeStalls(t *testing.T) {
+	server := newStalledSMTPServer(t, stallImplicitTLSHandshake)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = server.host
+	SMTPPort = server.port
+	SMTPSSLEnabled = true
+	SMTPStartTLSEnabled = false
+	SMTPInsecureSkipVerify = true
+	SMTPForceAuthLogin = false
+	SMTPAccount = "smtp-account@example.com"
+	SMTPFrom = "smtp-account@example.com"
+	SMTPToken = "smtp-token-secret"
+	SystemName = "New API"
+	smtpOperationTimeout = 100 * time.Millisecond
+
+	err := SendEmail("private subject", "receiver@example.com", "<p>private body</p>")
+	requireSMTPTimeoutError(t, err, "implicit TLS handshake")
+	assertSMTPErrorDoesNotLeak(t, err)
+}
+
+func TestSendEmailTimesOutWhenStartTLSHandshakeStalls(t *testing.T) {
+	server := newStalledSMTPServer(t, stallStartTLSHandshake)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = server.host
+	SMTPPort = server.port
+	SMTPSSLEnabled = false
+	SMTPStartTLSEnabled = true
+	SMTPInsecureSkipVerify = true
+	SMTPForceAuthLogin = false
+	SMTPAccount = "smtp-account@example.com"
+	SMTPFrom = "smtp-account@example.com"
+	SMTPToken = "smtp-token-secret"
+	SystemName = "New API"
+	smtpOperationTimeout = 100 * time.Millisecond
+
+	err := SendEmail("private subject", "receiver@example.com", "<p>private body</p>")
+	requireSMTPTimeoutError(t, err, "STARTTLS handshake")
+	assertSMTPErrorDoesNotLeak(t, err)
 }
 
 func TestSendEmailUsesExplicitStartTLSWithInsecureCertificate(t *testing.T) {
@@ -559,5 +730,7 @@ func TestSendEmailExplicitStartTLSRejectsUntrustedCertificateByDefault(t *testin
 
 	err := SendEmail("Verification", "receiver@example.com", "<p>123456</p>")
 	require.Error(t, err)
-	require.Contains(t, fmt.Sprint(err), "certificate")
+	assert.Contains(t, err.Error(), "STARTTLS handshake")
+	var unknownAuthorityError x509.UnknownAuthorityError
+	require.ErrorAs(t, err, &unknownAuthorityError)
 }
