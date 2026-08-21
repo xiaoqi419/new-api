@@ -39,6 +39,7 @@ type OAuthProvidersProps = {
   status: SystemStatus | null
   disabled?: boolean
   className?: string
+  layout?: 'auto' | 'compact'
   onWeChatLogin?: () => void
   redirectTo?: string
 }
@@ -62,6 +63,7 @@ export function OAuthProviders({
   status,
   disabled = false,
   className,
+  layout = 'auto',
   onWeChatLogin,
   redirectTo,
 }: OAuthProvidersProps) {
@@ -170,8 +172,10 @@ export function OAuthProviders({
     <>
       <div
         className={cn(
-          'grid gap-3',
-          gridColumnsClassName[providerButtons.length] ?? 'grid-cols-3',
+          'grid min-w-0 gap-3',
+          layout === 'compact'
+            ? 'grid-cols-2'
+            : (gridColumnsClassName[providerButtons.length] ?? 'grid-cols-3'),
           className
         )}
       >
@@ -191,10 +195,13 @@ export function OAuthProviders({
               title={label}
               disabled={disabled || isLoading || extraDisabled}
               onClick={onClick}
-              className={cn(authSecondaryButtonClassName, 'w-full px-2')}
+              className={cn(
+                authSecondaryButtonClassName,
+                'min-w-0 overflow-hidden px-2'
+              )}
             >
               {icon}
-              <span className='truncate'>{shortLabel}</span>
+              <span className='min-w-0 truncate'>{shortLabel}</span>
             </Button>
           )
         )}

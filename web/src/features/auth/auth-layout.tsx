@@ -33,7 +33,7 @@ type AuthLayoutProps = {
   showMobileBrandMark?: boolean
 }
 
-function BrandMark({ className }: { className?: string }) {
+export function AuthBrandMark({ className }: { className?: string }) {
   const { t } = useTranslation()
   const { systemName, logo, loading } = useSystemConfig()
 
@@ -103,7 +103,7 @@ export function AuthLayout({
           )}
         />
 
-        <BrandMark className='relative z-10 w-fit' />
+        <AuthBrandMark className='relative z-10 w-fit' />
 
         <div className='relative z-10 space-y-6'>
           <div className='space-y-3'>
@@ -143,7 +143,7 @@ export function AuthLayout({
       <div className='relative flex flex-col'>
         {showMobileBrandMark && (
           <div className='p-4 sm:p-6 lg:hidden'>
-            <BrandMark className='w-fit' />
+            <AuthBrandMark className='w-fit' />
           </div>
         )}
         <div className='flex flex-1 items-center justify-center px-4 py-12 sm:px-8'>

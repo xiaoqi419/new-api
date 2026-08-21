@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useStatus } from '@/hooks/use-status'
 
-import { AuthLayout } from '../auth-layout'
 import { AuthCard } from '../components/auth-card'
+import { AuthExperienceLayout } from '../components/auth-experience-layout'
 import { TermsFooter } from '../components/terms-footer'
 import { SignUpForm } from './components/sign-up-form'
 
@@ -27,8 +27,11 @@ export function SignUp() {
   const { status } = useStatus()
 
   return (
-    <AuthLayout showMobileBrandMark={false}>
-      <AuthCard>
+    <AuthExperienceLayout page='sign-up'>
+      <AuthCard
+        showBrand={false}
+        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
+      >
         <SignUpForm />
 
         <TermsFooter
@@ -37,6 +40,6 @@ export function SignUp() {
           className='mt-[14px] leading-relaxed'
         />
       </AuthCard>
-    </AuthLayout>
+    </AuthExperienceLayout>
   )
 }

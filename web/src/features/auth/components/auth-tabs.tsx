@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { useStatus } from '@/hooks/use-status'
 import { cn } from '@/lib/utils'
 
 const tabClassName =
@@ -39,13 +38,6 @@ export function AuthTabs({
   className?: string
 }) {
   const { t } = useTranslation()
-  const { status } = useStatus()
-
-  const canRegister =
-    !status?.self_use_mode_enabled && status?.register_enabled !== false
-  // Still shown on the sign-up page when registration is closed, otherwise a
-  // direct visit to /sign-up would have no way back to signing in.
-  if (!canRegister && active === 'sign-in') return null
 
   return (
     <div

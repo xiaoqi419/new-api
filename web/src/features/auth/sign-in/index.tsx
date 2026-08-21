@@ -17,21 +17,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useSearch } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 
 import { useStatus } from '@/hooks/use-status'
 
-import { AuthLayout } from '../auth-layout'
 import { AuthCard } from '../components/auth-card'
+import { AuthExperienceLayout } from '../components/auth-experience-layout'
 import { TermsFooter } from '../components/terms-footer'
 import { UserAuthForm } from './components/user-auth-form'
 
 export function SignIn() {
+  const { t } = useTranslation()
   const { redirect } = useSearch({ from: '/(auth)/sign-in' })
   const { status } = useStatus()
 
   return (
-    <AuthLayout showMobileBrandMark={false}>
-      <AuthCard>
+    <AuthExperienceLayout page='sign-in'>
+      <AuthCard
+        showBrand={false}
+        title={t('Welcome back!')}
+        description={t('Sign in to continue to your workspace.')}
+        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
+      >
         <UserAuthForm redirectTo={redirect} />
 
         <TermsFooter
@@ -40,6 +47,6 @@ export function SignIn() {
           className='mt-[14px] leading-relaxed'
         />
       </AuthCard>
-    </AuthLayout>
+    </AuthExperienceLayout>
   )
 }
