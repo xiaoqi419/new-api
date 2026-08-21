@@ -16,8 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type LinkProps } from '@tanstack/react-router'
-import { type TFunction } from 'i18next'
+import type { LinkProps } from '@tanstack/react-router'
+import type { TFunction } from 'i18next'
+import type { LucideIcon } from 'lucide-react'
 
 /**
  * Base navigation item type
@@ -25,7 +26,7 @@ import { type TFunction } from 'i18next'
 type BaseNavItem = {
   title: string
   badge?: string
-  icon?: React.ElementType
+  icon?: LucideIcon
   activeUrls?: (LinkProps['to'] | (string & {}))[]
   configUrls?: (LinkProps['to'] | (string & {}))[]
   /**

@@ -16,7 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { getStatus } from '@/lib/api'
+import type { QueryClient } from '@tanstack/react-query'
+
+import { statusQueryOptions } from '@/lib/api'
 
 export type ModuleAccess = { enabled: boolean; requireAuth: boolean }
 
@@ -187,10 +189,17 @@ export function getModuleAccess(module: HeaderNavModule): ModuleAccess {
 }
 
 export async function getFreshModuleAccess(
+  queryClient: QueryClient,
   module: HeaderNavModule
 ): Promise<ModuleAccess> {
   try {
-    const status = (await getStatus()) as Record<string, unknown> | null
+    // Route guards and the public header must consume the same status snapshot.
+    // Otherwise a route transition can briefly render the stale cached navigation
+    // before its own access check receives the current configuration.
+    const status = (await queryClient.fetchQuery({
+      ...statusQueryOptions,
+      staleTime: 0,
+    })) as Record<string, unknown> | null
     cacheStatus(status)
     return getModuleAccessFromStatus(status, module)
   } catch {

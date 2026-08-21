@@ -16,19 +16,27 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import * as Icons from '@/components/icons'
-import { type LucideIcon } from '@/components/icons'
+import * as Icons from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+
+function isLucideIcon(candidate: unknown): candidate is LucideIcon {
+  return (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    '$$typeof' in candidate &&
+    candidate.$$typeof === Symbol.for('react.forward_ref')
+  )
+}
 
 /**
- * All selectable icon names exposed by the shared icon adapter
- * (`@/components/icons`, backed by Phosphor). Used to populate the
- * header-navigation icon picker.
+ * All selectable Lucide icon names used to populate the header-navigation
+ * icon picker.
  */
 export const NAV_ICON_NAMES: string[] = Object.keys(Icons)
   .filter(
     (name) =>
       /^[A-Z]/.test(name) &&
-      typeof (Icons as Record<string, unknown>)[name] === 'function'
+      isLucideIcon((Icons as Record<string, unknown>)[name])
   )
   .sort((a, b) => a.localeCompare(b))
 
@@ -39,7 +47,7 @@ export const NAV_ICON_NAMES: string[] = Object.keys(Icons)
 export function resolveNavIcon(name?: string | null): LucideIcon | null {
   if (!name) return null
   const candidate = (Icons as Record<string, unknown>)[name]
-  return typeof candidate === 'function' ? (candidate as LucideIcon) : null
+  return isLucideIcon(candidate) ? candidate : null
 }
 
 /**
@@ -89,4 +97,11 @@ export function navIconNameFor(
     return icons[key] || undefined
   }
   return DEFAULT_NAV_ICONS[key]
+}
+
+export function navIconFor(
+  icons: Record<string, string> | undefined,
+  key: NavIconKey
+): LucideIcon | null {
+  return resolveNavIcon(navIconNameFor(icons, key))
 }

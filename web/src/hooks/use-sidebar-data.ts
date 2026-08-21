@@ -1,5 +1,3 @@
-import { useTranslation } from 'react-i18next'
-
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -30,12 +28,10 @@ import {
   Gift,
   HandCoins,
   History,
-  Images,
   Key,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
-  Palette,
   Radio,
   ReceiptText,
   Rocket,
@@ -48,7 +44,9 @@ import {
   User,
   Users,
   Wallet,
-} from '@/components/icons'
+} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+
 import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
@@ -142,22 +140,6 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        id: 'media',
-        title: t('AI Media'),
-        items: [
-          {
-            title: t('Asset Library'),
-            url: '/asset-library',
-            icon: Images,
-          },
-          {
-            title: t('Infinite Canvas'),
-            url: '/canvas',
-            icon: Palette,
-          },
-        ],
-      },
-      {
         id: 'personal',
         title: t('Personal'),
         items: [
@@ -198,15 +180,6 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/tickets/detail'],
             icon: LifeBuoy,
           },
-          ...(isAgent
-            ? []
-            : [
-                {
-                  title: t('Become an Agent'),
-                  url: '/agent-apply',
-                  icon: Building2,
-                },
-              ]),
         ],
       },
       {

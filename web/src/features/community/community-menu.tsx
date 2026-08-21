@@ -29,7 +29,6 @@ import {
   Globe,
   MessageCircle,
   QrCode,
-  Users,
 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,7 +38,7 @@ import {
 } from '@/components/ui/popover'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useStatus } from '@/hooks/use-status'
-import { navIconNameFor, resolveNavIcon } from '@/lib/nav-icons'
+import { navIconFor } from '@/lib/nav-icons'
 import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 
@@ -150,8 +149,7 @@ export function CommunityMenu({
   const modules = parseHeaderNavModulesFromStatus(
     status as Record<string, unknown> | null
   )
-  const CommunityNavIcon =
-    resolveNavIcon(navIconNameFor(modules.icons, 'community')) ?? Users
+  const CommunityNavIcon = navIconFor(modules.icons, 'community')
 
   const trigger =
     variant === 'nav' ? (
@@ -162,7 +160,7 @@ export function CommunityMenu({
           className
         )}
       >
-        <CommunityNavIcon className='size-4' />
+        {CommunityNavIcon ? <CommunityNavIcon className='size-4' /> : null}
         {t('Community')}
       </Button>
     ) : (
@@ -172,7 +170,7 @@ export function CommunityMenu({
         className={cn('size-9', className)}
         aria-label={t('Community')}
       >
-        <CommunityNavIcon className='size-4' />
+        {CommunityNavIcon ? <CommunityNavIcon className='size-4' /> : null}
       </Button>
     )
 

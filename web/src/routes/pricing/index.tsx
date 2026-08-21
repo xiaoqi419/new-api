@@ -39,8 +39,8 @@ const pricingSearchSchema = z.object({
 
 export const Route = createFileRoute('/pricing/')({
   validateSearch: pricingSearchSchema,
-  beforeLoad: async ({ location }) => {
-    const access = await getFreshModuleAccess('pricing')
+  beforeLoad: async ({ location, context }) => {
+    const access = await getFreshModuleAccess(context.queryClient, 'pricing')
     if (!access.enabled) {
       throw redirect({ to: '/' })
     }
