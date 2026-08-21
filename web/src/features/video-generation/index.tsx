@@ -158,7 +158,9 @@ export function VideoGenerationContent() {
     }
     if (mode === 'first' && !firstFrame.trim()) {
       toast.error(
-        t('Please provide the first-frame image URL or pick an asset')
+        t(
+          'Please provide the first-frame image URL or enter an asset:// reference'
+        )
       )
       return
     }
@@ -217,7 +219,7 @@ export function VideoGenerationContent() {
     <div className='flex flex-col gap-4'>
       <p className='text-muted-foreground text-sm'>
         {t(
-          'Seedance 2.0: text-to-video / image-to-video (first frame) / first & last frame / multimodal reference (image, video, audio). Provide a public URL or pick from the asset library (asset://).'
+          'Seedance 2.0: text-to-video / image-to-video (first frame) / first & last frame / multimodal reference (image, video, audio). Provide a public URL or enter an asset:// reference.'
         )}
       </p>
 

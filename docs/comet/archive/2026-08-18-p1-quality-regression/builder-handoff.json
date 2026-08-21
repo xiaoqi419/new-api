@@ -1,0 +1,22 @@
+{
+  "kind": "builder-handoff",
+  "summary": "Phase 4 candidate completed the confirmed CI and quality-gate work. The CI backend job now creates web/dist, web/classic/dist, and web/canvas/dist embed placeholders. With local ignored placeholders, root and relaykit vet/build passed; relaykit tests passed. Frontend typecheck, production build, 278 frontend tests, focused wallet/groupbuy/auth tests (67), i18n sync, router/middleware/controller tests, and lint on the affected wallet files passed. Full root Go tests still expose two deterministic pre-existing service/channel_affinity_usage_cache failures; the full run also had one Windows HTTP/2 retry failure that passes in isolation. Full frontend lint still has unrelated classic and existing default errors. Real merchant payment remains online-only and WeChat login remains paused.",
+  "addressed_acceptance_ids": ["A1", "A2", "A3", "A4", "A5", "A6", "A7"],
+  "checks": [
+    {"name": "root go vet/build with three local embed placeholders", "result": "passed", "note": "CI patch supplies the same placeholders in clean CI checkout."},
+    {"name": "relaykit vet/build/test", "result": "passed", "note": "GOWORK=off."},
+    {"name": "root go test ./...", "result": "failed", "note": "Two service/channel_affinity_usage_cache tests fail deterministically; full run also has one Windows HTTP/2 retry failure."},
+    {"name": "frontend typecheck", "result": "passed", "note": "Bun 1.3.14 via npx."},
+    {"name": "frontend bun test", "result": "passed", "note": "278 tests across 42 files."},
+    {"name": "frontend build", "result": "passed", "note": "Rsbuild production build."},
+    {"name": "frontend full lint", "result": "failed", "note": "Existing classic/default lint errors outside this candidate; affected wallet files were lint-clean."},
+    {"name": "i18n sync report", "result": "passed", "note": "All locales missingCount/extrasCount are 0; existing untranslated fallback counts remain documented."},
+    {"name": "route and permission regression tests", "result": "passed", "note": "router, middleware, controller packages plus focused auth/groupbuy/wallet tests."},
+    {"name": "live merchant payment", "result": "not-run", "note": "Requires administrator credentials and online HTTPS callbacks; explicitly out of local scope."}
+  ],
+  "known_limits": [
+    "No real WeChat or Alipay merchant credentials, client authorization, public callback, or settlement was available.",
+    "Full Go and frontend lint baselines are not green for reasons outside this payment/quality candidate.",
+    "No new user-facing product behavior was added, so no changelog entry is required for this CI-only fix."
+  ]
+}

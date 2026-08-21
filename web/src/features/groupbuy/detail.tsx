@@ -87,6 +87,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
     payWay,
     setPayWay,
     payOptions,
+    loading: paymentMethodsLoading,
     submittingId,
     join,
     qrPay,
@@ -106,6 +107,8 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
   const minCountReached = paid >= minCount
   const remaining = Math.max(0, cap - paid)
   const percent = Math.min(100, Math.round((paid / cap) * 100))
+  // Expiry must be evaluated against wall-clock time whenever the detail rerenders.
+  // oxlint-disable-next-line react/purity
   const expired = detail.expire_time * 1000 < Date.now()
   const currentAmount = detail.current_amount || tiers[0].per_share_amount
   const canJoin =
@@ -250,6 +253,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
                   payWay={payWay}
                   onPayWayChange={setPayWay}
                   payOptions={payOptions}
+                  paymentMethodsLoading={paymentMethodsLoading}
                   submitting={submittingId === detail.group_no}
                   onJoin={() => void join(detail.group_no)}
                   shareLink={shareLink}

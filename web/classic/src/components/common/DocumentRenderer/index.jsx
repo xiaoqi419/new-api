@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, showError } from '../../../helpers';
 import { Empty, Card, Spin, Typography } from '@douyinfe/semi-ui';
 const { Title } = Typography;
@@ -51,7 +51,7 @@ const sanitizeHtml = (html) => {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
 
-  const styles = Array.from(tempDiv.querySelectorAll('style'))
+  const styles = [...tempDiv.querySelectorAll('style')]
     .map((style) => style.innerHTML)
     .join('\n');
 
@@ -73,7 +73,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const loadContent = async () => {
+  const loadContent = useCallback(async () => {
     const cachedContent = localStorage.getItem(cacheKey) || '';
     if (cachedContent) {
       setContent(cachedContent);
@@ -92,7 +92,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
           setContent('');
         }
       }
-    } catch (error) {
+    } catch {
       if (!cachedContent) {
         showError(emptyMessage);
         setContent('');
@@ -100,7 +100,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiEndpoint, cacheKey, emptyMessage]);
 
   const htmlPayload = useMemo(() => {
     if (!isHtmlContent(content)) {
@@ -111,7 +111,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
 
   useEffect(() => {
     loadContent();
-  }, []);
+  }, [loadContent]);
 
   // 处理HTML样式注入
   useEffect(() => {

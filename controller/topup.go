@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -236,6 +237,20 @@ func getPayMoney(amount int64, group string, unitPrice float64) float64 {
 	return payMoney.InexactFloat64()
 }
 
+// topupQuotaFromAmount converts a stored top-up amount (USD-equivalent units)
+// into the quota credited to the account. A top-up amount is user-controlled at
+// the payment boundary, so a saturated conversion must fail instead of
+// allowing a wrapped value to reach settlement.
+func topupQuotaFromAmount(amount int64) (int, error) {
+	quota, clamp := common.QuotaFromDecimalChecked(
+		decimal.NewFromInt(amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0),
+	)
+	if clamp != nil {
+		return 0, clamp
+	}
+	return quota, nil
+}
+
 // getMinTopup 返回最小充值门槛。minTopupOverride>0 时使用代理自定义值，否则回退平台全局。
 func getMinTopup(minTopupOverride int) int64 {
 	minTopup := operation_setting.MinTopUp
@@ -245,7 +260,7 @@ func getMinTopup(minTopupOverride int) int64 {
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dMinTopup := decimal.NewFromInt(int64(minTopup))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		minTopup = int(dMinTopup.Mul(dQuotaPerUnit).IntPart())
+		minTopup = common.QuotaFromDecimal(dMinTopup.Mul(dQuotaPerUnit))
 	}
 	return int64(minTopup)
 }
@@ -287,6 +302,82 @@ func validateTopupRange(c *gin.Context, amount int64, minTopup int64) bool {
 	return true
 }
 
+func getTopUpQuota(amount int64) (int, error) {
+	quota := decimal.NewFromInt(amount)
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		quotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		quota = decimal.NewFromInt(quota.Div(quotaPerUnit).IntPart()).Mul(quotaPerUnit)
+	} else {
+		quota = quota.Mul(decimal.NewFromFloat(common.QuotaPerUnit))
+	}
+	return common.QuotaFromDecimalStrict(quota)
+}
+
+func getMaxTopUpAmount() int64 {
+	if common.QuotaPerUnit <= 0 {
+		return 0
+	}
+	quotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+	maxStoredAmount := decimal.NewFromInt(common.MaxQuota - 1).
+		Div(quotaPerUnit).
+		Floor()
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		return maxStoredAmount.Add(decimal.NewFromInt(1)).
+			Mul(quotaPerUnit).
+			Ceil().
+			Sub(decimal.NewFromInt(1)).
+			IntPart()
+	}
+	return maxStoredAmount.IntPart()
+}
+
+func validateCreditedQuota(quota decimal.Decimal) (int, error) {
+	value, err := common.QuotaFromDecimalStrict(quota)
+	if err != nil {
+		return 0, errors.New("充值额度超出系统可表示范围")
+	}
+	if value <= 0 {
+		return 0, errors.New("充值额度必须大于 0")
+	}
+	return value, nil
+}
+
+func validateTopUpQuota(amount int64) (int, error) {
+	quota, err := getTopUpQuota(amount)
+	if err == nil && quota > 0 {
+		return quota, nil
+	}
+	maxAmount := getMaxTopUpAmount()
+	if maxAmount > 0 && amount > maxAmount {
+		return 0, fmt.Errorf("单笔充值数量不能大于 %d", maxAmount)
+	}
+	return 0, errors.New("充值数量无效")
+}
+
+func rejectInvalidCreditedQuota(c *gin.Context, userId int, quota decimal.Decimal) bool {
+	creditedQuota, err := validateCreditedQuota(quota)
+	if err == nil {
+		err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota)
+	}
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		return true
+	}
+	return false
+}
+
+func rejectInvalidTopUpQuota(c *gin.Context, userId int, amount int64) bool {
+	creditedQuota, err := validateTopUpQuota(amount)
+	if err == nil {
+		err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota)
+	}
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		return true
+	}
+	return false
+}
+
 func RequestEpay(c *gin.Context) {
 	var req EpayRequest
 	err := c.ShouldBindJSON(&req)
@@ -302,8 +393,11 @@ func RequestEpay(c *gin.Context) {
 	if !validateTopupRange(c, req.Amount, getMinTopup(epayCfg.MinTopup)) {
 		return
 	}
-
 	id := c.GetInt("id")
+	if rejectInvalidTopUpQuota(c, id, req.Amount) {
+		return
+	}
+
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
@@ -351,7 +445,12 @@ func RequestEpay(c *gin.Context) {
 		amount = dAmount.Div(dQuotaPerUnit).IntPart()
 	}
 	// 代理用户下单前预检代理钱包，不足则提示，避免支付后挂单
-	projectedQuota := int(decimal.NewFromInt(int64(amount)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	projectedQuota, quotaErr := topupQuotaFromAmount(amount)
+	if quotaErr != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 预计充值额度超出安全范围 user_id=%d amount=%d error=%q", id, amount, quotaErr.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
+	}
 	if ok, msg := precheckAgentWalletForUser(c, projectedQuota); !ok {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
 		return
@@ -395,8 +494,7 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "平台未配置支付信息"})
 		return
 	}
-	if req.Amount < getMinTopup(0) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(0))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
 		return
 	}
 	id := c.GetInt("id")
@@ -438,6 +536,11 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		dAmount := decimal.NewFromInt(int64(amount))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		amount = dAmount.Div(dQuotaPerUnit).IntPart()
+	}
+	if _, err := topupQuotaFromAmount(amount); err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("代理预充额度超出安全范围 agent_id=%d amount=%d error=%q", agentId, amount, err.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
 	}
 	topUp := &model.TopUp{
 		UserId:          id,
@@ -550,16 +653,9 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 		return
 	}
 	verifyInfo, err := client.Verify(params)
-	if err == nil && verifyInfo.VerifyStatus {
-		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签成功 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
-		_, err := c.Writer.Write([]byte("success"))
-		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 trade_no=%s client_ip=%s error=%q", verifyInfo.ServiceTradeNo, c.ClientIP(), err.Error()))
-		}
-	} else {
-		_, err := c.Writer.Write([]byte("fail"))
-		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
+	if err != nil || !verifyInfo.VerifyStatus {
+		if _, writeErr := c.Writer.Write([]byte("fail")); writeErr != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), writeErr.Error()))
 		}
 		if err != nil {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签失败 path=%q client_ip=%s verify_error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
@@ -568,56 +664,72 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 		}
 		return
 	}
+	logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 验签成功 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
 
 	if verifyInfo.TradeStatus == epay.StatusTradeSuccess {
+		// 进程内锁只是优化；重复/并发回调的正确性由 RechargeEpay 的
+		// 数据库行锁 + 事务内状态校验保证（多实例部署下同样安全）。
 		LockOrder(verifyInfo.ServiceTradeNo)
 		defer UnlockOrder(verifyInfo.ServiceTradeNo)
 		topUp := model.GetTopUpByTradeNo(verifyInfo.ServiceTradeNo)
 		if topUp == nil {
-			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 回调订单不存在 trade_no=%s callback_type=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP(), common.GetJsonString(verifyInfo)))
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 回调订单不存在 trade_no=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP()))
+			_, _ = c.Writer.Write([]byte("fail"))
 			return
 		}
-		if topUp.PaymentProvider != model.PaymentProviderEpay {
-			logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 订单支付网关不匹配 trade_no=%s order_provider=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentProvider, verifyInfo.Type, c.ClientIP()))
+		if topUp.PaymentProvider != model.PaymentProviderEpay || !verifyTopupAgentOwnership(c, topUp, expectedAgentId, "易支付") {
+			_, _ = c.Writer.Write([]byte("fail"))
 			return
 		}
-		if !verifyTopupAgentOwnership(c, topUp, expectedAgentId, "易支付") {
+		if topUp.AgentPrepayId > 0 {
+			if _, perr := model.TryCompleteAgentPrepay(verifyInfo.ServiceTradeNo, model.PaymentProviderEpay, c.ClientIP()); perr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 代理预充值失败 trade_no=%s error=%q", topUp.TradeNo, perr.Error()))
+				_, _ = c.Writer.Write([]byte("fail"))
+				return
+			}
+			_, _ = c.Writer.Write([]byte("success"))
 			return
 		}
-		if topUp.Status == common.TopUpStatusPending {
-			if topUp.AgentPrepayId != 0 {
-				if _, perr := model.TryCompleteAgentPrepay(verifyInfo.ServiceTradeNo, model.PaymentProviderEpay, c.ClientIP()); perr != nil {
-					logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 代理预充值失败 trade_no=%s agent_id=%d client_ip=%s error=%q", topUp.TradeNo, topUp.AgentPrepayId, c.ClientIP(), perr.Error()))
-				}
+		if topUp.GroupBuyId > 0 {
+			if _, gerr := model.TrySettleGroupBuyOrder(verifyInfo.ServiceTradeNo, model.PaymentProviderEpay, c.ClientIP()); gerr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 拼团结算失败 trade_no=%s error=%q", topUp.TradeNo, gerr.Error()))
+				_, _ = c.Writer.Write([]byte("fail"))
 				return
 			}
-			if topUp.GroupBuyId != 0 {
-				if _, gerr := model.TrySettleGroupBuyOrder(verifyInfo.ServiceTradeNo, model.PaymentProviderEpay, c.ClientIP()); gerr != nil {
-					logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 拼团结算失败 trade_no=%s user_id=%d client_ip=%s error=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), gerr.Error()))
-				} else {
-					logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 拼团订单已结算 trade_no=%s user_id=%d", topUp.TradeNo, topUp.UserId))
-				}
-				return
+			_, _ = c.Writer.Write([]byte("success"))
+			return
+		}
+		paymentMethodOverride := ""
+		if topUp.PaymentMethod != verifyInfo.Type {
+			paymentMethodOverride = verifyInfo.Type
+		}
+		quotaToAdd, quotaErr := topupQuotaFromAmount(topUp.Amount)
+		if quotaErr != nil || quotaToAdd <= 0 {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 充值额度无效 trade_no=%s amount=%d error=%v", topUp.TradeNo, topUp.Amount, quotaErr))
+			_, _ = c.Writer.Write([]byte("fail"))
+			return
+		}
+		credited, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, paymentMethodOverride, quotaToAdd)
+		if err != nil {
+			switch {
+			case errors.Is(err, model.ErrTopUpNotFound):
+				logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 回调订单不存在 trade_no=%s callback_type=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP(), common.GetJsonString(verifyInfo)))
+			case errors.Is(err, model.ErrPaymentMethodMismatch):
+				logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 订单支付网关不匹配 trade_no=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP()))
+			case errors.Is(err, model.ErrTopUpStatusInvalid):
+				logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 订单状态非法 trade_no=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP()))
+			default:
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 充值处理失败 trade_no=%s client_ip=%s error=%q", verifyInfo.ServiceTradeNo, c.ClientIP(), err.Error()))
 			}
-			paymentMethodOverride := ""
-			if topUp.PaymentMethod != verifyInfo.Type {
-				logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 实际支付方式与订单不同 trade_no=%s order_payment_method=%s actual_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, topUp.PaymentMethod, verifyInfo.Type, c.ClientIP()))
-				paymentMethodOverride = verifyInfo.Type
+			if _, writeErr := c.Writer.Write([]byte("fail")); writeErr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 trade_no=%s client_ip=%s error=%q", verifyInfo.ServiceTradeNo, c.ClientIP(), writeErr.Error()))
 			}
-			dAmount := decimal.NewFromInt(int64(topUp.Amount))
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
-			// 原子完成到账/挂单（代理用户按 cost_ratio 从代理钱包结算，钱包不足则挂单）
-			credited, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, paymentMethodOverride, quotaToAdd)
-			if err != nil {
-				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 完成充值失败 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, err.Error(), common.GetJsonString(topUp)))
-				return
-			}
-			if !credited {
-				logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 已支付但代理钱包不足，订单挂起待补发 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd))
-				return
-			}
-			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 trade_no=%s user_id=%d client_ip=%s quota_to_add=%d money=%.2f topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, topUp.Money, common.GetJsonString(topUp)))
+			return
+		}
+		if !credited {
+			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 已处理或代理钱包不足，订单保持现状 trade_no=%s callback_type=%s client_ip=%s", verifyInfo.ServiceTradeNo, verifyInfo.Type, c.ClientIP()))
+		} else {
+			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 trade_no=%s user_id=%d quota_to_add=%d client_ip=%s", topUp.TradeNo, topUp.UserId, quotaToAdd, c.ClientIP()))
 			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "epay")
 			model.CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 			model.GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
@@ -627,6 +739,9 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 		}
 	} else {
 		logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 webhook 忽略事件 trade_no=%s callback_type=%s trade_status=%s client_ip=%s verify_info=%q", verifyInfo.ServiceTradeNo, verifyInfo.Type, verifyInfo.TradeStatus, c.ClientIP(), common.GetJsonString(verifyInfo)))
+	}
+	if _, writeErr := c.Writer.Write([]byte("success")); writeErr != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 webhook 响应写入失败 trade_no=%s client_ip=%s error=%q", verifyInfo.ServiceTradeNo, c.ClientIP(), writeErr.Error()))
 	}
 }
 
@@ -639,11 +754,13 @@ func RequestAmount(c *gin.Context) {
 	}
 
 	epayCfg := resolveEpayConfig(c)
-	if req.Amount < getMinTopup(epayCfg.MinTopup) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", getMinTopup(epayCfg.MinTopup))})
+	if !validateTopupRange(c, req.Amount, getMinTopup(epayCfg.MinTopup)) {
 		return
 	}
 	id := c.GetInt("id")
+	if rejectInvalidTopUpQuota(c, id, req.Amount) {
+		return
+	}
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect } from 'react';
+import React, { useCallback, useContext, useEffect, useRef } from 'react';
 import { getRelativeTime } from '../../helpers';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
@@ -84,26 +84,34 @@ const Dashboard = () => {
     dashboardData.navigate,
     dashboardData.t,
   );
+  const {
+    isAdminUser,
+    loadQuotaData,
+    loadUptimeData,
+    loadUserQuotaData,
+  } = dashboardData;
+  const { updateChartData, updateUserChartData } = dashboardCharts;
 
   // ========== 数据处理 ==========
-  const loadUserData = async () => {
-    if (dashboardData.isAdminUser) {
-      const userData = await dashboardData.loadUserQuotaData();
+  const loadUserData = useCallback(async () => {
+    if (isAdminUser) {
+      const userData = await loadUserQuotaData();
       if (userData && userData.length > 0) {
-        dashboardCharts.updateUserChartData(userData);
+        updateUserChartData(userData);
       }
     }
-  };
+  }, [isAdminUser, loadUserQuotaData, updateUserChartData]);
 
-  const initChart = async () => {
-    await dashboardData.loadQuotaData().then((data) => {
+  const initChart = useCallback(async () => {
+    await loadQuotaData().then((data) => {
       if (data && data.length > 0) {
-        dashboardCharts.updateChartData(data);
+        updateChartData(data);
       }
     });
     await loadUserData();
-    await dashboardData.loadUptimeData();
-  };
+    await loadUptimeData();
+  }, [loadQuotaData, loadUptimeData, loadUserData, updateChartData]);
+  const initialChartRef = useRef(initChart);
 
   const handleRefresh = async () => {
     const data = await dashboardData.refresh();
@@ -147,7 +155,7 @@ const Dashboard = () => {
 
   // ========== Effects ==========
   useEffect(() => {
-    initChart();
+    initialChartRef.current();
   }, []);
 
   return (

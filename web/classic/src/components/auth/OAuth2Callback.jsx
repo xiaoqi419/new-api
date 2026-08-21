@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useCallback, useContext, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -42,7 +42,7 @@ const OAuth2Callback = (props) => {
   // 最大重试次数
   const MAX_RETRIES = 3;
 
-  const sendCode = async (code, state, retry = 0) => {
+  const sendCode = useCallback(async (code, state, retry = 0) => {
     try {
       const { data: resData } = await API.get(
         `/api/oauth/${props.type}?code=${code}&state=${state}`,
@@ -79,7 +79,7 @@ const OAuth2Callback = (props) => {
       showError(error.message || t('授权失败'));
       navigate('/console/personal');
     }
-  };
+  }, [navigate, props.type, t, userDispatch]);
 
   useEffect(() => {
     // 防止 React 18 Strict Mode 下重复执行
@@ -99,7 +99,7 @@ const OAuth2Callback = (props) => {
     }
 
     sendCode(code, state);
-  }, []);
+  }, [navigate, searchParams, sendCode, t]);
 
   return <Loading />;
 };

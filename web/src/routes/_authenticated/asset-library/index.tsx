@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { AssetLibrary } from '@/features/asset-library'
+import { ComingSoon } from '@/components/coming-soon'
 
 export const Route = createFileRoute('/_authenticated/asset-library/')({
-  component: AssetLibrary,
+  component: ComingSoon,
 })

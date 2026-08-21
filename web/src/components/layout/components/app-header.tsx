@@ -27,7 +27,7 @@ import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
 import { defaultTopNavLinks } from '../config/top-nav.config'
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
 import { Header } from './header'
 import { SystemBrand } from './system-brand'
 import { TopNav } from './top-nav'
@@ -113,41 +113,39 @@ export function AppHeader({
   const notifications = useNotifications()
 
   return (
-    <>
-      <Header banner={<PromoBanner />}>
-        <SystemBrand variant='inline' />
+    <Header banner={<PromoBanner />}>
+      <SystemBrand variant='inline' />
 
-        {leftContent ? (
-          <div className='ms-2 flex items-center'>{leftContent}</div>
-        ) : null}
+      {leftContent ? (
+        <div className='ms-2 flex items-center'>{leftContent}</div>
+      ) : null}
 
-        {rightContent ?? (
-          <div className='ms-auto flex items-center gap-1 sm:gap-2'>
-            {showTopNav && (
-              <div className='me-1 hidden items-center lg:flex'>
-                <TopNav links={links} />
-                <CommunityMenu variant='nav' />
-              </div>
-            )}
-            {showSearch && <Search />}
-            {showNotifications && (
-              <NotificationPopover
-                open={notifications.popoverOpen}
-                onOpenChange={notifications.setPopoverOpen}
-                unreadCount={notifications.unreadCount}
-                activeTab={notifications.activeTab}
-                onTabChange={notifications.setActiveTab}
-                announcements={notifications.announcements}
-                versions={notifications.versions}
-                loading={notifications.loading}
-              />
-            )}
-            <LanguageSwitcher />
-            {showThemeSwitch && <ThemeSwitch />}
-            {showProfileDropdown && <ProfileDropdown />}
-          </div>
-        )}
-      </Header>
-    </>
+      {rightContent ?? (
+        <div className='ms-auto flex items-center gap-1 sm:gap-2'>
+          {showTopNav && (
+            <div className='me-1 hidden items-center lg:flex'>
+              <TopNav links={links} />
+              <CommunityMenu variant='nav' />
+            </div>
+          )}
+          {showSearch && <Search />}
+          {showNotifications && (
+            <NotificationPopover
+              open={notifications.popoverOpen}
+              onOpenChange={notifications.setPopoverOpen}
+              unreadCount={notifications.unreadCount}
+              activeTab={notifications.activeTab}
+              onTabChange={notifications.setActiveTab}
+              announcements={notifications.announcements}
+              versions={notifications.versions}
+              loading={notifications.loading}
+            />
+          )}
+          <LanguageSwitcher />
+          {showThemeSwitch && <ThemeSwitch />}
+          {showProfileDropdown && <ProfileDropdown />}
+        </div>
+      )}
+    </Header>
   )
 }

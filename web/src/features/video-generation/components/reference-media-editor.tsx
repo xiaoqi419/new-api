@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Plus, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import type { RefMediaType, SelectOption } from '../types'
@@ -64,11 +65,11 @@ export function ReferenceMediaEditor(props: ReferenceMediaEditorProps) {
               />
             </div>
           ) : (
-            <input
+            <Input
               value={url}
               onChange={(e) => setAt(i, e.target.value)}
               placeholder={placeholder}
-              className='border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 flex-1 rounded-lg border px-2.5 py-2 text-sm outline-none focus-visible:ring-3'
+              className='h-9 flex-1'
             />
           )}
           <Button

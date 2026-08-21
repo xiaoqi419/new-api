@@ -64,7 +64,7 @@ const extractError = (e) => {
     try {
       const inner = JSON.parse(d.message);
       if (inner?.error?.message) return inner.error.message;
-    } catch (_) {
+    } catch {
       /* message 非 JSON，直接返回 */
     }
     return d.message;
@@ -99,6 +99,12 @@ const VideoGeneration = () => {
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const timerRef = useRef(null);
+  const referenceMediaDraftKeysRef = useRef({
+    image: [],
+    video: [],
+    audio: [],
+  });
+  const nextReferenceMediaDraftKeyRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -119,7 +125,7 @@ const VideoGeneration = () => {
               label: `${tk.name || '#' + tk.id} (sk-${key.slice(0, 6)}…)`,
               value: 'sk-' + key,
             });
-          } catch (_) {
+          } catch {
             /* 跳过取密钥失败的令牌 */
           }
         }
@@ -144,7 +150,7 @@ const VideoGeneration = () => {
       if (success) {
         setAssets((data || []).filter((a) => a.status === 'Active'));
       }
-    } catch (e) {
+    } catch {
       /* 素材库为可选，失败不阻断 */
     }
   }, []);
@@ -293,47 +299,70 @@ const VideoGeneration = () => {
     </div>
   );
 
-  const renderList = (label, list, setList, max, type) => (
-    <div style={{ width: '100%' }}>
-      <Text strong>{`${label} (${list.length}/${max})`}</Text>
-      {list.map((url, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <Input
-            value={url}
-            onChange={(v) => setList(setAt(list, i, v))}
-            placeholder={
-              type === 'image' ? t('https:// 或 asset://') : t('公网 URL')
-            }
-            style={{ flex: 1 }}
-          />
-          {type === 'image' && assetOptions.length > 0 && (
-            <Select
-              style={{ width: 130 }}
-              placeholder={t('素材库')}
-              optionList={assetOptions}
-              onChange={(v) => setList(setAt(list, i, v))}
-            />
-          )}
-          <Button
-            theme='borderless'
-            type='danger'
-            onClick={() => setList(removeAt(list, i))}
+  const renderList = (label, list, setList, max, type) => {
+    const draftKeys = referenceMediaDraftKeysRef.current[type];
+    while (draftKeys.length < list.length) {
+      draftKeys.push(
+        `reference-media-${type}-${nextReferenceMediaDraftKeyRef.current++}`,
+      );
+    }
+    if (draftKeys.length > list.length) {
+      draftKeys.length = list.length;
+    }
+
+    return (
+      <div style={{ width: '100%' }}>
+        <Text strong>{`${label} (${list.length}/${max})`}</Text>
+        {list.map((url, i) => (
+          <div
+            key={draftKeys[i]}
+            style={{ display: 'flex', gap: 8, marginTop: 8 }}
           >
-            {t('删除')}
+            <Input
+              value={url}
+              onChange={(v) => setList(setAt(list, i, v))}
+              placeholder={
+                type === 'image' ? t('https:// 或 asset://') : t('公网 URL')
+              }
+              style={{ flex: 1 }}
+            />
+            {type === 'image' && assetOptions.length > 0 && (
+              <Select
+                style={{ width: 130 }}
+                placeholder={t('素材库')}
+                optionList={assetOptions}
+                onChange={(v) => setList(setAt(list, i, v))}
+              />
+            )}
+            <Button
+              theme='borderless'
+              type='danger'
+              onClick={() => {
+                draftKeys.splice(i, 1);
+                setList(removeAt(list, i));
+              }}
+            >
+              {t('删除')}
+            </Button>
+          </div>
+        ))}
+        {list.length < max && (
+          <Button
+            theme='light'
+            style={{ marginTop: 8 }}
+            onClick={() => {
+              draftKeys.push(
+                `reference-media-${type}-${nextReferenceMediaDraftKeyRef.current++}`,
+              );
+              setList([...list, '']);
+            }}
+          >
+            {t('+ 添加')}
           </Button>
-        </div>
-      ))}
-      {list.length < max && (
-        <Button
-          theme='light'
-          style={{ marginTop: 8 }}
-          onClick={() => setList([...list, ''])}
-        >
-          {t('+ 添加')}
-        </Button>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className='mt-[60px] px-2'>

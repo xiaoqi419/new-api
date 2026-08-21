@@ -227,27 +227,29 @@ function TokensPage() {
       try {
         status = JSON.parse(status);
         serverAddress = status.server_address || '';
-      } catch (_) {}
+      } catch {}
     }
-    if (!serverAddress) serverAddress = window.location.origin;
+    if (!serverAddress) {
+      serverAddress = window.location.origin;
+    }
 
     let apiKeyToUse = '';
     if (overrideKey) {
       apiKeyToUse = 'sk-' + overrideKey;
     } else {
-      const token =
-        selectedKeys && selectedKeys.length === 1
-          ? selectedKeys[0]
-          : tokens && tokens.length > 0
-            ? tokens[0]
-            : null;
+      let token = null;
+      if (selectedKeys && selectedKeys.length === 1) {
+        token = selectedKeys[0];
+      } else if (tokens && tokens.length > 0) {
+        token = tokens[0];
+      }
       if (!token) {
         Toast.warning(t('没有可用令牌用于填充'));
         return;
       }
       try {
         apiKeyToUse = 'sk-' + (await fetchTokenKey(token));
-      } catch (_) {
+      } catch {
         return;
       }
     }
@@ -269,7 +271,7 @@ function TokensPage() {
   // Show notification when Fluent container is available
   useEffect(() => {
     const onAppeared = () => {
-      openFluentNotification();
+      openFluentNotificationRef.current?.();
     };
     const onRemoved = () => {
       setFluentNoticeOpen(false);
@@ -287,9 +289,8 @@ function TokensPage() {
   // When modelOptions or language changes while the notice is open, refresh the content
   useEffect(() => {
     if (fluentNoticeOpen) {
-      openFluentNotification();
+      openFluentNotificationRef.current?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelOptions, selectedModel, tokensData.t, fluentNoticeOpen]);
 
   useEffect(() => {

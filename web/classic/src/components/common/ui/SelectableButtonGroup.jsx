@@ -32,6 +32,29 @@ import {
 } from '@douyinfe/semi-ui';
 import { IconChevronDown, IconChevronUp } from '@douyinfe/semi-icons';
 
+const ConditionalTooltipText = ({ text, containerWidth }) => {
+  const textRef = useRef(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollWidth > el.clientWidth);
+  }, [text, containerWidth]);
+
+  const textElement = (
+    <span ref={textRef} className='sbg-ellipsis'>
+      {text}
+    </span>
+  );
+
+  return isOverflowing ? (
+    <Tooltip content={text}>{textElement}</Tooltip>
+  ) : (
+    textElement
+  );
+};
+
 /**
  * 通用可选择按钮组组件
  *
@@ -63,29 +86,6 @@ const SelectableButtonGroup = ({
   const [isOpen, setIsOpen] = useState(false);
   const [skeletonCount] = useState(12);
   const [containerRef, containerWidth] = useContainerWidth();
-
-  const ConditionalTooltipText = ({ text }) => {
-    const textRef = useRef(null);
-    const [isOverflowing, setIsOverflowing] = useState(false);
-
-    useEffect(() => {
-      const el = textRef.current;
-      if (!el) return;
-      setIsOverflowing(el.scrollWidth > el.clientWidth);
-    }, [text, containerWidth]);
-
-    const textElement = (
-      <span ref={textRef} className='sbg-ellipsis'>
-        {text}
-      </span>
-    );
-
-    return isOverflowing ? (
-      <Tooltip content={text}>{textElement}</Tooltip>
-    ) : (
-      textElement
-    );
-  };
 
   // 基于容器宽度计算响应式列数和标签显示策略
   const getResponsiveConfig = () => {
@@ -138,8 +138,11 @@ const SelectableButtonGroup = ({
   const renderSkeletonButtons = () => {
     const placeholder = (
       <Row gutter={gutterSize} style={{ lineHeight: '32px', ...style }}>
-        {Array.from({ length: skeletonCount }).map((_, index) => (
-          <Col span={getColSpan()} key={index}>
+        {Array.from({ length: skeletonCount }, (_, index) => ({
+          id: `skeleton-button-${index}`,
+          width: `${60 + (index % 3) * 20}px`,
+        })).map((item) => (
+          <Col span={getColSpan()} key={item.id}>
             <div
               style={{
                 width: '100%',
@@ -159,7 +162,7 @@ const SelectableButtonGroup = ({
               <Skeleton.Title
                 active
                 style={{
-                  width: `${60 + (index % 3) * 20}px`,
+                  width: item.width,
                   height: 14,
                 }}
               />
@@ -204,7 +207,7 @@ const SelectableButtonGroup = ({
               >
                 <div className='sbg-content'>
                   {item.icon && <span className='sbg-icon'>{item.icon}</span>}
-                  <ConditionalTooltipText text={item.label} />
+                  <ConditionalTooltipText text={item.label} containerWidth={containerWidth} />
                   {item.tagCount !== undefined && shouldShowTags && (
                     <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
                       {item.tagCount}
@@ -227,7 +230,7 @@ const SelectableButtonGroup = ({
             >
               <div className='sbg-content'>
                 {item.icon && <span className='sbg-icon'>{item.icon}</span>}
-                <ConditionalTooltipText text={item.label} />
+                <ConditionalTooltipText text={item.label} containerWidth={containerWidth} />
                 {item.tagCount !== undefined && shouldShowTags && item.tagCount !== '' && (
                   <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
                     {item.tagCount}

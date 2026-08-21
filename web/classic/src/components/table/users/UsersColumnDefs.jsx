@@ -221,7 +221,7 @@ const renderOperations = (
   },
 ) => {
   if (record.DeletedAt !== null) {
-    return <></>;
+    return null;
   }
 
   const moreMenu = [

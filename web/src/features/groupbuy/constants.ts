@@ -26,17 +26,6 @@ export const PAGE_SIZE = 12
 export const PAY_WECHAT = 'wechatpay'
 export const PAY_ALIPAY = 'alipay_direct'
 
-/** Types in the topup `pay_methods` list that group buy handles directly
- *  (wechat/alipay) or cannot settle via epay (stripe/waffo). Any other type is
- *  treated as an epay (易支付) channel, matching backend resolveGroupBuyProvider. */
-export const NON_EPAY_PAY_METHODS = new Set<string>([
-  PAY_WECHAT,
-  PAY_ALIPAY,
-  'stripe',
-  'waffo',
-  'waffo_pancake',
-])
-
 /** Admin list page size. */
 export const ADMIN_PAGE_SIZE = 10
 

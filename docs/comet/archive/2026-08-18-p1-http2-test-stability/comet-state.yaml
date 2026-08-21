@@ -1,0 +1,272 @@
+schema: comet.native.v4
+name: p1-http2-test-stability
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: http2-test-stability
+    operation: create
+    source: specs/http2-test-stability/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/p1-http2-test-stability
+  target_branch: codex/p0-wallet-wechatpay
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：`go test ./relay/channel -run '^TestUpstreamGetBody_HTTP2' -count=10
+      -timeout=60s -v` 连续通过；四个既有 HTTP/2 用例均保留且无 Windows `wsarecv` reset/abort
+      假失败。
+    result: passed
+    reason:
+      text: Runtime evidence records the targeted HTTP/2 suite passing all 40
+        executions across ten rounds; all four required tests and their
+        behavioral assertions remain intact.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：RST 与 GOAWAY retry 用例都观察到两次完整请求体；缺少 `GetBody` 的用例仍只发送一次，并返回同时包含 `cannot
+      retry err` 与 `Request.Body was written` 的明确错误。
+    result: passed
+    reason:
+      text: RST and GOAWAY replay tests assert HTTP 200, exactly two complete bodies,
+        and exact payload equality; the no-GetBody case asserts one request and
+        both required error substrings.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：fixture 对 listener 和所有已接受连接具有确定的 cleanup；写控制帧错误在关闭前检查；断言提前失败时也能解除
+      `Accept` / `ReadFrame` 阻塞，且实现不含 sleep、随机化或弱化断言。
+    result: passed
+    reason:
+      text: The fixture explicitly owns listener, connections, synchronization,
+        idempotent cleanup, and goroutine completion; control-frame errors are
+        checked immediately and no sleep, randomization, or weakened assertion
+        was introduced.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：`go test ./relay/channel -count=1` 与 root `GOWORK=off go test ./...`
+      通过；Git 差异除 Comet 正式产物外只包含批准的测试文件，不包含生产 HTTP 代码、依赖或 Go 版本变化。
+    result: passed
+    reason:
+      text: Runtime records passing channel and root Go suites. The implementation
+        commit changes only relay/channel/api_request_getbody_test.go and the
+        candidate diff is whitespace-clean.
+      truncated: false
+  - id: A5
+    source: specs/http2-test-stability/spec.md
+    text: RST_STREAM 后确定地验证请求体重放 - raw HTTP/2 server 完整接收第一条请求体后写入
+      `RST_STREAM(REFUSED_STREAM)`，并在允许重试的用例中保持连接可用，读取 retried stream 后返回 200。 -
+      普通 replayable body 与透传 body 的两次请求体都必须与原 payload 完全一致。 - 故意移除 `GetBody`
+      的用例必须返回明确的不可重试错误，server 只观察到一次请求；连接由 cleanup 收尾，不通过立即关闭制造 socket reset。
+    result: passed
+    reason:
+      text: The RST fixture fully reads the first stream, writes REFUSED_STREAM while
+        retaining the connection for retry, validates both replayed payloads,
+        and lets cleanup close the no-GetBody connection.
+      truncated: false
+  - id: A6
+    source: specs/http2-test-stability/spec.md
+    text: GOAWAY 后在新连接上确定地重试 - server 在第一条连接完整接收请求后写入
+      `GOAWAY(NO_ERROR)`，`LastStreamID` 为 0，并保持第一条连接到客户端可靠观察控制帧。 - server
+      接受第二条连接，读取完整 retried body 并返回 200；两次请求体必须完整且相等，第二次请求必须发生在新连接。
+    result: passed
+    reason:
+      text: The GOAWAY fixture uses LastStreamID 0 and NO_ERROR, preserves the first
+        connection long enough for client observation, accepts a second
+        connection, and validates the complete replayed body.
+      truncated: false
+  - id: A7
+    source: specs/http2-test-stability/spec.md
+    text: Fixture 生命周期和错误处理可中断 - fixture 显式拥有 listener、所有 accepted connections 和后台
+      goroutine，并提供可重复调用或等价安全的 cleanup。 - 测试在可能提前终止的断言前注册 cleanup；cleanup 关闭
+      listener 与连接，以解除阻塞中的 `Accept`、`ReadFrame` 或写操作。 -
+      `WriteRSTStream`、`WriteGoAway` 和响应写入错误必须立即记录并返回，不能先关闭连接再检查写入结果。 - 实现不使用
+      sleep、随机化、根据耗时猜测同步、无限等待或仅靠 deadline 做正常收尾。
+    result: passed
+    reason:
+      text: Cleanup is registered before server work, closes listener and every
+        tracked connection to unblock Accept and ReadFrame, rejects late
+        accepts, and waits for all server goroutines.
+      truncated: false
+  - id: A8
+    source: specs/http2-test-stability/spec.md
+    text: 生产请求契约保持不变并通过完整门禁 - `ApplyUpstreamBodyMetadata`、`BodyStorage.NewReader`、生产
+      HTTP client、retry policy、API、依赖与 Go toolchain 均保持不变。 - 四个现有 HTTP/2 行为测试在
+      Windows 上连续十轮稳定通过，channel package 与 root 全量 Go 测试通过，且批准范围外没有代码变更。 - Verify
+      接受后更新维护状态文档，再进入 Archive。
+    result: passed
+    reason:
+      text: Production request, replay, transport, API, dependency, and Go toolchain
+        code remains unchanged; all required runtime gates passed and only the
+        approved test fixture changed.
+      truncated: false
+builder_handoff:
+  candidate_id: eb4b6052-9c73-4bec-9b07-45b19d08a66c
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:e4a41b33-1cc7-4ceb-bdd5-07760d2b8c33
+  iteration: 1
+  summary:
+    text: Stabilized the raw HTTP/2 fixture with explicit listener, connection,
+      goroutine, and idempotent cleanup ownership; preserved all four GetBody
+      behaviors and left production HTTP code unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+  checks:
+    - name:
+        text: HTTP/2 GetBody stability x10
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go test ./relay/channel -run '^TestUpstreamGetBody_HTTP2'
+          -count=10 -timeout=60s -v; 40 executions passed on Windows.
+        truncated: false
+    - name:
+        text: relay/channel package tests
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go test ./relay/channel -count=1 passed.
+        truncated: false
+    - name:
+        text: root Go test suite
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go test ./... passed after creating the same ignored web
+          dist/index.html embed placeholders used by CI.
+        truncated: false
+    - name:
+        text: diff scope and whitespace
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; implementation commit changes only
+          relay/channel/api_request_getbody_test.go.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The optional race-detector run was not available because the Windows Go
+        environment has CGO disabled; it is not an acceptance requirement.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T10:31:42.390Z
+blockers: []
+verification:
+  candidate_id: eb4b6052-9c73-4bec-9b07-45b19d08a66c
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:2cc29bf4-c3f7-416c-9dce-e6f7f4588b47
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: http2-getbody-x10
+      name:
+        text: HTTP/2 GetBody tests pass ten consecutive runs
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go test ./relay/channel -run
+            '^TestUpstreamGetBody_HTTP2' -count=10 -timeout=60s -v
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3315
+    - id: relay-channel
+      name:
+        text: relay/channel package tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go test ./relay/channel -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3104
+    - id: root-go-tests
+      name:
+        text: Root Go test suite
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go test ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 998
+  summary:
+    text: Candidate eb4b6052-9c73-4bec-9b07-45b19d08a66c satisfies A1-A8 with
+      deterministic HTTP/2 fixture cleanup, stable RST/GOAWAY retry behavior,
+      and no production HTTP changes.
+    truncated: false
+  risks:
+    - text: The optional Windows race-detector run remains unavailable because CGO is
+        disabled; it is not an acceptance requirement.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T10:47:16.447Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Candidate eb4b6052-9c73-4bec-9b07-45b19d08a66c satisfies A1-A8 with
+        deterministic HTTP/2 fixture cleanup, stable RST/GOAWAY retry behavior,
+        and no production HTTP changes.
+      truncated: false
+    completed_at: 2026-08-18T10:47:16.447Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-18T09:54:09.100Z

@@ -48,7 +48,7 @@ const SingleModelSelectModal = ({
   const normalizeModelName = (model) => String(model ?? '').trim();
   const normalizedModels = useMemo(() => {
     const list = Array.isArray(models) ? models : [];
-    return Array.from(new Set(list.map(normalizeModelName).filter(Boolean)));
+    return [...new Set(list.map(normalizeModelName).filter(Boolean))];
   }, [models]);
 
   const [keyword, setKeyword] = useState('');
@@ -162,10 +162,10 @@ const SingleModelSelectModal = ({
               style={{ width: '100%' }}
               defaultActiveKey={[]}
             >
-              {categoryEntries.map(([key, categoryData], index) => (
+              {categoryEntries.map(([key, categoryData]) => (
                 <Collapse.Panel
-                  key={`${key}_${index}`}
-                  itemKey={`${key}_${index}`}
+                  key={key}
+                  itemKey={key}
                   header={
                     <span className='flex items-center gap-2'>
                       {categoryData.icon}

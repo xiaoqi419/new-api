@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Layout, TabPane, Tabs } from '@douyinfe/semi-ui';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -206,13 +206,15 @@ const Setting = () => {
     setTabActiveKey(key);
     navigate(`?tab=${key}`);
   };
+  const onChangeTabRef = useRef(onChangeTab);
+  onChangeTabRef.current = onChangeTab;
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const tab = searchParams.get('tab');
     if (tab) {
       setTabActiveKey(tab);
     } else {
-      onChangeTab('operation');
+      onChangeTabRef.current('operation');
     }
   }, [location.search]);
   return (

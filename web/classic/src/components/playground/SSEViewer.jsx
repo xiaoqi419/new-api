@@ -124,7 +124,7 @@ const SSEViewer = ({ sseData }) => {
           : item.raw;
         await copy(textToCopy);
         Toast.success(t('已复制'));
-      } catch (err) {
+      } catch {
         Toast.error(t('复制失败'));
       }
     },
@@ -272,39 +272,44 @@ const SSEViewer = ({ sseData }) => {
           accordion={false}
           className='bg-white dark:bg-gray-800 rounded-lg'
         >
-          {parsedSSEData.map((item) => (
+          {parsedSSEData.map((item) => {
+            let eventLabel;
+            if (item.isDone) {
+              eventLabel = <span className='text-green-600 font-medium'>[DONE]</span>;
+            } else if (item.error) {
+              eventLabel = <span className='text-red-600'>{t('解析错误')}</span>;
+            } else {
+              eventLabel = (
+                <>
+                  <span className='text-gray-600'>
+                    {item.parsed?.id || item.parsed?.object || t('SSE 事件')}
+                  </span>
+                  {item.parsed?.choices?.[0]?.delta && (
+                    <span className='text-xs text-gray-400'>
+                      •{' '}
+                      {Object.keys(item.parsed.choices[0].delta)
+                        .filter((k) => item.parsed.choices[0].delta[k])
+                        .join(', ')}
+                    </span>
+                  )}
+                </>
+              );
+            }
+
+            return (
             <Collapse.Panel
               key={item.key}
               header={
                 <div className='flex items-center gap-2'>
                   <Badge count={`#${item.index + 1}`} type='tertiary' />
-                  {item.isDone ? (
-                    <span className='text-green-600 font-medium'>[DONE]</span>
-                  ) : item.error ? (
-                    <span className='text-red-600'>{t('解析错误')}</span>
-                  ) : (
-                    <>
-                      <span className='text-gray-600'>
-                        {item.parsed?.id ||
-                          item.parsed?.object ||
-                          t('SSE 事件')}
-                      </span>
-                      {item.parsed?.choices?.[0]?.delta && (
-                        <span className='text-xs text-gray-400'>
-                          •{' '}
-                          {Object.keys(item.parsed.choices[0].delta)
-                            .filter((k) => item.parsed.choices[0].delta[k])
-                            .join(', ')}
-                        </span>
-                      )}
-                    </>
-                  )}
+                  {eventLabel}
                 </div>
               }
             >
               {renderSSEItem(item)}
             </Collapse.Panel>
-          ))}
+            );
+          })}
         </Collapse>
       </div>
     </div>

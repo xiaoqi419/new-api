@@ -246,7 +246,11 @@ export type ModelSettings = {
   AutomaticRetryStatusCodes: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
-  'monitor_setting.channel_test_mode': 'scheduled_all' | 'passive_recovery'
+  'monitor_setting.channel_test_concurrency': number
+  'monitor_setting.channel_test_mode':
+    | 'scheduled_all'
+    | 'auto_ban_only'
+    | 'passive_recovery'
   'health_probe_setting.enabled': boolean
   'health_probe_setting.interval_minutes': number
   'health_probe_setting.concurrency': number

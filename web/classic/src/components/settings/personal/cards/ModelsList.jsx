@@ -37,6 +37,15 @@ import { IconChevronDown, IconChevronUp } from '@douyinfe/semi-icons';
 import { Settings } from 'lucide-react';
 import { renderModelTag, getModelCategories } from '../../../../helpers';
 
+const categorySkeletonIds = Array.from(
+  { length: 8 },
+  (_, index) => `category-skeleton-${index}`,
+);
+const modelSkeletonIds = Array.from(
+  { length: 20 },
+  (_, index) => `model-skeleton-${index}`,
+);
+
 const ModelsList = ({ t, models, modelsLoading, copyText }) => {
   const [isModelsExpanded, setIsModelsExpanded] = useState(() => {
     // Initialize from localStorage if available
@@ -70,7 +79,7 @@ const ModelsList = ({ t, models, modelsLoading, copyText }) => {
 
       {/* 可用模型部分 */}
       <div className='bg-gray-50 dark:bg-gray-800 rounded-xl'>
-        {modelsLoading ? (
+        {modelsLoading && (
           // 骨架屏加载状态 - 模拟实际加载后的布局
           <div className='space-y-4'>
             {/* 模拟分类标签 */}
@@ -79,9 +88,9 @@ const ModelsList = ({ t, models, modelsLoading, copyText }) => {
               style={{ borderBottom: '1px solid var(--semi-color-border)' }}
             >
               <div className='flex overflow-x-auto py-2 gap-2'>
-                {Array.from({ length: 8 }).map((_, index) => (
+                {categorySkeletonIds.map((id, index) => (
                   <Skeleton.Button
-                    key={`cat-${index}`}
+                    key={id}
                     style={{
                       width: index === 0 ? 130 : 100 + Math.random() * 50,
                       height: 36,
@@ -94,9 +103,9 @@ const ModelsList = ({ t, models, modelsLoading, copyText }) => {
 
             {/* 模拟模型标签列表 */}
             <div className='flex flex-wrap gap-2'>
-              {Array.from({ length: 20 }).map((_, index) => (
+              {modelSkeletonIds.map((id) => (
                 <Skeleton.Button
-                  key={`model-${index}`}
+                  key={id}
                   style={{
                     width: 100 + Math.random() * 100,
                     height: 32,
@@ -107,7 +116,8 @@ const ModelsList = ({ t, models, modelsLoading, copyText }) => {
               ))}
             </div>
           </div>
-        ) : models.length === 0 ? (
+        )}
+        {!modelsLoading && models.length === 0 && (
           <div className='py-8'>
             <Empty
               image={
@@ -122,7 +132,8 @@ const ModelsList = ({ t, models, modelsLoading, copyText }) => {
               style={{ padding: '24px 0' }}
             />
           </div>
-        ) : (
+        )}
+        {!modelsLoading && models.length > 0 && (
           <>
             {/* 模型分类标签页 */}
             <div className='mb-4'>

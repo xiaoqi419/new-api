@@ -34,7 +34,14 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -315,6 +322,11 @@ function AgentMutateDialog({
   // 折扣为 0 会导致终端用户充值时平台不从代理钱包扣款，必须拦在提交前。
   const parsedCostRatio = Number(costRatio)
   const costRatioValid = Number.isFinite(parsedCostRatio) && parsedCostRatio > 0
+  const statusItems = [
+    { value: String(AGENT_STATUS_ACTIVE), label: t('Active') },
+    { value: String(AGENT_STATUS_PENDING), label: t('Pending') },
+    { value: String(AGENT_STATUS_DISABLED), label: t('Disabled') },
+  ]
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -397,21 +409,26 @@ function AgentMutateDialog({
           </div>
           <div className='space-y-1'>
             <Label>{t('Status')}</Label>
-            <NativeSelect
-              className='w-full'
+            <Select
+              items={statusItems}
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onValueChange={(value) => value && setStatus(value)}
             >
-              <NativeSelectOption value={String(AGENT_STATUS_ACTIVE)}>
-                {t('Active')}
-              </NativeSelectOption>
-              <NativeSelectOption value={String(AGENT_STATUS_PENDING)}>
-                {t('Pending')}
-              </NativeSelectOption>
-              <NativeSelectOption value={String(AGENT_STATUS_DISABLED)}>
-                {t('Disabled')}
-              </NativeSelectOption>
-            </NativeSelect>
+              <SelectTrigger className='w-full'>
+                <SelectValue>
+                  {statusItems.find((item) => item.value === status)?.label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {statusItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div className='space-y-1'>
             <Label>{t('Remark')}</Label>
@@ -449,6 +466,11 @@ function AgentWalletDialog({
   const [delta, setDelta] = useState('')
   const [type, setType] = useState('prepay')
   const [remark, setRemark] = useState('')
+  const typeItems = [
+    { value: 'prepay', label: t('Prepay') },
+    { value: 'adjust', label: t('Adjust') },
+    { value: 'refund', label: t('Refund') },
+  ]
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -500,21 +522,26 @@ function AgentWalletDialog({
           </div>
           <div className='space-y-1'>
             <Label>{t('Type')}</Label>
-            <NativeSelect
-              className='w-full'
+            <Select
+              items={typeItems}
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onValueChange={(value) => value && setType(value)}
             >
-              <NativeSelectOption value='prepay'>
-                {t('Prepay')}
-              </NativeSelectOption>
-              <NativeSelectOption value='adjust'>
-                {t('Adjust')}
-              </NativeSelectOption>
-              <NativeSelectOption value='refund'>
-                {t('Refund')}
-              </NativeSelectOption>
-            </NativeSelect>
+              <SelectTrigger className='w-full'>
+                <SelectValue>
+                  {typeItems.find((item) => item.value === type)?.label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {typeItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div className='space-y-1'>
             <Label>{t('Remark')}</Label>

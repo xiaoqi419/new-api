@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -57,7 +57,7 @@ const RebateRecords = () => {
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState('');
 
-  const loadRecords = async (p = page, s = status) => {
+  const loadRecords = useCallback(async (p, s) => {
     setLoading(true);
     try {
       const res = await API.get(
@@ -70,23 +70,23 @@ const RebateRecords = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadRecords(1, status);
     setPage(1);
-  }, [status]);
+  }, [loadRecords, status]);
 
   const pay = async (id) => {
     const res = await API.post('/api/rebate/pay', { id });
     if (res.data.success) {
       showSuccess(t('发放成功'));
-      loadRecords();
+      loadRecords(page, status);
     } else {
       showError(res.data.message);
     }
@@ -96,7 +96,7 @@ const RebateRecords = () => {
     const res = await API.post('/api/rebate/cancel', { id });
     if (res.data.success) {
       showSuccess(t('已作废'));
-      loadRecords();
+      loadRecords(page, status);
     } else {
       showError(res.data.message);
     }
@@ -175,7 +175,7 @@ const RebateRecords = () => {
             { label: t('已作废'), value: 'cancelled' },
           ]}
         />
-        <Button onClick={() => loadRecords()}>{t('刷新')}</Button>
+        <Button onClick={() => loadRecords(page, status)}>{t('刷新')}</Button>
       </Space>
       <Table
         columns={columns}
@@ -204,7 +204,7 @@ const RebateRatios = () => {
   const [editing, setEditing] = useState(null);
   const [ratioInput, setRatioInput] = useState(null);
 
-  const loadUsers = async (p = page) => {
+  const loadUsers = useCallback(async (p) => {
     setLoading(true);
     try {
       const res = await API.get(`/api/rebate/users?p=${p}&page_size=${PAGE_SIZE}`);
@@ -215,16 +215,16 @@ const RebateRatios = () => {
       } else {
         showError(message);
       }
-    } catch (e) {
+    } catch {
       showError(t('加载失败'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadUsers(1);
-  }, []);
+  }, [loadUsers]);
 
   const openEdit = (user) => {
     setEditing(user);
@@ -245,7 +245,7 @@ const RebateRatios = () => {
     if (res.data.success) {
       showSuccess(t('设置成功'));
       setEditing(null);
-      loadUsers();
+      loadUsers(page);
     } else {
       showError(res.data.message);
     }

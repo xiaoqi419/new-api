@@ -1,0 +1,53 @@
+{
+  "kind": "verifier-response",
+  "response": {
+    "kind": "final-result",
+    "result": {
+      "iteration": 1,
+      "attempt": 1,
+      "verdict": "blocked",
+      "acceptance": [
+        {
+          "id": "A1",
+          "result": "passed",
+          "reason": "Root and relaykit vet/build evidence is present, and the CI workflow creates all three embed placeholder paths."
+        },
+        {
+          "id": "A2",
+          "result": "blocked",
+          "reason": "make is unavailable on this Windows host; the root Go suite also has deterministic pre-existing channel_affinity_usage_cache failures. The maintenance report records the reproducible failures and the CI/alternative verification path."
+        },
+        {
+          "id": "A3",
+          "result": "blocked",
+          "reason": "Typecheck, tests, and production build pass, but repository-wide frontend lint remains red in pre-existing classic/default files outside this candidate; affected wallet files are lint-clean and the limitation is documented."
+        },
+        {
+          "id": "A4",
+          "result": "passed",
+          "reason": "The i18n sync report records zero missing and extra keys for every locale, with existing fallback untranslated values documented."
+        },
+        {
+          "id": "A5",
+          "result": "passed",
+          "reason": "Router, middleware, controller, and focused auth/groupbuy/wallet evidence covers the documented route and permission boundaries."
+        },
+        {
+          "id": "A6",
+          "result": "passed",
+          "reason": "Focused wallet, payment, groupbuy, authentication, video/material, and channel-monitor regression tests passed in the recorded candidate checks."
+        },
+        {
+          "id": "A7",
+          "result": "passed",
+          "reason": "The maintenance status document separates local acceptance, online merchant acceptance, and paused WeChat login work, and includes the administrator credential, callback, and live payment checklist."
+        }
+      ],
+      "risks": [
+        "No independent semantic verifier response was available: the Runtime verifier remained running and the fallback verifier attempt failed with 429 Too Many Requests.",
+        "This blocked verdict is based on the recorded builder checks and local evidence; it does not authorize Archive."
+      ],
+      "summary": "Verification cannot be completed as an independent pass. The CI embed fix and most targeted checks are evidenced, but root Go baseline failures, full frontend lint baseline failures, and unavailable independent verifier capacity keep A2/A3 blocked. Keep the change active and do not Archive."
+    }
+  }
+}

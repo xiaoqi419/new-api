@@ -1,5 +1,9 @@
 {
   "translation": {
+    "Connect your models": "モデルを接続",
+    "with New API": "New API と",
+    "From API keys and protocol compatibility to usage and permission management, reduce integration costs with one unified gateway.": "API キー、プロトコル互換性、利用状況、権限管理まで、統合ゲートウェイで連携コストを削減します。",
+    "More control, lower cost": "より低コスト、より高い制御",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_one": " + Web検索 {{count}}回 / 1K回 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_one",
     " + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_other": " + Web検索 {{count}}回 / 1K回 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}_other",
     " + 图片生成调用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}": " + 画像生成APIコール {{symbol}}{{price}} / 1回 * {{ratioType}} {{ratio}}",

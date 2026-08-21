@@ -6608,3 +6608,111 @@ html[data-ui-preset='apimart'].dark .semi-card .semi-card {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
+
+/* Figma landing alignment: measured bands, restrained palette, and stable mobile flow. */
+html[data-ui-preset='apimart'] .app-home-fullpage {
+  background: #ffffff !important;
+  color: #0e0e0e;
+}
+html[data-ui-preset='apimart'].dark .app-home-fullpage {
+  background: #1f1f1f !important;
+  color: #ffffff;
+}
+html[data-ui-preset='apimart'] .app-home-page {
+  min-height: 760px;
+  padding: clamp(5rem, 10vw, 8.5rem) clamp(1.5rem, 6vw, 3.5rem) !important;
+  box-sizing: border-box;
+}
+html[data-ui-preset='apimart'] .app-home-hero {
+  min-height: 897px;
+  border-radius: 0 0 28px 28px;
+  background: #f3f3f1 !important;
+  color: #050505;
+}
+html[data-ui-preset='apimart'].dark .app-home-hero {
+  background: #0e0e0e !important;
+  color: #ffffff;
+}
+html[data-ui-preset='apimart'] .app-home-title {
+  max-width: 590px;
+  font-size: clamp(3rem, 6vw, 4.5rem) !important;
+  line-height: 0.98 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+html[data-ui-preset='apimart'] .app-home-subtitle,
+html[data-ui-preset='apimart'] .app-home-subnote {
+  max-width: 575px;
+  color: #575757 !important;
+  font-size: 1.05rem !important;
+  line-height: 1.65 !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-subtitle,
+html[data-ui-preset='apimart'].dark .app-home-subnote {
+  color: #bcbcbc !important;
+}
+html[data-ui-preset='apimart'] .app-home-section,
+html[data-ui-preset='apimart'] .app-home-hot-section,
+html[data-ui-preset='apimart'] .app-home-ecosystem-section,
+html[data-ui-preset='apimart'] .app-home-api-section {
+  background: #ffffff !important;
+  color: #0e0e0e !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-section,
+html[data-ui-preset='apimart'].dark .app-home-hot-section,
+html[data-ui-preset='apimart'].dark .app-home-ecosystem-section,
+html[data-ui-preset='apimart'].dark .app-home-api-section {
+  background: #1f1f1f !important;
+  color: #ffffff !important;
+}
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography,
+html[data-ui-preset='apimart'] .app-home-section-heading .semi-typography-text {
+  color: #0e0e0e !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-section-heading .semi-typography,
+html[data-ui-preset='apimart'].dark .app-home-section-heading .semi-typography-text {
+  color: #ffffff !important;
+}
+html[data-ui-preset='apimart'] .app-home-api-showcase,
+html[data-ui-preset='apimart'] .app-home-eco-block,
+html[data-ui-preset='apimart'] .app-home-model-mosaic {
+  border-radius: 32px !important;
+}
+html[data-ui-preset='apimart'] .app-home-api-showcase {
+  border: 1px solid rgba(5, 5, 5, 0.08) !important;
+  background: #fafaf8 !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.06) !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-api-showcase {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: #0e0e0e !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.28) !important;
+}
+html[data-ui-preset='apimart'] .app-home-stats {
+  gap: 2.5rem !important;
+  padding: 3rem 0 !important;
+  background: transparent !important;
+}
+html[data-ui-preset='apimart'] .app-home-stats strong,
+html[data-ui-preset='apimart'] .app-home-stats span {
+  color: #0e0e0e !important;
+}
+html[data-ui-preset='apimart'].dark .app-home-stats strong,
+html[data-ui-preset='apimart'].dark .app-home-stats span {
+  color: #ffffff !important;
+}
+@media (max-width: 768px) {
+  html[data-ui-preset='apimart'] .app-home-page,
+  html[data-ui-preset='apimart'] .app-home-hero {
+    min-height: auto;
+    padding: 6rem 1.25rem 4rem !important;
+  }
+  html[data-ui-preset='apimart'] .app-home-title {
+    font-size: clamp(2.5rem, 13vw, 4rem) !important;
+  }
+  html[data-ui-preset='apimart'] .app-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

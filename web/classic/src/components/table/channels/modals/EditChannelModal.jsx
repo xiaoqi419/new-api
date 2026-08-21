@@ -21,6 +21,11 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   API,
+  copy,
+  getChannelIcon,
+  getChannelModels,
+  getModelCategories,
+  selectFilter,
   showError,
   showInfo,
   showSuccess,
@@ -53,13 +58,6 @@ import {
   Collapse,
   Dropdown,
 } from '@douyinfe/semi-ui';
-import {
-  getChannelModels,
-  copy,
-  getChannelIcon,
-  getModelCategories,
-  selectFilter,
-} from '../../../../helpers';
 import ModelSelectModal from './ModelSelectModal';
 import SingleModelSelectModal from './SingleModelSelectModal';
 import OllamaModelModal from './OllamaModelModal';
@@ -171,7 +169,7 @@ const EditChannelModal = (props) => {
   const handleCancel = () => {
     props.handleClose();
   };
-  const originInputs = {
+  const originInputs = useMemo(() => ({
     name: '',
     type: 1,
     key: '',
@@ -218,7 +216,7 @@ const EditChannelModal = (props) => {
     upstream_model_update_last_check_time: 0,
     upstream_model_update_last_detected_models: [],
     upstream_model_update_ignored_models: '',
-  };
+  }), []);
   const [batch, setBatch] = useState(false);
   const [multiToSingle, setMultiToSingle] = useState(false);
   const [multiKeyMode, setMultiKeyMode] = useState('random');
@@ -245,6 +243,7 @@ const EditChannelModal = (props) => {
     useState('');
   const [ollamaModalVisible, setOllamaModalVisible] = useState(false);
   const formApiRef = useRef(null);
+  const modalActionsRef = useRef(null);
   const [vertexKeys, setVertexKeys] = useState([]);
   const [vertexFileList, setVertexFileList] = useState([]);
   const vertexErroredNames = useRef(new Set()); // 避免重复报错
@@ -267,8 +266,8 @@ const EditChannelModal = (props) => {
       const values = Object.values(parsed)
         .map((value) => (typeof value === 'string' ? value.trim() : undefined))
         .filter((value) => value);
-      return Array.from(new Set(values));
-    } catch (error) {
+      return [...new Set(values)];
+    } catch {
       return [];
     }
   }, [inputs.model_mapping]);
@@ -285,20 +284,20 @@ const EditChannelModal = (props) => {
       const keys = Object.keys(parsed)
         .map((key) => key.trim())
         .filter((key) => key);
-      return Array.from(new Set(keys));
-    } catch (error) {
+      return [...new Set(keys)];
+    } catch {
       return [];
     }
   }, [inputs.model_mapping]);
   const upstreamDetectedModels = useMemo(
     () =>
-      Array.from(
-        new Set(
+      [
+        ...new Set(
           (inputs.upstream_model_update_last_detected_models || [])
             .map((model) => String(model || '').trim())
             .filter(Boolean),
         ),
-      ),
+      ],
     [inputs.upstream_model_update_last_detected_models],
   );
   const upstreamDetectedModelsPreview = useMemo(
@@ -373,7 +372,7 @@ const EditChannelModal = (props) => {
         tagColor: 'orange',
         preview: pretty,
       };
-    } catch (error) {
+    } catch {
       return {
         tagLabel: t('JSON格式错误'),
         tagColor: 'red',
@@ -618,7 +617,7 @@ const EditChannelModal = (props) => {
       formApiRef.current.setValue(name, value);
     }
     if (name === 'models' && Array.isArray(value)) {
-      value = Array.from(new Set(value.map((m) => (m || '').trim())));
+      value = [...new Set(value.map((m) => (m || '').trim()))];
     }
 
     if (name === 'base_url' && value.endsWith('/v1')) {
@@ -740,7 +739,7 @@ const EditChannelModal = (props) => {
     if (verifyJSON(raw)) {
       try {
         content = JSON.stringify(JSON.parse(raw), null, 2);
-      } catch (error) {
+      } catch {
         content = raw;
       }
     }
@@ -1047,8 +1046,8 @@ const EditChannelModal = (props) => {
           ) {
             parsedIonet = maybeMeta;
           }
-        } catch (error) {
-          // ignore parse error
+    } catch {
+      // ignore parse error
         }
       }
       const managedByIonet = !!parsedIonet;
@@ -1110,7 +1109,7 @@ const EditChannelModal = (props) => {
         skipErrorHandler: true,
       });
       if (res && res.data && res.data.success) {
-        const uniqueModels = Array.from(new Set(res.data.data || []));
+        const uniqueModels = [...new Set(res.data.data || [])];
         handleChannelSettingsChange(
           'fallback_upstream_models',
           uniqueModels.join(','),
@@ -1124,7 +1123,7 @@ const EditChannelModal = (props) => {
       } else {
         showError(t('获取模型列表失败'));
       }
-    } catch (error) {
+    } catch {
       showError(t('获取模型列表失败'));
     }
     setLoading(false);
@@ -1180,7 +1179,7 @@ const EditChannelModal = (props) => {
     }
 
     if (!err) {
-      const uniqueModels = Array.from(new Set(models));
+      const uniqueModels = [...new Set(models)];
       setFetchedModels(uniqueModels);
       if (!silent) {
         setModelModalVisible(true);
@@ -1215,11 +1214,11 @@ const EditChannelModal = (props) => {
       return;
     }
 
-    const normalizedModelsToUse = Array.from(
-      new Set(
+    const normalizedModelsToUse = [
+      ...new Set(
         modelsToUse.map((model) => String(model ?? '').trim()).filter(Boolean),
       ),
-    );
+    ];
     const currentValue = String(value ?? '').trim();
 
     setModelMappingValueModalModels(normalizedModelsToUse);
@@ -1278,7 +1277,7 @@ const EditChannelModal = (props) => {
       if (res?.data?.success) {
         setModelGroups(res.data.data || []);
       }
-    } catch (error) {
+    } catch {
       // ignore
     }
   };
@@ -1360,7 +1359,7 @@ const EditChannelModal = (props) => {
     });
 
     const categories = getModelCategories(t);
-    const optionsWithIcon = Array.from(modelMap.values()).map((opt) => {
+    const optionsWithIcon = [...modelMap.values()].map((opt) => {
       const modelName = opt.value;
       let icon = null;
       for (const [key, category] of Object.entries(categories)) {
@@ -1383,9 +1382,15 @@ const EditChannelModal = (props) => {
     setModelOptions(optionsWithIcon);
   }, [originModelOptions, inputs.models, t]);
 
+  modalActionsRef.current = {
+    getInitValues,
+    loadChannel,
+    resetModalState,
+  };
+
   useEffect(() => {
-    fetchModels().then();
-    fetchGroups().then();
+    void fetchModels();
+    void fetchGroups();
     if (!isEdit) {
       initialBaseUrlRef.current = '';
       setInputs(originInputs);
@@ -1396,7 +1401,7 @@ const EditChannelModal = (props) => {
       setBasicModels(localModels);
       setInputs((inputs) => ({ ...inputs, models: localModels }));
     }
-  }, [props.editingChannel.id]);
+  }, [props.editingChannel.id, isEdit, originInputs, inputs.type]);
 
   useEffect(() => {
     if (formApiRef.current) {
@@ -1406,11 +1411,13 @@ const EditChannelModal = (props) => {
 
   useEffect(() => {
     setModelSearchValue('');
-    if (props.visible) {
-      if (isEdit) {
-        loadChannel();
-      } else {
-        formApiRef.current?.setValues(getInitValues());
+      if (props.visible) {
+        if (isEdit) {
+          modalActionsRef.current.loadChannel();
+        } else {
+          formApiRef.current?.setValues(
+            modalActionsRef.current.getInitValues(),
+          );
         try {
           navigator?.clipboard
             ?.readText()
@@ -1433,9 +1440,9 @@ const EditChannelModal = (props) => {
       );
     } else {
       // 统一的模态框关闭重置逻辑
-      resetModalState();
+      modalActionsRef.current.resetModalState();
     }
-  }, [props.visible, channelId]);
+  }, [props.visible, channelId, isEdit]);
 
   useEffect(() => {
     if (!isEdit) {
@@ -1503,7 +1510,7 @@ const EditChannelModal = (props) => {
           const txt = await fileObj.text();
           keys.push(JSON.parse(txt));
           validFiles.push(item);
-        } catch (err) {
+        } catch {
           if (!vertexErroredNames.current.has(item.name)) {
             errorNames.push(item.name);
             vertexErroredNames.current.add(item.name);
@@ -1513,8 +1520,8 @@ const EditChannelModal = (props) => {
 
       // 非批量模式下只保留一个文件（最新选择的），避免重复叠加
       if (!batch && validFiles.length > 1) {
-        validFiles = [validFiles[validFiles.length - 1]];
-        keys = [keys[keys.length - 1]];
+        validFiles = [validFiles.at(-1)];
+        keys = [keys.at(-1)];
       }
 
       setVertexKeys(keys);
@@ -1663,7 +1670,7 @@ const EditChannelModal = (props) => {
             return;
           }
           localInputs.key = JSON.stringify(parsed);
-        } catch (error) {
+        } catch {
           showInfo(t('密钥必须是合法的 JSON 格式！'));
           return;
         }
@@ -1685,7 +1692,7 @@ const EditChannelModal = (props) => {
             try {
               const parsedKey = JSON.parse(localInputs.key);
               localInputs.key = JSON.stringify(parsedKey);
-            } catch (err) {
+            } catch {
               showError(t('密钥格式无效，请输入有效的 JSON 格式密钥'));
               return;
             }
@@ -1760,7 +1767,7 @@ const EditChannelModal = (props) => {
       }
       try {
         parsedModelMapping = JSON.parse(localInputs.model_mapping);
-      } catch (error) {
+      } catch {
         showInfo(t('模型映射必须是合法的 JSON 格式！'));
         return;
       }
@@ -1789,9 +1796,7 @@ const EditChannelModal = (props) => {
           return;
         }
         if (confirmAction === 'add') {
-          const updatedModels = Array.from(
-            new Set([...normalizedModels, ...missingModels]),
-          );
+          const updatedModels = [...new Set([...normalizedModels, ...missingModels])];
           localInputs.models = updatedModels;
           handleInputChange('models', updatedModels);
         }
@@ -1905,14 +1910,14 @@ const EditChannelModal = (props) => {
     settings.upstream_model_update_auto_sync_enabled =
       settings.upstream_model_update_check_enabled &&
       localInputs.upstream_model_update_auto_sync_enabled === true;
-    settings.upstream_model_update_ignored_models = Array.from(
-      new Set(
+    settings.upstream_model_update_ignored_models = [
+      ...new Set(
         String(localInputs.upstream_model_update_ignored_models || '')
           .split(',')
           .map((model) => model.trim())
           .filter(Boolean),
       ),
-    );
+    ];
     if (
       !Array.isArray(settings.upstream_model_update_last_detected_models) ||
       !settings.upstream_model_update_check_enabled
@@ -2253,6 +2258,19 @@ const EditChannelModal = (props) => {
       </div>
     );
   };
+
+  let batchKeyPlaceholder = t('请输入密钥，一行一个');
+  let channelKeyPlaceholder = t(type2secretPrompt(inputs.type));
+  if (inputs.type === 33) {
+    batchKeyPlaceholder =
+      inputs.aws_key_type === 'api_key'
+        ? t('请输入 API Key，一行一个，格式：APIKey|Region')
+        : t('请输入密钥，一行一个，格式：AccessKey|SecretAccessKey|Region');
+    channelKeyPlaceholder =
+      inputs.aws_key_type === 'api_key'
+        ? t('请输入 API Key，格式：APIKey|Region')
+        : t('按照如下格式输入：AccessKey|SecretAccessKey|Region');
+  }
 
   return (
     <>
@@ -2986,8 +3004,7 @@ const EditChannelModal = (props) => {
             );
 
             return (
-              <>
-                <Spin spinning={loading}>
+              <Spin spinning={loading}>
                   <div className='p-2 space-y-3' ref={formContainerRef}>
                     {!isEdit && clipboardConfig && (
                       <Banner
@@ -3122,8 +3139,7 @@ const EditChannelModal = (props) => {
                       />
 
                       {inputs.type === 33 && (
-                        <>
-                          <Form.Select
+                        <Form.Select
                             field='aws_key_type'
                             label={t('密钥格式')}
                             placeholder={t('请选择密钥格式')}
@@ -3145,8 +3161,7 @@ const EditChannelModal = (props) => {
                             extraText={t(
                               'AK/SK 模式：使用 AccessKey 和 SecretAccessKey；API Key 模式：使用 API Key',
                             )}
-                          />
-                        </>
+                        />
                       )}
 
                       {inputs.type === 41 && (
@@ -3184,9 +3199,9 @@ const EditChannelModal = (props) => {
                           }
                         />
                       )}
-                      {batch ? (
+                      {batch &&
                         inputs.type === 41 &&
-                        (inputs.vertex_key_type || 'json') === 'json' ? (
+                        (inputs.vertex_key_type || 'json') === 'json' && (
                           <Form.Upload
                             field='vertex_files'
                             label={t('密钥文件 (.json)')}
@@ -3213,21 +3228,14 @@ const EditChannelModal = (props) => {
                             }
                             extraText={batchExtra}
                           />
-                        ) : (
+                        )}
+                      {batch &&
+                        !(inputs.type === 41 &&
+                          (inputs.vertex_key_type || 'json') === 'json') && (
                           <Form.TextArea
                             field='key'
                             label={t('密钥')}
-                            placeholder={
-                              inputs.type === 33
-                                ? inputs.aws_key_type === 'api_key'
-                                  ? t(
-                                      '请输入 API Key，一行一个，格式：APIKey|Region',
-                                    )
-                                  : t(
-                                      '请输入密钥，一行一个，格式：AccessKey|SecretAccessKey|Region',
-                                    )
-                                : t('请输入密钥，一行一个')
-                            }
+                            placeholder={batchKeyPlaceholder}
                             rules={
                               isEdit
                                 ? []
@@ -3265,11 +3273,10 @@ const EditChannelModal = (props) => {
                             }
                             showClear
                           />
-                        )
-                      ) : (
-                        <>
-                          {inputs.type === 57 ? (
-                            <>
+                        )}
+                      {!batch && (
+                          <>
+                          {inputs.type === 57 && (
                               <Form.TextArea
                                 field='key'
                                 label={
@@ -3345,10 +3352,11 @@ const EditChannelModal = (props) => {
                                 autosize
                                 showClear
                               />
-                            </>
-                          ) : inputs.type === 41 &&
-                            (inputs.vertex_key_type || 'json') === 'json' ? (
-                            <>
+                          )}
+                          {inputs.type !== 57 &&
+                            inputs.type === 41 &&
+                            (inputs.vertex_key_type || 'json') === 'json' && (
+                              <>
                               {!batch && (
                                 <div className='flex items-center justify-between mb-3'>
                                   <Text className='text-sm font-medium'>
@@ -3498,8 +3506,11 @@ const EditChannelModal = (props) => {
                                   extraText={batchExtra}
                                 />
                               )}
-                            </>
-                          ) : (
+                              </>
+                            )}
+                          {inputs.type !== 57 &&
+                            !(inputs.type === 41 &&
+                              (inputs.vertex_key_type || 'json') === 'json') && (
                             <Form.Input
                               field='key'
                               label={
@@ -3507,15 +3518,7 @@ const EditChannelModal = (props) => {
                                   ? t('密钥（编辑模式下，保存的密钥不会显示）')
                                   : t('密钥')
                               }
-                              placeholder={
-                                inputs.type === 33
-                                  ? inputs.aws_key_type === 'api_key'
-                                    ? t('请输入 API Key，格式：APIKey|Region')
-                                    : t(
-                                        '按照如下格式输入：AccessKey|SecretAccessKey|Region',
-                                      )
-                                  : t(type2secretPrompt(inputs.type))
-                              }
+                              placeholder={channelKeyPlaceholder}
                               rules={
                                 isEdit
                                   ? []
@@ -4015,7 +4018,7 @@ const EditChannelModal = (props) => {
                                     try {
                                       copy(inputs.models.join(','));
                                       showSuccess(t('模型列表已复制到剪贴板'));
-                                    } catch (error) {
+                                    } catch {
                                       showError(t('复制失败'));
                                     }
                                   },
@@ -4044,8 +4047,9 @@ const EditChannelModal = (props) => {
                                               const parsed = JSON.parse(
                                                 group.items || '[]',
                                               );
-                                              if (Array.isArray(parsed))
+                                              if (Array.isArray(parsed)) {
                                                 items = parsed;
+                                              }
                                             }
                                           } catch {}
                                           const current =
@@ -4054,13 +4058,13 @@ const EditChannelModal = (props) => {
                                             ) ||
                                             inputs.models ||
                                             [];
-                                          const merged = Array.from(
-                                            new Set(
+                                          const merged = [
+                                            ...new Set(
                                               [...current, ...items]
                                                 .map((m) => (m || '').trim())
                                                 .filter(Boolean),
                                             ),
-                                          );
+                                          ];
                                           handleInputChange('models', merged);
                                         },
                                       })),
@@ -4203,8 +4207,7 @@ const EditChannelModal = (props) => {
                       </Collapse.Panel>
                     </Collapse>
                   </div>
-                </Spin>
-              </>
+              </Spin>
             );
           }}
         </Form>
@@ -4321,7 +4324,7 @@ const EditChannelModal = (props) => {
           if (typeof currentMapping === 'string' && currentMapping.trim()) {
             try {
               parsed = JSON.parse(currentMapping);
-            } catch (error) {
+            } catch {
               parsed = {};
             }
           } else if (
@@ -4363,9 +4366,7 @@ const EditChannelModal = (props) => {
             ? inputs.models.map(String)
             : [];
           const incoming = modelIds.map(String);
-          const nextModels = Array.from(
-            new Set([...existingModels, ...incoming]),
-          );
+          const nextModels = [...new Set([...existingModels, ...incoming])];
 
           handleInputChange('models', nextModels);
           if (formApiRef.current) {

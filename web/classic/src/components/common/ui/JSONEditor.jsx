@@ -99,7 +99,7 @@ const JSONEditor = ({
       try {
         const parsed = JSON.parse(value);
         return objectToKeyValueArray(parsed);
-      } catch (error) {
+      } catch {
         return [];
       }
     }
@@ -111,9 +111,12 @@ const JSONEditor = ({
 
   // 手动模式下的本地文本缓冲
   const [manualText, setManualText] = useState(() => {
-    if (typeof value === 'string') return value;
-    if (value && typeof value === 'object')
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (value && typeof value === 'object') {
       return JSON.stringify(value, null, 2);
+    }
     return '';
   });
 
@@ -124,7 +127,7 @@ const JSONEditor = ({
         const parsed = JSON.parse(value);
         const keyCount = Object.keys(parsed).length;
         return keyCount > 10 ? 'manual' : 'visual';
-      } catch (error) {
+      } catch {
         return 'manual';
       }
     }
@@ -161,24 +164,30 @@ const JSONEditor = ({
       }
 
       // 只在外部值真正改变时更新，避免循环更新
-      const currentObj = keyValueArrayToObject(keyValuePairs);
-      if (JSON.stringify(parsed) !== JSON.stringify(currentObj)) {
-        setKeyValuePairs(objectToKeyValueArray(parsed, keyValuePairs));
-      }
+      setKeyValuePairs((currentPairs) => {
+        const currentObj = keyValueArrayToObject(currentPairs);
+        if (JSON.stringify(parsed) === JSON.stringify(currentObj)) {
+          return currentPairs;
+        }
+        return objectToKeyValueArray(parsed, currentPairs);
+      });
       setJsonError('');
     } catch (error) {
       console.log('JSON解析失败:', error.message);
       setJsonError(error.message);
     }
-  }, [value]);
+  }, [value, keyValueArrayToObject, objectToKeyValueArray]);
 
   // 外部 value 变化时，若不在手动模式，则同步手动文本
   useEffect(() => {
     if (editMode !== 'manual') {
-      if (typeof value === 'string') setManualText(value);
-      else if (value && typeof value === 'object')
+      if (typeof value === 'string') {
+        setManualText(value);
+      } else if (value && typeof value === 'object') {
         setManualText(JSON.stringify(value, null, 2));
-      else setManualText('');
+      } else {
+        setManualText('');
+      }
     }
   }, [value, editMode]);
 
@@ -418,7 +427,7 @@ const JSONEditor = ({
             description={
               <div>
                 <Text strong>{t('存在重复的键名：')}</Text>
-                <Text>{Array.from(duplicateKeys).join(', ')}</Text>
+                <Text>{[...duplicateKeys].join(', ')}</Text>
                 <br />
                 <Text type='tertiary' size='small'>
                   {t('注意：JSON中重复的键只会保留最后一个同名键的值')}
@@ -517,7 +526,7 @@ const JSONEditor = ({
             description={
               <div>
                 <Text strong>{t('存在重复的键名：')}</Text>
-                <Text>{Array.from(duplicateKeys).join(', ')}</Text>
+                <Text>{[...duplicateKeys].join(', ')}</Text>
                 <br />
                 <Text type='tertiary' size='small'>
                   {t('注意：JSON中重复的键只会保留最后一个同名键的值')}

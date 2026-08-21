@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banner,
   Button,
@@ -61,6 +61,10 @@ import {
 const { Text } = Typography;
 
 const PRICE_SUFFIX = '$/1M tokens';
+const EMPTY_CONDITIONS = [];
+let tierId = 0;
+let conditionId = 0;
+let requestRuleGroupId = 0;
 
 function unitCostToPrice(uc) {
   return Number(uc) || 0;
@@ -86,6 +90,12 @@ function formatTokenHint(n) {
   if (v >= 1000000) return `= ${(v / 1000000).toLocaleString()}M tokens`;
   if (v >= 1000) return `= ${(v / 1000).toLocaleString()}K tokens`;
   return `= ${v.toLocaleString()} tokens`;
+}
+
+function getRequestRuleValuePlaceholder(mode, t) {
+  if (mode === MATCH_CONTAINS) return t('匹配内容');
+  if (mode === MATCH_EXISTS) return '';
+  return t('匹配值');
 }
 
 // ---------------------------------------------------------------------------
@@ -115,11 +125,29 @@ function getTierCacheMode(tier) {
 }
 
 function normalizeVisualTier(tier = {}) {
+  const id = tier._id || `tier-${++tierId}`;
   return {
     ...tier,
-    conditions: Array.isArray(tier.conditions) ? tier.conditions : [],
+    _id: id,
+    conditions: Array.isArray(tier.conditions)
+      ? tier.conditions.map((condition) => ({
+          ...condition,
+          _id: condition._id || `condition-${++conditionId}`,
+        }))
+      : [],
     cache_mode: getTierCacheMode(tier),
   };
+}
+
+function normalizeRequestRuleGroups(groups) {
+  return (groups || []).map((group) => ({
+    ...group,
+    _id: group._id || `rule-group-${++requestRuleGroupId}`,
+    conditions: (group.conditions || []).map((condition) => ({
+      ...condition,
+      _id: condition._id || `condition-${++conditionId}`,
+    })),
+  }));
 }
 
 function createDefaultVisualConfig() {
@@ -160,8 +188,9 @@ function buildTierBodyExpr(tier) {
 }
 
 function generateExprFromVisualConfig(config) {
-  if (!config || !config.tiers || config.tiers.length === 0)
+  if (!config || !config.tiers || config.tiers.length === 0) {
     return 'p * 0 + c * 0';
+  }
   const tiers = config.tiers;
 
   if (tiers.length === 1) {
@@ -257,12 +286,15 @@ function tryParseVisualConfig(exprStr) {
       });
       tiers.push(normalizeVisualTier(tier));
     }
-    if (tiers.length === 0) return null;
+    if (tiers.length === 0) {
+      return null;
+    }
 
     const cfg = normalizeVisualConfig({ tiers });
     const regenerated = generateExprFromVisualConfig(cfg);
-    if (regenerated.replace(/\s+/g, '') !== exprStr.replace(/\s+/g, ''))
+    if (regenerated.replaceAll(/\s+/g, '') !== exprStr.replaceAll(/\s+/g, '')) {
       return null;
+    }
     return cfg;
   } catch {
     return null;
@@ -343,10 +375,12 @@ function PriceInput({ unitCost, field, index, onUpdate, placeholder }) {
   const [text, setText] = useState(priceFromModel === 0 ? '' : String(priceFromModel));
 
   useEffect(() => {
-    const current = Number(text);
-    if (text === '' && priceFromModel === 0) return;
-    if (!Number.isNaN(current) && current === priceFromModel) return;
-    setText(priceFromModel === 0 ? '' : String(priceFromModel));
+    setText((previous) => {
+      const current = Number(previous);
+      if (previous === '' && priceFromModel === 0) return previous;
+      if (!Number.isNaN(current) && current === priceFromModel) return previous;
+      return priceFromModel === 0 ? '' : String(priceFromModel);
+    });
   }, [priceFromModel]);
 
   const handleChange = (val) => {
@@ -500,10 +534,10 @@ function ExtendedPriceBlock({ tier, index, onUpdate, t }) {
 // ---------------------------------------------------------------------------
 
 function VisualTierCard({ tier, index, isLast, isOnly, onUpdate, onRemove, t }) {
-  const conditions = tier.conditions || [];
+  const conditions = tier.conditions || EMPTY_CONDITIONS;
 
-  const varLabel = { len: t('长度'), p: t('输入'), c: t('输出') };
   const condSummary = useMemo(() => {
+    const varLabel = { len: t('长度'), p: t('输入'), c: t('输出') };
     if (conditions.length === 0) return t('无条件（兜底档）');
     return conditions
       .filter((c) => c.var && c.op && c.value != null)
@@ -602,7 +636,7 @@ function VisualTierCard({ tier, index, isLast, isOnly, onUpdate, onRemove, t }) 
           </Text>
           {conditions.map((cond, ci) => (
             <ConditionRow
-              key={ci}
+              key={cond._id}
               cond={cond}
               onChange={(nc) => updateCondition(ci, nc)}
               onRemove={() => removeCondition(ci)}
@@ -691,11 +725,11 @@ function VisualEditor({ visualConfig, onChange, t }) {
     const newTiers = [...tiers];
     if (
       newTiers.length > 0 &&
-      (!newTiers[newTiers.length - 1].conditions ||
-        newTiers[newTiers.length - 1].conditions.length === 0)
+      (!newTiers.at(-1).conditions ||
+        newTiers.at(-1).conditions.length === 0)
     ) {
       newTiers[newTiers.length - 1] = {
-        ...newTiers[newTiers.length - 1],
+        ...newTiers.at(-1),
         conditions: [{ var: 'len', op: '<', value: 200000 }],
       };
     }
@@ -706,7 +740,7 @@ function VisualEditor({ visualConfig, onChange, t }) {
       label: `第${newTiers.length + 1}档`,
       cache_mode: CACHE_MODE_GENERIC,
     });
-    onChange({ ...config, tiers: newTiers });
+    onChange(normalizeVisualConfig({ ...config, tiers: newTiers }));
   };
 
   const removeTier = (index) => {
@@ -714,7 +748,7 @@ function VisualEditor({ visualConfig, onChange, t }) {
     const next = tiers.filter((_, i) => i !== index);
     if (next.length > 0) {
       next[next.length - 1] = {
-        ...next[next.length - 1],
+        ...next.at(-1),
         conditions: [],
       };
     }
@@ -731,7 +765,7 @@ function VisualEditor({ visualConfig, onChange, t }) {
 
       {tiers.map((tier, index) => (
         <VisualTierCard
-          key={index}
+          key={tier._id}
           tier={tier}
           index={index}
           isLast={index === tiers.length - 1}
@@ -1146,7 +1180,7 @@ function RuleConditionRow({ cond, onChange, onRemove, t }) {
       <Input
         size='small'
         value={normalized.value}
-        placeholder={normalized.mode === MATCH_CONTAINS ? t('匹配内容') : normalized.mode === MATCH_EXISTS ? '' : t('匹配值')}
+        placeholder={getRequestRuleValuePlaceholder(normalized.mode, t)}
         disabled={!showValue}
         onChange={(value) => onChange({ ...normalized, value })}
       />
@@ -1193,7 +1227,7 @@ function RuleGroupCard({ group, index, onChange, onRemove, t }) {
         </Text>
         {conditions.map((cond, ci) => (
           <RuleConditionRow
-            key={ci}
+            key={cond._id}
             cond={cond}
             onChange={(nc) => updateCondition(ci, nc)}
             onRemove={() => removeCondition(ci)}
@@ -1373,6 +1407,10 @@ function LlmPromptHelper({ t, model }) {
 
 export default function TieredPricingEditor({ model, onExprChange, requestRuleExpr, onRequestRuleExprChange, t }) {
   const currentExpr = model?.billingExpr || '';
+  const emittedExprRef = useRef(null);
+  const initializedModelNameRef = useRef(null);
+  const suppressExprEmitRef = useRef(null);
+  const emittedRequestRuleExprRef = useRef(null);
 
   const [editorMode, setEditorMode] = useState('visual');
   const [visualConfig, setVisualConfig] = useState(null);
@@ -1393,22 +1431,36 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
     [currentRequestRuleExpr],
   );
   const canUseVisualRules = parsedRequestRuleGroups !== null;
-  const [requestRuleGroups, setRequestRuleGroups] = useState(parsedRequestRuleGroups || []);
+  const [requestRuleGroups, setRequestRuleGroups] = useState(() =>
+    normalizeRequestRuleGroups(parsedRequestRuleGroups),
+  );
 
   useEffect(() => {
+    if (currentRequestRuleExpr === emittedRequestRuleExprRef.current) return;
+    emittedRequestRuleExprRef.current = null;
     if (parsedRequestRuleGroups) {
-      setRequestRuleGroups(parsedRequestRuleGroups);
+      setRequestRuleGroups(normalizeRequestRuleGroups(parsedRequestRuleGroups));
     } else {
       setRequestRuleGroups([]);
     }
   }, [currentRequestRuleExpr, parsedRequestRuleGroups]);
 
   const handleRequestRuleGroupsChange = useCallback((nextGroups) => {
-    setRequestRuleGroups(nextGroups);
-    onRequestRuleExprChange(buildRequestRuleExpr(nextGroups));
+    const normalizedGroups = normalizeRequestRuleGroups(nextGroups);
+    const nextExpr = buildRequestRuleExpr(normalizedGroups);
+    setRequestRuleGroups(normalizedGroups);
+    emittedRequestRuleExprRef.current = nextExpr;
+    onRequestRuleExprChange(nextExpr);
   }, [onRequestRuleExprChange]);
 
   useEffect(() => {
+    const modelName = model?.name ?? null;
+    const modelChanged = initializedModelNameRef.current !== modelName;
+    initializedModelNameRef.current = modelName;
+    if (!modelChanged && currentExpr === emittedExprRef.current) return;
+    emittedExprRef.current = null;
+    suppressExprEmitRef.current = currentExpr;
+
     const parsed = tryParseVisualConfig(currentExpr);
     if (parsed) {
       setEditorMode('visual');
@@ -1423,7 +1475,7 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
       setVisualConfig(createDefaultVisualConfig());
       setRawExpr('');
     }
-  }, [model?.name]);
+  }, [currentExpr, model?.name]);
 
   const effectiveExpr = useMemo(() => {
     if (editorMode === 'visual') {
@@ -1434,10 +1486,15 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
   }, [editorMode, visualConfig, rawExpr]);
 
   useEffect(() => {
+    if (suppressExprEmitRef.current === currentExpr) {
+      suppressExprEmitRef.current = null;
+      return;
+    }
     if (effectiveExpr !== currentExpr) {
+      emittedExprRef.current = effectiveExpr;
       onExprChange(effectiveExpr);
     }
-  }, [effectiveExpr]);
+  }, [currentExpr, effectiveExpr, onExprChange]);
 
   const handleVisualChange = useCallback((newConfig) => {
     setVisualConfig(newConfig);
@@ -1446,6 +1503,7 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
   const handleRawChange = useCallback((val) => {
     setRawExpr(val);
     const { requestRuleExpr: ruleStr } = splitBillingExprAndRequestRules(val);
+    emittedRequestRuleExprRef.current = ruleStr;
     onRequestRuleExprChange(ruleStr);
   }, [onRequestRuleExprChange]);
 
@@ -1461,7 +1519,8 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
           setVisualConfig(createDefaultVisualConfig());
         }
         const parsedGroups = tryParseRequestRuleExpr(ruleStr);
-        setRequestRuleGroups(parsedGroups || []);
+        setRequestRuleGroups(normalizeRequestRuleGroups(parsedGroups));
+        emittedRequestRuleExprRef.current = ruleStr;
         onRequestRuleExprChange(ruleStr);
       } else {
         const expr = generateExprFromVisualConfig(visualConfig);
@@ -1486,16 +1545,33 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
         setEditorMode('raw');
         setVisualConfig(null);
       }
-      setRequestRuleGroups(presetGroups);
+      setRequestRuleGroups(normalizeRequestRuleGroups(presetGroups));
+      emittedRequestRuleExprRef.current = ruleExpr;
       onRequestRuleExprChange(ruleExpr);
     },
     [onRequestRuleExprChange],
   );
 
-  const extraTokenValues = {
-    cacheReadTokens, cacheCreateTokens, cacheCreate1hTokens,
-    imageTokens, imageOutputTokens, audioInputTokens, audioOutputTokens,
-  };
+  const extraTokenValues = useMemo(
+    () => ({
+      cacheReadTokens,
+      cacheCreateTokens,
+      cacheCreate1hTokens,
+      imageTokens,
+      imageOutputTokens,
+      audioInputTokens,
+      audioOutputTokens,
+    }),
+    [
+      audioInputTokens,
+      audioOutputTokens,
+      cacheCreate1hTokens,
+      cacheCreateTokens,
+      cacheReadTokens,
+      imageOutputTokens,
+      imageTokens,
+    ],
+  );
   const extraTokenSetters = {
     cacheReadTokens: setCacheReadTokens, cacheCreateTokens: setCacheCreateTokens,
     cacheCreate1hTokens: setCacheCreate1hTokens, imageTokens: setImageTokens,
@@ -1510,9 +1586,7 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
       }
       return result;
     },
-    [effectiveExpr, promptTokens, completionTokens,
-      cacheReadTokens, cacheCreateTokens, cacheCreate1hTokens,
-      imageTokens, imageOutputTokens, audioInputTokens, audioOutputTokens],
+    [effectiveExpr, promptTokens, completionTokens, extraTokenValues],
   );
 
   return (
@@ -1574,7 +1648,7 @@ export default function TieredPricingEditor({ model, onExprChange, requestRuleEx
               <>
                 {requestRuleGroups.map((group, gi) => (
                   <RuleGroupCard
-                    key={`rule-group-${gi}`}
+                    key={group._id}
                     group={group}
                     index={gi}
                     t={t}

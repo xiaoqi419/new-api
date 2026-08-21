@@ -452,7 +452,7 @@ export function getLobeHubIcon(iconName, size = 14) {
   // 解析组件路径与点号链式属性
   const segments = String(iconName).split('.');
   const baseKey = segments[0];
-  const BaseIcon = LobeIcons[baseKey];
+  const BaseIcon = Reflect.get(LobeIcons, baseKey);
 
   let IconComponent = undefined;
   let propStartIndex = 1;
@@ -461,7 +461,7 @@ export function getLobeHubIcon(iconName, size = 14) {
     IconComponent = BaseIcon[segments[1]];
     propStartIndex = 2;
   } else {
-    IconComponent = LobeIcons[baseKey];
+    IconComponent = Reflect.get(LobeIcons, baseKey);
     propStartIndex = 1;
   }
 
@@ -1030,7 +1030,7 @@ export function renderQuotaNumberWithDigit(num, digits = 2) {
         const s = JSON.parse(statusStr);
         symbol = s?.custom_currency_symbol || symbol;
       }
-    } catch (e) {}
+    } catch {}
     return symbol + num;
   } else {
     return num;
@@ -1116,7 +1116,7 @@ export function getCurrencyConfig() {
         const s = JSON.parse(statusStr);
         rate = s?.usd_exchange_rate || 7;
       }
-    } catch (e) {}
+    } catch {}
   } else if (quotaDisplayType === 'CUSTOM') {
     try {
       if (statusStr) {
@@ -1124,7 +1124,7 @@ export function getCurrencyConfig() {
         symbol = s?.custom_currency_symbol || '¤';
         rate = s?.custom_currency_exchange_rate || 1;
       }
-    } catch (e) {}
+    } catch {}
   }
 
   return { symbol, rate, type: quotaDisplayType };
@@ -1160,7 +1160,7 @@ export function renderQuota(quota, digits = 2) {
         const s = JSON.parse(statusStr);
         usdRate = s?.usd_exchange_rate || 1;
       }
-    } catch (e) {}
+    } catch {}
     value = resultUSD * usdRate;
     symbol = '¥';
   } else if (quotaDisplayType === 'CUSTOM') {
@@ -1173,7 +1173,7 @@ export function renderQuota(quota, digits = 2) {
         symbolCustom = s?.custom_currency_symbol || symbolCustom;
         rate = s?.custom_currency_exchange_rate || rate;
       }
-    } catch (e) {}
+    } catch {}
     value = resultUSD * rate;
     symbol = symbolCustom;
   }
@@ -1296,8 +1296,8 @@ function renderBillingArticle(lines, { showReferenceNote = true } = {}) {
 
   return (
     <article>
-      {articleLines.map((line, index) => (
-        <p key={index}>{line}</p>
+      {articleLines.map((line) => (
+        <p key={line}>{line}</p>
       ))}
     </article>
   );
@@ -2261,8 +2261,9 @@ export function parseTiersFromExpr(exprStr) {
       if (condStr) {
         for (const cp of condStr.split(/\s*&&\s*/)) {
           const cm = cp.trim().match(/^(p|c|len)\s*(<|<=|>|>=)\s*([\d.eE+]+)$/);
-          if (cm)
+          if (cm) {
             conditions.push({ var: cm[1], op: cm[2], value: Number(cm[3]) });
+          }
         }
       }
       const tier = parseTierBody(m[3]);
@@ -2303,9 +2304,9 @@ export const decodeFromBase64 = (base64) => {
 export const normalizeLabel = (label) => {
   if (!label) return '';
   return label
-    .replace(/<[=＝]?|≤|＜[=＝]?/g, '<')
-    .replace(/>[=＝]?|≥|＞[=＝]?/g, '>')
-    .replace(/\s+/g, '')
+    .replaceAll(/<[=＝]?|≤|＜[=＝]?/g, '<')
+    .replaceAll(/>[=＝]?|≥|＞[=＝]?/g, '>')
+    .replaceAll(/\s+/g, '')
     .toLowerCase();
 };
 
@@ -3341,7 +3342,7 @@ export function rehypeSplitWordsIntoSpans(options = {}) {
               });
               const segments = segmenter.segment(child.value);
 
-              Array.from(segments)
+              [...segments]
                 .map((seg) => seg.segment)
                 .filter(Boolean)
                 .forEach((word) => {
@@ -3362,7 +3363,7 @@ export function rehypeSplitWordsIntoSpans(options = {}) {
 
                   currentCharCount = wordEndPos;
                 });
-            } catch (_) {
+            } catch {
               // Fallback：如果浏览器不支持 Segmenter
               const textStartPos = currentCharCount;
               const isNewContent = textStartPos >= previousContentLength;

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Modal,
   Form,
@@ -44,8 +44,7 @@ import {
   IconHelpCircle,
   IconCopy,
 } from '@douyinfe/semi-icons';
-import { API } from '../../../../helpers';
-import { showError, showSuccess, copy } from '../../../../helpers';
+import { API, copy, showError, showSuccess } from '../../../../helpers';
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -57,9 +56,9 @@ const DEFAULT_TRAFFIC_PORT = 11434;
 const generateRandomKey = () => {
   try {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return `ionet-${crypto.randomUUID().replace(/-/g, '')}`;
+      return `ionet-${crypto.randomUUID().replaceAll('-', '')}`;
     }
-  } catch (error) {
+  } catch {
     // ignore
   }
   return `ionet-${Math.random().toString(36).slice(2)}${Math.random()
@@ -84,12 +83,6 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
   const [loadingReplicas, setLoadingReplicas] = useState(false);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [envVariables, setEnvVariables] = useState([{ key: '', value: '' }]);
-  const [secretEnvVariables, setSecretEnvVariables] = useState([
-    { key: '', value: '' },
-  ]);
-  const [entrypoint, setEntrypoint] = useState(['']);
-  const [args, setArgs] = useState(['']);
   const [imageMode, setImageMode] = useState('builtin');
   const [autoOllamaKey, setAutoOllamaKey] = useState('');
   const customSecretEnvRef = useRef(null);
@@ -101,6 +94,27 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
   const priceSectionRef = useRef(null);
   const advancedSectionRef = useRef(null);
   const replicaRequestIdRef = useRef(0);
+  const dynamicFieldIdRef = useRef(0);
+  const loadHardwareTypesRef = useRef(null);
+  const resetFormStateRef = useRef(null);
+  const loadAvailableReplicasRef = useRef(null);
+  const calculatePriceRef = useRef(null);
+  const getDynamicFieldId = (field) => {
+    dynamicFieldIdRef.current += 1;
+    return `${field}-${dynamicFieldIdRef.current}`;
+  };
+  const [envVariables, setEnvVariables] = useState(() => [
+    { id: getDynamicFieldId('env'), key: '', value: '' },
+  ]);
+  const [secretEnvVariables, setSecretEnvVariables] = useState(() => [
+    { id: getDynamicFieldId('secret-env'), key: '', value: '' },
+  ]);
+  const [entrypoint, setEntrypoint] = useState(['']);
+  const [entrypointIds, setEntrypointIds] = useState(() => [
+    getDynamicFieldId('entrypoint'),
+  ]);
+  const [args, setArgs] = useState(['']);
+  const [argsIds, setArgsIds] = useState(() => [getDynamicFieldId('args')]);
   const [formDefaults, setFormDefaults] = useState({
     resource_private_name: '',
     image_url: BUILTIN_IMAGE,
@@ -147,12 +161,12 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
     return map;
   }, [locations]);
 
-  const getHardwareMaxGpus = (hardwareId) => {
+  const getHardwareMaxGpus = useCallback((hardwareId) => {
     if (!hardwareId) return 1;
     const hardware = hardwareTypes.find((h) => h.id === hardwareId);
     const maxGpus = Number(hardware?.max_gpus);
     return Number.isFinite(maxGpus) && maxGpus > 0 ? maxGpus : 1;
-  };
+  }, [hardwareTypes]);
 
   // Form values for price calculation
   const [selectedHardwareId, setSelectedHardwareId] = useState(null);
@@ -173,13 +187,13 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
     if (formApi) {
       formApi.setValue('gpus_per_container', nextMaxGpus);
     }
-  }, [selectedHardwareId, hardwareTypes, formApi, gpusPerContainer]);
+  }, [selectedHardwareId, getHardwareMaxGpus, formApi, gpusPerContainer]);
 
   // Load initial data when modal opens
   useEffect(() => {
     if (visible) {
-      loadHardwareTypes();
-      resetFormState();
+      loadHardwareTypesRef.current?.();
+      resetFormStateRef.current?.();
     }
   }, [visible]);
 
@@ -189,7 +203,10 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       return;
     }
     if (selectedHardwareId && gpusPerContainer > 0) {
-      loadAvailableReplicas(selectedHardwareId, gpusPerContainer);
+      loadAvailableReplicasRef.current?.(
+        selectedHardwareId,
+        gpusPerContainer,
+      );
     }
   }, [selectedHardwareId, gpusPerContainer, visible]);
 
@@ -205,7 +222,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       durationHours > 0 &&
       replicaCount > 0
     ) {
-      calculatePrice();
+      calculatePriceRef.current?.();
     } else {
       setPriceEstimation(null);
     }
@@ -243,8 +260,16 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       }
       const newKey = generateRandomKey();
       setAutoOllamaKey(newKey);
-      setSecretEnvVariables([{ key: 'OLLAMA_API_KEY', value: newKey }]);
-      setEnvVariables([{ key: '', value: '' }]);
+      setSecretEnvVariables([
+        {
+          id: getDynamicFieldId('secret-env'),
+          key: 'OLLAMA_API_KEY',
+          value: newKey,
+        },
+      ]);
+      setEnvVariables([
+        { id: getDynamicFieldId('env'), key: '', value: '' },
+      ]);
       if (formApi) {
         formApi.setValue('image_url', BUILTIN_IMAGE);
         formApi.setValue('traffic_port', DEFAULT_TRAFFIC_PORT);
@@ -253,11 +278,11 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       const restoredSecrets =
         customSecretEnvRef.current && customSecretEnvRef.current.length > 0
           ? customSecretEnvRef.current.map((item) => ({ ...item }))
-          : [{ key: '', value: '' }];
+          : [{ id: getDynamicFieldId('secret-env'), key: '', value: '' }];
       const restoredEnv =
         customEnvRef.current && customEnvRef.current.length > 0
           ? customEnvRef.current.map((item) => ({ ...item }))
-          : [{ key: '', value: '' }];
+          : [{ id: getDynamicFieldId('env'), key: '', value: '' }];
       setSecretEnvVariables(restoredSecrets);
       setEnvVariables(restoredEnv);
       if (formApi) {
@@ -328,10 +353,18 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
     setLocations([]);
     setLocationTotalAvailable(null);
     setHardwareTotalAvailable(null);
-    setEnvVariables([{ key: '', value: '' }]);
-    setSecretEnvVariables([{ key: 'OLLAMA_API_KEY', value: generatedKey }]);
+    setEnvVariables([{ id: getDynamicFieldId('env'), key: '', value: '' }]);
+    setSecretEnvVariables([
+      {
+        id: getDynamicFieldId('secret-env'),
+        key: 'OLLAMA_API_KEY',
+        value: generatedKey,
+      },
+    ]);
     setEntrypoint(['']);
+    setEntrypointIds([getDynamicFieldId('entrypoint')]);
     setArgs(['']);
+    setArgsIds([getDynamicFieldId('args')]);
     setShowAdvanced(false);
     setImageMode('builtin');
     setAutoOllamaKey(generatedKey);
@@ -480,9 +513,9 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
           });
         });
 
-        setLocations(Array.from(nextLocationsMap.values()));
+        setLocations([...nextLocationsMap.values()]);
         setLocationTotalAvailable(
-          Array.from(nextLocationsMap.values()).reduce(
+          [...nextLocationsMap.values()].reduce(
             (total, location) => total + (location.available || 0),
             0,
           ),
@@ -535,6 +568,11 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       setLoadingPrice(false);
     }
   };
+
+  loadHardwareTypesRef.current = loadHardwareTypes;
+  resetFormStateRef.current = resetFormState;
+  loadAvailableReplicasRef.current = loadAvailableReplicas;
+  calculatePriceRef.current = calculatePrice;
 
   const handleSubmit = async (values) => {
     try {
@@ -612,9 +650,15 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
 
   const handleAddEnvVariable = (type) => {
     if (type === 'env') {
-      setEnvVariables([...envVariables, { key: '', value: '' }]);
+      setEnvVariables([
+        ...envVariables,
+        { id: getDynamicFieldId('env'), key: '', value: '' },
+      ]);
     } else {
-      setSecretEnvVariables([...secretEnvVariables, { key: '', value: '' }]);
+      setSecretEnvVariables([
+        ...secretEnvVariables,
+        { id: getDynamicFieldId('secret-env'), key: '', value: '' },
+      ]);
     }
   };
 
@@ -622,14 +666,16 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
     if (type === 'env') {
       const newEnvVars = envVariables.filter((_, i) => i !== index);
       setEnvVariables(
-        newEnvVars.length > 0 ? newEnvVars : [{ key: '', value: '' }],
+        newEnvVars.length > 0
+          ? newEnvVars
+          : [{ id: getDynamicFieldId('env'), key: '', value: '' }],
       );
     } else {
       const newSecretEnvVars = secretEnvVariables.filter((_, i) => i !== index);
       setSecretEnvVariables(
         newSecretEnvVars.length > 0
           ? newSecretEnvVars
-          : [{ key: '', value: '' }],
+          : [{ id: getDynamicFieldId('secret-env'), key: '', value: '' }],
       );
     }
   };
@@ -661,18 +707,34 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
   const handleAddArrayField = (type) => {
     if (type === 'entrypoint') {
       setEntrypoint([...entrypoint, '']);
+      setEntrypointIds([...entrypointIds, getDynamicFieldId('entrypoint')]);
     } else {
       setArgs([...args, '']);
+      setArgsIds([...argsIds, getDynamicFieldId('args')]);
     }
   };
 
   const handleRemoveArrayField = (index, type) => {
     if (type === 'entrypoint') {
       const newEntrypoint = entrypoint.filter((_, i) => i !== index);
-      setEntrypoint(newEntrypoint.length > 0 ? newEntrypoint : ['']);
+      const newEntrypointIds = entrypointIds.filter((_, i) => i !== index);
+      if (newEntrypoint.length > 0) {
+        setEntrypoint(newEntrypoint);
+        setEntrypointIds(newEntrypointIds);
+      } else {
+        setEntrypoint(['']);
+        setEntrypointIds([getDynamicFieldId('entrypoint')]);
+      }
     } else {
       const newArgs = args.filter((_, i) => i !== index);
-      setArgs(newArgs.length > 0 ? newArgs : ['']);
+      const newArgsIds = argsIds.filter((_, i) => i !== index);
+      if (newArgs.length > 0) {
+        setArgs(newArgs);
+        setArgsIds(newArgsIds);
+      } else {
+        setArgs(['']);
+        setArgsIds([getDynamicFieldId('args')]);
+      }
     }
   };
 
@@ -832,6 +894,30 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
       formApi.setValue('replica_count', maxAvailableReplicas);
     }
   }, [maxAvailableReplicas, replicaCount, visible, formApi]);
+
+  let locationPlaceholder = t('选择部署位置（可多选）');
+  if (!selectedHardwareId) {
+    locationPlaceholder = t('请先选择硬件类型');
+  } else if (loadingReplicas) {
+    locationPlaceholder = t('正在加载可用部署位置...');
+  }
+
+  const renderLocationSelectedItem = (optionNode) => {
+    let content = '';
+    if (optionNode) {
+      if (loadingReplicas) {
+        content = t('部署位置加载中...');
+      } else {
+        content =
+          locationLabelMap[optionNode?.value] ||
+          optionNode?.label ||
+          optionNode?.value ||
+          '';
+      }
+    }
+
+    return { isRenderInTag: true, content };
+  };
 
   return (
     <Modal
@@ -1044,13 +1130,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
                   {loadingReplicas && <Spin size='small' />}
                 </Space>
               }
-              placeholder={
-                !selectedHardwareId
-                  ? t('请先选择硬件类型')
-                  : loadingReplicas
-                    ? t('正在加载可用部署位置...')
-                    : t('选择部署位置（可多选）')
-              }
+              placeholder={locationPlaceholder}
               multiple
               loading={loadingReplicas}
               disabled={!selectedHardwareId || loadingReplicas}
@@ -1058,17 +1138,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
               onChange={(value) => setSelectedLocationIds(value)}
               style={{ width: '100%' }}
               dropdownStyle={{ maxHeight: 360, overflowY: 'auto' }}
-              renderSelectedItem={(optionNode) => ({
-                isRenderInTag: true,
-                content: !optionNode
-                  ? ''
-                  : loadingReplicas
-                    ? t('部署位置加载中...')
-                    : locationLabelMap[optionNode?.value] ||
-                      optionNode?.label ||
-                      optionNode?.value ||
-                      '',
-              })}
+              renderSelectedItem={renderLocationSelectedItem}
             >
               {locations.map((location) => {
                 const numeric = Number(location.available);
@@ -1197,7 +1267,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
                       <Text strong>{t('启动命令 (Entrypoint)')}</Text>
                       {entrypoint.map((cmd, index) => (
                         <div
-                          key={index}
+                          key={entrypointIds[index]}
                           style={{ display: 'flex', marginTop: 8 }}
                         >
                           <Input
@@ -1230,7 +1300,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
                       <Text strong>{t('启动参数 (Args)')}</Text>
                       {args.map((arg, index) => (
                         <div
-                          key={index}
+                          key={argsIds[index]}
                           style={{ display: 'flex', marginTop: 8 }}
                         >
                           <Input
@@ -1268,7 +1338,7 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
                     <div style={{ marginBottom: 16 }}>
                       <Text strong>{t('普通环境变量')}</Text>
                       {envVariables.map((env, index) => (
-                        <Row key={index} gutter={8} style={{ marginTop: 8 }}>
+                        <Row key={env.id} gutter={8} style={{ marginTop: 8 }}>
                           <Col span={10}>
                             <Input
                               placeholder={t('变量名')}
@@ -1324,7 +1394,11 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
                           imageMode === 'builtin' &&
                           env.key === 'OLLAMA_API_KEY';
                         return (
-                          <Row key={index} gutter={8} style={{ marginTop: 8 }}>
+                          <Row
+                            key={env.id}
+                            gutter={8}
+                            style={{ marginTop: 8 }}
+                          >
                             <Col span={10}>
                               <Input
                                 placeholder={t('变量名')}

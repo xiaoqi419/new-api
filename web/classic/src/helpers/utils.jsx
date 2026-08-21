@@ -18,20 +18,20 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import { Toast, Pagination } from '@douyinfe/semi-ui';
-import { toastConstants, BILLING_PRICING_VARS, BILLING_VAR_REGEX } from '../constants';
-import React from 'react';
+import {
+  toastConstants,
+  BILLING_PRICING_VARS,
+  BILLING_VAR_REGEX,
+  TABLE_COMPACT_MODES_KEY,
+} from '../constants';
 import { toast } from 'react-toastify';
 import {
   THINK_TAG_REGEX,
   MESSAGE_ROLES,
 } from '../constants/playground.constants';
-import { TABLE_COMPACT_MODES_KEY } from '../constants';
 import { MOBILE_BREAKPOINT } from '../hooks/common/useIsMobile';
+import HTMLToastContent from './HTMLToastContent';
 
-const HTMLToastContent = ({ htmlContent }) => {
-  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
-};
-export default HTMLToastContent;
 export function isAdmin() {
   let user = localStorage.getItem('user');
   if (!user) return false;
@@ -73,7 +73,7 @@ export async function copy(text) {
   let okay = true;
   try {
     await navigator.clipboard.writeText(text);
-  } catch (e) {
+  } catch {
     try {
       // 构建 textarea 执行复制命令，保留多行文本格式
       const textarea = window.document.createElement('textarea');
@@ -281,7 +281,7 @@ export function downloadTextAsFile(text, filename) {
 export const verifyJSON = (str) => {
   try {
     JSON.parse(str);
-  } catch (e) {
+  } catch {
     return false;
   }
   return true;
@@ -291,7 +291,7 @@ export function verifyJSONPromise(value) {
   try {
     JSON.parse(value);
     return Promise.resolve();
-  } catch (e) {
+  } catch {
     return Promise.reject('不是合法的 JSON 字符串');
   }
 }
@@ -368,13 +368,13 @@ export const processThinkTags = (content, reasoningContent = '') => {
 
   const processedContent = replyParts
     .join('')
-    .replace(/<\/?think>/g, '')
+    .replaceAll(/<\/?think>/g, '')
     .trim();
   const thoughtsStr = thoughts.join('\n\n---\n\n');
-  const processedReasoningContent =
-    reasoningContent && thoughtsStr
-      ? `${reasoningContent}\n\n---\n\n${thoughtsStr}`
-      : reasoningContent || thoughtsStr;
+  let processedReasoningContent = reasoningContent || thoughtsStr;
+  if (reasoningContent && thoughtsStr) {
+    processedReasoningContent = `${reasoningContent}\n\n---\n\n${thoughtsStr}`;
+  }
 
   return {
     content: processedContent,
@@ -397,11 +397,12 @@ export const processIncompleteThinkTags = (content, reasoningContent = '') => {
       .substring('<think>'.length)
       .trim();
     const cleanContent = content.substring(0, lastOpenThinkIndex);
-    const processedReasoningContent = unclosedThought
-      ? reasoningContent
+    let processedReasoningContent = reasoningContent;
+    if (unclosedThought) {
+      processedReasoningContent = reasoningContent
         ? `${reasoningContent}\n\n---\n\n${unclosedThought}`
-        : unclosedThought
-      : reasoningContent;
+        : unclosedThought;
+    }
 
     return processThinkTags(cleanContent, processedReasoningContent);
   }
@@ -699,7 +700,7 @@ export const calculateModelPrice = ({
         } else {
           symbol = '¤';
         }
-      } catch (e) {
+      } catch {
         symbol = '¤';
       }
     }
@@ -707,7 +708,7 @@ export const calculateModelPrice = ({
     const formatTokenPrice = (priceUSD) => {
       const rawDisplayPrice = displayPrice(priceUSD);
       const numericPrice =
-        parseFloat(rawDisplayPrice.replace(/[^0-9.]/g, '')) / unitDivisor;
+        parseFloat(rawDisplayPrice.replaceAll(/[^0-9.]/g, '')) / unitDivisor;
       return `${symbol}${numericPrice.toFixed(precision)}`;
     };
 
@@ -912,7 +913,7 @@ export const formatDynamicPriceSummary = (billingExpr, t, groupRatio = 1) => {
       symbol = s?.custom_currency_symbol || '¤';
       rate = s?.custom_currency_exchange_rate || 1;
     }
-  } catch (e) {}
+  } catch {}
 
   const gr = groupRatio || 1;
   const exprBody = billingExpr.replace(/^v\d+:/, '');

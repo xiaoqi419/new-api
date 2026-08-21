@@ -57,7 +57,7 @@ const PreferencesSettings = ({ t }) => {
 						i18n.changeLanguage(lang);
 					}
 				}
-			} catch (e) {
+			} catch {
 				// Ignore parse errors
 			}
 		}
@@ -87,7 +87,7 @@ const PreferencesSettings = ({ t }) => {
 				if (userState?.user?.setting) {
 					try {
 						settings = JSON.parse(userState.user.setting) || {};
-					} catch (e) {
+					} catch {
 						settings = {};
 					}
 				}
@@ -108,7 +108,7 @@ const PreferencesSettings = ({ t }) => {
 				i18n.changeLanguage(previousLang);
 				localStorage.setItem("i18nextLng", previousLang);
 			}
-		} catch (error) {
+		} catch {
 			showError(t("保存失败，请重试"));
 			// Revert on error
 			setCurrentLanguage(previousLang);

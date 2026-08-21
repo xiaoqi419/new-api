@@ -58,7 +58,7 @@ const SubscriptionsPage = () => {
             res.data.data?.payment_compliance_confirmed !== false,
           );
         }
-      } catch (error) {
+      } catch {
         // Keep the page usable if status loading fails; backend still enforces.
       }
     };

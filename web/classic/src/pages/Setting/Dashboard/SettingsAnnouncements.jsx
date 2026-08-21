@@ -339,7 +339,7 @@ const SettingsAnnouncements = ({ options, refresh }) => {
     if (annStr !== undefined) {
       parseAnnouncements(annStr);
     }
-  }, [options['console_setting.announcements'], options.Announcements]);
+  }, [options]);
 
   useEffect(() => {
     const enabledStr = options['console_setting.announcements_enabled'];
@@ -348,7 +348,7 @@ const SettingsAnnouncements = ({ options, refresh }) => {
         ? true
         : enabledStr === 'true' || enabledStr === true,
     );
-  }, [options['console_setting.announcements_enabled']]);
+  }, [options]);
 
   const handleToggleEnabled = async (checked) => {
     const newValue = checked ? 'true' : 'false';

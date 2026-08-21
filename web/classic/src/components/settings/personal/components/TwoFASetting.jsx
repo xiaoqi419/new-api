@@ -37,11 +37,64 @@ import {
   IconRefresh,
   IconCopy,
 } from '@douyinfe/semi-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { QRCodeSVG } from 'qrcode.react';
 
 const { Text, Paragraph } = Typography;
+
+const BackupCodesDisplay = ({ codes, title, onCopy, t }) => {
+  const codeOccurrences = new Map();
+
+  return (
+    <Card className='!rounded-xl' style={{ width: '100%' }}>
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between'>
+          <Text strong className='text-slate-700 dark:text-slate-200'>
+            {title}
+          </Text>
+        </div>
+
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+          {codes.map((code, index) => {
+            const occurrence = codeOccurrences.get(code) || 0;
+            codeOccurrences.set(code, occurrence + 1);
+
+            return (
+              <div
+                key={JSON.stringify([code, occurrence])}
+                className='rounded-lg p-3'
+              >
+                <div className='flex items-center justify-between'>
+                  <Text
+                    code
+                    className='text-sm font-mono text-slate-700 dark:text-slate-200'
+                  >
+                    {code}
+                  </Text>
+                  <Text type='quaternary' className='text-xs'>
+                    #{(index + 1).toString().padStart(2, '0')}
+                  </Text>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <Divider margin={12} />
+        <Button
+          type='primary'
+          theme='solid'
+          icon={<IconCopy />}
+          onClick={onCopy}
+          className='!rounded-lg !bg-slate-600 hover:!bg-slate-700 w-full'
+        >
+          {t('复制所有代码')}
+        </Button>
+      </div>
+    </Card>
+  );
+};
 
 const TwoFASetting = ({ t }) => {
   const [loading, setLoading] = useState(false);
@@ -71,13 +124,15 @@ const TwoFASetting = ({ t }) => {
       if (res.data.success) {
         setStatus(res.data.data);
       }
-    } catch (error) {
+    } catch {
       showError(t('获取2FA状态失败'));
     }
   };
+  const fetchStatusRef = useRef(fetchStatus);
+  fetchStatusRef.current = fetchStatus;
 
   useEffect(() => {
-    fetchStatus();
+    void fetchStatusRef.current();
   }, []);
 
   // 初始化2FA设置
@@ -92,7 +147,7 @@ const TwoFASetting = ({ t }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('设置2FA失败'));
     } finally {
       setLoading(false);
@@ -121,7 +176,7 @@ const TwoFASetting = ({ t }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('启用2FA失败'));
     } finally {
       setLoading(false);
@@ -154,7 +209,7 @@ const TwoFASetting = ({ t }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('禁用2FA失败'));
     } finally {
       setLoading(false);
@@ -181,7 +236,7 @@ const TwoFASetting = ({ t }) => {
       } else {
         showError(res.data.message);
       }
-    } catch (error) {
+    } catch {
       showError(t('重新生成备用码失败'));
     } finally {
       setLoading(false);
@@ -203,50 +258,6 @@ const TwoFASetting = ({ t }) => {
   const copyBackupCodes = () => {
     const codesText = backupCodes.join('\n');
     copyTextToClipboard(codesText, t('备用码已复制到剪贴板'));
-  };
-
-  // 备用码展示组件
-  const BackupCodesDisplay = ({ codes, title, onCopy }) => {
-    return (
-      <Card className='!rounded-xl' style={{ width: '100%' }}>
-        <div className='space-y-3'>
-          <div className='flex items-center justify-between'>
-            <Text strong className='text-slate-700 dark:text-slate-200'>
-              {title}
-            </Text>
-          </div>
-
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-            {codes.map((code, index) => (
-              <div key={index} className='rounded-lg p-3'>
-                <div className='flex items-center justify-between'>
-                  <Text
-                    code
-                    className='text-sm font-mono text-slate-700 dark:text-slate-200'
-                  >
-                    {code}
-                  </Text>
-                  <Text type='quaternary' className='text-xs'>
-                    #{(index + 1).toString().padStart(2, '0')}
-                  </Text>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <Divider margin={12} />
-          <Button
-            type='primary'
-            theme='solid'
-            icon={<IconCopy />}
-            onClick={onCopy}
-            className='!rounded-lg !bg-slate-600 hover:!bg-slate-700 w-full'
-          >
-            {t('复制所有代码')}
-          </Button>
-        </div>
-      </Card>
-    );
   };
 
   // 渲染设置模态框footer
@@ -520,6 +531,7 @@ const TwoFASetting = ({ t }) => {
                   <BackupCodesDisplay
                     codes={setupData.backup_codes}
                     title={t('备用恢复代码')}
+                    t={t}
                     onCopy={() => {
                       const codesText = setupData.backup_codes.join('\n');
                       copyTextToClipboard(codesText, t('备用码已复制到剪贴板'));
@@ -710,6 +722,7 @@ const TwoFASetting = ({ t }) => {
                   codes={backupCodes}
                   title={t('新的备用恢复代码')}
                   onCopy={copyBackupCodes}
+                  t={t}
                 />
               </Space>
             </>

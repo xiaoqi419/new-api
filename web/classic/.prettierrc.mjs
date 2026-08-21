@@ -1,1 +1,3 @@
-module.exports = require('@so1ve/prettier-config');
+import prettierConfig from '@so1ve/prettier-config';
+
+export default prettierConfig;

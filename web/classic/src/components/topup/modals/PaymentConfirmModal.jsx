@@ -120,46 +120,40 @@ const PaymentConfirmModal = ({
                     (method) => method.type === payWay,
                   );
                   if (payMethod) {
+                    let paymentIcon;
+                    if (payMethod.type === 'alipay') {
+                      paymentIcon = (
+                        <SiAlipay className='mr-2' size={16} color='#1677FF' />
+                      );
+                    } else if (payMethod.type === 'wxpay') {
+                      paymentIcon = (
+                        <SiWechat className='mr-2' size={16} color='#07C160' />
+                      );
+                    } else if (payMethod.type === 'stripe') {
+                      paymentIcon = (
+                        <SiStripe className='mr-2' size={16} color='#635BFF' />
+                      );
+                    } else if (payMethod.icon) {
+                      paymentIcon = (
+                        <img
+                          src={payMethod.icon}
+                          alt={payMethod.name}
+                          className='mr-2'
+                          style={{ width: 16, height: 16, objectFit: 'contain' }}
+                        />
+                      );
+                    } else {
+                      paymentIcon = (
+                        <CreditCard
+                          className='mr-2'
+                          size={16}
+                          color={payMethod.color || 'var(--semi-color-text-2)'}
+                        />
+                      );
+                    }
                     return (
                       <>
-                        {payMethod.type === 'alipay' ? (
-                          <SiAlipay
-                            className='mr-2'
-                            size={16}
-                            color='#1677FF'
-                          />
-                        ) : payMethod.type === 'wxpay' ? (
-                          <SiWechat
-                            className='mr-2'
-                            size={16}
-                            color='#07C160'
-                          />
-                        ) : payMethod.type === 'stripe' ? (
-                          <SiStripe
-                            className='mr-2'
-                            size={16}
-                            color='#635BFF'
-                          />
-                        ) : payMethod.icon ? (
-                          <img
-                            src={payMethod.icon}
-                            alt={payMethod.name}
-                            className='mr-2'
-                            style={{
-                              width: 16,
-                              height: 16,
-                              objectFit: 'contain',
-                            }}
-                          />
-                        ) : (
-                          <CreditCard
-                            className='mr-2'
-                            size={16}
-                            color={
-                              payMethod.color || 'var(--semi-color-text-2)'
-                            }
-                          />
-                        )}
+                        {paymentIcon}
                         <Text className='text-slate-900 dark:text-slate-100'>
                           {payMethod.name}
                         </Text>
@@ -180,7 +174,8 @@ const PaymentConfirmModal = ({
                           </Text>
                         </>
                       );
-                    } else if (payWay === 'stripe') {
+                    }
+                    if (payWay === 'stripe') {
                       return (
                         <>
                           <SiStripe
@@ -193,20 +188,19 @@ const PaymentConfirmModal = ({
                           </Text>
                         </>
                       );
-                    } else {
-                      return (
-                        <>
-                          <SiWechat
-                            className='mr-2'
-                            size={16}
-                            color='#07C160'
-                          />
-                          <Text className='text-slate-900 dark:text-slate-100'>
-                            {t('微信')}
-                          </Text>
-                        </>
-                      );
                     }
+                    return (
+                      <>
+                        <SiWechat
+                          className='mr-2'
+                          size={16}
+                          color='#07C160'
+                        />
+                        <Text className='text-slate-900 dark:text-slate-100'>
+                          {t('微信')}
+                        </Text>
+                      </>
+                    );
                   }
                 })()}
               </div>

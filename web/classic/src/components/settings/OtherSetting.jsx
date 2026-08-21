@@ -315,8 +315,11 @@ const OtherSetting = () => {
     }
   };
 
+  const getOptionsRef = useRef(getOptions);
+  getOptionsRef.current = getOptions;
+
   useEffect(() => {
-    getOptions();
+    void getOptionsRef.current();
   }, []);
 
   // Function to open GitHub release page

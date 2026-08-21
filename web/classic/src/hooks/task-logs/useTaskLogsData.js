@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@douyinfe/semi-ui';
 import {
@@ -31,24 +31,38 @@ import {
 import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
 
+const COLUMN_KEYS = {
+  SUBMIT_TIME: 'submit_time',
+  FINISH_TIME: 'finish_time',
+  DURATION: 'duration',
+  CHANNEL: 'channel',
+  USERNAME: 'username',
+  PLATFORM: 'platform',
+  TYPE: 'type',
+  TASK_ID: 'task_id',
+  TASK_STATUS: 'task_status',
+  PROGRESS: 'progress',
+  FAIL_REASON: 'fail_reason',
+  RESULT_URL: 'result_url',
+};
+
+const getDefaultColumnVisibility = (isAdminUser) => ({
+  [COLUMN_KEYS.SUBMIT_TIME]: true,
+  [COLUMN_KEYS.FINISH_TIME]: true,
+  [COLUMN_KEYS.DURATION]: true,
+  [COLUMN_KEYS.CHANNEL]: isAdminUser,
+  [COLUMN_KEYS.USERNAME]: isAdminUser,
+  [COLUMN_KEYS.PLATFORM]: true,
+  [COLUMN_KEYS.TYPE]: true,
+  [COLUMN_KEYS.TASK_ID]: true,
+  [COLUMN_KEYS.TASK_STATUS]: true,
+  [COLUMN_KEYS.PROGRESS]: true,
+  [COLUMN_KEYS.FAIL_REASON]: true,
+  [COLUMN_KEYS.RESULT_URL]: true,
+});
+
 export const useTaskLogsData = () => {
   const { t } = useTranslation();
-
-  // Define column keys for selection
-  const COLUMN_KEYS = {
-    SUBMIT_TIME: 'submit_time',
-    FINISH_TIME: 'finish_time',
-    DURATION: 'duration',
-    CHANNEL: 'channel',
-    USERNAME: 'username',
-    PLATFORM: 'platform',
-    TYPE: 'type',
-    TASK_ID: 'task_id',
-    TASK_STATUS: 'task_status',
-    PROGRESS: 'progress',
-    FAIL_REASON: 'fail_reason',
-    RESULT_URL: 'result_url',
-  };
 
   // Basic state
   const [logs, setLogs] = useState([]);
@@ -61,7 +75,7 @@ export const useTaskLogsData = () => {
   // User and admin
   const isAdminUser = isAdmin();
   // Role-specific storage key to prevent different roles from overwriting each other
-  const STORAGE_KEY = isAdminUser
+  const storageKey = isAdminUser
     ? 'task-logs-table-columns-admin'
     : 'task-logs-table-columns-user';
 
@@ -101,14 +115,15 @@ export const useTaskLogsData = () => {
 
   // Compact mode
   const [compactMode, setCompactMode] = useTableCompactMode('taskLogs');
+  const loadLogsRef = useRef(null);
 
   // Load saved column preferences from localStorage
   useEffect(() => {
-    const savedColumns = localStorage.getItem(STORAGE_KEY);
+    const savedColumns = localStorage.getItem(storageKey);
     if (savedColumns) {
       try {
         const parsed = JSON.parse(savedColumns);
-        const defaults = getDefaultColumnVisibility();
+        const defaults = getDefaultColumnVisibility(isAdminUser);
         const merged = { ...defaults, ...parsed };
 
         // For non-admin users, force-hide admin-only columns (does not touch admin settings)
@@ -119,36 +134,22 @@ export const useTaskLogsData = () => {
         setVisibleColumns(merged);
       } catch (e) {
         console.error('Failed to parse saved column preferences', e);
-        initDefaultColumns();
+        const defaults = getDefaultColumnVisibility(isAdminUser);
+        setVisibleColumns(defaults);
+        localStorage.setItem(storageKey, JSON.stringify(defaults));
       }
     } else {
-      initDefaultColumns();
+      const defaults = getDefaultColumnVisibility(isAdminUser);
+      setVisibleColumns(defaults);
+      localStorage.setItem(storageKey, JSON.stringify(defaults));
     }
-  }, []);
-
-  // Get default column visibility based on user role
-  const getDefaultColumnVisibility = () => {
-    return {
-      [COLUMN_KEYS.SUBMIT_TIME]: true,
-      [COLUMN_KEYS.FINISH_TIME]: true,
-      [COLUMN_KEYS.DURATION]: true,
-      [COLUMN_KEYS.CHANNEL]: isAdminUser,
-      [COLUMN_KEYS.USERNAME]: isAdminUser,
-      [COLUMN_KEYS.PLATFORM]: true,
-      [COLUMN_KEYS.TYPE]: true,
-      [COLUMN_KEYS.TASK_ID]: true,
-      [COLUMN_KEYS.TASK_STATUS]: true,
-      [COLUMN_KEYS.PROGRESS]: true,
-      [COLUMN_KEYS.FAIL_REASON]: true,
-      [COLUMN_KEYS.RESULT_URL]: true,
-    };
-  };
+  }, [isAdminUser, storageKey]);
 
   // Initialize default column visibility
   const initDefaultColumns = () => {
-    const defaults = getDefaultColumnVisibility();
+    const defaults = getDefaultColumnVisibility(isAdminUser);
     setVisibleColumns(defaults);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+    localStorage.setItem(storageKey, JSON.stringify(defaults));
   };
 
   // Handle column visibility change
@@ -176,12 +177,12 @@ export const useTaskLogsData = () => {
     setVisibleColumns(updatedColumns);
   };
 
-  // Persist column settings to the role-specific STORAGE_KEY
+  // Persist column settings to the role-specific storage key
   useEffect(() => {
     if (Object.keys(visibleColumns).length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns));
+      localStorage.setItem(storageKey, JSON.stringify(visibleColumns));
     }
-  }, [visibleColumns]);
+  }, [storageKey, visibleColumns]);
 
   // Get form values helper function
   const getFormValues = () => {
@@ -250,10 +251,11 @@ export const useTaskLogsData = () => {
       if (!silent) setLoading(false);
     }
   };
+  loadLogsRef.current = loadLogs;
 
   // Page handlers
   const handlePageChange = (page) => {
-    loadLogs(page, pageSize).then();
+    return loadLogs(page, pageSize);
   };
 
   const handlePageSizeChange = async (size) => {
@@ -312,7 +314,7 @@ export const useTaskLogsData = () => {
     const localPageSize =
       parseInt(localStorage.getItem('task-page-size')) || ITEMS_PER_PAGE;
     setPageSize(localPageSize);
-    loadLogs(1, localPageSize).then();
+    void loadLogsRef.current(1, localPageSize);
   }, []);
 
   // 是否存在未完成任务（用于驱动自动刷新）
@@ -326,10 +328,9 @@ export const useTaskLogsData = () => {
   useEffect(() => {
     if (!autoRefresh || !hasActiveTasks) return undefined;
     const timer = setInterval(() => {
-      loadLogs(activePage, pageSize, true);
+      void loadLogsRef.current(activePage, pageSize, true);
     }, 5000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, hasActiveTasks, activePage, pageSize]);
 
   return {

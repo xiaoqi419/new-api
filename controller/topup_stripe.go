@@ -48,10 +48,17 @@ func (*StripeAdaptor) RequestAmount(c *gin.Context, req *StripePayRequest) {
 	if !validateTopupRange(c, req.Amount, getStripeMinTopup(cfg.MinTopup)) {
 		return
 	}
+	if req.Amount > 10000 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值数量不能大于 10000"})
+		return
+	}
 	id := c.GetInt("id")
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	if rejectInvalidCreditedQuota(c, id, getStripeCreditedQuota(req.Amount, group)) {
 		return
 	}
 	payMoney := getStripePayMoney(float64(req.Amount), group, cfg.UnitPrice)
@@ -92,11 +99,25 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	}
 
 	id := c.GetInt("id")
-	user, _ := model.GetUserById(id, false)
+	user, err := model.GetUserById(id, false)
+	if err != nil || user == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "用户不存在"})
+		return
+	}
 	chargedMoney := GetChargedAmount(float64(req.Amount), *user)
+	if rejectInvalidCreditedQuota(c, id,
+		decimal.NewFromFloat(chargedMoney).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+	) {
+		return
+	}
 
 	// 代理用户下单前预检代理钱包，不足则提示，避免支付后挂单(S12)。
-	projectedQuota := int(decimal.NewFromFloat(chargedMoney).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+	projectedQuota, quotaErr := common.QuotaFromFloatStrict(chargedMoney * common.QuotaPerUnit)
+	if quotaErr != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("Stripe 预计充值额度超出安全范围 user_id=%d amount=%d charged_money=%g error=%q", id, req.Amount, chargedMoney, quotaErr.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
+	}
 	if ok, msg := precheckAgentWalletForUser(c, projectedQuota); !ok {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
 		return
@@ -457,6 +478,16 @@ func getStripePayMoney(amount float64, group string, unitPrice float64) float64 
 	}
 	payMoney := amount * unitPrice * topupGroupRatio * discount
 	return payMoney
+}
+
+func getStripeCreditedQuota(amount int64, group string) decimal.Decimal {
+	topUpGroupRatio := common.GetTopupGroupRatio(group)
+	if topUpGroupRatio == 0 {
+		topUpGroupRatio = 1
+	}
+	return decimal.NewFromInt(amount).
+		Mul(decimal.NewFromFloat(topUpGroupRatio)).
+		Mul(decimal.NewFromFloat(common.QuotaPerUnit))
 }
 
 // getStripeMinTopup 返回 Stripe 最小充值门槛。minTopupOverride>0 时使用代理自定义值，否则回退全局。

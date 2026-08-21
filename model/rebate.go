@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -21,13 +22,13 @@ const (
 // RebateRecord 记录一次好友充值产生的返现，默认待管理员手动发放。
 type RebateRecord struct {
 	Id          int     `json:"id"`
-	InviterId   int     `json:"inviter_id" gorm:"index"`  // 邀请人（返现受益人）
-	InviteeId   int     `json:"invitee_id" gorm:"index"`  // 好友（充值人）
-	TopUpId     int     `json:"topup_id" gorm:"index"`    // 关联充值订单
+	InviterId   int     `json:"inviter_id" gorm:"index"` // 邀请人（返现受益人）
+	InviteeId   int     `json:"invitee_id" gorm:"index"` // 好友（充值人）
+	TopUpId     int     `json:"topup_id" gorm:"index"`   // 关联充值订单
 	TradeNo     string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
-	TopUpQuota  int     `json:"topup_quota"`              // 好友本次充值额度
-	RebateRatio float64 `json:"rebate_ratio"`             // 生成时使用的返现比例
-	RebateQuota int     `json:"rebate_quota"`             // 应返额度
+	TopUpQuota  int     `json:"topup_quota"`  // 好友本次充值额度
+	RebateRatio float64 `json:"rebate_ratio"` // 生成时使用的返现比例
+	RebateQuota int     `json:"rebate_quota"` // 应返额度
 	Status      string  `json:"status" gorm:"type:varchar(20);index"`
 	CreateTime  int64   `json:"create_time"`
 	PayTime     int64   `json:"pay_time"`
@@ -53,11 +54,15 @@ func CreateInviterRebate(inviteeId int, topUpId int, tradeNo string, topUpQuota 
 	if inviter.RebateRatio != nil {
 		ratio = *inviter.RebateRatio
 	}
-	if ratio <= 0 {
+	if ratio <= 0 || ratio > 1 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
 		return
 	}
-	rebateQuota := int(decimal.NewFromInt(int64(topUpQuota)).Mul(decimal.NewFromFloat(ratio)).IntPart())
-	if rebateQuota <= 0 {
+	// Truncate before the centralized conversion to preserve the historical
+	// IntPart behavior while still saturating out-of-range values safely.
+	rebateDecimal := decimal.NewFromInt(int64(topUpQuota)).
+		Mul(decimal.NewFromFloat(ratio)).Truncate(0)
+	rebateQuota, clamp := common.QuotaFromDecimalChecked(rebateDecimal)
+	if clamp != nil || rebateQuota <= 0 {
 		return
 	}
 	record := &RebateRecord{
@@ -123,7 +128,7 @@ func PayRebateRecord(id int, operatorIp string) error {
 	var inviterId, rebateQuota int
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		record := &RebateRecord{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", id).First(record).Error; err != nil {
+		if err := lockForUpdate(tx).Where("id = ?", id).First(record).Error; err != nil {
 			return errors.New("返现记录不存在")
 		}
 		if record.Status == RebateStatusPaid {
@@ -161,7 +166,7 @@ func PayRebateRecord(id int, operatorIp string) error {
 func CancelRebateRecord(id int) error {
 	return DB.Transaction(func(tx *gorm.DB) error {
 		record := &RebateRecord{}
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", id).First(record).Error; err != nil {
+		if err := lockForUpdate(tx).Where("id = ?", id).First(record).Error; err != nil {
 			return errors.New("返现记录不存在")
 		}
 		if record.Status == RebateStatusCancelled {

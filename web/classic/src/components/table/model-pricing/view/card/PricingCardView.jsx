@@ -126,6 +126,28 @@ const CardWave = () => (
   </svg>
 );
 
+const PriceUnit = ({ value, unit }) => (
+  <span className='inline-flex items-baseline whitespace-nowrap'>
+    <span
+      className='text-xl font-bold'
+      style={{ color: 'var(--semi-color-primary)' }}
+    >
+      {value}
+    </span>
+    {unit && <span className='text-xs text-gray-400 ml-0.5'>{unit}</span>}
+  </span>
+);
+
+const getFallbackModelIdentity = (model) =>
+  JSON.stringify({
+    vendorId: model?.vendor_id ?? null,
+    ownerBy: model?.owner_by ?? null,
+    description: model?.description ?? null,
+    releaseDate: model?.release_date ?? null,
+    contextLength: model?.context_length ?? null,
+    maxOutputTokens: model?.max_output_tokens ?? null,
+  });
+
 const PricingCardView = ({
   filteredModels,
   loading,
@@ -163,7 +185,7 @@ const PricingCardView = ({
     if (!setSelectedRowKeys) return;
     const modelKey = getModelKey(model);
     const newKeys = checked
-      ? Array.from(new Set([...selectedRowKeys, modelKey]))
+      ? [...new Set([...selectedRowKeys, modelKey])]
       : selectedRowKeys.filter((key) => key !== modelKey);
     setSelectedRowKeys(newKeys);
     rowSelection?.onChange?.(newKeys, null);
@@ -257,19 +279,6 @@ const PricingCardView = ({
     return `${m[1]}${num}${m[3]}`;
   };
 
-  // 大号价格单元：突出数值 + 次要单位
-  const PriceUnit = ({ value, unit }) => (
-    <span className='inline-flex items-baseline whitespace-nowrap'>
-      <span
-        className='text-xl font-bold'
-        style={{ color: 'var(--semi-color-primary)' }}
-      >
-        {value}
-      </span>
-      {unit && <span className='text-xs text-gray-400 ml-0.5'>{unit}</span>}
-    </span>
-  );
-
   // 渲染突出价格（输入 | 输出），参考站样式
   const renderHeadlinePrice = (priceData) => {
     if (priceData.isDynamicPricing) {
@@ -333,7 +342,7 @@ const PricingCardView = ({
       : [];
     const ctx = formatTokenCount(model.context_length);
     const maxOut = formatTokenCount(model.max_output_tokens);
-    const allMods = Array.from(new Set([...inMods, ...outMods]));
+    const allMods = [...new Set([...inMods, ...outMods])];
     const multimodal = allMods.some((m) => m !== 'text');
 
     const segs = [];
@@ -379,10 +388,10 @@ const PricingCardView = ({
     if (segs.length === 0) return null;
     return (
       <div className='flex items-center flex-wrap gap-x-2 gap-y-1 text-xs mb-2'>
-        {segs.map((s, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <span className='text-gray-200'>|</span>}
-            {s}
+        {segs.map((segment, index) => (
+          <React.Fragment key={segment.key}>
+            {index > 0 && <span className='text-gray-200'>|</span>}
+            {segment}
           </React.Fragment>
         ))}
       </div>
@@ -439,12 +448,21 @@ const PricingCardView = ({
     );
   }
 
+  const fallbackModelKeyCounts = new Map();
+
   return (
     <div className='px-2 pt-2'>
       <WaveDefs />
       <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3'>
-        {paginatedModels.map((model, index) => {
-          const modelKey = getModelKey(model);
+        {paginatedModels.map((model) => {
+          let modelKey = getModelKey(model);
+          if (modelKey === undefined || modelKey === null || modelKey === '') {
+            const modelIdentity = getFallbackModelIdentity(model);
+            const occurrence =
+              (fallbackModelKeyCounts.get(modelIdentity) ?? 0) + 1;
+            fallbackModelKeyCounts.set(modelIdentity, occurrence);
+            modelKey = `model-${modelIdentity}\u001f${occurrence}`;
+          }
           const isSelected = selectedRowKeys.includes(modelKey);
 
           const priceData = calculateModelPrice({
@@ -459,7 +477,7 @@ const PricingCardView = ({
 
           return (
             <Card
-              key={modelKey || index}
+              key={modelKey}
               className={`!rounded-2xl relative overflow-hidden transition-all duration-200 hover:shadow-lg border cursor-pointer ${isSelected ? CARD_STYLES.selected : CARD_STYLES.default}`}
               bodyStyle={{ height: '100%' }}
               onClick={() => openModelDetail && openModelDetail(model)}

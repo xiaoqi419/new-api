@@ -74,12 +74,15 @@ export function submitPaymentForm(
  */
 export function isSafePaymentRedirectUrl(value: string): boolean {
   const trimmed = value.trim()
-  if (!trimmed) {
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
     return false
   }
   try {
     const url = new URL(trimmed)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      Boolean(url.hostname)
+    )
   } catch {
     return false
   }
@@ -100,6 +103,15 @@ export function isStripePayment(paymentType: string): boolean {
  */
 export function isAlipayDirectPayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.ALIPAY_DIRECT
+}
+
+/**
+ * Check if payment method is the direct WeChat Pay merchant integration.
+ *
+ * Distinct from PAYMENT_TYPES.WECHAT, which is an epay aggregator channel.
+ */
+export function isWechatDirectPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.WECHAT_DIRECT
 }
 
 /**
@@ -125,6 +137,7 @@ export interface PaymentProcessors {
   waffo: (topupAmount: number, payMethodIndex: number) => Promise<boolean>
   waffoPancake: (topupAmount: number) => Promise<boolean>
   alipay: (topupAmount: number) => Promise<boolean>
+  wechat: (topupAmount: number) => Promise<boolean>
 }
 
 export async function dispatchSelectedPayment(
@@ -148,7 +161,25 @@ export async function dispatchSelectedPayment(
     return processors.alipay(topupAmount)
   }
 
+  if (isWechatDirectPayment(paymentMethod.type)) {
+    return processors.wechat(topupAmount)
+  }
+
   return processors.regular(topupAmount, paymentMethod.type)
+}
+
+/**
+ * Whether the standard amount and payment-method controls should be shown.
+ */
+export function hasConfigurableTopup(topupInfo: TopupInfo | null): boolean {
+  return Boolean(
+    topupInfo?.enable_online_topup ||
+    topupInfo?.enable_stripe_topup ||
+    topupInfo?.enable_alipay_topup ||
+    topupInfo?.enable_wechatpay_topup ||
+    topupInfo?.enable_waffo_topup ||
+    topupInfo?.enable_waffo_pancake_topup
+  )
 }
 
 /**
@@ -178,6 +209,10 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
 
   if (topupInfo.enable_alipay_topup) {
     return PAYMENT_TYPES.ALIPAY_DIRECT
+  }
+
+  if (topupInfo.enable_wechatpay_topup) {
+    return PAYMENT_TYPES.WECHAT_DIRECT
   }
 
   return DEFAULT_PAYMENT_TYPE
@@ -211,6 +246,10 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
   // alipay_min_topup — that one is advertised per method and enforced by the
   // per-button floor.
   if (topupInfo.enable_alipay_topup) {
+    return topupInfo.min_topup || DEFAULT_MIN_TOPUP
+  }
+
+  if (topupInfo.enable_wechatpay_topup) {
     return topupInfo.min_topup || DEFAULT_MIN_TOPUP
   }
 

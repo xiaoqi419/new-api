@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Empty } from '@douyinfe/semi-ui';
 import CardTable from '../../common/ui/CardTable';
 import {
@@ -68,46 +68,46 @@ const UsersTable = (usersData) => {
   const [showUserIpsModal, setShowUserIpsModal] = useState(false);
 
   // Modal handlers
-  const showPromoteUserModal = (user) => {
+  const showPromoteUserModal = useCallback((user) => {
     setModalUser(user);
     setShowPromoteModal(true);
-  };
+  }, []);
 
-  const showDemoteUserModal = (user) => {
+  const showDemoteUserModal = useCallback((user) => {
     setModalUser(user);
     setShowDemoteModal(true);
-  };
+  }, []);
 
-  const showEnableDisableUserModal = (user, action) => {
+  const showEnableDisableUserModal = useCallback((user, action) => {
     setModalUser(user);
     setEnableDisableAction(action);
     setShowEnableDisableModal(true);
-  };
+  }, []);
 
-  const showDeleteUserModal = (user) => {
+  const showDeleteUserModal = useCallback((user) => {
     setModalUser(user);
     setShowDeleteModal(true);
-  };
+  }, []);
 
-  const showResetPasskeyUserModal = (user) => {
+  const showResetPasskeyUserModal = useCallback((user) => {
     setModalUser(user);
     setShowResetPasskeyModal(true);
-  };
+  }, []);
 
-  const showResetTwoFAUserModal = (user) => {
+  const showResetTwoFAUserModal = useCallback((user) => {
     setModalUser(user);
     setShowResetTwoFAModal(true);
-  };
+  }, []);
 
-  const showUserSubscriptionsUserModal = (user) => {
+  const showUserSubscriptionsUserModal = useCallback((user) => {
     setModalUser(user);
     setShowUserSubscriptionsModal(true);
-  };
+  }, []);
 
-  const showUserIpsUserModal = (user) => {
+  const showUserIpsUserModal = useCallback((user) => {
     setModalUser(user);
     setShowUserIpsModal(true);
-  };
+  }, []);
 
   // Modal confirm handlers
   const handlePromoteConfirm = () => {

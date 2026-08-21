@@ -47,6 +47,10 @@ export function Rankings() {
 
   const rankingsQuery = useRankings(period)
   const snapshot = rankingsQuery.data?.data
+  const rankingsErrorMessage =
+    rankingsQuery.error instanceof Error
+      ? rankingsQuery.error.message
+      : t('Unable to load rankings data')
 
   const handlePeriodChange = (next: RankingPeriod) => {
     navigate({
@@ -76,17 +80,15 @@ export function Rankings() {
         <PageTransition className='relative mx-auto w-full max-w-[1280px] space-y-8 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8'>
           <RankingsHero period={period} onPeriodChange={handlePeriodChange} />
 
-          {rankingsQuery.isLoading ? (
+          {rankingsQuery.isLoading && (
             <RankingsLoading />
-          ) : !snapshot ? (
+          )}
+          {!rankingsQuery.isLoading && !snapshot && (
             <RankingsError
-              message={
-                rankingsQuery.error instanceof Error
-                  ? rankingsQuery.error.message
-                  : t('Unable to load rankings data')
-              }
+              message={rankingsErrorMessage}
             />
-          ) : (
+          )}
+          {!rankingsQuery.isLoading && snapshot && (
             <>
               <ModelsSection
                 history={snapshot.models_history}

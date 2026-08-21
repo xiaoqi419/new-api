@@ -26,9 +26,8 @@ import RemarkBreaks from 'remark-breaks';
 import RehypeKatex from 'rehype-katex';
 import RemarkGfm from 'remark-gfm';
 import RehypeHighlight from 'rehype-highlight';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import mermaid from 'mermaid';
-import React from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import clsx from 'clsx';
 import { Button, Tooltip, Toast } from '@douyinfe/semi-ui';
@@ -184,7 +183,7 @@ export function PreCode(props) {
       });
       setTimeout(renderArtifacts, 1);
     }
-  }, []);
+  }, [renderArtifacts]);
 
   return (
     <>
@@ -226,13 +225,15 @@ export function PreCode(props) {
                 if (ref.current) {
                   const codeElement = ref.current.querySelector('code');
                   const code = codeElement?.textContent ?? '';
-                  copy(code).then((success) => {
-                    if (success) {
-                      Toast.success(t('代码已复制到剪贴板'));
-                    } else {
-                      Toast.error(t('复制失败，请手动复制'));
-                    }
-                  });
+                  copy(code)
+                    .then((success) => {
+                      if (success) {
+                        Toast.success(t('代码已复制到剪贴板'));
+                      } else {
+                        Toast.error(t('复制失败，请手动复制'));
+                      }
+                    })
+                    .catch(() => Toast.error(t('复制失败，请手动复制')));
                 }
               }}
               style={{
@@ -364,13 +365,13 @@ function tryWrapHtmlCode(text) {
     return text;
   }
   return text
-    .replace(
+    .replaceAll(
       /([`]*?)(\w*?)([\n\r]*?)(<!DOCTYPE html>)/g,
       (match, quoteStart, lang, newLine, doctype) => {
         return !quoteStart ? '\n```html\n' + doctype : match;
       },
     )
-    .replace(
+    .replaceAll(
       /(<\/body>)([\r\n\s]*?)(<\/html>)([\n\r]*)([`]*)([\n\r]*?)/g,
       (match, bodyEnd, space, htmlEnd, newLine, quoteEnd) => {
         return !quoteEnd ? bodyEnd + space + htmlEnd + '\n```\n' : match;

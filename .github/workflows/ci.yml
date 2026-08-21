@@ -38,7 +38,11 @@ jobs:
       - name: Create frontend embed placeholder
         run: |
           mkdir -p web/dist
+          mkdir -p web/classic/dist
+          mkdir -p web/canvas/dist
           touch web/dist/index.html
+          touch web/classic/dist/index.html
+          touch web/canvas/dist/index.html
 
       - name: Vet root module
         run: go vet ./...
@@ -58,7 +62,7 @@ jobs:
         run: make test
 
   frontend:
-    name: Frontend typecheck and test
+    name: Frontend typecheck, build, test, and i18n sync
     if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -84,5 +88,11 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Production build
+        run: bun run build
+
       - name: Test
-        run: bun test
+        run: bun run test
+
+      - name: Sync i18n
+        run: bun run i18n:sync

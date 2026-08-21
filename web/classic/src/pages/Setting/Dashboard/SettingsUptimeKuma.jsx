@@ -212,7 +212,7 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
 
     try {
       new URL(uptimeForm.url);
-    } catch (error) {
+    } catch {
       showError('请输入有效的URL地址');
       return;
     }
@@ -280,7 +280,7 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
     if (groupsStr !== undefined) {
       parseUptimeGroups(groupsStr);
     }
-  }, [options['console_setting.uptime_kuma_groups']]);
+  }, [options]);
 
   useEffect(() => {
     const enabledStr = options['console_setting.uptime_kuma_enabled'];
@@ -289,7 +289,7 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
         ? true
         : enabledStr === 'true' || enabledStr === true,
     );
-  }, [options['console_setting.uptime_kuma_enabled']]);
+  }, [options]);
 
   const handleToggleEnabled = async (checked) => {
     const newValue = checked ? 'true' : 'false';

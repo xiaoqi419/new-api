@@ -104,7 +104,7 @@ const ChannelAffinityUsageCacheModal = ({
           return;
         }
         setStats(data || {});
-      } catch (e) {
+      } catch {
         if (reqSeq !== requestSeqRef.current) return;
         setStats(null);
         showError(t('请求失败'));
@@ -115,10 +115,7 @@ const ChannelAffinityUsageCacheModal = ({
     })();
   }, [
     showChannelAffinityUsageCacheModal,
-    params.rule_name,
-    params.using_group,
-    params.key_hint,
-    params.key_fp,
+    params,
     t,
   ]);
 

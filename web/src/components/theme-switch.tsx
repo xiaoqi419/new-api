@@ -35,19 +35,28 @@ export function ThemeSwitch() {
   useEffect(() => {
     const metaThemeColor = document.querySelector("meta[name='theme-color']")
     if (!metaThemeColor) return
-    const pageColor = getComputedStyle(document.body).backgroundColor
+    const page =
+      document.querySelector<HTMLElement>('[data-public-surface]') ||
+      document.body
+    const pageColor = getComputedStyle(page).backgroundColor
     if (pageColor) metaThemeColor.setAttribute('content', pageColor)
   }, [resolvedTheme])
 
-  const Icon = theme === 'system' ? Monitor : theme === 'dark' ? Moon : Sun
-  const stateLabel =
-    theme === 'system' ? t('System') : theme === 'dark' ? t('Dark') : t('Light')
+  let Icon = Sun
+  let stateLabel = t('Light')
+  if (theme === 'system') {
+    Icon = Monitor
+    stateLabel = t('System')
+  } else if (theme === 'dark') {
+    Icon = Moon
+    stateLabel = t('Dark')
+  }
 
   return (
     <Button
       variant='ghost'
       size='icon'
-      className='h-9 w-9'
+      className='public-theme-switch text-foreground h-9 w-9'
       onClick={() => setTheme(NEXT_THEME[theme])}
       aria-label={`${t('Toggle theme')} — ${stateLabel}`}
       title={`${t('Toggle theme')} — ${stateLabel}`}

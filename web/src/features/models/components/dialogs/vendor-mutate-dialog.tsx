@@ -94,7 +94,7 @@ export function VendorMutateDialog({
     setIsSaving(true)
     try {
       const response = isEdit
-        ? await updateVendor({ ...values, id: currentVendor!.id })
+        ? await updateVendor({ ...values, id: currentVendor?.id ?? 0 })
         : await createVendor(values)
 
       if (response.success) {
@@ -112,6 +112,13 @@ export function VendorMutateDialog({
     } finally {
       setIsSaving(false)
     }
+  }
+
+  let submitLabel = t('Create')
+  if (isSaving) {
+    submitLabel = t('Saving...')
+  } else if (isEdit) {
+    submitLabel = t('Update')
   }
 
   return (
@@ -146,7 +153,7 @@ export function VendorMutateDialog({
             {isSaving ? (
               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
             ) : null}
-            {isSaving ? t('Saving...') : isEdit ? t('Update') : t('Create')}
+            {submitLabel}
           </Button>
         </>
       }
