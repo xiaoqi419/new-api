@@ -249,9 +249,11 @@ export function UserAuthForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-[18px]', className)}
+        className={cn('grid min-w-0 gap-[18px]', className)}
         {...props}
       >
+        <AuthTabs active='sign-in' />
+
         {passkeyLoginEnabled && (
           <div className='space-y-1'>
             <Button
@@ -259,14 +261,19 @@ export function UserAuthForm({
               variant='outline'
               disabled={passkeyButtonDisabled}
               onClick={handlePasskeyLogin}
-              className={cn(authSecondaryButtonClassName, 'w-full')}
+              className={cn(
+                authSecondaryButtonClassName,
+                'w-full min-w-0 overflow-hidden'
+              )}
             >
               {isPasskeyLoading ? (
                 <Loader2 className='size-[19px] animate-spin' />
               ) : (
                 <KeyRound className='size-[19px]' />
               )}
-              {t('Sign in with Passkey')}
+              <span className='min-w-0 truncate'>
+                {t('Sign in with Passkey')}
+              </span>
             </Button>
             {!passkeySupported && (
               <p className='text-muted-foreground text-xs'>
@@ -278,6 +285,7 @@ export function UserAuthForm({
 
         <OAuthProviders
           status={status}
+          layout='compact'
           redirectTo={redirectTo}
           disabled={isLoading}
           onWeChatLogin={
@@ -290,8 +298,6 @@ export function UserAuthForm({
             {hasAlternativeLogin && (
               <AuthDivider>{t('Or sign in with your account')}</AuthDivider>
             )}
-
-            <AuthTabs active='sign-in' />
 
             {/* Username Field */}
             <FormField
@@ -317,8 +323,16 @@ export function UserAuthForm({
               control={form.control}
               name='password'
               render={({ field }) => (
-                <FormItem className='relative'>
-                  <FormLabel>{t('Password')}</FormLabel>
+                <FormItem>
+                  <div className='flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1'>
+                    <FormLabel>{t('Password')}</FormLabel>
+                    <Link
+                      to='/forgot-password'
+                      className='text-muted-foreground shrink-0 text-sm font-medium hover:opacity-75'
+                    >
+                      {t('Forgot password?')}
+                    </Link>
+                  </div>
                   <FormControl>
                     <PasswordInput
                       placeholder={t('Enter password')}
@@ -327,12 +341,6 @@ export function UserAuthForm({
                     />
                   </FormControl>
                   <FormMessage />
-                  <Link
-                    to='/forgot-password'
-                    className='text-muted-foreground absolute end-0 -top-0.5 z-10 text-sm font-medium hover:opacity-75'
-                  >
-                    {t('Forgot password?')}
-                  </Link>
                 </FormItem>
               )}
             />
