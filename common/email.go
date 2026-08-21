@@ -1,14 +1,42 @@
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"net"
 	"net/smtp"
 	"slices"
 	"strings"
 	"time"
 )
+
+var smtpOperationTimeout = 10 * time.Second
+
+type smtpSafeError struct {
+	cause error
+}
+
+func (e *smtpSafeError) Error() string {
+	if errors.Is(e.cause, context.DeadlineExceeded) {
+		return "timeout"
+	}
+	var netErr net.Error
+	if errors.As(e.cause, &netErr) && netErr.Timeout() {
+		return "timeout"
+	}
+	return "failed"
+}
+
+func (e *smtpSafeError) Unwrap() error {
+	return e.cause
+}
+
+func wrapSMTPStageError(stage string, err error) error {
+	return fmt.Errorf("SMTP %s %w", stage, &smtpSafeError{cause: err})
+}
 
 func generateMessageID() (string, error) {
 	split := strings.Split(SMTPFrom, "@")
@@ -42,33 +70,52 @@ func smtpTLSConfig() *tls.Config {
 }
 
 func newSMTPClient(addr string) (*smtp.Client, error) {
+	deadline := time.Now().Add(smtpOperationTimeout)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return nil, wrapSMTPStageError("connect", err)
+	}
+	if err := conn.SetDeadline(deadline); err != nil {
+		_ = conn.Close()
+		return nil, wrapSMTPStageError("deadline setup", err)
+	}
+
 	if SMTPSSLEnabled || (SMTPPort == 465 && !SMTPStartTLSEnabled) {
-		conn, err := tls.Dial("tcp", addr, smtpTLSConfig())
-		if err != nil {
-			return nil, err
-		}
-		client, err := smtp.NewClient(conn, SMTPServer)
-		if err != nil {
+		tlsConn := tls.Client(conn, smtpTLSConfig())
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			_ = conn.Close()
-			return nil, err
+			return nil, wrapSMTPStageError("implicit TLS handshake", err)
+		}
+		client, err := smtp.NewClient(tlsConn, SMTPServer)
+		if err != nil {
+			_ = tlsConn.Close()
+			return nil, wrapSMTPStageError("greeting", err)
 		}
 		return client, nil
 	}
 
-	client, err := smtp.Dial(addr)
+	client, err := smtp.NewClient(conn, SMTPServer)
 	if err != nil {
-		return nil, err
+		_ = conn.Close()
+		return nil, wrapSMTPStageError("greeting", err)
 	}
 
 	if SMTPStartTLSEnabled {
+		if err := client.Hello("localhost"); err != nil {
+			_ = client.Close()
+			return nil, wrapSMTPStageError("STARTTLS negotiation", err)
+		}
 		startTLSSupported, _ := client.Extension("STARTTLS")
 		if !startTLSSupported {
 			_ = client.Close()
-			return nil, fmt.Errorf("SMTP server does not support STARTTLS")
+			return nil, fmt.Errorf("SMTP STARTTLS unavailable")
 		}
 		if err := client.StartTLS(smtpTLSConfig()); err != nil {
 			_ = client.Close()
-			return nil, err
+			return nil, wrapSMTPStageError("STARTTLS handshake", err)
 		}
 	}
 
@@ -97,7 +144,6 @@ func SendEmail(subject string, receiver string, content string) error {
 	auth := getSMTPAuth()
 	addr := fmt.Sprintf("%s:%d", SMTPServer, SMTPPort)
 	to := strings.Split(receiver, ";")
-	var err error
 	client, err := newSMTPClient(addr)
 	if err != nil {
 		return err
@@ -105,32 +151,33 @@ func SendEmail(subject string, receiver string, content string) error {
 	defer client.Close()
 	if shouldAuthenticateSMTP() {
 		if err = client.Auth(auth); err != nil {
-			return err
+			return wrapSMTPStageError("authentication", err)
 		}
 	}
 	if err = client.Mail(SMTPFrom); err != nil {
-		return err
+		return wrapSMTPStageError("MAIL FROM", err)
 	}
 	for _, receiver := range to {
 		if err = client.Rcpt(receiver); err != nil {
-			return err
+			return wrapSMTPStageError("recipient", err)
 		}
 	}
 	w, err := client.Data()
 	if err != nil {
-		return err
+		return wrapSMTPStageError("DATA", err)
 	}
 	_, err = w.Write(mail)
 	if err != nil {
-		return err
+		return wrapSMTPStageError("message body", err)
 	}
 	err = w.Close()
 	if err != nil {
-		return err
+		return wrapSMTPStageError("message completion", err)
 	}
 	err = client.Quit()
 	if err != nil {
-		SysError(fmt.Sprintf("failed to send email to %s: %v", receiver, err))
+		SysError("SMTP QUIT failed")
+		return wrapSMTPStageError("QUIT", err)
 	}
-	return err
+	return nil
 }
