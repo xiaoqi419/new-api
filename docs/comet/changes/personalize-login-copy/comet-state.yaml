@@ -3,7 +3,7 @@ name: personalize-login-copy
 language: zh-CN
 phase: archive
 status: active
-state_version: 12
+state_version: 13
 brief: brief.md
 spec_changes:
   - capability: authentication-login-copy
@@ -13,7 +13,7 @@ workspace:
   isolation: worktree
   change_branch: comet/personalize-login-copy
   target_branch: comet/auth-access-quality-pass
-  finish: null
+  finish: merge
 loop:
   stage: archive-ready
   goal_cycle: 1
