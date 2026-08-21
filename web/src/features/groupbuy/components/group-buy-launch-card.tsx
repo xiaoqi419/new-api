@@ -45,6 +45,7 @@ export function GroupBuyLaunchCard() {
     payWay,
     setPayWay,
     payOptions,
+    loading: paymentMethodsLoading,
     submittingId,
     create,
     qrPay,
@@ -76,6 +77,7 @@ export function GroupBuyLaunchCard() {
             items={payOptions}
             value={payWay}
             onValueChange={(v) => v && setPayWay(v)}
+            disabled={paymentMethodsLoading || payOptions.length === 0}
           >
             <SelectTrigger className='h-8 w-[160px]'>
               <SelectValue>{currentPayLabel}</SelectValue>
@@ -91,6 +93,12 @@ export function GroupBuyLaunchCard() {
             </SelectContent>
           </Select>
         </div>
+
+        {!paymentMethodsLoading && payOptions.length === 0 && (
+          <p className='text-destructive text-sm' role='status'>
+            {t('No payment methods available. Please contact administrator.')}
+          </p>
+        )}
 
         <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
           {packages.map((pkg) => {
@@ -133,7 +141,11 @@ export function GroupBuyLaunchCard() {
                 </span>
                 <Button
                   className='mt-1'
-                  disabled={payOptions.length === 0 || submittingId === pkg.id}
+                  disabled={
+                    paymentMethodsLoading ||
+                    payOptions.length === 0 ||
+                    submittingId === pkg.id
+                  }
                   onClick={() => create(pkg.id, info.price)}
                 >
                   {submittingId === pkg.id && (

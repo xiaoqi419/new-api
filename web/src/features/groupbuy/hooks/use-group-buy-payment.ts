@@ -28,11 +28,12 @@ import type { EpayCheckoutData } from '@/features/wallet/types'
 import {
   cancelGroupBuyPayment,
   createGroupBuy,
-  getPayInfo,
+  getGroupBuyInfo,
   joinGroupBuy,
 } from '../api'
 import { NON_EPAY_PAY_METHODS, PAY_ALIPAY, PAY_WECHAT } from '../constants'
 import { isSafeHttpUrl } from '../lib'
+import { detectGroupBuyScene } from '../lib/payment-scene'
 import type { GroupBuyPayMethod, PaymentResultData } from '../types'
 
 interface QrPayState {
@@ -56,6 +57,33 @@ export interface CheckoutCloseAction {
   releaseTradeNo: string | null
   /** Group to navigate into, if any. */
   navigateToGroup: string | null
+}
+
+export interface GroupBuyPaymentOption {
+  value: string
+  label: string
+}
+
+export function normalizePaymentMethods(
+  methods: GroupBuyPayMethod[] | undefined
+): GroupBuyPaymentOption[] {
+  const seen = new Set<string>()
+  const options: GroupBuyPaymentOption[] = []
+
+  for (const method of methods ?? []) {
+    const value = method.type?.trim()
+    const configuredLabel = method.name?.trim()
+    if (!value || !configuredLabel || seen.has(value)) continue
+
+    let label = configuredLabel
+    if (value === PAY_WECHAT) label = i18next.t('WeChat Pay')
+    if (value === PAY_ALIPAY) label = i18next.t('Alipay')
+
+    seen.add(value)
+    options.push({ value, label })
+  }
+
+  return options
 }
 
 /**
@@ -82,11 +110,10 @@ export function resolveCheckoutClose(params: {
 export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
   const { onPaid, redirectAfterPay } = options
   const navigate = useNavigate()
-  const [payWay, setPayWay] = useState(PAY_WECHAT)
-  const [enableWechat, setEnableWechat] = useState(false)
-  const [enableAlipay, setEnableAlipay] = useState(false)
-  const [enableOnline, setEnableOnline] = useState(false)
-  const [payMethods, setPayMethods] = useState<GroupBuyPayMethod[]>([])
+  const scene = detectGroupBuyScene()
+  const [payWay, setPayWayState] = useState('')
+  const [payOptions, setPayOptions] = useState<GroupBuyPaymentOption[]>([])
+  const [loading, setLoading] = useState(true)
   const [submittingId, setSubmittingId] = useState<string | number | null>(null)
   const [qrPay, setQrPay] = useState<QrPayState>({
     open: false,
@@ -106,31 +133,37 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
 
   useEffect(() => {
     let active = true
-    getPayInfo()
+    void getGroupBuyInfo(scene)
       .then((res) => {
         if (!active || !res.success || !res.data) return
-        const w = !!res.data.enable_wechatpay_topup
-        const a = !!res.data.enable_alipay_topup
-        const online = !!res.data.enable_online_topup
-        const methods = res.data.pay_methods ?? []
-        setEnableWechat(w)
-        setEnableAlipay(a)
-        setEnableOnline(online)
-        setPayMethods(methods)
-        const firstEpay = online
-          ? methods.find((m) => !NON_EPAY_PAY_METHODS.has(m.type))
-          : undefined
-        if (w) setPayWay(PAY_WECHAT)
-        else if (a) setPayWay(PAY_ALIPAY)
-        else if (firstEpay) setPayWay(firstEpay.type)
+        const nextOptions = normalizePaymentMethods(res.data.payment_methods)
+        setPayOptions(nextOptions)
+        setPayWayState((current) => {
+          if (nextOptions.some((option) => option.value === current)) {
+            return current
+          }
+          return nextOptions[0]?.value ?? ''
+        })
       })
       .catch(() => {
         /* handled by response interceptor */
       })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => {
       active = false
     }
-  }, [])
+  }, [scene])
+
+  const setPayWay = useCallback(
+    (value: string) => {
+      if (payOptions.some((option) => option.value === value)) {
+        setPayWayState(value)
+      }
+    },
+    [payOptions]
+  )
 
   const goDetail = useCallback(
     (groupNo?: string) => {
@@ -168,21 +201,23 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     [payWay]
   )
 
-  const detectScene = useCallback(() => {
-    const ua = navigator.userAgent || ''
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
-    const inWeChat = /MicroMessenger/i.test(ua)
-    return payWay === PAY_WECHAT && isMobile && !inWeChat ? 'h5' : 'native'
-  }, [payWay])
-
   const create = useCallback(
     async (packageId: number, money?: string | number) => {
+      if (!payOptions.some((option) => option.value === payWay)) {
+        toast.error(
+          i18next.t(
+            'No payment methods available. Please contact administrator.'
+          )
+        )
+        return
+      }
+
       setSubmittingId(packageId)
       try {
         const res = await createGroupBuy({
           package_id: packageId,
           payment_method: payWay,
-          scene: detectScene(),
+          scene,
         })
         if (
           res.message === 'success' &&
@@ -213,17 +248,26 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
         setSubmittingId(null)
       }
     },
-    [payWay, detectScene, handlePayData]
+    [payWay, payOptions, scene, handlePayData]
   )
 
   const join = useCallback(
     async (groupNo: string, money?: string | number) => {
+      if (!payOptions.some((option) => option.value === payWay)) {
+        toast.error(
+          i18next.t(
+            'No payment methods available. Please contact administrator.'
+          )
+        )
+        return
+      }
+
       setSubmittingId(groupNo)
       try {
         const res = await joinGroupBuy({
           group_no: groupNo,
           payment_method: payWay,
-          scene: detectScene(),
+          scene,
         })
         if (
           res.message === 'success' &&
@@ -254,7 +298,7 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
         setSubmittingId(null)
       }
     },
-    [payWay, detectScene, handlePayData]
+    [payWay, payOptions, scene, handlePayData]
   )
 
   const closeEpayCheckout = useCallback(
@@ -308,24 +352,11 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     [qrPay, onPaid, redirectAfterPay, goDetail]
   )
 
-  const payOptions: { value: string; label: string }[] = []
-  if (enableWechat) {
-    payOptions.push({ value: PAY_WECHAT, label: i18next.t('WeChat Pay') })
-  }
-  if (enableAlipay) {
-    payOptions.push({ value: PAY_ALIPAY, label: i18next.t('Alipay') })
-  }
-  if (enableOnline) {
-    for (const m of payMethods) {
-      if (NON_EPAY_PAY_METHODS.has(m.type)) continue
-      payOptions.push({ value: m.type, label: m.name })
-    }
-  }
-
   return {
     payWay,
     setPayWay,
     payOptions,
+    loading,
     submittingId,
     create,
     join,
@@ -334,5 +365,6 @@ export function useGroupBuyPayment(options: UseGroupBuyPaymentOptions = {}) {
     epayCheckout,
     closeEpayCheckout,
     retryEpayCheckout,
+    scene,
   }
 }

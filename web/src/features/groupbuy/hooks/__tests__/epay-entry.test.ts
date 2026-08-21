@@ -6,7 +6,7 @@ import { beforeEach, describe, test, vi } from 'vitest'
 const api = vi.hoisted(() => ({
   cancelGroupBuyPayment: vi.fn(),
   createGroupBuy: vi.fn(),
-  getPayInfo: vi.fn(),
+  getGroupBuyInfo: vi.fn(),
   joinGroupBuy: vi.fn(),
 }))
 
@@ -34,11 +34,10 @@ function mockCheckout(tradeNo: string, groupNo: string) {
 
 describe('useGroupBuyPayment Epay production entries', () => {
   beforeEach(() => {
-    api.getPayInfo.mockResolvedValue({
+    api.getGroupBuyInfo.mockResolvedValue({
       success: true,
       data: {
-        enable_online_topup: true,
-        pay_methods: [{ type: 'epay_alipay', name: 'Alipay' }],
+        payment_methods: [{ type: 'epay_alipay', name: 'Alipay' }],
       },
     })
   })

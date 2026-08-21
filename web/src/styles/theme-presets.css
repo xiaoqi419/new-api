@@ -149,6 +149,232 @@ For commercial licensing, please contact support@quantumnous.com
   }
 }
 
+/* Authentication pages echo the homepage's routing-system palette without
+ * recolouring the dashboard or other public surfaces. */
+[data-auth-surface='gateway'] {
+  --background: var(--home-background);
+  --foreground: var(--home-foreground);
+  --card: var(--home-card);
+  --card-foreground: var(--home-card-foreground);
+  --popover: var(--home-popover);
+  --popover-foreground: var(--home-popover-foreground);
+  --primary: var(--home-primary);
+  --primary-foreground: var(--home-primary-foreground);
+  --secondary: var(--home-secondary);
+  --secondary-foreground: var(--home-secondary-foreground);
+  --muted: var(--home-muted);
+  --muted-foreground: var(--home-muted-foreground);
+  --accent: var(--home-accent);
+  --accent-foreground: var(--home-accent-foreground);
+  --destructive: var(--home-destructive);
+  --destructive-foreground: var(--home-destructive-foreground);
+  --success: var(--home-success);
+  --success-foreground: var(--home-success-foreground);
+  --warning: var(--home-warning);
+  --warning-foreground: var(--home-warning-foreground);
+  --info: var(--home-info);
+  --info-foreground: var(--home-info-foreground);
+  --neutral: var(--home-neutral);
+  --neutral-foreground: var(--home-neutral-foreground);
+  --border: var(--home-border);
+  --input: var(--home-input);
+  --ring: var(--home-ring);
+}
+
+[data-auth-surface='gateway'] .auth-dot-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.16) 1px,
+    transparent 1.2px
+  );
+  background-size: 16px 16px;
+  mask-image: linear-gradient(
+    to bottom,
+    black 10%,
+    rgba(0, 0, 0, 0.55) 72%,
+    transparent 96%
+  );
+}
+
+[data-auth-surface='gateway'] .auth-form-grid {
+  background-image:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--foreground) 12%, transparent) 1px,
+      transparent 1.2px
+    ),
+    linear-gradient(
+      to right,
+      transparent 50%,
+      color-mix(in srgb, var(--border) 44%, transparent) 50%
+    );
+  background-size:
+    20px 20px,
+    100% 100%;
+  mask-image: linear-gradient(
+    135deg,
+    transparent 7%,
+    black 50%,
+    transparent 96%
+  );
+  opacity: 0.44;
+}
+
+[data-auth-surface='gateway'] .auth-editorial-scan {
+  left: -28%;
+  width: 24%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--home-lime) 10%, transparent),
+    color-mix(in srgb, var(--home-purple) 8%, transparent),
+    transparent
+  );
+  opacity: 0;
+  transform: translateX(0) skewX(-10deg);
+  will-change: transform, opacity;
+  animation: auth-editorial-scan 12s linear infinite;
+}
+
+[data-auth-surface='gateway'] .auth-brand-enter {
+  animation: auth-scene-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-auth-surface='gateway'] .auth-brand-copy {
+  animation: auth-scene-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+}
+
+[data-auth-surface='gateway'] .auth-card-surface {
+  box-shadow:
+    0 28px 74px -38px color-mix(in srgb, var(--home-purple) 34%, transparent),
+    0 8px 24px -14px rgba(14, 14, 14, 0.2);
+}
+
+.dark [data-auth-surface='gateway'] .auth-card-surface {
+  box-shadow:
+    0 30px 84px -38px rgba(0, 0, 0, 0.92),
+    0 8px 26px -16px color-mix(in srgb, var(--home-lime) 12%, transparent);
+}
+
+[data-auth-surface='gateway'] .auth-model-rail {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+[data-auth-surface='gateway'] .auth-model-rail::after {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 22%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    color-mix(in srgb, var(--home-lime) 12%, transparent),
+    transparent
+  );
+  content: '';
+  transform: translateX(-130%);
+  will-change: transform, opacity;
+  animation: auth-model-rail-scan 7.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+[data-auth-surface='gateway'] .auth-model-family-item {
+  position: relative;
+  animation: auth-model-item-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-auth-surface='gateway'] .auth-model-family-item:nth-child(1) {
+  animation-delay: 240ms;
+}
+
+[data-auth-surface='gateway'] .auth-model-family-item:nth-child(2) {
+  animation-delay: 310ms;
+}
+
+[data-auth-surface='gateway'] .auth-model-family-item:nth-child(3) {
+  animation-delay: 380ms;
+}
+
+[data-auth-surface='gateway'] .auth-model-family-item:nth-child(4) {
+  animation-delay: 450ms;
+}
+
+@keyframes auth-editorial-scan {
+  0% {
+    opacity: 0;
+    transform: translateX(0) skewX(-10deg);
+  }
+  14% {
+    opacity: 0.42;
+  }
+  78% {
+    opacity: 0.22;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(650%) skewX(-10deg);
+  }
+}
+
+@keyframes auth-scene-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-model-rail-scan {
+  0% {
+    opacity: 0;
+    transform: translateX(-130%);
+  }
+  18% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(560%);
+  }
+}
+
+@keyframes auth-model-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-auth-surface='gateway'] .auth-editorial-scan,
+  [data-auth-surface='gateway'] .auth-brand-enter,
+  [data-auth-surface='gateway'] .auth-brand-copy,
+  [data-auth-surface='gateway'] .auth-model-rail::after,
+  [data-auth-surface='gateway'] .auth-model-family-item {
+    animation: none;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 720px) {
+  [data-auth-surface='gateway'] .auth-brand-copy {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  [data-auth-surface='gateway'] .auth-model-rail {
+    margin-top: 1.25rem;
+  }
+}
+
 /* Marketing pages have their own visual language. Scoping the aliases to the
  * PublicLayout surface keeps the business shell's accessible blue/cyan
  * palette intact while allowing the Figma homepage to use black, purple and
@@ -398,10 +624,12 @@ For commercial licensing, please contact support@quantumnous.com
 
   [data-public-surface='home'] .footer-home-terms {
     grid-row: 2;
+    grid-column: 1;
   }
 
   [data-public-surface='home'] .footer-home-privacy {
     grid-row: 2;
+    grid-column: 2;
   }
 }
 

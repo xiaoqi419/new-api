@@ -86,15 +86,16 @@ function LegalLinks(props: {
 }) {
   const { t } = useTranslation()
   const { status } = useStatus()
+  const isHomeVariant = props.variant === 'home'
   const items: { key: string; label: string; href: string }[] = []
-  if (status?.user_agreement_enabled) {
+  if (isHomeVariant || status?.user_agreement_enabled) {
     items.push({
       key: 'user-agreement',
-      label: t('User Agreement'),
+      label: isHomeVariant ? t('Terms & Agreements') : t('User Agreement'),
       href: '/user-agreement',
     })
   }
-  if (status?.privacy_policy_enabled) {
+  if (isHomeVariant || status?.privacy_policy_enabled) {
     items.push({
       key: 'privacy-policy',
       label: t('Privacy Policy'),
@@ -104,7 +105,7 @@ function LegalLinks(props: {
   if (items.length === 0) {
     return null
   }
-  if (props.variant === 'home') {
+  if (isHomeVariant) {
     return (
       <>
         {items.map((item) => (

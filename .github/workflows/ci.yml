@@ -92,7 +92,7 @@ jobs:
         run: bun run build
 
       - name: Test
-        run: bun test
+        run: bun run test
 
       - name: Sync i18n
         run: bun run i18n:sync

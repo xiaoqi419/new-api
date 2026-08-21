@@ -86,11 +86,13 @@ export interface PricingToolbarProps {
   vendorFilter: string
   groupFilter: string
   tagFilter: string
+  modalityFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
   onTagChange: (value: string) => void
+  onModalityChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
@@ -111,7 +113,7 @@ function SegmentedControl(props: {
     <div
       role='group'
       aria-label={props.ariaLabel}
-      className='bg-muted/60 inline-flex h-8 items-center rounded-lg border p-0.5'
+      className='inline-flex h-8 items-center rounded-full bg-[#f2f2f2] p-[3px] dark:bg-white/10'
     >
       {props.options.map((option) => {
         const Icon = option.icon
@@ -122,12 +124,13 @@ function SegmentedControl(props: {
             type='button'
             onClick={() => props.onChange(option.value)}
             aria-pressed={isActive}
+            aria-label={option.tooltip}
             className={cn(
-              'inline-flex h-full items-center justify-center rounded-md text-xs font-medium transition-all',
+              'inline-flex h-full items-center justify-center rounded-full text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-[#111]',
               Icon && !option.label ? 'w-7' : 'gap-1.5 px-3',
               isActive
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-[#111] text-white shadow-sm dark:bg-[#f6f6f4] dark:text-[#111]'
+                : 'text-[#626262] hover:text-[#111] dark:text-[#a8a8a8] dark:hover:text-white'
             )}
           >
             {Icon && <Icon className='size-3.5' />}
@@ -141,7 +144,7 @@ function SegmentedControl(props: {
 
         return (
           <Tooltip key={option.value}>
-            <TooltipTrigger render={button}></TooltipTrigger>
+            <TooltipTrigger render={button} />
             <TooltipContent side='bottom' className='text-xs'>
               {option.tooltip}
             </TooltipContent>
@@ -173,15 +176,17 @@ export function PricingToolbar(props: PricingToolbarProps) {
   )
 
   return (
-    <div className='rounded-xl border p-3'>
-      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+    <div className='shrink-0'>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex items-center gap-2'>
           <Button
             type='button'
             variant='outline'
             size='sm'
             onClick={() => setMobileFiltersOpen(true)}
-            className='gap-1.5 xl:hidden'
+            className='h-10 gap-1.5 rounded-full border-[#e2e2de] px-3 text-xs xl:hidden dark:border-white/15'
+            aria-expanded={mobileFiltersOpen}
+            aria-controls='pricing-mobile-filters'
           >
             <Filter className='size-4' />
             {t('Filter')}
@@ -192,8 +197,8 @@ export function PricingToolbar(props: PricingToolbarProps) {
             )}
           </Button>
 
-          <div className='text-muted-foreground flex items-baseline gap-1 text-sm'>
-            <span className='text-foreground font-semibold tabular-nums'>
+          <div className='flex items-baseline gap-1 text-sm text-[#626262] dark:text-[#a8a8a8]'>
+            <span className='text-foreground font-bold tabular-nums'>
               {props.filteredCount.toLocaleString()}
             </span>
             <span>{props.filteredCount === 1 ? t('model') : t('models')}</span>
@@ -206,7 +211,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
         </div>
 
         <div className='flex flex-wrap items-center gap-2'>
-          <div className='hidden items-center gap-2 sm:flex'>
+          <div className='flex items-center gap-2'>
             <SegmentedControl
               options={[
                 { value: 'standard', label: t('Standard') },
@@ -234,7 +239,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
                   type='button'
                   variant='outline'
                   size='sm'
-                  className='h-8 gap-1.5 px-3 text-xs'
+                  className='h-8 gap-1.5 rounded-full border-[#e2e2de] px-3 text-xs dark:border-white/15'
                 />
               }
             >
@@ -287,6 +292,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
 
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent
+          id='pricing-mobile-filters'
           side='right'
           className={sideDrawerContentClassName('sm:max-w-md')}
         >
@@ -303,11 +309,13 @@ export function PricingToolbar(props: PricingToolbarProps) {
               vendorFilter={props.vendorFilter}
               groupFilter={props.groupFilter}
               tagFilter={props.tagFilter}
+              modalityFilter={props.modalityFilter}
               onQuotaTypeChange={props.onQuotaTypeChange}
               onEndpointTypeChange={props.onEndpointTypeChange}
               onVendorChange={props.onVendorChange}
               onGroupChange={props.onGroupChange}
               onTagChange={props.onTagChange}
+              onModalityChange={props.onModalityChange}
               vendors={props.vendors}
               groups={props.groups}
               groupRatios={props.groupRatios}

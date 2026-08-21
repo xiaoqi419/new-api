@@ -55,10 +55,10 @@ function getChartThemeTokens(resolvedTheme: string) {
   return {
     textColor: dark ? 'rgba(255, 255, 255, 0.68)' : 'rgba(15, 23, 42, 0.58)',
     gridColor: dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.12)',
-    // canvas 渲染拿不到 var()，只能按主题给原始值，跟 theme.css 保持同步。
-    seriesColor: dark ? '#f693c0' : '#ea7aae', // --chart-1
-    successColor: dark ? '#1ec189' : '#006c43', // --success
-    pointRingColor: dark ? '#281f24' : '#fffcfe', // --card
+    // Canvas cannot resolve var(), so these values mirror the business tokens.
+    seriesColor: dark ? '#64b5f6' : '#1976d2', // --business-chart-1
+    successColor: '#16c784', // --business-success
+    pointRingColor: dark ? '#242424' : '#ffffff', // --business-card
   }
 }
 

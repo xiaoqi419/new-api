@@ -37,24 +37,20 @@ type TooltipLineItem = {
   shapeSize?: number
 }
 
-/* 图表序列色。VChart 走 canvas 渲染拿不到 var(),所以只能给原始色值——原先直接
- * 用 VChart 自带的蓝绿黄默认盘,和粉色主题完全脱节。
- *
- * 这里是 5 个暖色相(玫 352 / 珊瑚 25 / 紫 285 / 琥珀 75 / 品红 320)× 2 个明度环
- * (0.66 / 0.54)交错排列:相邻序列同时差色相和明度,灰度打印或色觉障碍下也能分。
- * 两环的明度是解出来的——10 个色号对浅粉画布最差 3.04、对深色画布最差 3.23,
- * 都满足图形元素 3:1。再亮一档(0.67/0.53)就会掉到 3 以下。 */
+/* VChart canvas cannot resolve CSS variables, so this explicit palette mirrors
+ * the business chart tokens. Its blue/cyan/green/purple/amber sequence stays
+ * above 3:1 against both the light canvas and the dark business background. */
 const DASHBOARD_SERIES_COLORS = [
-  '#d9639c',
-  '#bd3838',
-  '#8a84e4',
-  '#9a6100',
-  '#ba71cb',
-  '#b33979',
-  '#e3645e',
-  '#685ec1',
-  '#c38300',
-  '#9649a7',
+  '#1976d2',
+  '#00838f',
+  '#16835e',
+  '#7e57c2',
+  '#a16207',
+  '#2563eb',
+  '#0e7490',
+  '#15803d',
+  '#8b5cf6',
+  '#b45309',
 ]
 
 export function getDashboardChartColors(domainLength: number): string[] {
@@ -74,7 +70,7 @@ function renderQuotaCompat(rawQuota: number, digits = 4): string {
   const symbol = 'symbol' in meta ? meta.symbol : '$'
   const value = usd * rate
   const fixed = value.toFixed(digits)
-  if (parseFloat(fixed) === 0 && rawQuota > 0 && value > 0) {
+  if (Number.parseFloat(fixed) === 0 && rawQuota > 0 && value > 0) {
     return symbol + Math.pow(10, -digits).toFixed(digits)
   }
   return symbol + fixed
@@ -761,9 +757,7 @@ export function processUserChartData(
     userQuotaTotal.set(username, prev + (Number(item.quota) || 0))
   })
 
-  const sorted = [...userQuotaTotal.entries()].sort(
-    (a, b) => b[1] - a[1]
-  )
+  const sorted = [...userQuotaTotal.entries()].sort((a, b) => b[1] - a[1])
   const topUsers = sorted.slice(0, limit).map(([u]) => u)
   const topUserSet = new Set(topUsers)
   const totalQuota = sorted.slice(0, limit).reduce((s, [, q]) => s + q, 0)

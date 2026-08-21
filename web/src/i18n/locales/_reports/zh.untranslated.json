@@ -1,6 +1,7 @@
 {
   "AppSecret": "AppSecret",
   "Claude / OpenAI / Gemini": "Claude / OpenAI / Gemini",
+  "OpenAI · Claude · Gemini": "OpenAI · Claude · Gemini",
   "Payment checkout": "Payment checkout",
   "Complete this payment without leaving the current page.": "Complete this payment without leaving the current page.",
   "Payment completed. Returning to the previous page.": "Payment completed. Returning to the previous page.",

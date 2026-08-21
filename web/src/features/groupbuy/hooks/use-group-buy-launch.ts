@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useEffect, useState } from 'react'
 
 import { getGroupBuyInfo } from '../api'
+import { detectGroupBuyScene } from '../lib/payment-scene'
 import type { GroupBuyPackage } from '../types'
 
 export function useGroupBuyLaunch() {
@@ -30,7 +31,7 @@ export function useGroupBuyLaunch() {
     let active = true
     const run = async () => {
       try {
-        const res = await getGroupBuyInfo()
+        const res = await getGroupBuyInfo(detectGroupBuyScene())
         if (!active) return
         if (res.success && res.data?.enabled) {
           setEnabled(true)

@@ -28,13 +28,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
   const viewMode = props.viewMode ?? VIEW_MODES.CARD
 
   return (
-    <div className='space-y-5'>
-      <div className='space-y-1.5'>
-        <Skeleton className='h-8 w-40' />
-        <Skeleton className='h-4 w-52' />
-      </div>
-      <Skeleton className='h-10 w-full rounded-lg' />
-      <FilterBarSkeleton />
+    <div className='min-h-full'>
       {viewMode === VIEW_MODES.TABLE && <TableContentSkeleton />}
       {viewMode === VIEW_MODES.CARD && <CardContentSkeleton />}
       {viewMode === VIEW_MODES.GROUP && <GroupContentSkeleton />}
@@ -44,7 +38,10 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
 
 const GROUP_SKELETON_ROWS = [
   { id: 'first', chipKeys: ['a', 'b', 'c', 'd', 'e', 'f'] },
-  { id: 'second', chipKeys: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'] },
+  {
+    id: 'second',
+    chipKeys: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+  },
   { id: 'third', chipKeys: ['a', 'b', 'c', 'd'] },
 ]
 
@@ -58,14 +55,6 @@ const CARD_SKELETON_IDS = [
   'seventh',
   'eighth',
   'ninth',
-]
-
-const FILTER_SKELETON_OPTIONS = [
-  { id: 'first', width: 80 },
-  { id: 'second', width: 90 },
-  { id: 'third', width: 75 },
-  { id: 'fourth', width: 85 },
-  { id: 'fifth', width: 70 },
 ]
 
 const TABLE_SKELETON_COLUMNS = [
@@ -120,10 +109,13 @@ function CardContentSkeleton() {
   return (
     <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
       {CARD_SKELETON_IDS.map((id) => (
-        <div key={id} className='rounded-xl border p-5'>
+        <div
+          key={id}
+          className='min-h-[154px] rounded-[16px] border border-[#e2e2de] p-3 xl:h-[142px] xl:min-h-0 dark:border-white/12'
+        >
           <div className='flex items-start justify-between gap-3'>
             <div className='flex min-w-0 items-start gap-3'>
-              <Skeleton className='size-10 shrink-0 rounded-xl' />
+              <Skeleton className='size-8 shrink-0 rounded-full' />
               <div className='min-w-0 flex-1 space-y-2'>
                 <Skeleton className='h-5 w-36' />
                 <Skeleton className='h-3.5 w-48' />
@@ -146,31 +138,6 @@ function CardContentSkeleton() {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-function FilterBarSkeleton() {
-  return (
-    <div className='space-y-3'>
-      <div className='flex items-center gap-3'>
-        <div className='flex flex-1 flex-wrap items-center gap-2'>
-          {FILTER_SKELETON_OPTIONS.map((option) => (
-            <Skeleton
-              key={option.id}
-              className='h-8 rounded-lg'
-              style={{ width: `${option.width}px` }}
-            />
-          ))}
-        </div>
-        <div className='flex items-center gap-2'>
-          <Skeleton className='h-8 w-24 rounded-lg' />
-          <Skeleton className='h-8 w-20 rounded-lg' />
-          <Skeleton className='h-8 w-24' />
-          <Skeleton className='h-8 w-20 rounded-lg' />
-        </div>
-      </div>
-      <Skeleton className='h-5 w-24' />
     </div>
   )
 }

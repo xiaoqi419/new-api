@@ -47,6 +47,7 @@ type AuthPromptTarget = {
 }
 
 export interface PublicHeaderProps {
+  visualSurface?: 'home' | 'business'
   navLinks?: TopNavLink[]
   mobileLinks?: TopNavLink[]
   navContent?: React.ReactNode
@@ -99,6 +100,8 @@ export function PublicHeader(props: PublicHeaderProps) {
   const user = auth.user
   const isAuthenticated = !!user
   const isHomeRoute = pathname === '/'
+  const isHomeVisualSurface =
+    (props.visualSurface ?? (isHomeRoute ? 'home' : 'business')) === 'home'
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
   const mobileNavLinks = providedMobileLinks ?? links
@@ -225,17 +228,20 @@ export function PublicHeader(props: PublicHeaderProps) {
   let navLayoutClass =
     'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
   if (!scrolled) {
-    frameLayoutClass = isHomeRoute
+    frameLayoutClass = isHomeVisualSurface
       ? 'w-full max-w-[1392px] px-4 pt-4 sm:px-6 sm:pt-6 xl:px-[54px] xl:pt-6'
       : 'max-w-7xl px-4 pt-0 md:px-6'
-    navLayoutClass = isHomeRoute ? 'h-16 px-0' : 'h-16 px-2'
+    navLayoutClass = isHomeVisualSurface ? 'h-16 px-0' : 'h-16 px-2'
   }
 
   return (
     <>
       <header
         data-public-header
-        className='pointer-events-none fixed inset-x-0 top-0 z-50'
+        className={cn(
+          'pointer-events-none fixed inset-x-0 top-0 z-50',
+          props.className
+        )}
       >
         <PromoBanner />
         <div

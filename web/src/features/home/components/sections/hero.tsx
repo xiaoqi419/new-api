@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 
 import { ArrowRight, BookOpen } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { useStatus } from '@/hooks/use-status'
 
 import type { HeroAppItem, HeroContent } from '../../types'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
@@ -67,15 +66,7 @@ function AppChip({ app }: { app: HeroAppItem }) {
 
 export function Hero(props: HeroProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
   const content = props.content
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
-  const docsButton = docsUrl.startsWith('http') ? (
-    <a href={docsUrl} target='_blank' rel='noopener noreferrer' />
-  ) : (
-    <Link to={docsUrl} />
-  )
 
   return (
     <section
@@ -166,7 +157,7 @@ export function Hero(props: HeroProps) {
               <Button
                 variant='outline'
                 className='h-12 rounded-full border-black/[0.16] bg-black/[0.04] px-6 text-[15px] font-semibold lg:h-[50px] dark:border-white/[0.16] dark:bg-white/[0.06]'
-                render={docsButton}
+                render={<Link to='/docs' />}
               >
                 <BookOpen className='mr-2 size-4' />
                 {t('Docs')}

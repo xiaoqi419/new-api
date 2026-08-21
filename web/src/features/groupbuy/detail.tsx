@@ -90,6 +90,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
     payWay,
     setPayWay,
     payOptions,
+    loading: paymentMethodsLoading,
     submittingId,
     join,
     qrPay,
@@ -266,6 +267,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
                   payWay={payWay}
                   onPayWayChange={setPayWay}
                   payOptions={payOptions}
+                  paymentMethodsLoading={paymentMethodsLoading}
                   submitting={submittingId === detail.group_no}
                   onJoin={() => void join(detail.group_no, price)}
                   shareLink={shareLink}

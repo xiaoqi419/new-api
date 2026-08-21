@@ -49,6 +49,7 @@ interface JoinPanelProps {
   payWay: string
   onPayWayChange: (value: string) => void
   payOptions: PayOption[]
+  paymentMethodsLoading: boolean
   submitting: boolean
   onJoin: () => void
   shareLink: string
@@ -61,6 +62,7 @@ export function JoinPanel({
   payWay,
   onPayWayChange,
   payOptions,
+  paymentMethodsLoading,
   submitting,
   onJoin,
   shareLink,
@@ -102,6 +104,7 @@ export function JoinPanel({
             items={payOptions}
             value={payWay}
             onValueChange={(v) => v && onPayWayChange(v)}
+            disabled={paymentMethodsLoading || payOptions.length === 0}
           >
             <SelectTrigger className='w-full'>
               <SelectValue>{currentPayLabel}</SelectValue>
@@ -117,6 +120,12 @@ export function JoinPanel({
             </SelectContent>
           </Select>
 
+          {!paymentMethodsLoading && payOptions.length === 0 && (
+            <p className='text-destructive text-sm' role='status'>
+              {t('No payment methods available. Please contact administrator.')}
+            </p>
+          )}
+
           <div className='flex items-center gap-2'>
             <Checkbox
               id='gb-agree'
@@ -131,7 +140,12 @@ export function JoinPanel({
           <Button
             size='lg'
             className='w-full'
-            disabled={payOptions.length === 0 || !agreed || submitting}
+            disabled={
+              paymentMethodsLoading ||
+              payOptions.length === 0 ||
+              !agreed ||
+              submitting
+            }
             onClick={onJoin}
           >
             {submitting && <Loader2 className='mr-2 size-4 animate-spin' />}

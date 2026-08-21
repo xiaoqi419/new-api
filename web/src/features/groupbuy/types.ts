@@ -98,21 +98,13 @@ export interface HallData {
 export interface GroupBuyInfo {
   enabled: boolean
   packages: GroupBuyPackage[]
+  payment_methods?: GroupBuyPayMethod[]
 }
 
-/** A payment channel exposed by `/api/user/topup/info`. */
+/** A payment channel that the group-buy checkout can dispatch. */
 export interface GroupBuyPayMethod {
   name: string
   type: string
-  color?: string
-  min_topup?: string
-}
-
-export interface PayInfo {
-  enable_wechatpay_topup?: boolean
-  enable_alipay_topup?: boolean
-  enable_online_topup?: boolean
-  pay_methods?: GroupBuyPayMethod[]
 }
 
 export interface CreateGroupBuyRequest {
