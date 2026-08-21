@@ -1,0 +1,474 @@
+schema: comet.native.v4
+name: group-buy-payment-selection
+language: zh-CN
+phase: archive
+status: done
+state_version: 7
+brief: brief.md
+spec_changes:
+  - capability: group-buy-payment-methods
+    operation: create
+    source: specs/group-buy-payment-methods/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/figma-model-square-refresh
+  target_branch: comet/figma-model-square-refresh
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 仅启用一个有效 Epay 方法时，发起页和参团页都显示该方法并默认选中，提交 payload 包含对应 `payment_method`。
+    result: passed
+    reason:
+      text: 发起与参团共享 hook，初始值为空，专用 info 返回后选择首个规范化方法；Vitest 与浏览器证据验证默认值和 Create/Join
+        payload。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 同时启用官方微信、官方支付宝和 Epay 时，用户能在真实 Base UI Select 中切换，触发器文本随选择更新，Create/Join
+      使用最后选择的值。
+    result: passed
+    reason:
+      text: 两个真实 Base UI Select 都绑定 payWay 并显示当前标签；组件测试和浏览器验收确认可在官方微信、官方支付宝与 Epay 间切换。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 后端方法列表包含空项或重复类型时，前端只保留首个有效唯一项。
+    result: passed
+    reason:
+      text: 后端和前端都修剪空白、丢弃空项并按 type 保留首个唯一方法，且均有回归测试。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 只有 Stripe、Creem、Waffo、Waffo Pancake
+      或余额方法时，拼团接口不把它们作为可用方式，页面显示“没有可用的支付方式”并且不能提交。
+    result: passed
+    reason:
+      text: 后端显式排除 Stripe、Creem、Waffo、Waffo Pancake 和余额；两个入口在零方法时显示已国际化空态并禁用选择与提交。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 支付合规未确认或没有配置拼团支持的网关时，支付列表为空且 UI 不保留 `wechatpay` 伪选择。
+    result: passed
+    reason:
+      text: 所有 provider availability 都受当前支付合规确认约束；功能关闭、合规未确认或无可执行网关时返回空列表，hook 不保留虚假
+        wechatpay。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: 客户端伪造保留方法或空方法调用 Create/Join 时，后端在创建拼团订单前拒绝请求。
+    result: passed
+    reason:
+      text: Create/Join 在任何订单持久化前修剪并解析 payment_method；nil DB 回归测试证明空白和保留方法会提前拒绝。
+      truncated: false
+  - id: A7
+    source: specs/group-buy-payment-methods/spec.md
+    text: Supported payment methods are advertised - **WHEN** 支付合规已确认，且官方微信、官方支付宝或一个
+      Epay 方法已完整启用 - **THEN** `/api/user/groupbuy/info` 的 `payment_methods`
+      只包含当前拼团 dispatcher 能下单的方法 - **AND** 每个方法包含非空且唯一的 `type` 和可展示的 `name`。
+    result: passed
+    reason:
+      text: GetGroupBuyInfo 始终返回 payment_methods；生成器只包含当前 dispatcher
+        可执行且已启用的官方微信、官方支付宝和 Epay，矩阵测试通过。
+      truncated: false
+  - id: A8
+    source: specs/group-buy-payment-methods/spec.md
+    text: Unsupported top-up providers are not advertised - **WHEN** 普通充值只启用了
+      Stripe、Creem、Waffo、Waffo Pancake、余额或其他拼团 dispatcher 不支持的保留 provider -
+      **THEN** 这些 provider 不出现在拼团 `payment_methods` 中 - **AND** Create/Join
+      收到伪造的保留 provider 时在创建订单前拒绝请求。
+    result: passed
+    reason:
+      text: 不支持的方法既不会发布，也会被 Create/Join 共用的 resolver 拒绝；测试覆盖空白、未知和全部保留 provider。
+      truncated: false
+  - id: A9
+    source: specs/group-buy-payment-methods/spec.md
+    text: Default and changed selection - **WHEN** 拼团页面收到一个或多个有效支付方式 - **THEN**
+      当前选择为空或已失效时自动选择第一项 - **AND** 用户可通过支付方式 Select 切换到其他有效项 - **AND** Select
+      触发器展示当前项名称 - **AND** Create/Join payload 使用用户最后选择的 `payment_method`。
+    result: passed
+    reason:
+      text: setter 只接受当前有效方法；刷新后保留有效值，否则切到第一项。测试覆盖默认、切换、触发器标签和精确提交值。
+      truncated: false
+  - id: A10
+    source: specs/group-buy-payment-methods/spec.md
+    text: No supported payment method - **WHEN** 支付合规未确认、没有配置拼团支持的网关，或接口返回空方法列表 -
+      **THEN** 当前选择保持为空 - **AND** 支付方式 Select 与 Create/Join 操作不可提交 - **AND**
+      页面显示明确的已国际化不可用说明 - **AND** 不显示或提交虚假的 `wechatpay` 默认值。
+    result: passed
+    reason:
+      text: 加载中或零方法时两个入口均禁用控件并展示已翻译说明；hook 防御性拒绝空白或过期选择，测试确认不发请求。
+      truncated: false
+  - id: A11
+    source: specs/group-buy-payment-methods/spec.md
+    text: Defensive list normalization - **WHEN** 客户端收到包含空类型、空名称或重复类型的拼团方法列表 -
+      **THEN** 空项被丢弃 - **AND** 相同类型仅保留首个有效项 - **AND** 选择值始终属于规范化后的列表或为空。
+    result: passed
+    reason:
+      text: normalizePaymentMethods 丢弃空 name/type、修剪并去重，选择状态始终属于规范化列表或为空，focused
+        Vitest 直接覆盖。
+      truncated: false
+  - id: A12
+    source: specs/group-buy-payment-methods/spec.md
+    text: 拼团支付方式的后端接口 MUST 是当前可执行能力的唯一事实源。
+    result: passed
+    reason:
+      text: 拼团前端只消费 getGroupBuyInfo；rg 未发现 group-buy 继续使用 topup
+        info、getPayInfo、PayInfo 或旧 denylist。
+      truncated: false
+  - id: A13
+    source: specs/group-buy-payment-methods/spec.md
+    text: 普通充值 provider 的存在 MUST NOT 自动代表该 provider 支持拼团。
+    result: passed
+    reason:
+      text: 后端通过显式 dispatcher-compatible 能力生成列表，前端只读取
+        GroupBuyInfo.payment_methods，普通充值 provider 与拼团能力隔离。
+      truncated: false
+  - id: A14
+    source: specs/group-buy-payment-methods/spec.md
+    text: Create/Join MUST 在持久化订单之前拒绝空白、未知或保留的非拼团支付方式。
+    result: passed
+    reason:
+      text: 共享 resolver 在 model.CreateGroupBuyOrder/JoinGroupBuyOrder
+        前拒绝空白、未知、保留、未配置、未启用或不合规的方法。
+      truncated: false
+  - id: A15
+    source: specs/group-buy-payment-methods/spec.md
+    text: 前端 MUST 将有效用户选择原样写入 Create/Join `payment_method`。
+    result: passed
+    reason:
+      text: Create 和 Join payload 都原样写入当前有效 payWay；focused Vitest 和浏览器验收验证 unionpay 与
+        alipay_direct。
+      truncated: false
+  - id: A16
+    source: specs/group-buy-payment-methods/spec.md
+    text: 零可用方式 MUST 有明确空态并且不得发送 Create/Join 请求。
+    result: passed
+    reason:
+      text: 两个入口都有明确、已翻译且不可提交的零方法状态，hook 还阻止程序化非法调用。
+      truncated: false
+  - id: A17
+    source: specs/group-buy-payment-methods/spec.md
+    text: 现有支付合规、provider mismatch、回调幂等和结算不变量 MUST 保持不变。
+    result: passed
+    reason:
+      text: 静态调用链确认官方支付和 Epay 回调仍进入 TrySettleGroupBuyOrder，provider mismatch
+        与成功状态幂等保持不变；相关 model 回归测试通过。
+      truncated: false
+builder_handoff:
+  candidate_id: c22bdffe-0d13-4cec-b2e4-85151b7fff5a
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:efcc6187-0390-4e9b-9477-6645fc9aea26
+  iteration: 1
+  summary:
+    text: 拼团支付方式改为由拼团专用后端契约提供，前后端拒绝空白、未知和保留方法；发起与参团均支持默认选择、真实切换、空态禁用及正确提交，浏览器回归确认
+      Create/Join payload 分别使用 unionpay 与 alipay_direct。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+  checks:
+    - name:
+        text: go test ./controller -run
+          Test(AvailableGroupBuyPaymentMethods|ResolveGroupBuyProvider|CreateAndJoinGroupBuy|GetGroupBuyInfo)
+          -count=1 -timeout=5m
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+    - name:
+        text: go test ./controller -count=1 -timeout=10m
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+    - name:
+        text: go test ./... -count=1 -timeout=10m
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+    - name:
+        text: Vitest group-buy payment selection
+        truncated: false
+      result: passed
+      note:
+        text: 3 files, 13 tests passed
+        truncated: false
+    - name:
+        text: tsgo -b
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+    - name:
+        text: scoped oxfmt and oxlint
+        truncated: false
+      result: passed
+      note:
+        text: 全部变更文件通过；旧的未修改 group-buy 文件仍有仓库既存 lint/format 问题
+        truncated: false
+    - name:
+        text: Rsbuild production build
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+    - name:
+        text: Playwright group-buy create/join selection QA
+        truncated: false
+      result: passed
+      note:
+        text: 真实 Base UI Select 切换、中文本地化标签、Create/Join payload、无横向溢出、无页面或控制台错误均通过
+        truncated: false
+    - name:
+        text: gofmt -d controller/group_buy.go controller/group_buy_payment_test.go
+        truncated: false
+      result: passed
+      note:
+        text: 无差异
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: 通过
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 浏览器验收通过网络拦截模拟新后端契约，因为本机 3000 端口运行的是旧构建二进制；真实后端行为由 Go 自动化测试覆盖。
+      truncated: false
+    - text: 全目录历史 lint/format 命令仍会命中未修改的既存问题；本 change 所有变更文件的精确检查已通过。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-20T22:30:30.563Z
+blockers: []
+verification:
+  candidate_id: c22bdffe-0d13-4cec-b2e4-85151b7fff5a
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:e9e80581-ff13-4338-a929-9b855fbc6dba
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: groupbuy-controller-focused
+      name:
+        text: group-buy payment controller regression tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: Test(AvailableGroupBuyPaymentMethods|ResolveGroupBuyProvider|CreateAndJoinGroupBuy|GetGroupBuyInfo)
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: -timeout=5m
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 14238
+    - id: groupbuy-frontend-vitest
+      name:
+        text: group-buy payment frontend regression tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\vitest.cmd run
+            src/features/groupbuy/hooks/__tests__/payment-selection.test.tsx
+            src/features/groupbuy/components/__tests__/payment-selection.test.t\
+            sx src/features/groupbuy/hooks/use-group-buy-payment.test.ts; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 97152
+    - id: groupbuy-typecheck
+      name:
+        text: frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\tsgo.exe -b; if ($LASTEXITCODE -ne 0) { exit
+            $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 398
+    - id: groupbuy-format
+      name:
+        text: changed group-buy frontend formatting
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/groupbuy/api.ts','src/features/groupbuy/types.ts','src/features/groupbuy/constants.ts','src/features/groupbuy/hooks/use-group-buy-payment.ts','src/features/groupbuy/components/group-buy-launch-card.tsx','src/features/groupbuy/components/join-panel.tsx','src/features/groupbuy/detail.tsx','src/features/groupbuy/hooks/__tests__/payment-selection.test.tsx','src/features/groupbuy/components/__tests__/payment-selection.test.tsx','src/features/changelog/data.ts');
+            & .\node_modules\.bin\oxfmt.exe --check $files; if ($LASTEXITCODE
+            -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 391
+    - id: groupbuy-lint
+      name:
+        text: changed group-buy frontend lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/groupbuy/api.ts','src/features/groupbuy/types.ts','src/features/groupbuy/constants.ts','src/features/groupbuy/hooks/use-group-buy-payment.ts','src/features/groupbuy/components/group-buy-launch-card.tsx','src/features/groupbuy/components/join-panel.tsx','src/features/groupbuy/detail.tsx','src/features/groupbuy/hooks/__tests__/payment-selection.test.tsx','src/features/groupbuy/components/__tests__/payment-selection.test.tsx','src/features/changelog/data.ts');
+            & .\node_modules\.bin\oxlint.exe -c .oxlintrc.json $files; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 386
+    - id: groupbuy-web-build
+      name:
+        text: frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\rsbuild.exe build; if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 358
+    - id: groupbuy-full-go
+      name:
+        text: full Go regression suite
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./...
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: -timeout=10m
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 28925
+    - id: groupbuy-diff-check
+      name:
+        text: repository diff whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 488
+  summary:
+    text: 独立只读验证通过候选 c22bdffe-0d13-4cec-b2e4-85151b7fff5a 的 A1-A17。Verifier 环境未暴露
+      fast-context，按项目降级协议使用 rg 和完整相关文件审查；独立重跑 focused controller、model 结算不变量、3
+      个前端 Vitest（13 tests）、gofmt 与 git diff --check 均通过，changelog 已覆盖。
+    truncated: false
+  risks:
+    - text: 本机 3000 端口运行旧后端二进制，未执行新后端的真实浏览器 E2E；新契约由 Go 自动测试覆盖，浏览器通过 mock 新契约验证真实前端交互。
+      truncated: false
+    - text: 未来增加新的直连支付 provider 时需要同步扩展保留方法集合。
+      truncated: false
+    - text: 未使用真实商户凭据执行支付、回调或生产部署。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-20T22:40:18.361Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立只读验证通过候选 c22bdffe-0d13-4cec-b2e4-85151b7fff5a 的 A1-A17。Verifier 环境未暴露
+        fast-context，按项目降级协议使用 rg 和完整相关文件审查；独立重跑 focused controller、model
+        结算不变量、3 个前端 Vitest（13 tests）、gofmt 与 git diff --check 均通过，changelog 已覆盖。
+      truncated: false
+    completed_at: 2026-08-20T22:40:18.361Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-20T21:46:34.109Z

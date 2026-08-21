@@ -28,28 +28,30 @@ export interface PricingHeroProps {
 }
 
 function DecorationCard(props: {
-  className: string
+  frameClassName: string
+  cardClassName: string
   label: string
   labelTop: string
 }) {
   return (
     <div
       aria-hidden='true'
-      className={`absolute rounded-[24px] text-[#070707] shadow-[0_20px_38px_rgba(0,0,0,0.28)] ${props.className}`}
+      data-pricing-decoration-frame
+      className={`absolute flex items-center justify-center ${props.frameClassName}`}
     >
       <div
         data-pricing-decoration-card
-        className='motion-safe:animate-in motion-safe:fade-in-0 absolute inset-0 motion-safe:duration-700 motion-safe:ease-out motion-reduce:animate-none'
+        className={`motion-safe:animate-in motion-safe:fade-in-0 relative flex-none rounded-[24px] text-[#0e0e0e] shadow-[0_20px_38px_rgba(0,0,0,0.28)] motion-safe:duration-700 motion-safe:ease-out motion-reduce:animate-none ${props.cardClassName}`}
       >
-        <div className='absolute top-7 left-[30px] text-[18px] font-black'>
+        <div className='absolute top-7 left-[30px] text-[26px] leading-[29px] font-bold'>
           <span>New API</span>
         </div>
-        <span className='absolute top-7 right-[34px] h-6 w-9 rounded-md bg-white/65' />
-        <div className='absolute top-[78px] left-[30px] text-2xl font-black tracking-[0.12em]'>
+        <span className='absolute top-7 right-[34px] h-9 w-12 rounded-lg bg-[linear-gradient(143.13010235415598deg,#f7f7f7_0%,#cfcfcf_50%)]' />
+        <div className='absolute top-[78px] left-[30px] text-[26px] leading-[29px] font-bold'>
           )))
         </div>
         <div
-          className={`absolute left-[30px] text-xs font-bold ${props.labelTop}`}
+          className={`absolute left-[30px] text-[15px] leading-[17px] font-semibold ${props.labelTop}`}
         >
           {props.label}
         </div>
@@ -112,22 +114,26 @@ export function PricingHero(props: PricingHeroProps) {
 
         <div
           aria-hidden='true'
-          className='pointer-events-none absolute top-[292px] right-[-22px] hidden h-[500px] w-[600px] origin-bottom-right scale-75 lg:block xl:top-[318px] xl:right-[28px] xl:h-[596px] xl:w-[717px] xl:scale-100'
+          data-pricing-decoration-stage
+          className='pointer-events-none absolute hidden h-[596px] w-[980px] origin-bottom-right min-[1720px]:!top-[318px] min-[1720px]:!right-[-235px] min-[1720px]:!scale-100 lg:top-[92px] lg:right-0 lg:block lg:scale-[0.62] xl:top-[211px] xl:right-[-25px] xl:scale-[0.82]'
         >
           <DecorationCard
             label={t('Transparent Billing')}
             labelTop='top-[146px]'
-            className='top-[78px] left-[30px] z-10 h-[473px] w-[300px] -rotate-[8deg] bg-[linear-gradient(122.38121533446842deg,#fff195_0%,#ffc4ab_29%,#fff6ec_50%)]'
+            frameClassName='top-[16px] left-[263.02px] z-10 h-[510.215px] w-[362.919px]'
+            cardClassName='h-[473.067px] w-[300px] -rotate-[8deg] bg-[linear-gradient(122.38121533446842deg,#fff195_0%,#ffc4ab_29%,#fff6ec_50%)]'
           />
           <DecorationCard
             label={t('OpenAI · Claude · Gemini')}
             labelTop='top-[170px]'
-            className='top-0 left-[196px] z-30 h-[524px] w-[330px] rotate-[9deg] bg-[linear-gradient(122.20633430499932deg,#fff1d0_0%,#ff4e93_22.5%,#7c4dff_50%)]'
+            frameClassName='top-0 left-[389.79px] z-30 h-[569.076px] w-[407.894px]'
+            cardClassName='h-[523.903px] w-[330px] rotate-[9deg] bg-[linear-gradient(122.20633430499932deg,#fff1d0_0%,#ff4e93_22.5%,#7c4dff_50%)]'
           />
           <DecorationCard
             label={t('Intelligent Routing')}
             labelTop='top-[138px]'
-            className='top-[83px] left-[445px] z-20 h-[442px] w-[285px] rotate-[13deg] bg-[linear-gradient(147.16433007803062deg,#2bffd0_10.299%,#dbfff4_40.299%,#f0ff4a_60.299%)]'
+            frameClassName='top-[102px] left-[603.02px] z-20 h-[494.422px] w-[377.04px]'
+            cardClassName='h-[441.629px] w-[285px] rotate-[13deg] bg-[linear-gradient(147.16433007803062deg,#2bffd0_10.299%,#dbfff4_40.299%,#f0ff4a_60.299%)]'
           />
         </div>
       </div>

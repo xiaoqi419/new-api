@@ -25,7 +25,6 @@ import type {
   GroupBuyInfo,
   HallData,
   JoinGroupBuyRequest,
-  PayInfo,
   PaymentResultData,
 } from './types'
 
@@ -34,8 +33,10 @@ import type {
 // ============================================================================
 
 /** Launchable packages + whether the feature is enabled. */
-export async function getGroupBuyInfo(): Promise<ApiResponse<GroupBuyInfo>> {
-  const res = await api.get('/api/user/groupbuy/info')
+export async function getGroupBuyInfo(
+  scene: 'native' | 'h5' = 'native'
+): Promise<ApiResponse<GroupBuyInfo>> {
+  const res = await api.get(`/api/user/groupbuy/info?scene=${scene}`)
   return res.data
 }
 
@@ -57,12 +58,6 @@ export async function getGroupBuyDetail(
   const res = await api.get(
     `/api/user/groupbuy/detail?no=${encodeURIComponent(no)}`
   )
-  return res.data
-}
-
-/** Payment channels enabled for topup (reused for group-buy checkout). */
-export async function getPayInfo(): Promise<ApiResponse<PayInfo>> {
-  const res = await api.get('/api/user/topup/info')
   return res.data
 }
 

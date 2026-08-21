@@ -110,15 +110,66 @@ For commercial licensing, please contact support@quantumnous.com
   --color-home-border: var(--home-border);
   --color-business-background: var(--business-background);
   --color-business-foreground: var(--business-foreground);
+  --color-business-card: var(--business-card);
+  --color-business-card-foreground: var(--business-card-foreground);
+  --color-business-popover: var(--business-popover);
+  --color-business-popover-foreground: var(--business-popover-foreground);
   --color-business-primary: var(--business-primary);
   --color-business-primary-foreground: var(--business-primary-foreground);
   --color-business-secondary: var(--business-secondary);
+  --color-business-secondary-foreground: var(--business-secondary-foreground);
   --color-business-muted: var(--business-muted);
   --color-business-muted-foreground: var(--business-muted-foreground);
+  --color-business-accent: var(--business-accent);
+  --color-business-accent-foreground: var(--business-accent-foreground);
+  --color-business-destructive: var(--business-destructive);
+  --color-business-destructive-foreground: var(
+    --business-destructive-foreground
+  );
   --color-business-success: var(--business-success);
+  --color-business-success-foreground: var(--business-success-foreground);
   --color-business-warning: var(--business-warning);
+  --color-business-warning-foreground: var(--business-warning-foreground);
   --color-business-info: var(--business-info);
+  --color-business-info-foreground: var(--business-info-foreground);
+  --color-business-neutral: var(--business-neutral);
+  --color-business-neutral-foreground: var(--business-neutral-foreground);
   --color-business-border: var(--business-border);
+  --color-business-input: var(--business-input);
+  --color-business-ring: var(--business-ring);
+  --color-business-chart-1: var(--business-chart-1);
+  --color-business-chart-2: var(--business-chart-2);
+  --color-business-chart-3: var(--business-chart-3);
+  --color-business-chart-4: var(--business-chart-4);
+  --color-business-chart-5: var(--business-chart-5);
+  --color-business-tag-1: var(--business-tag-1);
+  --color-business-tag-2: var(--business-tag-2);
+  --color-business-tag-3: var(--business-tag-3);
+  --color-business-tag-4: var(--business-tag-4);
+  --color-business-tag-5: var(--business-tag-5);
+  --color-business-overview-accent-1: var(--business-overview-accent-1);
+  --color-business-overview-accent-2: var(--business-overview-accent-2);
+  --color-business-overview-accent-3: var(--business-overview-accent-3);
+  --color-business-sidebar: var(--business-sidebar);
+  --color-business-sidebar-foreground: var(--business-sidebar-foreground);
+  --color-business-sidebar-primary: var(--business-sidebar-primary);
+  --color-business-sidebar-primary-foreground: var(
+    --business-sidebar-primary-foreground
+  );
+  --color-business-sidebar-accent: var(--business-sidebar-accent);
+  --color-business-sidebar-accent-foreground: var(
+    --business-sidebar-accent-foreground
+  );
+  --color-business-sidebar-border: var(--business-sidebar-border);
+  --color-business-sidebar-ring: var(--business-sidebar-ring);
+  --color-business-skeleton-base: var(--business-skeleton-base);
+  --color-business-skeleton-highlight: var(--business-skeleton-highlight);
+  --color-business-table-row: var(--business-table-row);
+  --color-business-table-header: var(--business-table-header);
+  --color-business-table-header-hover: var(--business-table-header-hover);
+  --color-business-table-disabled: var(--business-table-disabled);
+  --color-business-table-disabled-hover: var(--business-table-disabled-hover);
+  --color-business-table-disabled-border: var(--business-table-disabled-border);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -139,91 +190,6 @@ For commercial licensing, please contact support@quantumnous.com
    * in theme-presets.css. Default mirrors `--font-sans` so behavior is
    * identical when no font preference is set. */
   --font-body: var(--font-sans);
-  /* 浅粉基底。分工是这套配色能同时「够粉」和「够读」的关键：
-   *   - 粉由表面层承担：画布 → 卡片 → 侧栏三档很淡的粉，整屏是连贯的粉调，
-   *     但没有任何一块是纯白，也没有一块浓到刺眼。
-   *   - primary 不参与"铺粉"，它是可读的玫瑰色。全站 110 处 `text-primary`
-   *     以及 border-primary / bg-primary/10 都吃这个 token，一旦把它调成浅粉，
-   *     这些文字在卡片上只有 1.4:1，必须保持在 4.5:1 以上。
-   *   - 语义色（success/warning/info/neutral）同样以"当正文用"为准来定明度，
-   *     它们在 StatusBadge 里是带色文字而不只是色块。
-   * 明度全部按"最深的承载面"反解，承载面集合含 accent / sidebar-accent：
-   * 侧栏选中项是常驻状态、下拉项 hover 也会承载 destructive 文字，只按
-   * card/background 校验会漏掉这一档（那样 success 只有 3.5:1）。
-   * 所有数值经 OKLCh → sRGB 精确换算校验，色卡见 design/theme/colorcard-pink-b2.png。 */
-  --background: oklch(0.984 0.012 350);
-  --foreground: oklch(0.22 0.022 350);
-  --card: oklch(0.996 0.005 350);
-  --card-foreground: oklch(0.22 0.022 350);
-  --popover: oklch(0.998 0.004 350);
-  --popover-foreground: oklch(0.22 0.022 350);
-  --primary: oklch(0.5 0.15 352);
-  --primary-foreground: oklch(0.99 0.005 352);
-  --secondary: oklch(0.958 0.02 350);
-  --secondary-foreground: oklch(0.3 0.048 352);
-  --muted: oklch(0.968 0.016 350);
-  /* 比"刚好 4.5:1"更深一档，留出余量：具名预设会自己重声明这个 token，
-   * 卡到 4.5 边缘的话预设一换就失守。 */
-  --muted-foreground: oklch(0.43 0.026 350);
-  /* accent 写死而不是从 primary 混：primary 是深玫瑰，混出来会脏，
-   * 这里要的是一块干净的浅粉填充（hover / 选中 / 图标底）。 */
-  --accent: oklch(0.93 0.042 351);
-  --accent-foreground: oklch(0.27 0.05 352);
-  /* danger 推到暖红 hue 25，与 350 的粉拉开，避免状态色和主色糊在一起 */
-  --destructive: oklch(0.505 0.2 25);
-  --destructive-foreground: oklch(0.99 0.005 25);
-  --success: oklch(0.46 0.125 163);
-  --success-foreground: oklch(0.99 0.005 163);
-  --warning: oklch(0.488 0.122 62);
-  --warning-foreground: oklch(0.99 0.005 62);
-  --info: oklch(0.47 0.15 245);
-  --info-foreground: oklch(0.99 0.005 245);
-  --neutral: oklch(0.483 0.012 350);
-  --neutral-foreground: oklch(0.99 0.004 350);
-  --border: oklch(0.912 0.026 350);
-  --input: oklch(0.888 0.032 350);
-  --ring: oklch(0.6 0.17 352);
-  /* 图表走粉系为主 + 邻近色，保证同屏多序列可区分。第 5 序列用暖琥珀而不是
-   * 青绿，否则整屏暖粉里会突然跳出一根冷色。 */
-  --chart-1: oklch(0.72 0.15 352);
-  --chart-2: oklch(0.7 0.14 320);
-  --chart-3: oklch(0.72 0.14 25);
-  --chart-4: oklch(0.68 0.13 285);
-  --chart-5: oklch(0.75 0.13 75);
-  /* 分类"文字"色，与 chart-N 同色相但明度按正文反解。chart 是填充色，L≈0.7，
-   * 当文字用时在浅粉面上只有 1.6–2.1:1；分类标签（日志类型、模型能力、HTTP
-   * 方法…）需要的是同一套可区分色相 + 正文级对比度，所以单独一档。
-   * 底色仍用 bg-chart-N/10，只有文字/图标换到这里。 */
-  --tag-1: oklch(0.5 0.15 352);
-  --tag-2: oklch(0.495 0.14 320);
-  --tag-3: oklch(0.495 0.14 25);
-  --tag-4: oklch(0.49 0.13 285);
-  --tag-5: oklch(0.485 0.13 75);
-  --overview-accent-1: oklch(0.72 0.15 352);
-  --overview-accent-2: oklch(0.7 0.14 320);
-  --overview-accent-3: oklch(0.72 0.14 25);
-  /* 侧栏（顶栏共用同一色号）走"白里透粉"：比画布深一档足以读成一块独立面板，
-   * 但不能再浓——L 再低就变成压手的糖粉色。选中胶囊与分隔线同步跟着这一档，
-   * 否则胶囊会比面板重太多。 */
-  --sidebar: oklch(0.966 0.022 350);
-  --sidebar-foreground: oklch(0.22 0.022 350);
-  --sidebar-primary: oklch(0.55 0.15 352);
-  --sidebar-primary-foreground: oklch(0.99 0.005 352);
-  --sidebar-accent: oklch(0.915 0.048 352);
-  --sidebar-accent-foreground: oklch(0.25 0.05 352);
-  --sidebar-border: oklch(0.932 0.024 350);
-  --sidebar-ring: oklch(0.6 0.17 352);
-  --skeleton-base: oklch(0.955 0.02 350);
-  --skeleton-highlight: oklch(0.985 0.01 350);
-  --table-row: var(--background);
-  /* 表格层写死浅粉档位，不再用 foreground 混：深梅色混进来会把粉压成灰。 */
-  --table-header: oklch(0.978 0.014 350);
-  --table-header-hover: oklch(0.966 0.018 350);
-  /* Disabled rows: kept subtle so they read as "quiet", not as a colored
-     alert state. */
-  --table-disabled: oklch(0.962 0.016 350);
-  --table-disabled-hover: oklch(0.95 0.02 350);
-  --table-disabled-border: oklch(0.9 0.028 350);
   /* 暖桃 → 珊瑚 → 洋红，按饱和度采样自品牌字母标。不随亮暗色切换，
    * 因为这是品牌固有色而非主题派生色；首页字标与登录卡字标共用这一组。 */
   --brand-wordmark-from: #f89f5a;
@@ -231,72 +197,9 @@ For commercial licensing, please contact support@quantumnous.com
   --brand-wordmark-to: #f072d3;
 }
 
-.dark {
-  /* 暗色是同一套粉的低明度版，不是中性灰。色相锁在 342–352，彩度压得很低
-   * （0.014–0.024），刚好让画布带一点梅色而不发褐——彩度再高就变成脏棕。 */
-  --background: oklch(0.205 0.014 342);
-  --foreground: oklch(0.96 0.006 350);
-  --card: oklch(0.252 0.016 342);
-  --card-foreground: oklch(0.96 0.006 350);
-  --popover: oklch(0.272 0.016 342);
-  --popover-foreground: oklch(0.96 0.006 350);
-  --primary: oklch(0.735 0.15 352);
-  --primary-foreground: oklch(0.2 0.04 350);
-  --secondary: oklch(0.3 0.02 344);
-  --secondary-foreground: oklch(0.93 0.03 350);
-  --muted: oklch(0.282 0.018 342);
-  --muted-foreground: oklch(0.75 0.014 348);
-  --accent: oklch(0.345 0.04 350);
-  --accent-foreground: oklch(0.95 0.02 350);
-  --destructive: oklch(0.74 0.17 25);
-  --destructive-foreground: oklch(0.18 0.02 25);
-  --success: oklch(0.72 0.15 163);
-  --success-foreground: oklch(0.16 0.01 163);
-  --warning: oklch(0.78 0.16 72);
-  --warning-foreground: oklch(0.18 0.02 72);
-  --info: oklch(0.71 0.13 240);
-  --info-foreground: oklch(0.16 0.01 240);
-  --neutral: oklch(0.72 0.01 345);
-  --neutral-foreground: oklch(0.17 0.01 345);
-  /* 描边用不透明色而不是白色 alpha：叠在带彩度的画布上时 alpha 会把粉洗掉。 */
-  --border: oklch(0.4 0.024 345);
-  --input: oklch(0.46 0.026 345);
-  --ring: oklch(0.7 0.1 352);
-  --chart-1: oklch(0.78 0.13 352);
-  --chart-2: oklch(0.76 0.13 320);
-  --chart-3: oklch(0.75 0.13 25);
-  --chart-4: oklch(0.74 0.12 285);
-  --chart-5: oklch(0.8 0.12 75);
-  /* 暗底上 chart 本身就是亮色，当文字已有 4.97–6.19:1，不需要另一档 */
-  --tag-1: var(--chart-1);
-  --tag-2: var(--chart-2);
-  --tag-3: var(--chart-3);
-  --tag-4: var(--chart-4);
-  --tag-5: var(--chart-5);
-  --overview-accent-1: oklch(0.78 0.13 352);
-  --overview-accent-2: oklch(0.76 0.13 320);
-  --overview-accent-3: oklch(0.75 0.13 25);
-  --sidebar: oklch(0.185 0.014 342);
-  --sidebar-foreground: oklch(0.94 0.008 350);
-  --sidebar-primary: oklch(0.72 0.15 352);
-  --sidebar-primary-foreground: oklch(0.2 0.04 350);
-  --sidebar-accent: oklch(0.33 0.042 350);
-  --sidebar-accent-foreground: oklch(0.95 0.02 350);
-  --sidebar-border: oklch(0.36 0.022 345);
-  --sidebar-ring: oklch(0.7 0.1 352);
-  --skeleton-base: oklch(0.3 0.018 342);
-  --skeleton-highlight: oklch(0.4 0.02 342);
-  --table-row: var(--background);
-  --table-header: oklch(0.27 0.016 342);
-  --table-header-hover: oklch(0.3 0.018 342);
-  --table-disabled: oklch(0.285 0.016 342);
-  --table-disabled-hover: oklch(0.315 0.018 342);
-  --table-disabled-border: oklch(0.44 0.024 345);
-}
-
-/* Semantic palettes. The generic shadcn tokens above are kept for backwards
- * compatibility, while these names make the business shell and marketing
- * surface explicit and prevent a homepage refresh from recolouring the app. */
+/* Semantic palettes keep the business shell and marketing surface isolated.
+ * Generic shadcn aliases below point to business by default; scoped home/auth
+ * surfaces continue to opt into the independent home tokens. */
 :root {
   --business-background: #ffffff;
   --business-foreground: #111111;
@@ -325,10 +228,35 @@ For commercial licensing, please contact support@quantumnous.com
   --business-border: #e3e8ee;
   --business-input: #cbd5df;
   --business-ring: #42a5f5;
+  --business-chart-1: #1976d2;
+  --business-chart-2: #00838f;
+  --business-chart-3: #16835e;
+  --business-chart-4: #7e57c2;
+  --business-chart-5: #a16207;
+  --business-tag-1: #1976d2;
+  --business-tag-2: #00838f;
+  --business-tag-3: #16835e;
+  --business-tag-4: #7e57c2;
+  --business-tag-5: #a16207;
+  --business-overview-accent-1: #1976d2;
+  --business-overview-accent-2: #00838f;
+  --business-overview-accent-3: #16835e;
   --business-sidebar: #f7fafc;
   --business-sidebar-foreground: #111111;
+  --business-sidebar-primary: #42a5f5;
+  --business-sidebar-primary-foreground: #09263c;
   --business-sidebar-accent: #e7f6ff;
+  --business-sidebar-accent-foreground: #164967;
   --business-sidebar-border: #e3e8ee;
+  --business-sidebar-ring: #42a5f5;
+  --business-skeleton-base: #e9eef3;
+  --business-skeleton-highlight: #f8fafc;
+  --business-table-row: #ffffff;
+  --business-table-header: #f7f9fb;
+  --business-table-header-hover: #eef3f7;
+  --business-table-disabled: #f3f5f7;
+  --business-table-disabled-hover: #eaedf0;
+  --business-table-disabled-border: #d7dee5;
 
   --home-background: #ffffff;
   --home-foreground: #0e0e0e;
@@ -395,10 +323,35 @@ For commercial licensing, please contact support@quantumnous.com
   --business-border: #3a3a3a;
   --business-input: #4a4a4a;
   --business-ring: #42a5f5;
+  --business-chart-1: #64b5f6;
+  --business-chart-2: #4dd0e1;
+  --business-chart-3: #4ade80;
+  --business-chart-4: #b39ddb;
+  --business-chart-5: #fbbf24;
+  --business-tag-1: #64b5f6;
+  --business-tag-2: #4dd0e1;
+  --business-tag-3: #4ade80;
+  --business-tag-4: #b39ddb;
+  --business-tag-5: #fbbf24;
+  --business-overview-accent-1: #64b5f6;
+  --business-overview-accent-2: #4dd0e1;
+  --business-overview-accent-3: #4ade80;
   --business-sidebar: #111111;
   --business-sidebar-foreground: #f5f5f5;
+  --business-sidebar-primary: #42a5f5;
+  --business-sidebar-primary-foreground: #071b2b;
   --business-sidebar-accent: #1e3542;
+  --business-sidebar-accent-foreground: #d9f4ff;
   --business-sidebar-border: #343434;
+  --business-sidebar-ring: #42a5f5;
+  --business-skeleton-base: #30343a;
+  --business-skeleton-highlight: #414750;
+  --business-table-row: #1f1f1f;
+  --business-table-header: #2b2b2b;
+  --business-table-header-hover: #303030;
+  --business-table-disabled: #292929;
+  --business-table-disabled-hover: #303030;
+  --business-table-disabled-border: #454545;
 
   --home-background: #1f1f1f;
   --home-foreground: #ffffff;
@@ -467,8 +420,33 @@ For commercial licensing, please contact support@quantumnous.com
   --border: var(--business-border);
   --input: var(--business-input);
   --ring: var(--business-ring);
+  --chart-1: var(--business-chart-1);
+  --chart-2: var(--business-chart-2);
+  --chart-3: var(--business-chart-3);
+  --chart-4: var(--business-chart-4);
+  --chart-5: var(--business-chart-5);
+  --tag-1: var(--business-tag-1);
+  --tag-2: var(--business-tag-2);
+  --tag-3: var(--business-tag-3);
+  --tag-4: var(--business-tag-4);
+  --tag-5: var(--business-tag-5);
+  --overview-accent-1: var(--business-overview-accent-1);
+  --overview-accent-2: var(--business-overview-accent-2);
+  --overview-accent-3: var(--business-overview-accent-3);
   --sidebar: var(--business-sidebar);
   --sidebar-foreground: var(--business-sidebar-foreground);
+  --sidebar-primary: var(--business-sidebar-primary);
+  --sidebar-primary-foreground: var(--business-sidebar-primary-foreground);
   --sidebar-accent: var(--business-sidebar-accent);
+  --sidebar-accent-foreground: var(--business-sidebar-accent-foreground);
   --sidebar-border: var(--business-sidebar-border);
+  --sidebar-ring: var(--business-sidebar-ring);
+  --skeleton-base: var(--business-skeleton-base);
+  --skeleton-highlight: var(--business-skeleton-highlight);
+  --table-row: var(--business-table-row);
+  --table-header: var(--business-table-header);
+  --table-header-hover: var(--business-table-header-hover);
+  --table-disabled: var(--business-table-disabled);
+  --table-disabled-hover: var(--business-table-disabled-hover);
+  --table-disabled-border: var(--business-table-disabled-border);
 }

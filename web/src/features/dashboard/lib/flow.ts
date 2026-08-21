@@ -1211,8 +1211,8 @@ export function buildFlowSankeySpec(
       limit: 220,
       interactive: false,
       style: {
-        /* 不写 fill:节点标签落在画布上,原先写死的板岩灰在浅粉画布上偏冷、在
-         * 深色主题下更是几乎看不见。交给 VChart 已注册的明/暗主题取色。 */
+        /* Leave fill to VChart so labels remain readable on both registered
+         * light and dark business themes. */
         fontSize: 11,
         fontWeight: 600,
       },

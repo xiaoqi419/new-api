@@ -30,11 +30,11 @@ import { cn } from '@/lib/utils'
  * tight on a page that holds nothing else.
  */
 export const authInputClassName =
-  'h-[39px] rounded-[9px] bg-muted px-[15px] text-[15px] md:text-[15px]'
+  'h-[39px] rounded-[8px] bg-muted px-[15px] text-[15px] md:text-[15px]'
 export const authSubmitClassName =
-  'h-[42px] w-full justify-center gap-2 rounded-[9px] text-[16px] font-bold'
+  'h-[42px] w-full justify-center gap-2 rounded-[8px] text-[16px] font-bold'
 export const authSecondaryButtonClassName =
-  'h-[39px] justify-center gap-[7px] rounded-[9px] text-[13px] font-semibold'
+  'h-[39px] justify-center gap-[7px] rounded-[8px] text-[13px] font-semibold'
 
 export function AuthDivider({ children }: { children: React.ReactNode }) {
   return (
@@ -64,27 +64,35 @@ export function AuthCard({
   return (
     <div
       className={cn(
-        'bg-card rounded-[20px] border px-[26px] py-[30px] shadow-[0_18px_44px_-20px_rgba(90,20,60,0.22),0_3px_10px_-4px_rgba(90,20,60,0.10)]',
+        'auth-card-surface bg-card/[0.96] relative rounded-[8px] border border-border px-[26px] py-[30px] backdrop-blur-md sm:px-[30px] sm:py-[34px]',
         className
       )}
     >
+      <span
+        aria-hidden='true'
+        className='absolute top-0 left-8 h-[3px] w-24 bg-[linear-gradient(90deg,var(--home-lime),var(--home-purple))]'
+      />
+      <span
+        aria-hidden='true'
+        className='bg-primary absolute top-4 right-4 size-1.5'
+      />
       <Link
         to='/'
-        className='mb-[26px] flex items-center justify-center gap-[10px] transition-opacity hover:opacity-80'
+        className='mb-[28px] flex max-w-full min-w-0 items-center justify-center gap-[10px] transition-opacity hover:opacity-80'
       >
         {loading ? (
-          <Skeleton className='h-[34px] w-[34px] rounded-full' />
+          <Skeleton className='h-[34px] w-[34px] rounded-[8px]' />
         ) : (
           <img
             src={logo}
             alt={t('Logo')}
-            className='h-[34px] w-[34px] rounded-full object-cover'
+            className='h-[34px] w-[34px] shrink-0 rounded-[8px] object-cover ring-1 ring-black/10 dark:ring-white/10'
           />
         )}
         {loading ? (
           <Skeleton className='h-7 w-32' />
         ) : (
-          <h1 className='bg-gradient-to-r from-(--brand-wordmark-from) via-(--brand-wordmark-via) to-(--brand-wordmark-to) bg-clip-text text-[26px] font-extrabold tracking-[-0.01em] text-transparent'>
+          <h1 className='text-foreground min-w-0 text-center text-[25px] font-black break-words'>
             {systemName}
           </h1>
         )}
@@ -93,10 +101,12 @@ export function AuthCard({
       {(title || description) && (
         <div className='mb-[22px] space-y-1.5 text-center'>
           {title && (
-            <h2 className='text-xl font-semibold tracking-tight'>{title}</h2>
+            <h2 className='min-w-0 text-xl font-semibold break-words'>
+              {title}
+            </h2>
           )}
           {description && (
-            <p className='text-muted-foreground text-sm leading-relaxed'>
+            <p className='text-muted-foreground min-w-0 text-sm leading-relaxed break-words'>
               {description}
             </p>
           )}

@@ -92,24 +92,77 @@ describe('PricingHero', () => {
       />
     )
 
-    const cards = [
-      ...document.querySelectorAll<HTMLElement>(
-        '[data-pricing-decoration-card]'
-      ),
-    ].map((card) => card.parentElement)
+    const cards = document.querySelectorAll<HTMLElement>(
+      '[data-pricing-decoration-card]'
+    )
+    const frames = document.querySelectorAll<HTMLElement>(
+      '[data-pricing-decoration-frame]'
+    )
 
     expect(cards).toHaveLength(3)
-    expect(cards[0]).toHaveClass('z-10')
-    expect(cards[1]).toHaveClass('z-30')
-    expect(cards[2]).toHaveClass('z-20')
-    expect(cards[0]?.className).toContain(
+    expect(frames[0]).toHaveClass('z-10')
+    expect(frames[1]).toHaveClass('z-30')
+    expect(frames[2]).toHaveClass('z-20')
+    expect(cards[0].className).toContain(
       'linear-gradient(122.38121533446842deg,#fff195_0%,#ffc4ab_29%,#fff6ec_50%)'
     )
-    expect(cards[1]?.className).toContain(
+    expect(cards[1].className).toContain(
       'linear-gradient(122.20633430499932deg,#fff1d0_0%,#ff4e93_22.5%,#7c4dff_50%)'
     )
-    expect(cards[2]?.className).toContain(
+    expect(cards[2].className).toContain(
       'linear-gradient(147.16433007803062deg,#2bffd0_10.299%,#dbfff4_40.299%,#f0ff4a_60.299%)'
     )
+  })
+
+  test('positions rotated cards inside the Figma reference frames', () => {
+    render(
+      <PricingHero
+        searchValue=''
+        onSearchChange={() => undefined}
+        onClearSearch={() => undefined}
+      />
+    )
+
+    const stage = document.querySelector('[data-pricing-decoration-stage]')
+    expect(stage).toHaveClass(
+      'w-[980px]',
+      'h-[596px]',
+      'origin-bottom-right',
+      'lg:scale-[0.62]',
+      'xl:scale-[0.82]',
+      'min-[1720px]:!scale-100',
+      'lg:top-[92px]',
+      'xl:top-[211px]',
+      'min-[1720px]:!top-[318px]'
+    )
+
+    const frames = document.querySelectorAll('[data-pricing-decoration-frame]')
+    expect(frames).toHaveLength(3)
+    expect(frames[0]).toHaveClass(
+      'top-[16px]',
+      'left-[263.02px]',
+      'h-[510.215px]',
+      'w-[362.919px]',
+      'z-10'
+    )
+    expect(frames[1]).toHaveClass(
+      'top-0',
+      'left-[389.79px]',
+      'h-[569.076px]',
+      'w-[407.894px]',
+      'z-30'
+    )
+    expect(frames[2]).toHaveClass(
+      'top-[102px]',
+      'left-[603.02px]',
+      'h-[494.422px]',
+      'w-[377.04px]',
+      'z-20'
+    )
+
+    const cards = document.querySelectorAll('[data-pricing-decoration-card]')
+    expect(cards[0]).toHaveClass('h-[473.067px]', 'w-[300px]', '-rotate-[8deg]')
+    expect(cards[1]).toHaveClass('h-[523.903px]', 'w-[330px]', 'rotate-[9deg]')
+    expect(cards[2]).toHaveClass('h-[441.629px]', 'w-[285px]', 'rotate-[13deg]')
   })
 })

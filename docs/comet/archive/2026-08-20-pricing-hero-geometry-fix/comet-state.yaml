@@ -1,0 +1,423 @@
+schema: comet.native.v4
+name: pricing-hero-geometry-fix
+language: zh-CN
+phase: archive
+status: done
+state_version: 10
+brief: brief.md
+spec_changes:
+  - capability: pricing-hero-geometry
+    operation: create
+    source: specs/pricing-hero-geometry/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/figma-model-square-refresh
+  target_branch: comet/figma-model-square-refresh
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "**A1**：1920px 下搜索框保持 `545x54`，三张卡分别使用 Figma 的
+      `300x473.067`、`330x523.903`、`285x441.629` 尺寸与 `-8deg`、`9deg`、`13deg`
+      角度；旋转后的第一张卡可见左边缘约为页面 `x=1092`，与搜索框右边缘约 `x=891` 保持约 201px 间距。"
+    result: passed
+    reason:
+      text: Playwright 在 1920px 测得搜索框 545x54、右边缘 890.5，桃色卡左边缘 1092.51，间距
+        202.01px；三卡尺寸与角度由回归测试保护。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "**A2**：三张卡使用 Figma 外框坐标关系：桃色外框 `263.02/16/362.919x510.215`，中心外框
+      `389.79/0/407.894x569.076`，薄荷外框 `603.02/102/377.04x494.422`；中心卡 `z-index`
+      最高，薄荷卡位于桃色卡之上。"
+    result: passed
+    reason:
+      text: PricingHero 使用三个未旋转定位外框，坐标/尺寸与 Figma 一致；回归测试验证 z-10/z-30/z-20。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "**A3**：三张卡继续使用 Figma 节点 `75:232` 的渐变、24px 圆角、阴影和文案，不新增远程资源；装饰组及其卡片保持
+      `aria-hidden` 和不可点击。"
+    result: passed
+    reason:
+      text: 三组 Figma 渐变、24px 圆角、阴影、aria-hidden 和 pointer-events-none 均保留，浏览器截图复核通过。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "**A4**：1440、1280 和约 1230px 桌面视口下，卡片组按同一设计坐标整体缩放与锚定，搜索框和任一卡片均不重叠，Hero
+      与页面不存在水平滚动。"
+    result: passed
+    reason:
+      text: Playwright 浅深主题矩阵覆盖 1536/1440/1280/1230，均无搜索重叠、右侧裁切或水平溢出。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "**A5**：768px 和 390px 下装饰组不遮挡标题、说明或搜索框，不产生横向滚动；搜索输入、清空和 Ctrl/Cmd+K 行为不变。"
+    result: passed
+    reason:
+      text: Playwright 在 768/390 浅深主题确认装饰组 display:none、页面 scrollWidth 等于
+        viewport；搜索保持可见。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "**A6**：定向 Hero 测试、变更文件 lint/format、前端 typecheck 和生产 build 通过；浏览器验收覆盖
+      1920、1440、1230、768、390 的浅色与深色关键布局。"
+    result: passed
+    reason:
+      text: Runtime 重新执行 Vitest、oxlint、tsgo typecheck 和 Rsbuild production
+        build，四项均通过；Playwright 矩阵通过。
+      truncated: false
+  - id: A7
+    source: specs/pricing-hero-geometry/spec.md
+    text: "`/pricing` Hero 在左侧提供模型说明与搜索，在右侧提供三张纯装饰 New API 卡片。装饰卡必须忠实表达 Figma
+      设计，同时在不同桌面宽度中保持与搜索区域分离；它们不承载业务交互，也不改变模型广场的任何数据与路由行为。"
+    result: passed
+    reason:
+      text: 改动仅涉及 PricingHero 装饰结构、回归测试和 changelog，未改变模型数据或路由行为。
+      truncated: false
+  - id: A8
+    source: specs/pricing-hero-geometry/spec.md
+    text: Figma file key：`SnTAn1XXoaAvEQgG61mm38`。
+    result: passed
+    reason:
+      text: 实现依据已读取的 Figma file key SnTAn1XXoaAvEQgG61mm38。
+      truncated: false
+  - id: A9
+    source: specs/pricing-hero-geometry/spec.md
+    text: 搜索框节点：`75:230`，参考尺寸 `545x54`。
+    result: passed
+    reason:
+      text: Playwright 在 1920px 测得搜索框 545x54，与节点 75:230 一致。
+      truncated: false
+  - id: A10
+    source: specs/pricing-hero-geometry/spec.md
+    text: 装饰卡组节点：`75:232`。
+    result: passed
+    reason:
+      text: 装饰卡结构与尺寸依据已读取的 Figma 节点 75:232。
+      truncated: false
+  - id: A11
+    source: specs/pricing-hero-geometry/spec.md
+    text: Figma reference code 仅用于测量和结构解释，生产实现必须使用项目现有 React、Tailwind、i18next 与组件约定。
+    result: passed
+    reason:
+      text: 实现复用现有 React、Tailwind、i18next、PricingHero 与 SearchBar，没有新增依赖或粘贴参考代码。
+      truncated: false
+  - id: A12
+    source: specs/pricing-hero-geometry/spec.md
+    text: 搜索框在 1920px 参考视口下保持 `545x54`
+      和现有左侧锚点。修复装饰卡不得通过缩窄、移动或覆盖搜索框实现。输入、清空、占位文案、Ctrl/Cmd+K 聚焦、过滤范围和可访问名称保持不变。
+    result: passed
+    reason:
+      text: SearchBar 调用、props 和交互代码未修改；1920px 搜索几何仍为 545x54。
+      truncated: false
+  - id: A13
+    source: specs/pricing-hero-geometry/spec.md
+    text: 卡片组使用一个 980px 宽的设计坐标空间。每张卡由一个未旋转的绝对定位外框和一个在外框中水平、垂直居中的旋转卡片组成；外框承担 Figma
+      坐标，卡片本体只承担尺寸、旋转、圆角、阴影和内容。
+    result: passed
+    reason:
+      text: DOM 新增 980px stage 和三个 data-pricing-decoration-frame 外框，卡片在 flex 外框内居中旋转。
+      truncated: false
+  - id: A14
+    source: specs/pricing-hero-geometry/spec.md
+    text: 桃色计费卡外框：`left=263.02`、`top=16`、`width=362.919`、`height=510.215`；卡片
+      `300x473.067`，旋转 `-8deg`。
+    result: passed
+    reason:
+      text: 回归测试验证桃色外框 263.02/16/362.919x510.215 与卡片 300x473.067/-8deg。
+      truncated: false
+  - id: A15
+    source: specs/pricing-hero-geometry/spec.md
+    text: 中心模型卡外框：`left=389.79`、`top=0`、`width=407.894`、`height=569.076`；卡片
+      `330x523.903`，旋转 `9deg`。
+    result: passed
+    reason:
+      text: 回归测试验证中心外框 389.79/0/407.894x569.076 与卡片 330x523.903/9deg。
+      truncated: false
+  - id: A16
+    source: specs/pricing-hero-geometry/spec.md
+    text: 薄荷路由卡外框：`left=603.02`、`top=102`、`width=377.04`、`height=494.422`；卡片
+      `285x441.629`，旋转 `13deg`。
+    result: passed
+    reason:
+      text: 回归测试验证薄荷外框 603.02/102/377.04x494.422 与卡片 285x441.629/13deg。
+      truncated: false
+  - id: A17
+    source: specs/pricing-hero-geometry/spec.md
+    text: 中心模型卡层级最高，薄荷路由卡次之，桃色计费卡最低。外框不得裁切旋转卡片。
+    result: passed
+    reason:
+      text: 回归测试验证三外框层级 z-10/z-30/z-20；Playwright 确认旋转包围盒未被右侧裁切。
+      truncated: false
+  - id: A18
+    source: specs/pricing-hero-geometry/spec.md
+    text: 卡片保持 24px 圆角和 `0 20px 38px rgba(0,0,0,0.28)` 阴影。桃色、中心和薄荷卡分别使用 Figma 节点
+      `75:232` 的既有三组线性渐变。卡片内 New API、芯片、符号和标签使用既有 i18n
+      文案与固定内边距；装饰组及卡片对辅助技术隐藏，不可点击，不进入焦点顺序。
+    result: passed
+    reason:
+      text: Figma 渐变、圆角、阴影、文案和装饰无障碍语义由组件测试与浅深截图共同复核。
+      truncated: false
+  - id: A19
+    source: specs/pricing-hero-geometry/spec.md
+    text: 1920px 使用 1:1 设计比例和右侧锚点，使桃色卡旋转后的可见左边缘约为页面 `x=1092`，与搜索框右边缘约 `x=891` 保持约
+      201px 空隙。
+    result: passed
+    reason:
+      text: Playwright 1920px 测得 stage x=829.5、桃色卡 x=1092.51、搜索右边缘 x=890.5，实际间距
+        202.01px。
+      truncated: false
+  - id: A20
+    source: specs/pricing-hero-geometry/spec.md
+    text: 1440px 与 1280px 对整个 980px 坐标空间统一缩放并以右下为变换原点；约 1230px
+      使用更小的统一缩放。任何桌面断点都不得逐张改变卡片之间的相对坐标，也不得让卡片与搜索框重叠。小于桌面断点时装饰组可以隐藏，但标题、说明、搜索框和工作区必须保持可读、可操作且无水平滚动。
+    result: passed
+    reason:
+      text: 整体 stage 在 1440/1280 使用 0.82 缩放、1230 使用 0.62 缩放；1536 亦保持 0.82，1720px 后才恢复
+        1:1。
+      truncated: false
+  - id: A21
+    source: specs/pricing-hero-geometry/spec.md
+    text: "卡片可以保留现有克制的淡入动效；`prefers-reduced-motion: reduce`
+      时移除非必要动画。动效不得改变外框尺寸、响应式锚点或稳定布局。装饰内容使用 `aria-hidden`，不得产生可聚焦后代。"
+    result: passed
+    reason:
+      text: 现有 motion-safe 淡入与 motion-reduce:animate-none 保留，回归测试通过，外框尺寸不受动效影响。
+      truncated: false
+  - id: A22
+    source: specs/pricing-hero-geometry/spec.md
+    text: 修复不得改变模型计数、搜索、筛选、价格、排序、视图、详情跳转、权限、主题或 URL search schema。浅色与深色使用同一几何。页面在
+      1920、1440、1230、768 和 390px 下不得产生水平滚动、搜索遮挡或不可达内容。
+    result: passed
+    reason:
+      text: Git diff 仅包含 Hero、Hero 测试、changelog 和 Comet 产物；浅深响应式矩阵无水平滚动。
+      truncated: false
+  - id: A23
+    source: specs/pricing-hero-geometry/spec.md
+    text: 回归测试必须直接保护定位外框与卡片本体的分层结构、Figma 外框坐标、卡片尺寸/角度/层级、响应式整体缩放以及 reduced-motion
+      行为。浏览器验收读取关键 DOM 包围盒并检查搜索框与卡片的间距，而不能只依赖静态 class 快照。实现需通过涉及文件
+      lint/format、typecheck 和生产 build。
+    result: passed
+    reason:
+      text: 定位结构回归测试 5/5 通过；Runtime 的 lint、typecheck、build 均通过，Playwright 读取真实 DOM
+        几何完成验收。
+      truncated: false
+builder_handoff:
+  candidate_id: 28822a9e-143f-46ba-84a3-7572dfd90c38
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:5827cc58-cbb1-4837-b962-ec07c187014f
+  iteration: 2
+  summary:
+    text: 已实现 980px Figma 设计坐标空间和三张未旋转定位外框，卡片在外框内居中旋转；收紧 1230/1280 右锚点，并将 1:1 比例推迟至
+      1720px。搜索框保持 545x54。新增定位/尺寸/层级/响应式回归测试和 changelog。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+  checks:
+    - name:
+        text: pricing hero regression test
+        truncated: false
+      result: passed
+      note:
+        text: "Vitest: 1 file, 5 tests passed."
+        truncated: false
+    - name:
+        text: changed-file oxlint
+        truncated: false
+      result: passed
+      note:
+        text: 0 errors.
+        truncated: false
+    - name:
+        text: frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b exited 0.
+        truncated: false
+    - name:
+        text: production build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild completed successfully.
+        truncated: false
+    - name:
+        text: Playwright geometry matrix
+        truncated: false
+      result: passed
+      note:
+        text: "Light/dark 1920,1536,1440,1280,1230,768,390: no overlap, right clipping,
+          or horizontal overflow; 1920 gap 202.01px."
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-08-20T17:03:56.091Z
+blockers: []
+verification:
+  candidate_id: 28822a9e-143f-46ba-84a3-7572dfd90c38
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:35818b28-8cca-4a12-b6bb-31f91193829c
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: hero-test
+      name:
+        text: PricingHero regression tests
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: src/features/pricing/components/__tests__/pricing-hero.test.tsx
+          truncated: false
+        - text: --maxWorkers=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4109
+    - id: changed-lint
+      name:
+        text: Changed frontend files lint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/pricing/components/pricing-hero.tsx
+          truncated: false
+        - text: src/features/pricing/components/__tests__/pricing-hero.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 315
+    - id: typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2678
+    - id: build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 12169
+  summary:
+    text: Figma 定位外框、卡片几何、响应式缩放、无障碍与非回归检查均通过；1920px 实测间距 202.01px，窄桌面与移动端无重叠、裁切或水平滚动。
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-08-20T17:06:26.045Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A1
+      - A2
+      - A3
+      - A4
+      - A5
+      - A6
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A18
+      - A19
+      - A20
+      - A21
+      - A22
+      - A23
+    summary:
+      text: 候选实现缺失，返回 Build 完成代码与回归测试。
+      truncated: false
+    completed_at: 2026-08-20T16:46:04.928Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Figma 定位外框、卡片几何、响应式缩放、无障碍与非回归检查均通过；1920px 实测间距
+        202.01px，窄桌面与移动端无重叠、裁切或水平滚动。
+      truncated: false
+    completed_at: 2026-08-20T17:06:26.045Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-20T16:40:01.425Z
