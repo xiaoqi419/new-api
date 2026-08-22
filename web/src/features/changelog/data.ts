@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260822-d8a93d360',
+    date: '2026-08-22',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复英文长文案导致首页支持应用区超出 Hero 背景、模型广场搜索框与筛选工作区重叠的问题；中英文及窄屏布局保持流式展示。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260822-c3e1c20e1',
     date: '2026-08-22',
     changes: [

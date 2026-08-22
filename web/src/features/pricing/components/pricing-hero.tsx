@@ -103,13 +103,20 @@ export function PricingHero(props: PricingHeroProps) {
                   }
                 )}
           </p>
-          <SearchBar
-            value={props.searchValue}
-            onChange={props.onSearchChange}
-            onClear={props.onClearSearch}
-            placeholder={t('Search model name, provider, endpoint, or tag...')}
+          <div
+            data-testid='pricing-hero-search'
             className='mt-9 w-full max-w-[545px] xl:mt-[60px]'
-          />
+          >
+            <SearchBar
+              value={props.searchValue}
+              onChange={props.onSearchChange}
+              onClear={props.onClearSearch}
+              placeholder={t(
+                'Search model name, provider, endpoint, or tag...'
+              )}
+              className='w-full'
+            />
+          </div>
         </div>
 
         <div

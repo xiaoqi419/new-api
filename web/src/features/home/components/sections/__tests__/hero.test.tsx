@@ -27,6 +27,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
+import type { HeroContent } from '../../../types'
 import { Hero } from '../hero'
 
 vi.mock('@lobehub/icons', () => ({
@@ -45,12 +46,17 @@ vi.mock('@/hooks/use-status', () => ({
 
 vi.stubGlobal('scrollTo', vi.fn())
 
-function renderHeroRouter(isAuthenticated: boolean) {
+function renderHeroRouter(
+  isAuthenticated: boolean,
+  content?: Partial<HeroContent>
+) {
   const rootRoute = createRootRoute()
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <Hero isAuthenticated={isAuthenticated} />,
+    component: () => (
+      <Hero isAuthenticated={isAuthenticated} content={content} />
+    ),
   })
   const docsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -91,4 +97,47 @@ describe('Hero documentation link', () => {
       expect(router.state.location.pathname).toBe('/docs')
     }
   )
+})
+
+describe('Hero supported applications layout', () => {
+  test('contains a long application name within the responsive app region', async () => {
+    const longAppName =
+      'A very long supported application name for layout testing'
+
+    renderHeroRouter(false, {
+      apps: [
+        {
+          name: longAppName,
+          url: 'https://example.test/application',
+        },
+      ],
+    })
+
+    const appsRegion = await screen.findByTestId('home-hero-supported-apps')
+    expect(appsRegion).toHaveClass('min-w-0', 'max-w-full')
+
+    const apps = screen.getByTestId('home-hero-app-chips')
+    expect(apps).toHaveClass('min-w-0', 'max-w-full')
+
+    const appLink = screen.getByRole('link', { name: new RegExp(longAppName) })
+    expect(appLink).toHaveClass('min-w-0', 'max-w-full')
+    expect(appLink.lastElementChild).toHaveClass('min-w-0', 'truncate')
+  })
+
+  test('keeps the desktop hero rhythm inside the fixed background', async () => {
+    renderHeroRouter(false)
+
+    expect(await screen.findByTestId('home-hero')).toHaveClass('xl:h-[897px]')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass(
+      'lg:min-h-[210px]',
+      'lg:leading-[70px]'
+    )
+    expect(screen.getByTestId('home-hero-actions')).toHaveClass('lg:mt-[24px]')
+    expect(screen.getByTestId('home-hero-supported-apps')).toHaveClass(
+      'lg:mt-[24px]'
+    )
+    expect(screen.getByTestId('home-hero-card-art')).not.toHaveClass(
+      'translate-x-[210px]'
+    )
+  })
 })

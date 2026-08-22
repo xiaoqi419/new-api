@@ -1,0 +1,503 @@
+schema: comet.native.v4
+name: english-public-layout-resilience
+language: zh-CN
+phase: archive
+status: done
+state_version: 19
+brief: brief.md
+spec_changes:
+  - capability: public-layout-resilience
+    operation: create
+    source: specs/public-layout-resilience/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/english-public-layout-resilience
+  target_branch: comet/english-public-layout-resilience
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 4
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：英文模式的模型广场在 1910x740、1280x720、1440x900、1920x1080 下，Hero 搜索区与筛选/结果工作区至少保留
+      12px 可见间距，不发生遮挡。
+    result: passed
+    reason:
+      text: Existing verified pricing/model-square desktop separation remains
+        unchanged in this iteration.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：模型广场在 768x1024 与 390x844 下，侧栏、工具栏和结果面板均无横向溢出，搜索、筛选和结果仍可用。
+    result: passed
+    reason:
+      text: Existing verified tablet/mobile model-square overflow and control
+        accessibility remain unchanged.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：首页英文模式在上述桌面、平板和手机尺寸下，“Supported Applications”及应用入口完整位于预期 Hero
+      背景区域内，无文字或控件重叠。
+    result: passed
+    reason:
+      text: Saved local Hero browser evidence confirms English application content
+        remains visible without overlap; this iteration only changes Core
+        Features heading width.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：中文模式在同一尺寸矩阵下无新增重叠、裁切或横向溢出，现有视觉层级保持一致。
+    result: passed
+    reason:
+      text: Saved zhCN evidence remains valid; Core Features uses the original 430px
+        Chinese desktop width and no Hero geometry was changed.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：首页与模型广场在明暗主题下均通过浏览器渲染检查，无控制台页面错误；动效在 reduced-motion 下不妨碍内容访问。
+    result: passed
+    reason:
+      text: Saved en/zh light/dark browser matrix reports no page errors; current
+        change does not alter animation or theme behavior.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：相关布局测试、TypeScript 类型检查、涉及文件 lint/format、生产构建和 `git diff --check` 通过。
+    result: passed
+    reason:
+      text: "Comet required checks passed: focused regressions, lint, format,
+        TypeScript, production build, and diff check; Core Features tests were
+        rerun with 2/2 passing."
+      truncated: false
+  - id: A7
+    source: specs/public-layout-resilience/spec.md
+    text: 公开首页和模型广场必须在多语言、明暗主题和常用桌面/平板/手机视口下保持现有视觉身份，同时允许翻译文本自然增长而不破坏布局。
+    result: passed
+    reason:
+      text: The public layout preserves the existing visual identity while allowing
+        the English Core Features heading to occupy two rendered lines.
+      truncated: false
+  - id: A8
+    source: specs/public-layout-resilience/spec.md
+    text: Hero 保留现有标题、说明、行动入口、主题视觉背景和应用入口。
+    result: passed
+    reason:
+      text: Hero composition is unchanged and Core Features retains its heading and
+        Bento content.
+      truncated: false
+  - id: A9
+    source: specs/public-layout-resilience/spec.md
+    text: 英文长标题和说明可以自然换行；标题行高与各内容组间距必须确保应用入口仍位于 Hero 的预期背景区域内。
+    result: passed
+    reason:
+      text: The English Core Features heading has a 560px desktop width, preventing
+        the prior four-line overflow while retaining the fixed two-line line
+        break.
+      truncated: false
+  - id: A10
+    source: specs/public-layout-resilience/spec.md
+    text: 应用入口容器及各入口允许在窄空间中收缩或换行，不得造成页面横向滚动。
+    result: passed
+    reason:
+      text: No application chip or Hero control code changed in iteration 4; prior
+        label visibility evidence remains valid.
+      truncated: false
+  - id: A11
+    source: specs/public-layout-resilience/spec.md
+    text: 中文布局保持当前层级和视觉节奏，不因英文适配而出现明显松散或裁切。
+    result: passed
+    reason:
+      text: Chinese heading remains at 430px and the Bento grid position remains
+        min-[1272px]:top-[300px].
+      truncated: false
+  - id: A12
+    source: specs/public-layout-resilience/spec.md
+    text: Hero 中的标题、说明和搜索入口按真实内容高度参与文档流。
+    result: passed
+    reason:
+      text: The Core Features heading remains in its existing positioned content group
+        and the new width only resolves text wrapping.
+      truncated: false
+  - id: A13
+    source: specs/public-layout-resilience/spec.md
+    text: 筛选/结果工作区不得使用会覆盖可变高度 Hero 内容的深度负边距；桌面搜索区与工作区至少保留 12px 可见间距。
+    result: passed
+    reason:
+      text: No pricing workspace or negative-margin behavior changed; prior separation
+        evidence remains valid.
+      truncated: false
+  - id: A14
+    source: specs/public-layout-resilience/spec.md
+    text: 平板和手机上的侧栏、工具栏、模型网格或列表必须保持可访问，关键容器不得产生非预期横向溢出。
+    result: passed
+    reason:
+      text: No responsive model-square code changed; prior tablet/mobile evidence
+        remains valid.
+      truncated: false
+  - id: A15
+    source: specs/public-layout-resilience/spec.md
+    text: 布局规则同时适用于 light 与 dark 主题。
+    result: passed
+    reason:
+      text: The width class is language-specific only and applies in both themes; no
+        theme tokens or conditional rendering changed.
+      truncated: false
+  - id: A16
+    source: specs/public-layout-resilience/spec.md
+    text: 现有装饰动画可保留；系统启用 reduced motion 时内容位置、阅读和操作不依赖动画。
+    result: passed
+    reason:
+      text: No animation or content interaction depends on the heading width;
+        reduced-motion behavior is unchanged.
+      truncated: false
+  - id: A17
+    source: specs/public-layout-resilience/spec.md
+    text: 首页与模型广场具有针对长英文文本的稳定布局回归测试，不使用完整 Tailwind class 快照。
+    result: passed
+    reason:
+      text: features.test.tsx provides stable behavioral anchors and covers English
+        width/grid position plus Chinese width regression; 2 tests pass.
+      truncated: false
+  - id: A18
+    source: specs/public-layout-resilience/spec.md
+    text: TypeScript 全量检查、涉及文件 lint/format、生产构建及空白错误检查必须通过。
+    result: passed
+    reason:
+      text: Required checks and the current Core Features focused test/lint/format
+        rerun passed.
+      truncated: false
+  - id: A19
+    source: specs/public-layout-resilience/spec.md
+    text: 浏览器验证覆盖 en/zh、light/dark 和
+      1910x740、1280x720、1440x900、1920x1080、768x1024、390x844。
+    result: passed
+    reason:
+      text: The saved browser evidence covers en/zh, light/dark, and the required
+        desktop/tablet/mobile matrix; current change is limited to desktop Core
+        Features heading width.
+      truncated: false
+  - id: A20
+    source: specs/public-layout-resilience/spec.md
+    text: 本 change 只完成本地实现、验证和预览。在用户确认本地效果前，不提交、不推送、不合并、不部署。
+    result: passed
+    reason:
+      text: Work remains local and uncommitted; no commit, push, merge, or deployment
+        was performed.
+      truncated: false
+builder_handoff:
+  candidate_id: 44c2a3f0-1739-4902-8e6e-b88d53a395c5
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:246bd4e8-75fa-45da-a390-37ee62ed3704
+  iteration: 4
+  summary:
+    text: 修复 Core Features 英文桌面标题溢出：仅扩大英文标题容器到可容纳两行的宽度，保留中文原有宽度和 Bento 卡片原始位置；新增稳定
+      test id 与针对英文/中文换行和标题到卡片间距的回归测试。仅本地修改，未提交、推送、合并或部署。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A6
+    - A12
+    - A13
+    - A14
+    - A16
+  checks:
+    - name:
+        text: Focused Core Features regression
+        truncated: false
+      result: passed
+      note:
+        text: Core Features test file passed, 2 tests.
+        truncated: false
+    - name:
+        text: Targeted lint and format
+        truncated: false
+      result: passed
+      note:
+        text: Features component and test passed oxlint, oxfmt, and git diff --check.
+        truncated: false
+    - name:
+        text: TypeScript typecheck
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b completed successfully.
+        truncated: false
+    - name:
+        text: Production build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild production build completed successfully.
+        truncated: false
+    - name:
+        text: Rendered English heading geometry
+        truncated: false
+      result: passed
+      note:
+        text: English desktop heading renders exactly two lines with clientHeight equal
+          to scrollHeight and leaves a measured gap before the Bento grid.
+        truncated: false
+    - name:
+        text: Chinese regression geometry
+        truncated: false
+      result: passed
+      note:
+        text: Chinese desktop retains the original two-line heading width and no
+          horizontal overflow.
+        truncated: false
+    - name:
+        text: Candidate whitespace validation
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The local preview has no backend model dataset, so Model Square remains in
+        its valid zero-model state.
+      truncated: false
+    - text: Per user instruction, no commit, push, merge, or deployment was performed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-22T11:42:06.036Z
+blockers: []
+verification:
+  candidate_id: 44c2a3f0-1739-4902-8e6e-b88d53a395c5
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:dfe118ef-83d8-42fb-bf22-eacd0c4b3adc
+  iteration: 4
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: english-layout-focused-tests
+      name:
+        text: Focused home and pricing layout regressions
+        truncated: false
+      argv_display:
+        - text: vitest
+          truncated: false
+        - text: run
+          truncated: false
+        - text: --pool=threads
+          truncated: false
+        - text: src/features/home/components/sections/__tests__/hero.test.tsx
+          truncated: false
+        - text: src/features/pricing/components/__tests__/pricing-hero.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5974
+    - id: english-layout-lint
+      name:
+        text: Targeted frontend lint
+        truncated: false
+      argv_display:
+        - text: oxlint
+          truncated: false
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/context/search-provider.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/home/components/sections/hero.tsx
+          truncated: false
+        - text: src/features/home/components/sections/__tests__/hero.test.tsx
+          truncated: false
+        - text: src/features/pricing/components/pricing-hero.tsx
+          truncated: false
+        - text: src/features/pricing/components/__tests__/pricing-hero.test.tsx
+          truncated: false
+        - text: src/features/pricing/index.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 968
+    - id: english-layout-format
+      name:
+        text: Targeted frontend format check
+        truncated: false
+      argv_display:
+        - text: oxfmt
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: src/context/search-provider.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/home/components/sections/hero.tsx
+          truncated: false
+        - text: src/features/home/components/sections/__tests__/hero.test.tsx
+          truncated: false
+        - text: src/features/pricing/components/pricing-hero.tsx
+          truncated: false
+        - text: src/features/pricing/components/__tests__/pricing-hero.test.tsx
+          truncated: false
+        - text: src/features/pricing/index.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1083
+    - id: english-layout-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: node_modules/@typescript/native-preview/bin/tsgo
+          truncated: false
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2600
+    - id: english-layout-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: node_modules/@rsbuild/core/bin/rsbuild.js
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 17477
+    - id: english-layout-diff
+      name:
+        text: Candidate whitespace validation
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 55
+  summary:
+    text: "Local Core Features English heading repair is verified: the heading now
+      fits the intended two-line composition, the Bento grid remains at its
+      original position, Chinese width is preserved, and all required automated
+      checks pass."
+    truncated: false
+  risks:
+    - text: Fresh verifier agents were unavailable because the runtime returned HTTP
+        429 twice; the result relies on saved independent v3 browser evidence
+        plus current Comet checks and focused Core Features rerun.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-22T11:59:18.695Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passed A1-A20 using the specification,
+        diff, Runtime checks, local artifacts, and live localhost preview.
+      truncated: false
+    completed_at: 2026-08-22T06:31:36.491Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户指出英文 Hero 文案仍被背景边界遮住，撤销上一轮通过结论并返回 Build，继续仅本地修复。
+      truncated: false
+    completed_at: 2026-08-22T09:47:43.366Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Independent read-only verification confirms the reported overlap is
+        resolved: Hero text, buttons, and applications remain clear of the
+        shifted decorative cards."
+      truncated: false
+    completed_at: 2026-08-22T10:06:06.959Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户指出右移装饰卡破坏原始 UI，撤销第二轮通过结论并返回 Build：恢复卡片原始坐标，改为收紧左侧英文内容安全区。
+      truncated: false
+    completed_at: 2026-08-22T10:40:07.966Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification confirms original card coordinates and
+        composition are restored, artwork has no transform, and English left
+        content is fully visible without collision.
+      truncated: false
+    completed_at: 2026-08-22T10:52:15.773Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户确认上一处效果并指出 Core Features 英文标题与四宫格重叠，作为同一英文布局 change 的实现遗漏返回
+        Build；保持卡片坐标，只修标题排版。
+      truncated: false
+    completed_at: 2026-08-22T10:54:19.274Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Local Core Features English heading repair is verified: the heading now
+        fits the intended two-line composition, the Bento grid remains at its
+        original position, Chinese width is preserved, and all required
+        automated checks pass."
+      truncated: false
+    completed_at: 2026-08-22T11:59:18.695Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-22T05:56:48.483Z

@@ -136,8 +136,11 @@ function FeatureVisual({
 }
 
 export function Features(props: FeaturesProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const content = props.content
+  const desktopHeadingWidth = i18n.resolvedLanguage?.startsWith('en')
+    ? 'min-[1272px]:w-[560px]'
+    : 'min-[1272px]:w-[430px]'
   const defaults = [
     {
       num: '01',
@@ -217,13 +220,19 @@ export function Features(props: FeaturesProps) {
           <p className='mb-2 text-[15px] leading-[17px] font-medium text-[#6b6b6b] min-[1272px]:mb-[6px] min-[1272px]:h-[22px] dark:text-[#a0a0a0]'>
             {content?.eyebrow ?? t('Core Features')}
           </p>
-          <h2 className='text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black tracking-normal min-[1272px]:h-[110px] min-[1272px]:w-[430px] min-[1272px]:text-[48px] min-[1272px]:leading-[51px]'>
+          <h2
+            data-testid='home-features-heading'
+            className={`text-[clamp(2rem,4vw,3rem)] leading-[1.06] font-black tracking-normal min-[1272px]:h-[110px] ${desktopHeadingWidth} min-[1272px]:text-[48px] min-[1272px]:leading-[51px]`}
+          >
             {content?.headingLine1 ?? t('Built for developers,')}
             <br />
             {content?.headingLine2 ?? t('designed for scale')}
           </h2>
         </AnimateInView>
-        <div className='mx-auto grid max-w-[1196px] overflow-hidden rounded-[34px] border border-white/[0.9] bg-white/[0.62] shadow-[0_18px_36px_rgba(0,0,0,0.06)] min-[1272px]:absolute min-[1272px]:top-[300px] min-[1272px]:left-1/2 min-[1272px]:h-[470px] min-[1272px]:w-[1196px] min-[1272px]:max-w-none min-[1272px]:-translate-x-1/2 min-[1272px]:grid-cols-[repeat(2,598px)] min-[1272px]:grid-rows-[repeat(2,235px)] dark:border-white/[0.08] dark:bg-[#303030] dark:shadow-[0_18px_36px_rgba(0,0,0,0.24)]'>
+        <div
+          data-testid='home-features-bento-grid'
+          className='mx-auto grid max-w-[1196px] overflow-hidden rounded-[34px] border border-white/[0.9] bg-white/[0.62] shadow-[0_18px_36px_rgba(0,0,0,0.06)] min-[1272px]:absolute min-[1272px]:top-[300px] min-[1272px]:left-1/2 min-[1272px]:h-[470px] min-[1272px]:w-[1196px] min-[1272px]:max-w-none min-[1272px]:-translate-x-1/2 min-[1272px]:grid-cols-[repeat(2,598px)] min-[1272px]:grid-rows-[repeat(2,235px)] dark:border-white/[0.08] dark:bg-[#303030] dark:shadow-[0_18px_36px_rgba(0,0,0,0.24)]'
+        >
           {bentoCards.map((card, index) => {
             const desktopCardPosition = [
               'min-[1272px]:top-[-1px] min-[1272px]:left-[-1px]',

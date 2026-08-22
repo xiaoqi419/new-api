@@ -244,7 +244,10 @@ export function Pricing() {
             onClearSearch={clearSearch}
           />
 
-          <section className='relative z-10 mx-auto mt-[-48px] w-full max-w-[1132px] px-4 pb-12 sm:px-6 xl:mt-[-124px] xl:grid xl:h-[552px] xl:grid-cols-[356px_742px] xl:gap-[34px] xl:px-0 xl:pb-0'>
+          <section
+            data-testid='pricing-results-workspace'
+            className='relative z-10 mx-auto mt-[-48px] w-full max-w-[1132px] px-4 pb-12 sm:px-6 xl:mt-0 xl:grid xl:h-[552px] xl:grid-cols-[356px_742px] xl:gap-[34px] xl:px-0 xl:pb-0'
+          >
             <aside className='hidden h-[552px] xl:block'>
               <PricingSidebar {...filterPanelProps} className='h-full' />
             </aside>

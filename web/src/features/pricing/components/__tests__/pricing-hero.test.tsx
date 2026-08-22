@@ -39,8 +39,11 @@ describe('PricingHero', () => {
     )
     expect(description).toHaveTextContent('Loading...')
 
-    const input = screen.getByRole('textbox', { name: 'Search models' })
-    expect(input.parentElement).toHaveClass('xl:mt-[60px]')
+    const searchAnchor = screen.getByTestId('pricing-hero-search')
+    expect(searchAnchor).toHaveClass('xl:mt-[60px]')
+    expect(searchAnchor).toContainElement(
+      screen.getByRole('textbox', { name: 'Search models' })
+    )
   })
 
   test('renders the full model description when data is available', () => {
