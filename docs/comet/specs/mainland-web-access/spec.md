@@ -19,7 +19,7 @@ The policy is evaluated before static serving for root and direct HTML document 
 
 When the policy applies, the response is HTTP 451 with `text/html; charset=utf-8`, `Cache-Control: no-store`, and a restrictive inline-document security policy. The page uses the active `classic` or default theme via `common.GetTheme()`, contains no pink palette, and localizes its status, title, and explanation from backend i18n.
 
-The policy never blocks API or relay paths beginning with `/api` or `/v1`, static assets under `/assets`, or conventional health and metrics paths (`/health`, `/healthz`, `/ready`, `/readyz`, `/live`, `/livez`, and `/metrics`). Static non-document resources remain served by the existing static middleware.
+The policy never blocks the exact paths `/api`, `/v1`, or `/assets`, their slash-delimited descendants, conventional health and metrics paths (`/health`, `/healthz`, `/ready`, `/readyz`, `/live`, `/livez`, and `/metrics`), or static non-document resources served by existing static middleware. Lookalike website paths that merely share those byte prefixes, including `/api-login`, `/v1-docs`, and `/assets-page`, are not exempt and remain subject to the website document policy.
 
 ## Configuration and operations
 
@@ -34,7 +34,8 @@ Leaving the country-header variable empty disables the policy. `TRUSTED_PROXIES`
 
 ## Verification contract
 
-- Focused tests prove trusted CN requests receive HTTP 451 on direct document and SPA fallback paths.
+- Focused tests prove trusted CN requests receive HTTP 451 on direct document and SPA fallback paths, including prefix-collision routes and the `FRONTEND_BASE_URL` NoRoute redirect path.
 - Tests prove trusted non-CN, missing values, disabled configuration, untrusted direct clients, and malformed/implicit trusted-proxy configuration do not trigger HTTP 451.
-- Tests prove API, static asset, and health/metrics paths remain outside the policy boundary.
+- Tests prove exact API/relay/static paths and slash-delimited descendants, plus health/metrics paths, remain outside the policy boundary.
 - Locale tests or static assertions confirm the English, Simplified Chinese, and Traditional Chinese backend message keys resolve.
+- Current-candidate browser evidence uses installed Chrome/Edge with `--force-prefers-reduced-motion=reduce` or equivalent CDP to verify existing login and forgot-password behavior at desktop and 320px, Chinese and English, and reduced motion without adding a browser dependency.

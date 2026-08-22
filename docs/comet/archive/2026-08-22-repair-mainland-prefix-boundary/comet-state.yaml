@@ -1,0 +1,411 @@
+schema: comet.native.v4
+name: repair-mainland-prefix-boundary
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: mainland-web-access
+    operation: modify
+    source: specs/mainland-web-access/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/repair-mainland-prefix-boundary
+  target_branch: comet/auth-access-quality-pass
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A11/A21：当前候选在真实 reduced-motion 渲染时，认证叙事区保持静态连接且信息与操作完整。
+    result: passed
+    reason:
+      text: 本机 Edge 强制 reduced-motion 验证登录与忘记密码页连接静止且内容操作完整。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A12/A22：可信 CN 对所有官网 HTML 路由均直接收到主题化 HTTP 451；前缀碰撞与 `FRONTEND_BASE_URL`
+      NoRoute 不能绕过。
+    result: passed
+    reason:
+      text: 可信 CN 的官网 HTML、前缀碰撞和 FRONTEND_BASE_URL NoRoute 均返回 451。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A17：当前登录和忘记密码页面的桌面/320px、中文/英文、reduced-motion 浏览器验收，以及 CN、非 CN、未知与伪造头 HTTP
+      验收均有可复现证据。
+    result: passed
+    reason:
+      text: 完成中英文、1440px/320px、reduced-motion 八组本地浏览器证据及 HTTP 信任边界验证。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A25：区域访问回归测试断言精确豁免分段、前缀碰撞 HTML 路由与保留的 API/静态/健康边界。
+    result: passed
+    reason:
+      text: 回归测试覆盖精确豁免分段、前缀碰撞和健康路径。
+      truncated: false
+  - id: A5
+    source: specs/mainland-web-access/spec.md
+    text: The embedded website server can enforce a mainland-China website access
+      policy without changing API relay behavior. The policy is disabled unless
+      `MAINLAND_WEB_ACCESS_COUNTRY_HEADER` is set to the name of the reverse
+      proxy header that carries the country code.
+    result: passed
+    reason:
+      text: 国家头变量为空时策略禁用并保持原 SPA 路径。
+      truncated: false
+  - id: A6
+    source: specs/mainland-web-access/spec.md
+    text: "When enabled, the server reads that header only if all of the following
+      are true:"
+    result: passed
+    reason:
+      text: 配置头、可信代理、直接对端和 CN 值四项条件串联判定。
+      truncated: false
+  - id: A7
+    source: specs/mainland-web-access/spec.md
+    text: "`TRUSTED_PROXIES` is an explicit, non-empty comma-separated list of
+      concrete IP addresses or CIDRs."
+    result: passed
+    reason:
+      text: 仅接受非空显式 IP 或 CIDR 可信代理列表。
+      truncated: false
+  - id: A8
+    source: specs/mainland-web-access/spec.md
+    text: The list is not `none`, does not contain `*`, and every entry is a valid
+      IP address or CIDR.
+    result: passed
+    reason:
+      text: 空值、none、通配和非法代理配置均 fail-open。
+      truncated: false
+  - id: A9
+    source: specs/mainland-web-access/spec.md
+    text: The direct TCP peer parsed from `Request.RemoteAddr` belongs to one of
+      those entries.
+    result: passed
+    reason:
+      text: 只使用 Request.RemoteAddr 并校验直接 TCP 对端。
+      truncated: false
+  - id: A10
+    source: specs/mainland-web-access/spec.md
+    text: The configured header value trims and case-insensitively equals `CN`.
+    result: passed
+    reason:
+      text: 国家值 TrimSpace 后以 EqualFold 匹配 CN。
+      truncated: false
+  - id: A11
+    source: specs/mainland-web-access/spec.md
+    text: The policy does not use `ClientIP()`, `X-Forwarded-For`, another forwarded
+      address, a GeoIP lookup, or a default/private trusted-proxy range to
+      decide whether a country header is authoritative. If any input cannot
+      establish trust, the request follows its existing path.
+    result: passed
+    reason:
+      text: 未使用转发地址或 GeoIP，不可信直接对端不能触发策略。
+      truncated: false
+  - id: A12
+    source: specs/mainland-web-access/spec.md
+    text: The policy is evaluated before static serving for root and direct HTML
+      document requests, including `/index.html`. It is also evaluated
+      immediately before the main SPA fallback, the canvas SPA fallback, and the
+      fallback used when `FRONTEND_BASE_URL` redirects website routes. Therefore
+      trusted `CN` requests cannot obtain website HTML or bypass the policy
+      through login, registration, documentation, canvas, or another SPA deep
+      link.
+    result: passed
+    reason:
+      text: 静态服务、主 SPA、canvas SPA 和重定向 fallback 前均执行策略。
+      truncated: false
+  - id: A13
+    source: specs/mainland-web-access/spec.md
+    text: "When the policy applies, the response is HTTP 451 with `text/html;
+      charset=utf-8`, `Cache-Control: no-store`, and a restrictive
+      inline-document security policy. The page uses the active `classic` or
+      default theme via `common.GetTheme()`, contains no pink palette, and
+      localizes its status, title, and explanation from backend i18n."
+    result: passed
+    reason:
+      text: 451 响应头、CSP、主题和本地化内容符合规格且无粉色。
+      truncated: false
+  - id: A14
+    source: specs/mainland-web-access/spec.md
+    text: The policy never blocks the exact paths `/api`, `/v1`, or `/assets`, their
+      slash-delimited descendants, conventional health and metrics paths
+      (`/health`, `/healthz`, `/ready`, `/readyz`, `/live`, `/livez`, and
+      `/metrics`), or static non-document resources served by existing static
+      middleware. Lookalike website paths that merely share those byte prefixes,
+      including `/api-login`, `/v1-docs`, and `/assets-page`, are not exempt and
+      remain subject to the website document policy.
+    result: passed
+    reason:
+      text: API、relay、静态和健康路径按分段豁免，前缀碰撞不豁免。
+      truncated: false
+  - id: A15
+    source: specs/mainland-web-access/spec.md
+    text: "Operators enable the policy by configuring both variables with a proxy
+      they control. For example, a proxy at `192.0.2.10` that supplies
+      `CF-IPCountry` uses:"
+    result: passed
+    reason:
+      text: 运行配置与正式 Spec 的受控代理示例一致。
+      truncated: false
+  - id: A16
+    source: specs/mainland-web-access/spec.md
+    text: Leaving the country-header variable empty disables the policy.
+      `TRUSTED_PROXIES` compatibility defaults, `none`, wildcard entries,
+      malformed lists, or a direct peer outside the list leave the policy
+      fail-open even if a request presents `CN`.
+    result: passed
+    reason:
+      text: 禁用、无效代理和不可信来源全部 fail-open。
+      truncated: false
+  - id: A17
+    source: specs/mainland-web-access/spec.md
+    text: Focused tests prove trusted CN requests receive HTTP 451 on direct
+      document and SPA fallback paths, including prefix-collision routes and the
+      `FRONTEND_BASE_URL` NoRoute redirect path.
+    result: passed
+    reason:
+      text: 聚焦 HTTP 测试覆盖文档、SPA fallback、前缀碰撞和重定向边界。
+      truncated: false
+  - id: A18
+    source: specs/mainland-web-access/spec.md
+    text: Tests prove trusted non-CN, missing values, disabled configuration,
+      untrusted direct clients, and malformed/implicit trusted-proxy
+      configuration do not trigger HTTP 451.
+    result: passed
+    reason:
+      text: 非 CN、缺失信号、不可信来源和无效配置均有放行测试。
+      truncated: false
+  - id: A19
+    source: specs/mainland-web-access/spec.md
+    text: Tests prove exact API/relay/static paths and slash-delimited descendants,
+      plus health/metrics paths, remain outside the policy boundary.
+    result: passed
+    reason:
+      text: 精确 API、relay、静态及健康路径放行测试通过。
+      truncated: false
+  - id: A20
+    source: specs/mainland-web-access/spec.md
+    text: Locale tests or static assertions confirm the English, Simplified Chinese,
+      and Traditional Chinese backend message keys resolve.
+    result: passed
+    reason:
+      text: 英文、简体中文和繁体中文后端文案键均解析正确。
+      truncated: false
+  - id: A21
+    source: specs/mainland-web-access/spec.md
+    text: Current-candidate browser evidence uses installed Chrome/Edge with
+      `--force-prefers-reduced-motion=reduce` or equivalent CDP to verify
+      existing login and forgot-password behavior at desktop and 320px, Chinese
+      and English, and reduced motion without adding a browser dependency.
+    result: passed
+    reason:
+      text: 系统 Edge 对登录和忘记密码完成中英文、桌面/320px、reduced-motion 八组真实渲染，无横向溢出。
+      truncated: false
+builder_handoff:
+  candidate_id: 14a4f7bf-e500-4a4f-8f9b-93ec6e33883a
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:6cfbfc7a-0abe-464b-a8bb-657efccbd55f
+  iteration: 1
+  summary:
+    text: Made mainland website exemptions segment-safe for /api, /v1, and /assets;
+      added trusted-CN prefix-collision and FRONTEND_BASE_URL-style NoRoute
+      redirect regressions. Existing auth UI behavior was not changed.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+  checks:
+    - name:
+        text: gofmt middleware/mainland_web_access.go
+          middleware/mainland_web_access_test.go
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: go test ./middleware -count=1
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: go test ./common ./middleware -count=1
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: go vet ./middleware
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: Current-candidate browser reduced-motion rendering
+        truncated: false
+      result: not-run
+      note:
+        text: Reserved for the independent Verifier as required by the repair scope.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No local browser rendering was claimed by this Builder; the independent
+        Verifier must collect current-candidate desktop, 320px, Chinese,
+        English, and reduced-motion evidence.
+      truncated: false
+    - text: A Git commit could not be created because this workspace has no configured
+        Git author identity; only the four intended files are staged, while the
+        four pre-existing mode-only files and Runtime state remain unstaged.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T22:30:27.365Z
+blockers: []
+verification:
+  candidate_id: 14a4f7bf-e500-4a4f-8f9b-93ec6e33883a
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:3ec2685e-6e73-41db-86b8-a3fd33a709a1
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: mainland-middleware-tests
+      name:
+        text: Mainland access middleware regressions
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./middleware
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 28787
+    - id: mainland-common-tests
+      name:
+        text: Common and middleware integration tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./common
+          truncated: false
+        - text: ./middleware
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3594
+    - id: mainland-middleware-vet
+      name:
+        text: Mainland middleware vet
+        truncated: false
+      argv_display:
+        - text: vet
+          truncated: false
+        - text: ./middleware
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1815
+    - id: mainland-diff-check
+      name:
+        text: Mainland access whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: HEAD^
+          truncated: false
+        - text: --
+          truncated: false
+        - text: middleware/mainland_web_access.go
+          truncated: false
+        - text: middleware/mainland_web_access_test.go
+          truncated: false
+        - text: docs/comet/changes/repair-mainland-prefix-boundary
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 77
+  summary:
+    text: 独立核对正式规格、当前实现和 Runtime 检查，并完成 Go 与本地 Edge 浏览器矩阵；A1-A21 全部通过。
+    truncated: false
+  risks:
+    - text: 浏览器验证使用本地开发服务和确定性 API 响应替身，不包含真实认证提交。
+      truncated: false
+    - text: 截图中的 TanStack Router 调试入口仅出现在开发模式。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-22T04:40:51.206Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立核对正式规格、当前实现和 Runtime 检查，并完成 Go 与本地 Edge 浏览器矩阵；A1-A21 全部通过。
+      truncated: false
+    completed_at: 2026-08-22T04:40:51.206Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-21T22:21:18.089Z
