@@ -29,7 +29,7 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '20260822-455195351',
+    version: '20260822-c3e1c20e1',
     date: '2026-08-22',
     changes: [
       {
@@ -38,6 +38,7 @@ export const CHANGELOG: ChangelogEntry[] = [
           '登录页欢迎语与找回、重置密码页面统一为同一套暗色双栏认证体验，并保留原有验证和密码流程。',
           '登录与注册页的 Claude、Codex、Gemini 模型提示新增克制的单轨流动连接，并尊重“减少动态效果”设置。',
           '登录后的侧栏、嵌套设置导航、命令菜单和顶部导航统一使用 Lucide 线性图标。',
+          '登录后的侧边栏按聊天、常规、计费、增长和个人重新分组，财务、拼团、邀请与身份认证入口更容易找到。',
           '官网可根据可信反向代理的地区信号限制中国大陆访问，API、中转、静态资源和健康检查保持原行为。',
         ],
       },
