@@ -140,39 +140,63 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        id: 'personal',
-        title: t('Personal'),
+        id: 'billing',
+        title: t('Billing'),
         items: [
           {
             title: t('Finance Center'),
             url: '/finance/wallet',
-            activeUrls: [
-              '/finance/groupbuy',
-              '/finance/invoices',
-              '/finance/lottery',
-              '/groupbuy/detail',
-            ],
-            configUrls: [
-              '/finance/wallet',
-              '/finance/groupbuy',
-              '/finance/invoices',
-              '/finance/lottery',
-            ],
+            configUrls: ['/finance/wallet'],
             icon: Wallet,
           },
           {
-            title: t('Personal Center'),
+            title: t('Invoices'),
+            url: '/finance/invoices',
+            configUrls: ['/finance/wallet'],
+            icon: ReceiptText,
+          },
+        ],
+      },
+      {
+        id: 'growth',
+        title: t('Growth'),
+        items: [
+          {
+            title: t('Group Buy Hall'),
+            url: '/finance/groupbuy',
+            activeUrls: ['/groupbuy/detail'],
+            configUrls: ['/finance/groupbuy'],
+            icon: HandCoins,
+          },
+          {
+            title: t('Lucky Draw'),
+            url: '/finance/lottery',
+            configUrls: ['/finance/groupbuy'],
+            icon: Dices,
+          },
+          {
+            title: t('Invitation'),
+            url: '/account/invitation',
+            configUrls: ['/account/profile'],
+            icon: Gift,
+          },
+        ],
+      },
+      {
+        id: 'personal',
+        title: t('Personal'),
+        items: [
+          {
+            title: t('Profile'),
             url: '/account/profile',
-            activeUrls: [
-              '/account/invitation',
-              '/account/identity-verification',
-            ],
-            configUrls: [
-              '/account/profile',
-              '/account/invitation',
-              '/account/identity-verification',
-            ],
+            configUrls: ['/account/profile'],
             icon: User,
+          },
+          {
+            title: t('Identity Verification'),
+            url: '/account/identity-verification',
+            configUrls: ['/account/profile'],
+            icon: BadgeCheck,
           },
           {
             title: t('Tickets'),
