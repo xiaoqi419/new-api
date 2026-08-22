@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate } from '@tanstack/react-router'
-import { User, Wallet, LogOut, Settings } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { User, Wallet, LogOut, Settings } from '@/components/icons'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -47,7 +47,7 @@ export function ProfileDropdown() {
   const user = useAuthStore((state) => state.auth.user)
   const { displayName, roleLabel } = useUserDisplay(user)
   const isSuperAdmin = user?.role === ROLE.SUPER_ADMIN
-  const isWalletVisible = useIsSidebarModuleVisible('/wallet')
+  const isWalletVisible = useIsSidebarModuleVisible('/finance/wallet')
   const avatarName = user?.username || displayName
   const avatarFallback = getUserAvatarFallback(avatarName)
   const avatarFallbackStyle = useMemo(
@@ -102,13 +102,27 @@ export function ProfileDropdown() {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => navigate({ to: '/profile' })}>
+          <DropdownMenuItem
+            onClick={() =>
+              navigate({
+                to: '/account/$section',
+                params: { section: 'profile' },
+              })
+            }
+          >
             <User className='size-4' />
             {t('Profile')}
           </DropdownMenuItem>
 
           {isWalletVisible && (
-            <DropdownMenuItem onClick={() => navigate({ to: '/wallet' })}>
+            <DropdownMenuItem
+              onClick={() =>
+                navigate({
+                  to: '/finance/$section',
+                  params: { section: 'wallet' },
+                })
+              }
+            >
               <Wallet className='size-4' />
               {t('Wallet')}
             </DropdownMenuItem>

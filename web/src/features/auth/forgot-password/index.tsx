@@ -19,37 +19,34 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { AuthLayout } from '../auth-layout'
+import { AuthCard } from '../components/auth-card'
+import { AuthExperienceLayout } from '../components/auth-experience-layout'
 import { ForgotPasswordForm } from './components/forgot-password-form'
 
 export function ForgotPassword() {
   const { t } = useTranslation()
   return (
-    <AuthLayout>
-      <div className='w-full space-y-8'>
-        <div className='space-y-3'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Forgot password')}
-          </h2>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {t(
-              'Enter your registered email and we will send you a link to reset your password.'
-            )}
-          </p>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {t("Don't have an account?")}{' '}
-            <Link
-              to='/sign-up'
-              className='hover:text-primary font-medium underline underline-offset-4'
-            >
-              {t('Sign up')}
-            </Link>
-            .
-          </p>
-        </div>
+    <AuthExperienceLayout page='forgot-password'>
+      <AuthCard
+        showBrand={false}
+        title={t('Forgot password')}
+        description={t(
+          'Enter your registered email and we will send you a link to reset your password.'
+        )}
+        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
+      >
+        <ForgotPasswordForm />
 
-        <ForgotPasswordForm className='space-y-0' />
-      </div>
-    </AuthLayout>
+        <p className='text-muted-foreground mt-[14px] text-center text-sm'>
+          {t("Don't have an account?")}
+          <Link
+            to='/sign-up'
+            className='text-primary ms-1.5 font-bold hover:underline'
+          >
+            {t('Sign up')}
+          </Link>
+        </p>
+      </AuthCard>
+    </AuthExperienceLayout>
   )
 }

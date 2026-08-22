@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -455,20 +456,30 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		userCache.WriteContext(c)
+		c.Set("user_max_concurrency", userCache.MaxConcurrency)
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group
 		if tokenGroup != "" {
-			// check common.UserUsableGroups[userGroup]
-			if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
-				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", tokenGroup))
-				return
-			}
-			// check group in common.GroupRatio
-			if !ratio_setting.ContainsGroupRatio(tokenGroup) {
-				if tokenGroup != "auto" {
-					abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("分组 %s 已被弃用", tokenGroup))
+			if strings.HasPrefix(tokenGroup, setting.AutoGroupPrefix) {
+				// Named auto route (auto:<key>): allowed when it resolves to an
+				// enabled chain. Per-user group filtering happens at dispatch.
+				if len(setting.ResolveAutoGroupChain(tokenGroup)) == 0 {
+					abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("分组 %s 不可用", tokenGroup))
 					return
+				}
+			} else {
+				// check common.UserUsableGroups[userGroup]
+				if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
+					abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", tokenGroup))
+					return
+				}
+				// check group in common.GroupRatio
+				if !ratio_setting.ContainsGroupRatio(tokenGroup) {
+					if tokenGroup != "auto" {
+						abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("分组 %s 已被弃用", tokenGroup))
+						return
+					}
 				}
 			}
 			userGroup = tokenGroup
@@ -491,6 +502,7 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	c.Set("token_id", token.Id)
 	c.Set("token_key", token.Key)
 	c.Set("token_name", token.Name)
+	c.Set("token_max_concurrency", token.MaxConcurrency)
 	c.Set("token_unlimited_quota", token.UnlimitedQuota)
 	if !token.UnlimitedQuota {
 		c.Set("token_quota", token.RemainQuota)
@@ -501,8 +513,23 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	} else {
 		c.Set("token_model_limit_enabled", false)
 	}
-	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
+	// Legacy "auto"/"auto:<key>" token groups are retired; fall back to the
+	// user's group so existing keys keep working until reconfigured.
+	tokenGroup := token.Group
+	if tokenGroup == "auto" || strings.HasPrefix(tokenGroup, "auto:") {
+		tokenGroup = ""
+	}
+	common.SetContextKey(c, constant.ContextKeyTokenGroup, tokenGroup)
 	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
+	if token.GroupSwitchEnabled {
+		candidates := token.GetGroupSwitchGroups()
+		if len(candidates) >= 2 {
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitch, true)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchCandidates, candidates)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchThreshold, token.GroupSwitchThreshold)
+			common.SetContextKey(c, constant.ContextKeyTokenGroupSwitchCooldown, token.GroupSwitchCooldown)
+		}
+	}
 	if token.AutoGroups != "" {
 		autoGroups, err := token.GetAutoGroups()
 		if err != nil {

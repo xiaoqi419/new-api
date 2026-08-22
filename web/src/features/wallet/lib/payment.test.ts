@@ -16,15 +16,37 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import assert from 'node:assert/strict'
+
 import { describe, expect, test } from 'vitest'
 
 import { PAYMENT_TYPES } from '../constants'
+import type { TopupInfo } from '../types'
 import {
   dispatchSelectedPayment,
+  getEpayCheckoutData,
+  getDefaultPaymentType,
+  getMinTopupAmount,
+  isAlipayDirectPayment,
+  isSafeEpayCheckoutTarget,
+  isSafePaymentRedirectUrl,
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
 } from './payment'
+
+function buildTopupInfo(overrides: Partial<TopupInfo>): TopupInfo {
+  return {
+    enable_online_topup: false,
+    enable_stripe_topup: false,
+    pay_methods: [],
+    min_topup: 1,
+    stripe_min_topup: 1,
+    amount_options: [],
+    discount: {},
+    ...overrides,
+  }
+}
 
 describe('payment type classification', () => {
   test('keeps Waffo and Waffo Pancake on their dedicated flows', () => {
@@ -33,6 +55,134 @@ describe('payment type classification', () => {
     expect(isWaffoPancakePayment(PAYMENT_TYPES.WAFFO_PANCAKE)).toBe(true)
     expect(isWaffoPancakePayment(PAYMENT_TYPES.WAFFO)).toBe(false)
     expect(isStripePayment(PAYMENT_TYPES.STRIPE)).toBe(true)
+  })
+
+  test('separates the direct Alipay merchant from the epay Alipay channel', () => {
+    assert.equal(isAlipayDirectPayment(PAYMENT_TYPES.ALIPAY_DIRECT), true)
+    assert.equal(isAlipayDirectPayment(PAYMENT_TYPES.ALIPAY), false)
+  })
+})
+
+describe('payment redirect URL safety', () => {
+  test('accepts http and https targets only', () => {
+    assert.equal(
+      isSafePaymentRedirectUrl('https://openapi.alipay.com/gateway.do?x=1'),
+      true
+    )
+    assert.equal(isSafePaymentRedirectUrl('http://pay.example.com'), true)
+    assert.equal(isSafePaymentRedirectUrl('javascript:alert(1)'), false)
+    assert.equal(isSafePaymentRedirectUrl('/console/log'), false)
+    assert.equal(isSafePaymentRedirectUrl('https:checkout.example.com'), false)
+    assert.equal(isSafePaymentRedirectUrl('http:checkout.example.com'), false)
+    assert.equal(isSafePaymentRedirectUrl('   '), false)
+  })
+})
+
+describe('Epay checkout target safety', () => {
+  test('accepts the allowlisted app schemes for their matching payment methods', () => {
+    assert.equal(
+      isSafeEpayCheckoutTarget(
+        'urlscheme',
+        'alipay://platformapi/startapp',
+        PAYMENT_TYPES.ALIPAY
+      ),
+      true
+    )
+    assert.equal(
+      isSafeEpayCheckoutTarget(
+        'urlscheme',
+        'alipays://platformapi/startapp',
+        PAYMENT_TYPES.ALIPAY
+      ),
+      true
+    )
+    assert.equal(
+      isSafeEpayCheckoutTarget(
+        'urlscheme',
+        'weixin://dl/business',
+        PAYMENT_TYPES.WECHAT
+      ),
+      true
+    )
+    assert.equal(
+      isSafeEpayCheckoutTarget('urlscheme', 'wxp://f2f0', PAYMENT_TYPES.WECHAT),
+      true
+    )
+  })
+
+  test('rejects executable, data, unknown, and mismatched app schemes', () => {
+    for (const value of [
+      'javascript:alert(1)',
+      'data:text/html;base64,PHNjcmlwdD4=',
+      'unknown://checkout',
+    ]) {
+      assert.equal(
+        isSafeEpayCheckoutTarget('urlscheme', value, PAYMENT_TYPES.ALIPAY),
+        false
+      )
+    }
+    assert.equal(
+      isSafeEpayCheckoutTarget(
+        'urlscheme',
+        'alipays://platformapi/startapp',
+        PAYMENT_TYPES.WECHAT
+      ),
+      false
+    )
+  })
+})
+
+describe('Epay checkout normalization', () => {
+  test('normalizes a legacy pay_url into in-modal checkout data', () => {
+    assert.deepEqual(
+      getEpayCheckoutData(
+        {
+          trade_no: ' TRADE-LEGACY-1 ',
+          pay_url: ' https://pay.example.com/checkout?id=1 ',
+        },
+        { paymentMethod: PAYMENT_TYPES.ALIPAY, money: '12.50' }
+      ),
+      {
+        trade_no: 'TRADE-LEGACY-1',
+        checkout_type: 'payurl',
+        checkout_value: 'https://pay.example.com/checkout?id=1',
+        payment_method: PAYMENT_TYPES.ALIPAY,
+        money: '12.50',
+      }
+    )
+  })
+
+  test('normalizes a legacy qr_code without navigating to it', () => {
+    assert.deepEqual(
+      getEpayCheckoutData(
+        { trade_no: 'TRADE-LEGACY-2', qr_code: 'weixin://wxpay/token' },
+        { paymentMethod: PAYMENT_TYPES.WECHAT, money: 8 }
+      ),
+      {
+        trade_no: 'TRADE-LEGACY-2',
+        checkout_type: 'qrcode',
+        checkout_value: 'weixin://wxpay/token',
+        payment_method: PAYMENT_TYPES.WECHAT,
+        money: '8',
+      }
+    )
+  })
+
+  test('rejects unsafe or incomplete legacy checkout data', () => {
+    assert.equal(
+      getEpayCheckoutData(
+        { trade_no: 'TRADE-UNSAFE', pay_url: 'javascript:alert(1)' },
+        { paymentMethod: PAYMENT_TYPES.ALIPAY, money: '10.00' }
+      ),
+      null
+    )
+    assert.equal(
+      getEpayCheckoutData({
+        trade_no: 'TRADE-INCOMPLETE',
+        pay_url: 'https://pay.example.com/checkout',
+      }),
+      null
+    )
   })
 })
 
@@ -56,6 +206,14 @@ describe('payment dispatch', () => {
           calls.push('pancake')
           return false
         },
+        alipay: async () => {
+          calls.push('alipay')
+          return false
+        },
+        wechat: async () => {
+          calls.push('wechat')
+          return false
+        },
       }
     )
 
@@ -76,10 +234,83 @@ describe('payment dispatch', () => {
           return true
         },
         waffoPancake: async () => false,
+        alipay: async () => false,
+        wechat: async () => false,
       }
     )
 
     expect(success).toBe(false)
     expect(called).toBe(false)
+  })
+
+  test('sends the direct Alipay merchant method to its own processor', async () => {
+    const calls: string[] = []
+    const success = await dispatchSelectedPayment(
+      { name: '支付宝', type: PAYMENT_TYPES.ALIPAY_DIRECT },
+      50,
+      null,
+      {
+        regular: async () => {
+          calls.push('regular')
+          return false
+        },
+        waffo: async () => false,
+        waffoPancake: async () => false,
+        alipay: async (amount) => {
+          calls.push(`alipay:${amount}`)
+          return true
+        },
+        wechat: async () => false,
+      }
+    )
+
+    assert.equal(success, true)
+    assert.deepEqual(calls, ['alipay:50'])
+  })
+
+  test('keeps the epay Alipay channel on the generic epay form flow', async () => {
+    const calls: string[] = []
+    await dispatchSelectedPayment(
+      { name: '支付宝', type: PAYMENT_TYPES.ALIPAY },
+      50,
+      null,
+      {
+        regular: async (amount, paymentType) => {
+          calls.push(`regular:${amount}:${paymentType}`)
+          return true
+        },
+        waffo: async () => false,
+        waffoPancake: async () => false,
+        alipay: async () => {
+          calls.push('alipay')
+          return true
+        },
+        wechat: async () => false,
+      }
+    )
+
+    assert.deepEqual(calls, ['regular:50:alipay'])
+  })
+})
+
+describe('direct Alipay availability', () => {
+  test('keeps the topup form usable when Alipay is the only enabled gateway', () => {
+    const topupInfo = buildTopupInfo({
+      enable_alipay_topup: true,
+      min_topup: 6,
+      alipay_min_topup: 10,
+      pay_methods: [
+        { name: '支付宝', type: PAYMENT_TYPES.ALIPAY_DIRECT, min_topup: 10 },
+      ],
+    })
+
+    assert.equal(getMinTopupAmount(topupInfo), 6)
+    assert.equal(getDefaultPaymentType(topupInfo), PAYMENT_TYPES.ALIPAY_DIRECT)
+  })
+
+  test('falls back to direct Alipay when the backend returned no pay methods', () => {
+    const topupInfo = buildTopupInfo({ enable_alipay_topup: true })
+
+    assert.equal(getDefaultPaymentType(topupInfo), PAYMENT_TYPES.ALIPAY_DIRECT)
   })
 })

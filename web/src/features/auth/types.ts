@@ -26,6 +26,7 @@ export interface LoginPayload {
   username: string
   password: string
   turnstile?: string
+  captcha?: CaptchaQuery
 }
 
 export interface TwoFAPayload {
@@ -40,6 +41,7 @@ export interface RegisterPayload {
   verification_code?: string
   aff_code?: string
   turnstile?: string
+  captcha?: CaptchaQuery
 }
 
 export interface PasswordResetPayload {
@@ -86,6 +88,35 @@ export interface ApiResponse<T = unknown> {
 }
 
 // ============================================================================
+// WeChat Official Account verification
+// ============================================================================
+
+export interface WeChatMpCode {
+  code: string
+  /**
+   * Opaque handle the browser polls with. Kept separate from `code` because
+   * `code` is only six digits and is meant to be typed into WeChat by hand;
+   * polling on it would let anyone brute-force their way into a session.
+   */
+  token: string
+  qrcode: string
+  /** Code lifetime in seconds. */
+  expire: number
+}
+
+/**
+ * Poll payload while the user has not replied yet. Once the Official Account
+ * receives the code, the same endpoint answers with the login bundle (sign-in),
+ * `{ status: 'bound' }` (account binding), or `{ status: 'unbound' }` when the
+ * openid belongs to nobody yet and the user still has to pick what to do.
+ */
+export interface WeChatMpPendingStatus {
+  status: 'pending' | 'expired' | 'bound' | 'unbound'
+  /** Only present on `unbound`: whether new sign-ups are allowed at all. */
+  register_enabled?: boolean
+}
+
+// ============================================================================
 // System Status
 // ============================================================================
 
@@ -96,6 +127,8 @@ export interface SystemStatus {
     version?: string
     system_name?: string
     logo?: string
+    login_page_config?: string
+    promo_banner_config?: string
     github_oauth?: boolean
     github_client_id?: string
     discord_oauth?: boolean
@@ -110,6 +143,7 @@ export interface SystemStatus {
     telegram_bot_name?: string
     passkey_login?: boolean
     wechat_login?: boolean
+    wechat_mp?: boolean
     wechat_qrcode?: string
     wechat_qr_code?: string
     wechat_qrcode_image_url?: string
@@ -117,6 +151,7 @@ export interface SystemStatus {
     wechat_account_qrcode_image_url?: string
     WeChatAccountQRCodeImageURL?: string
     turnstile_check?: boolean
+    click_captcha_enabled?: boolean
     turnstile_site_key?: string
     email_verification?: boolean
     self_use_mode_enabled?: boolean
@@ -130,6 +165,8 @@ export interface SystemStatus {
     demo_site_enabled?: boolean
     user_agreement_enabled?: boolean
     privacy_policy_enabled?: boolean
+    legal_version?: string
+    community_links?: string
     oauth_register_enabled?: boolean
     register_enabled?: boolean
     password_login_enabled?: boolean
@@ -141,6 +178,8 @@ export interface SystemStatus {
   version?: string
   system_name?: string
   logo?: string
+  login_page_config?: string
+  promo_banner_config?: string
   github_oauth?: boolean
   github_client_id?: string
   discord_oauth?: boolean
@@ -155,6 +194,7 @@ export interface SystemStatus {
   telegram_bot_name?: string
   passkey_login?: boolean
   wechat_login?: boolean
+  wechat_mp?: boolean
   wechat_qrcode?: string
   wechat_qr_code?: string
   wechat_qrcode_image_url?: string
@@ -162,6 +202,7 @@ export interface SystemStatus {
   wechat_account_qrcode_image_url?: string
   WeChatAccountQRCodeImageURL?: string
   turnstile_check?: boolean
+  click_captcha_enabled?: boolean
   turnstile_site_key?: string
   email_verification?: boolean
   self_use_mode_enabled?: boolean
@@ -175,10 +216,13 @@ export interface SystemStatus {
   demo_site_enabled?: boolean
   user_agreement_enabled?: boolean
   privacy_policy_enabled?: boolean
+  legal_version?: string
+  community_links?: string
   oauth_register_enabled?: boolean
   register_enabled?: boolean
   password_login_enabled?: boolean
   password_register_enabled?: boolean
+  default_theme_preset?: string
   custom_oauth_providers?: CustomOAuthProviderInfo[]
   [key: string]: unknown
 }
@@ -211,4 +255,23 @@ export interface CustomOAuthProviderInfo {
 
 export interface AuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
+}
+
+/** A solved click captcha: the challenge id plus flat "x,y,x,y,x,y" click positions. */
+export interface ClickCaptchaSolution {
+  id: string
+  points: string
+}
+
+export interface ClickCaptchaChallenge {
+  id: string
+  image: string
+  targets: string[]
+  width: number
+  height: number
+}
+
+export interface CaptchaQuery {
+  captcha_id?: string
+  captcha_points?: string
 }

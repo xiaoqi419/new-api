@@ -7,6 +7,11 @@ import (
 	"github.com/QuantumNous/new-api/model"
 )
 
+// ErrWalletQuotaInsufficient signals that an atomic wallet pre-consume lost the
+// balance race: the row no longer covers the requested amount. Callers map it to
+// an insufficient-quota (403) response instead of a generic update error.
+var ErrWalletQuotaInsufficient = errors.New("用户钱包额度不足")
+
 // ---------------------------------------------------------------------------
 // FundingSource — 资金来源接口（钱包 or 订阅）
 // ---------------------------------------------------------------------------
@@ -81,7 +86,8 @@ type SubscriptionFunding struct {
 	requestId      string
 	userId         int
 	modelName      string
-	amount         int64 // 预扣的订阅额度（subConsume）
+	usingGroup     string // 请求实际使用的分组，用于匹配 ScopeGroup 限定的订阅
+	amount         int64  // 预扣的订阅额度（subConsume）
 	subscriptionId int
 	preConsumed    int64
 	// 以下字段在 PreConsume 成功后填充，供 RelayInfo 同步使用
@@ -95,7 +101,7 @@ func (s *SubscriptionFunding) Source() string { return BillingSourceSubscription
 
 func (s *SubscriptionFunding) PreConsume(_ int) error {
 	// amount 参数被忽略，使用内部 s.amount（已在构造时根据 preConsumedQuota 计算）
-	res, err := model.PreConsumeUserSubscription(s.requestId, s.userId, s.modelName, 0, s.amount)
+	res, err := model.PreConsumeUserSubscription(s.requestId, s.userId, s.modelName, s.usingGroup, 0, s.amount)
 	if err != nil {
 		return err
 	}

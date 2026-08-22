@@ -18,10 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 'use client'
 
-import { type LucideIcon, XIcon } from 'lucide-react'
 import type { ComponentProps, HTMLAttributes } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { type LucideIcon, XIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,

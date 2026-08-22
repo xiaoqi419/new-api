@@ -16,12 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  ArrowDownIcon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import * as React from 'react'
 import {
   DayPicker,
@@ -30,6 +24,7 @@ import {
   type Locale,
 } from 'react-day-picker'
 
+import { ArrowDown, ArrowLeft, ArrowRight } from '@/components/icons'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -167,35 +162,14 @@ function Calendar({
         },
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === 'left') {
-            return (
-              <HugeiconsIcon
-                icon={ArrowLeftIcon}
-                strokeWidth={2}
-                className={cn('size-4', className)}
-                {...props}
-              />
-            )
+            return <ArrowLeft className={cn('size-4', className)} {...props} />
           }
 
           if (orientation === 'right') {
-            return (
-              <HugeiconsIcon
-                icon={ArrowRightIcon}
-                strokeWidth={2}
-                className={cn('size-4', className)}
-                {...props}
-              />
-            )
+            return <ArrowRight className={cn('size-4', className)} {...props} />
           }
 
-          return (
-            <HugeiconsIcon
-              icon={ArrowDownIcon}
-              strokeWidth={2}
-              className={cn('size-4', className)}
-              {...props}
-            />
-          )
+          return <ArrowDown className={cn('size-4', className)} {...props} />
         },
         DayButton: ({ ...props }) => (
           <CalendarDayButton locale={locale} {...props} />

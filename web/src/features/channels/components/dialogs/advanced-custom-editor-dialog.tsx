@@ -24,15 +24,15 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  CircleDollarSign,
   Code2,
   Info,
-  ListTree,
+  List,
+  DollarSign,
   Plus,
   Shuffle,
   Trash2,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -689,19 +689,19 @@ export function AdvancedCustomEditorDialog({
         <div className='border-b px-4 py-3'>
           <TabsList className='grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4'>
             <TabsTrigger value='forwarding'>
-              <ListTree className='size-4' aria-hidden='true' />
+              <List className='size-4' aria-hidden='true' />
               {t('Forwarding Routes')}
               <Badge variant='outline'>{routeRows.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value='models'>
-              <ListTree className='size-4' aria-hidden='true' />
+              <List className='size-4' aria-hidden='true' />
               {t('Model List')}
               <Badge variant='outline'>
                 {modelListRoute ? t('Configured') : t('Not configured')}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value='balance'>
-              <CircleDollarSign className='size-4' aria-hidden='true' />
+              <DollarSign className='size-4' aria-hidden='true' />
               {t('Balance Query')}
               <Badge variant='outline'>
                 {balanceRoute ? t('Configured') : t('Not configured')}

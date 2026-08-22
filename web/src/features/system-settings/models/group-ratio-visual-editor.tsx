@@ -1,3 +1,21 @@
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  memo,
+  type ReactNode,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { StaticDataTable } from '@/components/data-table/static/static-data-table'
+import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
+import { Dialog } from '@/components/dialog'
+import {
+  sideDrawerContentClassName,
+  sideDrawerFormClassName,
+  sideDrawerHeaderClassName,
+} from '@/components/drawer-layout'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -23,25 +41,7 @@ import {
   Info,
   Plus,
   Trash2,
-} from 'lucide-react'
-import {
-  useState,
-  useMemo,
-  useEffect,
-  useCallback,
-  memo,
-  type ReactNode,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { StaticDataTable } from '@/components/data-table/static/static-data-table'
-import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
-import { Dialog } from '@/components/dialog'
-import {
-  sideDrawerContentClassName,
-  sideDrawerFormClassName,
-  sideDrawerHeaderClassName,
-} from '@/components/drawer-layout'
+} from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {

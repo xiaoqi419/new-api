@@ -20,7 +20,15 @@ import { formatCurrencyFromUSD } from '@/lib/currency'
 
 import { QUOTA_TYPE_VALUES, TOKEN_UNIT_DIVISORS } from '../constants'
 import type { PricingModel, TokenUnit, PriceType } from '../types'
-import { getConfiguredGroupRatio, getDisplayGroupRatio } from './model-helpers'
+import {
+  getDynamicPricingSummary,
+  isDynamicPricingModel,
+} from './dynamic-price'
+import {
+  getConfiguredGroupRatio,
+  getDisplayGroupRatio,
+  isTokenBasedModel,
+} from './model-helpers'
 
 // ----------------------------------------------------------------------------
 // Price Calculation Utilities
@@ -269,4 +277,67 @@ export function formatRequestPrice(
     digitsSmall: 4,
     abbreviate: false,
   })
+}
+
+export type GroupChipPriceOptions = {
+  tokenUnit: TokenUnit
+  showRechargePrice: boolean
+  priceRate: number
+  usdExchangeRate: number
+  groupRatio: Record<string, number>
+  /** Copy shown when a tiered expression cannot be reduced to unit prices. */
+  dynamicLabel: string
+}
+
+/**
+ * Price label for a model chip inside a group row.
+ *
+ * Always resolves against the row's own group ratio rather than the "best
+ * available group" fallback used by summary prices, because a chip and the
+ * model detail page opened from it must state the same number.
+ */
+export function formatGroupChipPrice(
+  model: PricingModel,
+  group: string,
+  options: GroupChipPriceOptions
+): string {
+  const ratio = getConfiguredGroupRatio(options.groupRatio, group)
+
+  if (isDynamicPricingModel(model)) {
+    const summary = getDynamicPricingSummary(model, {
+      tokenUnit: options.tokenUnit,
+      showRechargePrice: options.showRechargePrice,
+      priceRate: options.priceRate,
+      usdExchangeRate: options.usdExchangeRate,
+      groupRatioMultiplier: ratio,
+    })
+    const entries = summary?.primaryEntries ?? []
+    if (entries.length === 0) return options.dynamicLabel
+    return entries.map((entry) => entry.formatted).join(' / ')
+  }
+
+  if (!isTokenBasedModel(model)) {
+    return formatFixedPrice(
+      model,
+      group,
+      options.showRechargePrice,
+      options.priceRate,
+      options.usdExchangeRate,
+      options.groupRatio
+    )
+  }
+
+  const renderType = (type: PriceType) =>
+    formatGroupPrice(
+      model,
+      group,
+      type,
+      options.tokenUnit,
+      options.showRechargePrice,
+      options.priceRate,
+      options.usdExchangeRate,
+      options.groupRatio
+    )
+
+  return `${renderType('input')} / ${renderType('output')}`
 }

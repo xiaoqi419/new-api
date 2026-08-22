@@ -18,13 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Code2, Eye, ShieldAlert } from 'lucide-react'
 import * as React from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
+import { Code2, Eye, ShieldAlert } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
 import {
@@ -1262,24 +1262,24 @@ export function PaymentSettingsSection({
                   </p>
                 </div>
 
-                <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
+                <div className='bg-chart-1/8 text-foreground rounded-md p-4 text-sm'>
                   <p className='mb-2 font-medium'>
                     {t('Webhook Configuration:')}
                   </p>
                   <ul className='list-inside list-disc space-y-1'>
                     <li>
                       {t('Webhook URL:')}{' '}
-                      <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
+                      <code className='bg-chart-1/15 rounded px-1 py-0.5 text-xs'>
                         {'<ServerAddress>/api/stripe/webhook'}
                       </code>
                     </li>
                     <li>
                       {t('Required events:')}{' '}
-                      <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
+                      <code className='bg-chart-1/15 rounded px-1 py-0.5 text-xs'>
                         {t('checkout.session.completed')}
                       </code>{' '}
                       {t('and')}{' '}
-                      <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
+                      <code className='bg-chart-1/15 rounded px-1 py-0.5 text-xs'>
                         {t('checkout.session.expired')}
                       </code>
                     </li>
@@ -1454,14 +1454,14 @@ export function PaymentSettingsSection({
                   </p>
                 </div>
 
-                <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
+                <div className='bg-chart-1/8 text-foreground rounded-md p-4 text-sm'>
                   <p className='mb-2 font-medium'>
                     {t('Webhook Configuration:')}
                   </p>
                   <ul className='list-inside list-disc space-y-1'>
                     <li>
                       {t('Webhook URL:')}{' '}
-                      <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
+                      <code className='bg-chart-1/15 rounded px-1 py-0.5 text-xs'>
                         {'<ServerAddress>/api/creem/webhook'}
                       </code>
                     </li>

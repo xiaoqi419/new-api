@@ -16,12 +16,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useRouterState } from '@tanstack/react-router'
+
+import { usePromoBanner } from '@/hooks/use-promo-banner'
+import { cn } from '@/lib/utils'
+
 import type { TopNavLink } from '../types'
 import { PublicHeader, type PublicHeaderProps } from './public-header'
 
 type PublicLayoutProps = {
   children: React.ReactNode
   showMainContainer?: boolean
+  /** Opt a public page into the marketing/home shell without changing its route. */
+  publicSurface?: 'home' | 'business'
   navContent?: React.ReactNode
   headerProps?: Omit<PublicHeaderProps, 'navContent'>
   navLinks?: TopNavLink[]
@@ -33,8 +40,22 @@ type PublicLayoutProps = {
 }
 
 export function PublicLayout(props: PublicLayoutProps) {
+  const { visible: promoVisible } = usePromoBanner()
+  const pathname = useRouterState().location.pathname
+  const publicSurface =
+    props.publicSurface ?? (pathname === '/' ? 'home' : 'business')
+
   return (
-    <div className='bg-background text-foreground relative min-h-svh overflow-x-clip'>
+    <div
+      data-public-surface={publicSurface}
+      className={cn(
+        'public-layout bg-background text-foreground relative min-h-svh overflow-x-clip',
+        // The header is fixed, so each page reserves room for it with its own
+        // top padding. Padding the wrapper shifts every page down by the strip
+        // height at once, including the many that opt out of `main`.
+        promoVisible && 'pt-9'
+      )}
+    >
       <PublicHeader
         navContent={props.navContent}
         navLinks={props.navLinks}
@@ -44,6 +65,7 @@ export function PublicLayout(props: PublicLayoutProps) {
         logo={props.logo}
         siteName={props.siteName}
         {...props.headerProps}
+        visualSurface={publicSurface}
       />
 
       {props.showMainContainer !== false ? (

@@ -17,14 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { Dialog } from '@/components/dialog'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
+import { Loader2 } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
@@ -37,21 +37,31 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { register, wechatLoginByCode } from '@/features/auth/api'
-import { LegalConsent } from '@/features/auth/components/legal-consent'
+import { register } from '@/features/auth/api'
+import {
+  AuthDivider,
+  authInputClassName,
+  authSecondaryButtonClassName,
+  authSubmitClassName,
+} from '@/features/auth/components/auth-card'
+import { AuthTabs } from '@/features/auth/components/auth-tabs'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
+import { WeChatLoginDialog } from '@/features/auth/components/wechat-login-dialog'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
+import {
+  toCaptchaQuery,
+  useClickCaptchaEnabled,
+} from '@/features/auth/hooks/use-click-captcha'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
+import { hasOAuthProviders } from '@/features/auth/lib/oauth'
 import {
   getAffiliateCode,
   saveAffiliateCode,
 } from '@/features/auth/lib/storage'
+import type { ClickCaptchaSolution } from '@/features/auth/types'
 import { useStatus } from '@/hooks/use-status'
-import { isAuthBundle } from '@/lib/api'
-import { getServerErrorMessageKey } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 export function SignUpForm({
@@ -61,12 +71,13 @@ export function SignUpForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
-  const [agreedToLegal, setAgreedToLegal] = useState(false)
-  const [wechatCode, setWeChatCode] = useState('')
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
-  const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
+  // One dialog serves both the submit and the send-code button, so the
+  // pending action has to be remembered while the puzzle is on screen.
+  const [captchaAction, setCaptchaAction] = useState<
+    'register' | 'send-code' | null
+  >(null)
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
-  const legalConsentErrorMessage = t('Please agree to the legal terms first')
 
   const { status } = useStatus()
   const {
@@ -76,7 +87,8 @@ export function SignUpForm({
     setTurnstileToken,
     validateTurnstile,
   } = useTurnstile()
-  const { redirectToLogin, handleLoginSuccess } = useAuthRedirect()
+  const isClickCaptchaEnabled = useClickCaptchaEnabled()
+  const { redirectToLogin } = useAuthRedirect()
   const {
     isSending: isSendingCode,
     secondsLeft,
@@ -99,37 +111,12 @@ export function SignUpForm({
 
   const emailValue = form.watch('email')
   const emailVerificationRequired = !!status?.email_verification
-  const hasUserAgreement = Boolean(status?.user_agreement_enabled)
-  const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
-  const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
   const oauthRegisterEnabled =
     status?.oauth_register_enabled ??
     status?.data?.oauth_register_enabled ??
     true
   const hasWeChatLogin = Boolean(status?.wechat_login)
   const turnstileReady = !isTurnstileEnabled || Boolean(turnstileToken)
-
-  const wechatQrCodeUrl = useMemo(() => {
-    return (
-      status?.wechat_qrcode ||
-      status?.wechat_qr_code ||
-      status?.wechat_qrcode_image_url ||
-      status?.wechat_qr_code_image_url ||
-      status?.wechat_account_qrcode_image_url ||
-      status?.WeChatAccountQRCodeImageURL ||
-      status?.data?.wechat_qrcode ||
-      status?.data?.WeChatAccountQRCodeImageURL ||
-      ''
-    )
-  }, [status])
-
-  useEffect(() => {
-    if (requiresLegalConsent) {
-      setAgreedToLegal(false)
-    } else {
-      setAgreedToLegal(true)
-    }
-  }, [requiresLegalConsent])
 
   useEffect(() => {
     const aff = new URLSearchParams(window.location.search).get('aff')?.trim()
@@ -138,26 +125,10 @@ export function SignUpForm({
     }
   }, [])
 
-  async function onSubmit(data: z.infer<typeof registerFormSchema>) {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
-    // Validate email verification if required
-    if (emailVerificationRequired) {
-      if (!data.email) {
-        toast.error(t('Please enter your email'))
-        return
-      }
-      if (!verificationCode) {
-        toast.error(t('Please enter the verification code'))
-        return
-      }
-    }
-
-    if (!validateTurnstile()) return
-
+  async function submitRegistration(
+    data: z.infer<typeof registerFormSchema>,
+    captchaSolution: ClickCaptchaSolution | null
+  ) {
     setIsLoading(true)
     try {
       const res = await register({
@@ -167,6 +138,7 @@ export function SignUpForm({
         verification_code: verificationCode || undefined,
         aff_code: getAffiliateCode(),
         turnstile: turnstileToken,
+        captcha: toCaptchaQuery(captchaSolution),
       })
 
       if (res?.success) {
@@ -182,53 +154,59 @@ export function SignUpForm({
     }
   }
 
-  async function handleSendVerificationCode() {
-    if (await sendCode(emailValue || '')) {
+  function onSubmit(data: z.infer<typeof registerFormSchema>) {
+    // Validate email verification if required
+    if (emailVerificationRequired) {
+      if (!data.email) {
+        toast.error(t('Please enter your email'))
+        return
+      }
+      if (!verificationCode) {
+        toast.error(t('Please enter the verification code'))
+        return
+      }
+    }
+
+    if (!validateTurnstile()) return
+
+    // The captcha is asked for last: a challenge is spent on the first check
+    // either way, so it is only worth showing once the form is otherwise ready.
+    if (isClickCaptchaEnabled) {
+      setCaptchaAction('register')
+      return
+    }
+    void submitRegistration(data, null)
+  }
+
+  // Closing the dialog unmounts the puzzle, so a rejected attempt gets a
+  // fresh image on the next try without any explicit reset.
+  const handleCaptchaSolved = (solution: ClickCaptchaSolution) => {
+    const action = captchaAction
+    setCaptchaAction(null)
+    if (action === 'send-code') {
+      void sendVerificationCode(solution)
+      return
+    }
+    void form.handleSubmit((data) => submitRegistration(data, solution))()
+  }
+
+  async function sendVerificationCode(captcha: ClickCaptchaSolution | null) {
+    if (await sendCode(emailValue || '', captcha)) {
       setTurnstileToken('')
       setTurnstileWidgetKey((current) => current + 1)
     }
   }
 
-  const handleOpenWeChatDialog = () => {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
+  function handleSendVerificationCode() {
+    if (!emailValue) {
+      toast.error(t('Please enter your email first'))
       return
     }
-
-    setIsWeChatDialogOpen(true)
-  }
-
-  const handleWeChatDialogChange = (open: boolean) => {
-    setIsWeChatDialogOpen(open)
-    if (!open) {
-      setWeChatCode('')
-      setIsWeChatSubmitting(false)
-    }
-  }
-
-  async function handleWeChatLogin() {
-    if (!wechatCode.trim()) {
-      toast.error(t('Please enter the verification code'))
+    if (isClickCaptchaEnabled) {
+      setCaptchaAction('send-code')
       return
     }
-
-    setIsWeChatSubmitting(true)
-    try {
-      const res = await wechatLoginByCode(wechatCode)
-      if (res?.success && isAuthBundle(res.data)) {
-        await handleLoginSuccess(res.data)
-        toast.success(t('Signed in via WeChat'))
-        handleWeChatDialogChange(false)
-      } else {
-        if (getServerErrorMessageKey(res)) return
-        toast.error(res?.message || t('Login failed'))
-      }
-    } catch (error: unknown) {
-      if (getServerErrorMessageKey(error)) return
-      toast.error(t('Login failed'))
-    } finally {
-      setIsWeChatSubmitting(false)
-    }
+    void sendVerificationCode(null)
   }
 
   let verificationCodeAction: ReactNode = t('Send code')
@@ -244,9 +222,26 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('grid gap-[18px]', className)}
         {...props}
       >
+        {oauthRegisterEnabled && (
+          <>
+            <OAuthProviders
+              status={status}
+              disabled={isLoading}
+              onWeChatLogin={
+                hasWeChatLogin ? () => setIsWeChatDialogOpen(true) : undefined
+              }
+            />
+            {hasOAuthProviders(status) && (
+              <AuthDivider>{t('Or sign up with your account')}</AuthDivider>
+            )}
+          </>
+        )}
+
+        <AuthTabs active='sign-up' />
+
         {/* Username Field */}
         <FormField
           control={form.control}
@@ -255,40 +250,11 @@ export function SignUpForm({
             <FormItem>
               <FormLabel>{t('Username')}</FormLabel>
               <FormControl>
-                <Input placeholder={t('Enter your username')} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Password Field */}
-        <FormField
-          control={form.control}
-          name='password'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('Password')}</FormLabel>
-              <FormControl>
-                <PasswordInput
-                  placeholder={t('Enter password (8-20 characters)')}
+                <Input
+                  placeholder={t('Enter your username')}
+                  className={authInputClassName}
                   {...field}
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Confirm Password Field */}
-        <FormField
-          control={form.control}
-          name='confirmPassword'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('Confirm password')}</FormLabel>
-              <FormControl>
-                <PasswordInput placeholder={t('Confirm password')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -311,6 +277,7 @@ export function SignUpForm({
                     <Input
                       placeholder={t('name@example.com')}
                       type='email'
+                      className={authInputClassName}
                       {...field}
                     />
                   </FormControl>
@@ -326,6 +293,7 @@ export function SignUpForm({
                   placeholder={t('Verification code')}
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
+                  className={authInputClassName}
                 />
               </div>
               <Button
@@ -339,6 +307,7 @@ export function SignUpForm({
                   !turnstileReady
                 }
                 onClick={handleSendVerificationCode}
+                className={cn(authSecondaryButtonClassName, 'px-[14px]')}
               >
                 {verificationCodeAction}
               </Button>
@@ -346,113 +315,79 @@ export function SignUpForm({
           </>
         )}
 
+        {/* Password Field */}
+        <FormField
+          control={form.control}
+          name='password'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Password')}</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder={t('Enter password (8-20 characters)')}
+                  className={authInputClassName}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Confirm Password Field */}
+        <FormField
+          control={form.control}
+          name='confirmPassword'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Confirm password')}</FormLabel>
+              <FormControl>
+                <PasswordInput
+                  placeholder={t('Confirm password')}
+                  className={authInputClassName}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Turnstile */}
         {isTurnstileEnabled && (
-          <div className='mt-2'>
-            <Turnstile
-              key={turnstileWidgetKey}
-              siteKey={turnstileSiteKey}
-              onVerify={setTurnstileToken}
-            />
-          </div>
+          <Turnstile
+            key={turnstileWidgetKey}
+            siteKey={turnstileSiteKey}
+            onVerify={setTurnstileToken}
+          />
         )}
-
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
-        />
 
         {/* Submit Button */}
         <Button
           type='submit'
-          className='mt-2 w-full justify-center gap-2'
-          disabled={
-            isLoading ||
-            (requiresLegalConsent && !agreedToLegal) ||
-            !turnstileReady
-          }
+          className={authSubmitClassName}
+          disabled={isLoading || !turnstileReady}
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
           {t('Create account')}
         </Button>
-
-        {oauthRegisterEnabled && (
-          <OAuthProviders
-            status={status}
-            disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
-            onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
-            isWeChatLoading={isWeChatSubmitting}
-            className='pt-2'
-          />
-        )}
       </form>
 
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={captchaAction !== null}
+          onOpenChange={(open) => {
+            if (!open) setCaptchaAction(null)
+          }}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
+
       {hasWeChatLogin && (
-        <Dialog
+        <WeChatLoginDialog
           open={isWeChatDialogOpen}
-          onOpenChange={handleWeChatDialogChange}
-          title={t('WeChat sign in')}
-          description={t(
-            'Scan the QR code to follow the official account and reply with “验证码” to receive your verification code.'
-          )}
-          contentClassName='max-w-sm'
-          headerClassName='text-left'
-          contentHeight='auto'
-          bodyClassName='space-y-4'
-          footer={
-            <>
-              <Button
-                type='button'
-                variant='outline'
-                onClick={() => handleWeChatDialogChange(false)}
-                disabled={isWeChatSubmitting}
-              >
-                {t('Cancel')}
-              </Button>
-              <Button
-                type='button'
-                onClick={handleWeChatLogin}
-                disabled={
-                  isWeChatSubmitting ||
-                  !wechatCode.trim() ||
-                  (requiresLegalConsent && !agreedToLegal)
-                }
-                className='gap-2'
-              >
-                {isWeChatSubmitting ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : null}
-                {t('Confirm')}
-              </Button>
-            </>
-          }
-        >
-          {wechatQrCodeUrl ? (
-            <div className='flex justify-center'>
-              <img
-                src={wechatQrCodeUrl}
-                alt={t('WeChat login QR code')}
-                className='h-40 w-40 rounded-md border object-contain'
-              />
-            </div>
-          ) : (
-            <p className='text-muted-foreground text-sm'>
-              {t('QR code is not configured. Please contact support.')}
-            </p>
-          )}
-          <div className='grid gap-2'>
-            <Label htmlFor='wechat-code'>{t('Verification code')}</Label>
-            <Input
-              id='wechat-code'
-              placeholder={t('Enter the verification code')}
-              value={wechatCode}
-              onChange={(event) => setWeChatCode(event.target.value)}
-              autoComplete='one-time-code'
-            />
-          </div>
-        </Dialog>
+          onOpenChange={setIsWeChatDialogOpen}
+        />
       )}
     </Form>
   )

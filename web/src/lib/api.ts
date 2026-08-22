@@ -72,13 +72,17 @@ export async function getStatus() {
   return res.data?.data as Record<string, unknown>
 }
 
-export async function getNotice(): Promise<{
-  success: boolean
-  message?: string
-  data?: string
-}> {
-  const res = await api.get('/api/notice')
-  return res.data
+/**
+ * Shared cache entry for `/api/status`. Startup branding, the root layout's
+ * system config and every `useStatus()` consumer all need the same payload, so
+ * they must go through one query key or the boot sequence fires the request
+ * several times over.
+ */
+export const statusQueryOptions = {
+  queryKey: ['status'] as const,
+  queryFn: getStatus,
+  staleTime: 5 * 60 * 1000,
+  gcTime: 30 * 60 * 1000,
 }
 
 // ============================================================================

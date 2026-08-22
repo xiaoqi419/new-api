@@ -219,6 +219,30 @@ export function useUsersColumns(): ColumnDef<User>[] {
       meta: { mobileOrder: 20 },
     },
     {
+      accessorKey: 'agent_id',
+      header: t('Tenant'),
+      cell: ({ row }) => {
+        const agentId = (row.getValue('agent_id') as number) || 0
+        if (row.original.is_agent) {
+          return (
+            <StatusBadge
+              label={t('Agent Owner')}
+              variant='success'
+              copyable={false}
+            />
+          )
+        }
+        return (
+          <span className='text-muted-foreground text-sm'>
+            {agentId > 0 ? `${t('Agent')} #${agentId}` : t('Platform')}
+          </span>
+        )
+      },
+      enableSorting: false,
+      size: 120,
+      meta: { mobileHidden: true },
+    },
+    {
       id: 'invite_info',
       header: t('Invite Info'),
       cell: ({ row }) => {

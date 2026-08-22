@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Eye, EyeOff } from 'lucide-react'
-import * as React from 'react'
-
+import { Eye, EyeOff } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 import { Button } from './ui/button'
@@ -40,11 +40,13 @@ export function PasswordInput({
   const [showPassword, setShowPassword] = React.useState(false)
 
   return (
-    <div className={cn('relative rounded-md', className)}>
+    <div className='relative'>
       <Input
         type={showPassword ? 'text' : 'password'}
         ref={ref}
         disabled={disabled}
+        // Trailing padding last so the value never runs under the toggle.
+        className={cn(className, 'pe-9')}
         {...props}
       />
       <Button

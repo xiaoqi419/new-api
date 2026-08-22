@@ -17,6 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { ClickCaptcha } from '@/components/click-captcha'
+import { Dialog } from '@/components/dialog'
 import {
   CalendarDays,
   ChevronDown,
@@ -24,12 +30,7 @@ import {
   ChevronRight,
   ChevronUp,
   Sparkles,
-} from 'lucide-react'
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+} from '@/components/icons'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -41,6 +42,8 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip'
+import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
+import type { CaptchaQuery } from '@/features/auth/types'
 import { formatQuotaWithCurrency } from '@/lib/currency'
 import dayjs from '@/lib/dayjs'
 import { cn } from '@/lib/utils'
@@ -67,6 +70,14 @@ export function CheckinCalendarCard({
   const [checkinLoading, setCheckinLoading] = useState(false)
   const [turnstileModalVisible, setTurnstileModalVisible] = useState(false)
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
+  const [captchaModalVisible, setCaptchaModalVisible] = useState(false)
+  const {
+    isClickCaptchaEnabled,
+    solution: captchaSolution,
+    setSolution: setCaptchaSolution,
+    resetSignal: captchaResetSignal,
+    resetClickCaptcha,
+  } = useClickCaptcha()
   const [initialLoaded, setInitialLoaded] = useState(false)
   const [collapsed, setCollapsed] = useState<boolean>(false)
 
@@ -139,16 +150,24 @@ export function CheckinCalendarCard({
   )
 
   const doCheckin = useCallback(
-    async (token?: string) => {
+    async (token?: string, captcha?: CaptchaQuery) => {
+      // Ask for the click captcha up front when it is on, instead of inferring it
+      // from the rejection message: the server replies in Chinese only.
+      if (isClickCaptchaEnabled && !captcha) {
+        setCaptchaModalVisible(true)
+        return
+      }
+
       setCheckinLoading(true)
       try {
-        const res = await performCheckin(token)
+        const res = await performCheckin(token, captcha)
         if (res.success && res.data) {
           toast.success(
             `${t('Check-in successful! Received')} ${formatQuotaWithCurrency(res.data.quota_awarded)}`
           )
           refetch()
           setTurnstileModalVisible(false)
+          setCaptchaModalVisible(false)
         } else {
           if (!token && shouldTriggerTurnstile(res.message)) {
             if (!turnstileSiteKey) {
@@ -161,15 +180,25 @@ export function CheckinCalendarCard({
           if (token && shouldTriggerTurnstile(res.message)) {
             setTurnstileWidgetKey((v) => v + 1)
           }
+          // The challenge is spent on any attempt, so hand out a new image.
+          if (captcha) resetClickCaptcha()
           toast.error(res.message || t('Check-in failed'))
         }
       } catch {
+        if (captcha) resetClickCaptcha()
         toast.error(t('Check-in failed'))
       } finally {
         setCheckinLoading(false)
       }
     },
-    [refetch, shouldTriggerTurnstile, t, turnstileSiteKey]
+    [
+      isClickCaptchaEnabled,
+      refetch,
+      resetClickCaptcha,
+      shouldTriggerTurnstile,
+      t,
+      turnstileSiteKey,
+    ]
   )
 
   const handlePrevMonth = () => {
@@ -281,6 +310,36 @@ export function CheckinCalendarCard({
         </div>
       </Dialog>
 
+      <Dialog
+        open={captchaModalVisible}
+        onOpenChange={(open) => {
+          setCaptchaModalVisible(open)
+          if (!open) resetClickCaptcha()
+        }}
+        title={t('Security Check')}
+        contentClassName='sm:max-w-md'
+        contentHeight='auto'
+        bodyClassName='space-y-4'
+      >
+        <ClickCaptcha
+          onSolvedChange={setCaptchaSolution}
+          resetSignal={captchaResetSignal}
+        />
+        <Button
+          className='w-full'
+          disabled={!captchaSolution || checkinLoading}
+          onClick={() => {
+            if (!captchaSolution) return
+            void doCheckin(undefined, {
+              captcha_id: captchaSolution.id,
+              captcha_points: captchaSolution.points,
+            })
+          }}
+        >
+          {t('Confirm')}
+        </Button>
+      </Dialog>
+
       <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
         {/* Header */}
         <div className='border-b p-4 sm:p-6'>
@@ -302,7 +361,7 @@ export function CheckinCalendarCard({
                     {t('Daily Check-in')}
                   </h3>
                   {checkedToday && (
-                    <div className='inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 sm:gap-1.5 sm:px-2.5 sm:text-xs dark:text-emerald-400'>
+                    <div className='bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium sm:gap-1.5 sm:px-2.5 sm:text-xs'>
                       <Sparkles className='h-2.5 w-2.5 sm:h-3 sm:w-3' />
                       {t('Checked in')}
                     </div>
@@ -428,7 +487,7 @@ export function CheckinCalendarCard({
                         className={cn(
                           'relative flex h-9 w-full flex-col items-center justify-center rounded-lg px-0 text-xs font-medium sm:h-10 sm:text-sm',
                           !dayObj.isCurrentMonth &&
-                            'text-muted-foreground/40 cursor-default',
+                            'text-muted-foreground cursor-default',
                           !isToday && isCheckedIn && 'font-semibold'
                         )}
                       >

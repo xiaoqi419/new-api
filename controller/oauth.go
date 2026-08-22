@@ -51,6 +51,11 @@ func GenerateOAuthCode(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
+	// Only the anonymous login path is captcha-gated; a bind is already behind
+	// an authenticated session and gains nothing from another challenge.
+	if request.Intent == model.AuthFlowIntentLogin && !middleware.VerifyClickCaptchaQuery(c) {
+		return
+	}
 	userID := 0
 	sessionID := ""
 	if request.Intent == model.AuthFlowIntentBind {

@@ -20,6 +20,16 @@ import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
 import type { EventParamsDefinition, IVChart } from '@visactor/vchart'
 import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
   Activity,
   ChevronRight,
   CircleAlert,
@@ -30,17 +40,7 @@ import {
   Loader2,
   Route,
   WalletCards,
-} from 'lucide-react'
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { MultiSelect } from '@/components/multi-select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -545,7 +545,7 @@ export function FlowCharts(props: FlowChartsProps) {
                     render={
                       <button
                         type='button'
-                        className='text-muted-foreground/60 hover:text-foreground flex size-5 shrink-0 items-center justify-center rounded-md'
+                        className='text-muted-foreground hover:text-foreground flex size-5 shrink-0 items-center justify-center rounded-md'
                         aria-label={t('Flow width metric')}
                       />
                     }
@@ -679,7 +679,7 @@ export function FlowCharts(props: FlowChartsProps) {
                   render={
                     <button
                       type='button'
-                      className='text-muted-foreground/60 hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md'
+                      className='text-muted-foreground hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md'
                       aria-label={t('Show or hide flow columns')}
                     />
                   }
@@ -696,7 +696,7 @@ export function FlowCharts(props: FlowChartsProps) {
                 return (
                   <Fragment key={stage}>
                     {index > 0 && (
-                      <ChevronRight className='text-muted-foreground/40 size-3.5 shrink-0' />
+                      <ChevronRight className='text-muted-foreground size-3.5 shrink-0' />
                     )}
                     <Tooltip>
                       <TooltipTrigger

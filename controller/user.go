@@ -20,6 +20,7 @@ import (
 	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/QuantumNous/new-api/constant"
 
@@ -58,7 +59,8 @@ func Login(c *gin.Context) {
 		Username: username,
 		Password: password,
 	}
-	err = user.ValidateAndFill()
+	tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId)
+	err = user.ValidateAndFillWithTenant(tenantAgentId)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrDatabase):
@@ -224,6 +226,7 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
+	tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId)
 	if err := common.Validate.Struct(&user); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
@@ -237,7 +240,7 @@ func Register(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
 			return
 		}
-		if err := model.EnsureEmailAvailable(user.Email, 0); err != nil {
+		if err := model.EnsureEmailAvailableInAgent(user.Email, tenantAgentId, 0); err != nil {
 			if errors.Is(err, model.ErrEmailAlreadyTaken) {
 				common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
 				return
@@ -250,7 +253,7 @@ func Register(c *gin.Context) {
 	if common.EmailVerificationEnabled {
 		emailForExistCheck = user.Email
 	}
-	exist, err := model.CheckUserExistOrDeleted(user.Username, emailForExistCheck)
+	exist, err := model.CheckUserExistOrDeletedInAgent(user.Username, emailForExistCheck, tenantAgentId)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -268,6 +271,7 @@ func Register(c *gin.Context) {
 		DisplayName: user.Username,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+		AgentId:     tenantAgentId,         // 归属当前租户(代理)，平台主站为 0
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -281,9 +285,14 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 获取插入后的用户ID
+	// 注册成功后消费邮箱验证码，避免同一验证码在有效期内被重复提交。
+	if common.EmailVerificationEnabled {
+		common.DeleteKey(user.Email, common.EmailVerificationPurpose)
+	}
+
+	// 获取插入后的用户ID（按 id 回查，复合命名空间下 username 不再全局唯一）
 	var insertedUser model.User
-	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
+	if err := model.DB.Where("id = ?", cleanUser.Id).First(&insertedUser).Error; err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
 		return
 	}
@@ -354,9 +363,10 @@ func SearchUsers(c *gin.Context) {
 			status = &parsed
 		}
 	}
+	balance := c.Query("balance")
 	pageInfo := common.GetPageQuery(c)
 	sortOptions := model.NewUserSortOptions(c.Query("sort_by"), c.Query("sort_order"))
-	users, total, err := model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
+	users, total, err := model.SearchUsers(keyword, group, role, status, balance, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -397,6 +407,35 @@ func GetUser(c *gin.Context) {
 	return
 }
 
+// GetUserIps 管理员查看指定用户的历史去重 IP 列表（来源于日志）。
+func GetUserIps(c *gin.Context) {
+	id, err := strconv.Atoi(c.Query("id"))
+	if err != nil || id == 0 {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	user, err := model.GetUserById(id, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	myRole := c.GetInt("role")
+	if !canManageTargetRole(myRole, user.Role) {
+		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
+		return
+	}
+	stats, err := model.GetUserDistinctIps(id, 200)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    stats,
+	})
+}
+
 func GenerateAccessToken(c *gin.Context) {
 	id := c.GetInt("id")
 	// get rand int 28-32
@@ -417,6 +456,9 @@ func GenerateAccessToken(c *gin.Context) {
 		return
 	}
 
+	// access token 属敏感凭证，禁止缓存/预取以免被中间层缓存或误重放。
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -478,6 +520,34 @@ func GetAffCode(c *gin.Context) {
 	return
 }
 
+// AgreeLegal 记录当前用户已同意的协议版本（协议内容哈希）。
+// 用于登录后协议更新的重新同意弹窗：同意后写入用户设置，避免再次弹出。
+func AgreeLegal(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "用户未登录")
+		return
+	}
+	user, err := model.GetUserById(userId, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	setting := user.GetSetting()
+	setting.AgreedLegalVersion = system_setting.GetLegalSettings().Version()
+	if err := model.UpdateUserSetting(userId, setting); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"agreed_legal_version": setting.AgreedLegalVersion,
+		},
+	})
+}
+
 func GetSelf(c *gin.Context) {
 	id := c.GetInt("id")
 	userRole := c.GetInt("role")
@@ -534,6 +604,8 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 		"setting":           user.Setting,
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
+		"agent_id":          user.AgentId,
+		"is_agent":          user.IsAgent,
 		"permissions":       permissions,
 	}
 }
@@ -700,6 +772,9 @@ func UpdateUser(c *gin.Context) {
 		updatedUser.Password = "" // rollback to what it should be
 	}
 	updatePassword := updatedUser.Password != ""
+	if updatedUser.MaxConcurrency < 0 {
+		updatedUser.MaxConcurrency = 0
+	}
 	authzTouched := false
 	if err := model.DB.Transaction(func(tx *gorm.DB) error {
 		if err := updatedUser.EditWithTx(tx, updatePassword); err != nil {
@@ -1300,6 +1375,8 @@ func EmailBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	// 绑定成功后消费邮箱验证码，避免重复提交。
+	common.DeleteKey(email, common.EmailVerificationPurpose)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -1434,8 +1511,9 @@ func UpdateUserSetting(c *gin.Context) {
 
 	// 如果是邮件类型，验证邮箱地址
 	if req.QuotaWarningType == dto.NotifyTypeEmail && req.NotificationEmail != "" {
+		req.NotificationEmail = strings.TrimSpace(req.NotificationEmail)
 		// 验证邮箱格式
-		if !strings.Contains(req.NotificationEmail, "@") {
+		if !common.IsValidEmail(req.NotificationEmail) {
 			common.ApiErrorI18n(c, i18n.MsgSettingEmailInvalid)
 			return
 		}

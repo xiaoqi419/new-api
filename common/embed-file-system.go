@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/static"
 )
@@ -40,4 +41,53 @@ func EmbedFolder(fsEmbed embed.FS, targetPath string) static.ServeFileSystem {
 	return &embedFileSystem{
 		FileSystem: http.FS(efs),
 	}
+}
+
+// subPathFileSystem serves an embedded folder mounted under a URL prefix.
+// static.Serve only strips the prefix for the file server, so Exists still
+// receives the full request path; without trimming it here every asset under
+// the prefix is reported missing and falls through to the SPA fallback.
+type subPathFileSystem struct {
+	static.ServeFileSystem
+	prefix string
+}
+
+func (s *subPathFileSystem) Exists(prefix string, path string) bool {
+	if !strings.HasPrefix(path, s.prefix) {
+		return false
+	}
+	return s.ServeFileSystem.Exists(prefix, strings.TrimPrefix(path, s.prefix))
+}
+
+func EmbedFolderAt(fsEmbed embed.FS, targetPath string, urlPrefix string) static.ServeFileSystem {
+	return &subPathFileSystem{
+		ServeFileSystem: EmbedFolder(fsEmbed, targetPath),
+		prefix:          urlPrefix,
+	}
+}
+
+// themeAwareFileSystem delegates to the appropriate embedded FS based on
+// the current theme (via GetTheme). This enables serving either the default
+// or the classic frontend without restarting the server.
+type themeAwareFileSystem struct {
+	defaultFS static.ServeFileSystem
+	classicFS static.ServeFileSystem
+}
+
+func (t *themeAwareFileSystem) Exists(prefix string, path string) bool {
+	if GetTheme() == "classic" {
+		return t.classicFS.Exists(prefix, path)
+	}
+	return t.defaultFS.Exists(prefix, path)
+}
+
+func (t *themeAwareFileSystem) Open(name string) (http.File, error) {
+	if GetTheme() == "classic" {
+		return t.classicFS.Open(name)
+	}
+	return t.defaultFS.Open(name)
+}
+
+func NewThemeAwareFS(defaultFS, classicFS static.ServeFileSystem) static.ServeFileSystem {
+	return &themeAwareFileSystem{defaultFS: defaultFS, classicFS: classicFS}
 }

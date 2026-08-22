@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 
 import type { NameRule, ModelStatus, SyncSource } from './types'
 
@@ -166,6 +166,17 @@ export const ENDPOINT_TEMPLATES: Record<
   gemini: { path: '/v1beta/models/{model}:generateContent', method: 'POST' },
   'jina-rerank': { path: '/rerank', method: 'POST' },
   'image-generation': { path: '/v1/images/generations', method: 'POST' },
+  // Video endpoints differ per vendor; only openai-video is a formal backend
+  // endpoint type (Sora). The rest are per-model display paths: `video` is the
+  // universal native route all vendors funnel into, and doubao/jimeng expose
+  // their provider-native paths.
+  'openai-video': { path: '/v1/videos', method: 'POST' },
+  video: { path: '/v1/video/generations', method: 'POST' },
+  'doubao-video': {
+    path: '/ark/api/v3/contents/generations/tasks',
+    method: 'POST',
+  },
+  'jimeng-video': { path: '/jimeng/', method: 'POST' },
   embeddings: { path: '/v1/embeddings', method: 'POST' },
 }
 

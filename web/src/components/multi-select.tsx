@@ -16,12 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Add01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Plus } from '@/components/icons'
 import {
   Combobox,
   ComboboxChip,
@@ -164,7 +163,7 @@ export function MultiSelect(props: MultiSelectProps) {
     if (canCreate) {
       set.add(trimmedInput)
     }
-    return Array.from(set)
+    return [...set]
   }, [props.options, props.selected, canCreate, trimmedInput])
 
   const addValues = React.useCallback(
@@ -364,9 +363,7 @@ export function MultiSelect(props: MultiSelectProps) {
                 >
                   {isCreate ? (
                     <>
-                      <HugeiconsIcon
-                        icon={Add01Icon}
-                        strokeWidth={2}
+                      <Plus
                         className='text-muted-foreground'
                         aria-hidden='true'
                       />

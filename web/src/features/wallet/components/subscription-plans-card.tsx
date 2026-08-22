@@ -1,3 +1,7 @@
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Crown, RefreshCw, Sparkles, Check } from 'lucide-react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
+import { Crown, RefreshCw, Sparkles, Check } from '@/components/icons'
 import {
   StatusBadge,
   dotColorMap,
@@ -59,6 +59,7 @@ import type {
 import { formatQuota } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
+import { NON_EPAY_PAYMENT_TYPES } from '../constants'
 import type { PaymentMethod, TopupInfo } from '../types'
 
 interface SubscriptionPlansCardProps {
@@ -70,7 +71,7 @@ interface SubscriptionPlansCardProps {
 
 function getEpayMethods(payMethods: PaymentMethod[] = []): PaymentMethod[] {
   return payMethods.filter(
-    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem'
+    (m) => m?.type && !NON_EPAY_PAYMENT_TYPES.has(m.type)
   )
 }
 
@@ -293,7 +294,7 @@ export function SubscriptionPlansCard({
                 )}
                 {allSubscriptions.length > activeSubscriptions.length && (
                   <>
-                    <span className='text-muted-foreground/30'>·</span>
+                    <span className='text-muted-foreground'>·</span>
                     <span className='text-muted-foreground'>
                       {allSubscriptions.length - activeSubscriptions.length}{' '}
                       {t('expired')}

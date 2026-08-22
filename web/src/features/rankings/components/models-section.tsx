@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { VChart } from '@visactor/react-vchart'
-import { BarChart3, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { BarChart3, Trophy } from '@/components/icons'
 import { useChartTheme } from '@/lib/use-chart-theme'
 import { VCHART_OPTION } from '@/lib/vchart'
 
@@ -164,7 +164,7 @@ export function ModelsSection(props: ModelsSectionProps) {
   }, [chartGridColor, chartTextColor, orderedPoints, t])
 
   return (
-    <section className='bg-card overflow-hidden rounded-lg border'>
+    <section className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
       {/* Chart block ----------------------------------------------------- */}
       <header className='flex items-start justify-between gap-4 px-5 py-4'>
         <div className='min-w-0 flex-1'>
@@ -180,7 +180,7 @@ export function ModelsSection(props: ModelsSectionProps) {
           <div className='text-foreground font-mono text-2xl font-semibold tabular-nums'>
             {formatTokens(totalTokens)}
           </div>
-          <div className='text-muted-foreground/80 text-[10px] font-medium tracking-widest uppercase'>
+          <div className='text-muted-foreground text-[10px] font-medium tracking-widest uppercase'>
             {t('tokens')}
           </div>
         </div>
@@ -199,7 +199,7 @@ export function ModelsSection(props: ModelsSectionProps) {
               option={VCHART_OPTION}
             />
           ) : (
-            <div className='text-muted-foreground/80 flex h-full items-center justify-center text-xs'>
+            <div className='text-muted-foreground flex h-full items-center justify-center text-xs'>
               {t('No history data available')}
             </div>
           )}
@@ -210,15 +210,15 @@ export function ModelsSection(props: ModelsSectionProps) {
       <div className='border-t'>
         <header className='px-5 pt-4 pb-2'>
           <h3 className='text-foreground inline-flex items-center gap-2 text-sm font-semibold'>
-            <Trophy className='size-3.5 text-amber-500' />
+            <Trophy className='text-warning size-3.5' />
             {t('LLM Leaderboard')}
           </h3>
-          <p className='text-muted-foreground/80 mt-0.5 text-xs'>
+          <p className='text-muted-foreground mt-0.5 text-xs'>
             {t('Compare the most popular models on the platform')}
           </p>
         </header>
         {props.rows.length === 0 ? (
-          <div className='text-muted-foreground/80 px-5 py-8 text-center text-sm'>
+          <div className='text-muted-foreground px-5 py-8 text-center text-sm'>
             {t('No models match the selected filters')}
           </div>
         ) : (

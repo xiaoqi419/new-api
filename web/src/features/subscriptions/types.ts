@@ -41,6 +41,7 @@ export const subscriptionPlanSchema = z.object({
   total_amount: z.number(),
   upgrade_group: z.string().optional(),
   downgrade_group: z.string().optional(),
+  scope_group: z.string().optional(),
   stripe_price_id: z.string().optional(),
   creem_product_id: z.string().optional(),
   waffo_pancake_product_id: z.string().optional(),
@@ -111,6 +112,14 @@ export interface SubscriptionPayResponse {
     token_expires_at?: number | string
   }
   url?: string
+}
+
+export interface SubscriptionStatusResponse {
+  success?: boolean
+  message?: string
+  data?: {
+    status?: string
+  }
 }
 
 export interface CreateUserSubscriptionRequest {

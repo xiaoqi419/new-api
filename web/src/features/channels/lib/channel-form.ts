@@ -264,6 +264,16 @@ export const channelFormSchema = z
     pass_through_body_enabled: z.boolean().optional(),
     system_prompt: z.string().optional(),
     system_prompt_override: z.boolean().optional(),
+    // Fallback settings (stored in setting JSON)
+    fallback: z.boolean().optional(),
+    fallback_upstream_enabled: z.boolean().optional(),
+    fallback_upstream_base_url: z.string().optional(),
+    fallback_upstream_key: z.string().optional(),
+    fallback_upstream_models: z.string().optional(),
+    // VolcEngine asset library credentials (DoubaoVideo type 54, stored in setting JSON)
+    volc_asset_ak: z.string().optional(),
+    volc_asset_sk: z.string().optional(),
+    volc_project_name: z.string().optional(),
     // Type-specific settings (stored in settings JSON)
     is_enterprise_account: z.boolean().optional(), // OpenRouter specific
     vertex_key_type: z.enum(['json', 'api_key']).optional(), // Vertex AI specific
@@ -436,6 +446,14 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   pass_through_body_enabled: false,
   system_prompt: '',
   system_prompt_override: false,
+  fallback: false,
+  fallback_upstream_enabled: false,
+  fallback_upstream_base_url: '',
+  fallback_upstream_key: '',
+  fallback_upstream_models: '',
+  volc_asset_ak: '',
+  volc_asset_sk: '',
+  volc_project_name: '',
   // Type-specific settings
   is_enterprise_account: false,
   vertex_key_type: 'json',
@@ -476,11 +494,23 @@ export function transformChannelToFormDefaults(
     pass_through_body_enabled: false,
     system_prompt: '',
     system_prompt_override: false,
+    fallback: false,
+    fallback_upstream_enabled: false,
+    fallback_upstream_base_url: '',
+    fallback_upstream_key: '',
+    fallback_upstream_models: '',
+    volc_asset_ak: '',
+    volc_asset_sk: '',
+    volc_project_name: '',
   }
 
   if (channel.setting) {
     try {
       const parsed = JSON.parse(channel.setting)
+      const fallbackUpstream =
+        parsed.fallback_upstream && typeof parsed.fallback_upstream === 'object'
+          ? parsed.fallback_upstream
+          : {}
       const protocol = normalizeHttpProtocol(parsed.http_protocol)
       const shards = normalizeHttp2ConnectionShards(
         parsed.http2_connection_shards
@@ -494,6 +524,14 @@ export function transformChannelToFormDefaults(
         pass_through_body_enabled: parsed.pass_through_body_enabled || false,
         system_prompt: parsed.system_prompt || '',
         system_prompt_override: parsed.system_prompt_override || false,
+        fallback: parsed.fallback || false,
+        fallback_upstream_enabled: fallbackUpstream.enabled || false,
+        fallback_upstream_base_url: fallbackUpstream.base_url || '',
+        fallback_upstream_key: fallbackUpstream.key || '',
+        fallback_upstream_models: fallbackUpstream.models || '',
+        volc_asset_ak: parsed.volc_asset_ak || '',
+        volc_asset_sk: parsed.volc_asset_sk || '',
+        volc_project_name: parsed.volc_project_name || '',
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -611,6 +649,16 @@ export function buildSettingJSON(formData: ChannelFormValues): string {
     pass_through_body_enabled: formData.pass_through_body_enabled || false,
     system_prompt: formData.system_prompt || '',
     system_prompt_override: formData.system_prompt_override || false,
+    fallback: formData.fallback || false,
+    fallback_upstream: {
+      enabled: formData.fallback_upstream_enabled || false,
+      base_url: formData.fallback_upstream_base_url || '',
+      key: formData.fallback_upstream_key || '',
+      models: formData.fallback_upstream_models || '',
+    },
+    volc_asset_ak: formData.volc_asset_ak || '',
+    volc_asset_sk: formData.volc_asset_sk || '',
+    volc_project_name: formData.volc_project_name || '',
   }
 
   const protocol = normalizeHttpProtocol(formData.http_protocol)

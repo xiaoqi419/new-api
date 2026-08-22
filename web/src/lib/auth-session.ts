@@ -39,6 +39,8 @@ export interface AuthRefreshHTTPResponse {
   status: number
   data?: unknown
   error?: unknown
+  /** Parsed `Retry-After`, only meaningful on 429. */
+  retryAfterSeconds?: number
 }
 
 export interface AuthRefreshRuntime {
@@ -47,7 +49,7 @@ export interface AuthRefreshRuntime {
   parseBundle: (value: unknown) => AuthBundle | null
   acceptBundle: (bundle: AuthBundle) => void
   clear: (synchronizeTabs: boolean, bootstrapState?: AuthBootstrapState) => void
-  markTransient: () => void
+  markTransient: (retryAfterSeconds?: number) => void
   wait: (delay: number) => Promise<void>
   isCurrent?: () => boolean
 }
@@ -83,6 +85,30 @@ class AuthRefreshSupersededError extends Error {
     super('Authentication refresh was superseded')
     this.name = 'AuthRefreshSupersededError'
   }
+}
+
+class AuthRefreshCooldownError extends Error {
+  constructor(readonly remainingMs: number) {
+    super('Authentication refresh is rate limited')
+    this.name = 'AuthRefreshCooldownError'
+  }
+}
+
+const REFRESH_COOLDOWN_FALLBACK_SECONDS = 30
+const REFRESH_COOLDOWN_CEILING_MS = 5 * 60 * 1000
+
+// 被限流挡住之后的冷却截止时间。续期失败不会清掉登录态（令牌可能只是撞上了限流），
+// 但路由切换会反复触发续期：不冷却的话每跳一次页面就再打一发请求，把已经耗尽的
+// 限流窗口一直顶满，用户永远等不到解封。
+let refreshCooldownUntil = 0
+
+function startRefreshCooldown(retryAfterSeconds: number): void {
+  const requestedMs =
+    retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : REFRESH_COOLDOWN_FALLBACK_SECONDS * 1000
+  refreshCooldownUntil =
+    Date.now() + Math.min(requestedMs, REFRESH_COOLDOWN_CEILING_MS)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -149,6 +175,7 @@ export function applyAuthBundle(
   bundle: AuthBundle,
   synchronizeTabs = true
 ): void {
+  refreshCooldownUntil = 0
   const previousSID = useAuthStore.getState().auth.session?.sid
   authEpoch += 1
   useAuthStore.getState().auth.setBundle(bundle)
@@ -254,7 +281,11 @@ export function createRefreshRunner(
     }
 
     if (!response.status || response.status >= 500 || response.status === 429) {
-      runtime.markTransient()
+      runtime.markTransient(
+        response.status === 429
+          ? (response.retryAfterSeconds ?? REFRESH_COOLDOWN_FALLBACK_SECONDS)
+          : undefined
+      )
       return {
         kind: 'transient_error',
         error: response.error ?? response.data,
@@ -285,8 +316,10 @@ async function requestRefresh(
     return { status: response.status, data: response.data }
   } catch (error: unknown) {
     if (!axios.isAxiosError(error)) return { status: 0, error }
+    const retryAfter = Number(error.response?.headers?.['retry-after'])
     return {
       status: error.response?.status ?? 0,
+      retryAfterSeconds: Number.isFinite(retryAfter) ? retryAfter : undefined,
       data: error.response?.data,
       error,
     }
@@ -306,7 +339,12 @@ function runRefresh(refreshEpoch: number): Promise<RefreshOutcome> {
       }
       clearAuthentication(synchronizeTabs, bootstrapState)
     },
-    markTransient: () => useAuthStore.getState().auth.setBootstrapState('idle'),
+    markTransient: (retryAfterSeconds) => {
+      if (retryAfterSeconds !== undefined) {
+        startRefreshCooldown(retryAfterSeconds)
+      }
+      useAuthStore.getState().auth.setBootstrapState('idle')
+    },
     wait: waitForRefreshRace,
     isCurrent: () => authEpoch === refreshEpoch,
   })()
@@ -331,6 +369,14 @@ async function performRefreshWithBrowserLock(
 }
 
 export function refreshAuthentication(): Promise<RefreshOutcome> {
+  const remainingMs = refreshCooldownUntil - Date.now()
+  if (remainingMs > 0) {
+    useAuthStore.getState().auth.setBootstrapState('idle')
+    return Promise.resolve({
+      kind: 'transient_error',
+      error: new AuthRefreshCooldownError(remainingMs),
+    })
+  }
   if (!refreshPromise) {
     const refreshEpoch = authEpoch
     refreshPromise = performRefreshWithBrowserLock(refreshEpoch).finally(() => {

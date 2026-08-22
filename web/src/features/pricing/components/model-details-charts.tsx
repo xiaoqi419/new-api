@@ -51,15 +51,14 @@ function formatDayLabel(date: string): string {
 }
 
 function getChartThemeTokens(resolvedTheme: string) {
+  const dark = resolvedTheme === 'dark'
   return {
-    textColor:
-      resolvedTheme === 'dark'
-        ? 'rgba(255, 255, 255, 0.68)'
-        : 'rgba(15, 23, 42, 0.58)',
-    gridColor:
-      resolvedTheme === 'dark'
-        ? 'rgba(255, 255, 255, 0.12)'
-        : 'rgba(15, 23, 42, 0.12)',
+    textColor: dark ? 'rgba(255, 255, 255, 0.68)' : 'rgba(15, 23, 42, 0.58)',
+    gridColor: dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.12)',
+    // Canvas cannot resolve var(), so these values mirror the business tokens.
+    seriesColor: dark ? '#64b5f6' : '#1976d2', // --business-chart-1
+    successColor: '#16c784', // --business-success
+    pointRingColor: dark ? '#242424' : '#ffffff', // --business-card
   }
 }
 
@@ -99,7 +98,8 @@ export function LatencyTrendChart(props: {
 }) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
-  const { textColor, gridColor } = getChartThemeTokens(resolvedTheme)
+  const { textColor, gridColor, pointRingColor } =
+    getChartThemeTokens(resolvedTheme)
 
   const spec = useMemo(() => {
     if (props.series.length === 0) return null
@@ -117,7 +117,7 @@ export function LatencyTrendChart(props: {
       smooth: true,
       point: {
         visible: true,
-        style: { size: 5, stroke: '#ffffff', lineWidth: 1.5 },
+        style: { size: 5, stroke: pointRingColor, lineWidth: 1.5 },
       },
       line: {
         style: { lineWidth: 2 },
@@ -155,7 +155,7 @@ export function LatencyTrendChart(props: {
         },
       ],
     }
-  }, [gridColor, props.series, t, textColor])
+  }, [gridColor, pointRingColor, props.series, t, textColor])
 
   if (props.series.length === 0) {
     return (
@@ -197,7 +197,8 @@ export function UptimeTrendChart(props: {
 }) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
-  const { textColor, gridColor } = getChartThemeTokens(resolvedTheme)
+  const { textColor, gridColor, pointRingColor, successColor } =
+    getChartThemeTokens(resolvedTheme)
 
   const spec = useMemo(() => {
     if (props.series.length === 0) return null
@@ -224,16 +225,16 @@ export function UptimeTrendChart(props: {
       yField: 'uptime',
       smooth: true,
       line: {
-        style: { stroke: '#10b981', lineWidth: 2 },
+        style: { stroke: successColor, lineWidth: 2 },
       },
       point: {
         visible: true,
         style: {
           size: 5,
-          stroke: '#ffffff',
+          stroke: pointRingColor,
           lineWidth: 1.5,
           fill: (datum: { uptime: number }) =>
-            getSuccessRateColor(datum.uptime),
+            getSuccessRateColor(datum.uptime, resolvedTheme),
         },
       },
       tooltip: {
@@ -283,7 +284,15 @@ export function UptimeTrendChart(props: {
         },
       ],
     }
-  }, [gridColor, props.series, t, textColor])
+  }, [
+    gridColor,
+    pointRingColor,
+    props.series,
+    resolvedTheme,
+    successColor,
+    t,
+    textColor,
+  ])
 
   if (props.series.length === 0) {
     return (
@@ -325,12 +334,10 @@ export function ThroughputBarChart(props: {
 }) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
-  const { textColor, gridColor } = getChartThemeTokens(resolvedTheme)
+  const { textColor, gridColor, seriesColor } =
+    getChartThemeTokens(resolvedTheme)
   const { customization } = useThemeCustomization()
-  const barRadius = useThemeRadiusPx(
-    '--radius-sm',
-    `${customization.preset}:${customization.radius}`
-  )
+  const barRadius = useThemeRadiusPx('--radius-sm', customization.radius)
 
   const filtered = useMemo(
     () => props.rows.filter((r) => r.throughput_tps > 0),
@@ -347,7 +354,7 @@ export function ThroughputBarChart(props: {
       yField: 'group',
       bar: {
         style: {
-          fill: '#6366f1',
+          fill: seriesColor,
           ...(barRadius == null ? {} : { cornerRadius: barRadius }),
         },
       },
@@ -385,7 +392,7 @@ export function ThroughputBarChart(props: {
         },
       },
     }
-  }, [barRadius, filtered, gridColor, t, textColor])
+  }, [barRadius, filtered, gridColor, seriesColor, t, textColor])
 
   if (filtered.length === 0) {
     return null

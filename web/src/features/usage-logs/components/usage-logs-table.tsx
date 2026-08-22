@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
-import { type ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -32,6 +32,7 @@ import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { cn } from '@/lib/utils'
 
 import {
+  ACTIVE_TASK_STATUSES,
   DEFAULT_LOGS_DATA,
   LOG_TYPE_ALL_VALUE,
   LOG_TYPE_ENUM,
@@ -39,8 +40,9 @@ import {
 import { useColumnsByCategory } from '../lib/columns'
 import { parseLogOther } from '../lib/format'
 import { fetchLogsByCategory } from '../lib/utils'
-import type { LogCategory } from '../types'
+import type { LogCategory, TaskLog } from '../types'
 import { CommonLogsFilterBar } from './common-logs-filter-bar'
+import { TaskLogCard } from './task-log-card'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 import { useLogsViewScope } from './usage-logs-provider'
@@ -48,13 +50,13 @@ import { useLogsViewScope } from './usage-logs-provider'
 const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 const logTypeRowTint: Record<number, string> = {
-  [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
-  [LOG_TYPE_ENUM.REFUND]: 'bg-blue-50/30 dark:bg-blue-950/15',
+  [LOG_TYPE_ENUM.ERROR]: 'bg-destructive/8',
+  [LOG_TYPE_ENUM.REFUND]: 'bg-chart-1/8',
 }
 
 // Warning tint for logs where a quota conversion saturated (admin-only marker).
 // Takes precedence over the per-type tint since it flags a billing anomaly.
-const quotaSaturationRowTint = 'bg-amber-50/60 dark:bg-amber-950/25'
+const quotaSaturationRowTint = 'bg-warning/12'
 
 function getColumnVisibilityStorageKey(
   logCategory: LogCategory,
@@ -64,7 +66,12 @@ function getColumnVisibilityStorageKey(
 }
 
 function deserializeLogTypeFilter(value: unknown): unknown[] {
-  const values = Array.isArray(value) ? value : value ? [value] : []
+  let values: unknown[] = []
+  if (Array.isArray(value)) {
+    values = value
+  } else if (value) {
+    values = [value]
+  }
   return values.filter((item) => String(item) !== LOG_TYPE_ALL_VALUE)
 }
 
@@ -150,6 +157,17 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       }
       return undefined
     },
+    // Poll while a task on the current page is still running so its status,
+    // progress, and finish time update; stops once none are active.
+    refetchInterval: (query) => {
+      if (logCategory !== 'task') return false
+      const items = (query.state.data as { items?: TaskLog[] } | undefined)
+        ?.items
+      const hasActiveTask =
+        Array.isArray(items) &&
+        items.some((item) => ACTIVE_TASK_STATUSES.includes(item.status))
+      return hasActiveTask ? 5000 : false
+    },
   })
 
   const logs = data?.items || []
@@ -175,6 +193,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   })
 
   const isCommon = logCategory === 'common'
+  const isTask = logCategory === 'task'
 
   return (
     <DataTablePage
@@ -191,12 +210,31 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       tableClassName={cn(
         '[&_[data-slot=table]]:text-[13px] [&_[data-slot=table]_td]:text-[13px] [&_[data-slot=table]_td_*]:text-[13px] [&_[data-slot=table]_th]:text-[13px] [&_[data-slot=table]_th_*]:text-[13px]'
       )}
+      enableCardView={isTask}
+      viewModeStorageKey={isTask ? 'usage-logs:task:view-mode' : undefined}
+      cardGridClassName={
+        isTask
+          ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4'
+          : undefined
+      }
+      renderCard={
+        isTask
+          ? (row) => (
+              <TaskLogCard
+                log={row.original as unknown as TaskLog}
+                isAdmin={isAdmin}
+              />
+            )
+          : undefined
+      }
       mobile={
-        <UsageLogsMobileList
-          table={table}
-          isLoading={isLoadingData}
-          logCategory={logCategory}
-        />
+        isTask ? undefined : (
+          <UsageLogsMobileList
+            table={table}
+            isLoading={isLoadingData}
+            logCategory={logCategory}
+          />
+        )
       }
       toolbar={
         isCommon ? (

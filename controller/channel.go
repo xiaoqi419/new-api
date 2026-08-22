@@ -407,6 +407,7 @@ func GetChannel(c *gin.Context) {
 	}
 	if channel != nil {
 		clearChannelInfo(channel)
+		maskFallbackUpstreamKey(channel)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -414,6 +415,24 @@ func GetChannel(c *gin.Context) {
 		"data":    channel,
 	})
 	return
+}
+
+// maskFallbackUpstreamKey 将渠道 setting 中的兜底转发密钥脱敏为等长星号，
+// 避免详情接口向前端返回明文密钥。探测/保存时后端会用 DB 真实密钥回退。
+func maskFallbackUpstreamKey(channel *model.Channel) {
+	if channel == nil {
+		return
+	}
+	setting := channel.GetSetting()
+	if setting.FallbackUpstream == nil {
+		return
+	}
+	key := setting.FallbackUpstream.Key
+	if strings.TrimSpace(key) == "" {
+		return
+	}
+	setting.FallbackUpstream.Key = strings.Repeat("*", len([]rune(key)))
+	channel.SetSetting(setting)
 }
 
 // GetChannelKey 获取渠道密钥（需要通过安全验证中间件）
@@ -1083,6 +1102,10 @@ func UpdateChannel(c *gin.Context) {
 			// 覆盖模式：直接使用新密钥（默认行为，不需要特殊处理）
 		}
 	}
+
+	// 兜底转发密钥保护：前端回显的是掩码，若提交值为空或仍为掩码星号，则保留原兜底密钥，避免把掩码写入。
+	preserveFallbackUpstreamKey(&channel.Channel, originChannel)
+
 	err = channel.Update()
 	if err != nil {
 		common.ApiError(c, err)
@@ -1122,6 +1145,30 @@ func UpdateChannel(c *gin.Context) {
 		"data":    channel,
 	})
 	return
+}
+
+// preserveFallbackUpstreamKey 保护兜底转发密钥：前端回显掩码，若提交的兜底密钥为空或仍为掩码星号，
+// 则用原渠道的兜底密钥填回，避免把掩码写入 setting。
+func preserveFallbackUpstreamKey(channel *model.Channel, originChannel *model.Channel) {
+	if channel == nil || originChannel == nil {
+		return
+	}
+	newSetting := channel.GetSetting()
+	if newSetting.FallbackUpstream == nil {
+		return
+	}
+	submittedKey := strings.TrimSpace(newSetting.FallbackUpstream.Key)
+	isMasked := submittedKey == "" || strings.Trim(submittedKey, "*") == ""
+	if !isMasked {
+		return
+	}
+	origSetting := originChannel.GetSetting()
+	if origSetting.FallbackUpstream != nil {
+		newSetting.FallbackUpstream.Key = origSetting.FallbackUpstream.Key
+	} else {
+		newSetting.FallbackUpstream.Key = ""
+	}
+	channel.SetSetting(newSetting)
 }
 
 func UpdateChannelStatus(c *gin.Context) {
@@ -1201,6 +1248,7 @@ type fetchModelsRequest struct {
 	AdvancedCustom *string `json:"advanced_custom"`
 	HeaderOverride *string `json:"header_override"`
 	Proxy          *string `json:"proxy"`
+	UseFallback    bool    `json:"use_fallback"`
 }
 
 func buildAdvancedCustomModelPreviewChannel(req fetchModelsRequest) (*model.Channel, error) {
@@ -1280,6 +1328,33 @@ func FetchModels(c *gin.Context) {
 			"message": "Invalid request",
 		})
 		return
+	}
+
+	// 探测已存渠道的兜底转发上游：优先用请求提供的 base_url/key；
+	// 若 key 为空或仍是脱敏星号，则回退到 DB 中该渠道的真实兜底密钥。
+	if req.UseFallback && req.ChannelID > 0 {
+		savedChannel, err := model.GetChannelById(req.ChannelID, true)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": fmt.Sprintf("获取渠道失败: %s", err.Error()),
+			})
+			return
+		}
+		fb := savedChannel.GetSetting().FallbackUpstream
+		if fb != nil {
+			if req.BaseURL == nil || strings.TrimSpace(*req.BaseURL) == "" {
+				fbBaseURL := fb.BaseURL
+				req.BaseURL = &fbBaseURL
+			}
+			submitted := strings.TrimSpace(req.Key)
+			isMasked := submitted == "" || strings.Trim(submitted, "*") == ""
+			if isMasked {
+				req.Key = fb.Key
+			}
+		}
+		// 兜底探测走基础渠道路径，不进入高级自定义预览分支
+		req.ChannelID = 0
 	}
 
 	var channel *model.Channel

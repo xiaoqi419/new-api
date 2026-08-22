@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
-	"strings"
 
 	kitutil "github.com/QuantumNous/new-api/relaykit/relayconvert/kitutil"
 	"github.com/QuantumNous/new-api/relaykit/types"
@@ -13,6 +12,10 @@ import (
 // MaxImageN caps the image generation count. Without this bound a huge or
 // wrapped-negative n overflows quota calculation into a negative charge.
 const MaxImageN = 128
+
+// MaxSequentialImages caps 火山方舟 Seedream 组图单次出图张数（上游取值范围 [1, 15]）。
+// 这是独立于 n 的第二条计费乘数通路，不设界等于绕过 MaxImageN。
+const MaxSequentialImages = 15
 
 type ImageRequest struct {
 	Model             string          `json:"model"`
@@ -38,8 +41,19 @@ type ImageRequest struct {
 	WatermarkEnabled json.RawMessage `json:"watermark_enabled,omitempty"`
 	UserId           json.RawMessage `json:"user_id,omitempty"`
 	Image            json.RawMessage `json:"image,omitempty"`
+	// 火山方舟 Seedream。MarshalJSON 不会把 Extra 平铺回上游，所以这些参数必须显式声明，
+	// 否则会被静默丢弃。SequentialImageGenerationOptions 用具名结构体而非透传，是因为
+	// 其中的 max_images 直接充当按张计费的乘数，校验层必须能读到它。
+	SequentialImageGeneration        string                            `json:"sequential_image_generation,omitempty"`
+	SequentialImageGenerationOptions *SequentialImageGenerationOptions `json:"sequential_image_generation_options,omitempty"`
+	OptimizePromptOptions            json.RawMessage                   `json:"optimize_prompt_options,omitempty"`
+	Tools                            json.RawMessage                   `json:"tools,omitempty"`
 	// 用匿名参数接收额外参数
 	Extra map[string]json.RawMessage `json:"-"`
+}
+
+type SequentialImageGenerationOptions struct {
+	MaxImages *int `json:"max_images,omitempty"`
 }
 
 func (i *ImageRequest) UnmarshalJSON(data []byte) error {
@@ -131,41 +145,21 @@ func indexComma(s string) int {
 }
 
 func (i *ImageRequest) GetTokenCountMeta() *types.TokenCountMeta {
-	var sizeRatio = 1.0
-	var qualityRatio = 1.0
-
-	if strings.HasPrefix(i.Model, "dall-e") {
-		// Size
-		if i.Size == "256x256" {
-			sizeRatio = 0.4
-		} else if i.Size == "512x512" {
-			sizeRatio = 0.45
-		} else if i.Size == "1024x1024" {
-			sizeRatio = 1
-		} else if i.Size == "1024x1792" || i.Size == "1792x1024" {
-			sizeRatio = 2
-		}
-
-		if i.Model == "dall-e-3" && i.Quality == "hd" {
-			qualityRatio = 2.0
-			if i.Size == "1024x1792" || i.Size == "1792x1024" {
-				qualityRatio = 1.5
-			}
-		}
-	}
-
 	imageN := uint(1)
 	if i.N != nil && *i.N > 0 {
 		imageN = *i.N
 	}
 
+	// ImagePriceRatio 表示分辨率/质量档位倍率。档位表是管理员可配置的运行时设置，读取它需要
+	// 根模块的配置包，而本模块必须保持独立可构建，所以这里留 1，由根模块的计价路径按配置覆盖。
+	//
 	// Keep n separate from ImagePriceRatio so size/quality and count remain
 	// independent billing dimensions. Fixed-price pre-consume stores this on
 	// PriceData, and image settlement reuses or replaces the same "n" ratio.
 	return &types.TokenCountMeta{
 		CombineText:     i.Prompt,
 		MaxTokens:       1584,
-		ImagePriceRatio: sizeRatio * qualityRatio,
+		ImagePriceRatio: 1,
 		BillingRatios:   map[string]float64{"n": float64(imageN)},
 	}
 }

@@ -16,7 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { LucideIcon } from 'lucide-react'
+/* eslint-disable react-refresh/only-export-components */
+import * as React from 'react'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -35,9 +37,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-/* eslint-disable react-refresh/only-export-components */
-import * as React from 'react'
-
+import type { LucideIcon } from '@/components/icons'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { stringToColor } from '@/lib/colors'
 import { cn } from '@/lib/utils'
@@ -55,8 +55,10 @@ export const dotColorMap = {
   green: 'bg-success',
   grey: 'bg-neutral',
   indigo: 'bg-chart-1',
-  'light-blue': 'bg-info',
-  'light-green': 'bg-emerald-400',
+  /* 色名是历史遗留的分类槽位,一律映射到暖色分类色号;--info 只留给
+   * 「提示 / 进行中」这类真正的语义状态,不再被当成一种蓝色来用。 */
+  'light-blue': 'bg-chart-2',
+  'light-green': 'bg-success/70',
   lime: 'bg-chart-3',
   orange: 'bg-warning',
   pink: 'bg-chart-5',
@@ -72,21 +74,21 @@ export const textColorMap = {
   danger: 'text-destructive',
   info: 'text-info',
   neutral: 'text-muted-foreground',
-  purple: 'text-chart-4',
+  purple: 'text-tag-4',
   amber: 'text-warning',
-  blue: 'text-chart-1',
-  cyan: 'text-chart-2',
+  blue: 'text-tag-1',
+  cyan: 'text-tag-2',
   green: 'text-success',
   grey: 'text-muted-foreground',
-  indigo: 'text-chart-1',
-  'light-blue': 'text-info',
-  'light-green': 'text-emerald-500 dark:text-emerald-300',
-  lime: 'text-chart-3',
+  indigo: 'text-tag-1',
+  'light-blue': 'text-tag-2',
+  'light-green': 'text-success',
+  lime: 'text-tag-3',
   orange: 'text-warning',
-  pink: 'text-chart-5',
+  pink: 'text-tag-5',
   red: 'text-destructive',
-  teal: 'text-chart-2',
-  violet: 'text-chart-4',
+  teal: 'text-tag-2',
+  violet: 'text-tag-4',
   yellow: 'text-warning',
 } as const
 

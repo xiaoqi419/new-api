@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -25,8 +25,15 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { WeChatMpCodePanel } from '@/features/auth/components/wechat-mp-code-panel'
+import { useWeChatMpCode } from '@/features/auth/hooks/use-wechat-mp-code'
+import { useStatus } from '@/hooks/use-status'
 
-import { bindWeChat } from '../../api'
+import {
+  bindWeChat,
+  checkWeChatMpBind,
+  requestWeChatMpBindCode,
+} from '../../api'
 
 interface WeChatBindDialogProps {
   open: boolean
@@ -36,6 +43,79 @@ interface WeChatBindDialogProps {
 }
 
 export function WeChatBindDialog(props: WeChatBindDialogProps) {
+  const { status } = useStatus()
+  if (status?.wechat_mp) {
+    return <WeChatMpBindDialog {...props} />
+  }
+  return <WeChatCodeBindDialog {...props} />
+}
+
+/**
+ * Built-in Official Account flow: this page issues the code and polls until the
+ * user forwards it to the Official Account.
+ */
+function WeChatMpBindDialog(props: WeChatBindDialogProps) {
+  const { t } = useTranslation()
+
+  const checkOnce = useCallback(
+    async (token: string) => {
+      const response = await checkWeChatMpBind(token)
+      if (!response?.success) {
+        toast.error(response?.message || t('Request failed'))
+        props.onOpenChange(false)
+        return true
+      }
+      if (response.data?.status !== 'bound') {
+        return false
+      }
+      toast.success(t('Binding successful!'))
+      props.onOpenChange(false)
+      props.onSuccess()
+      return true
+    },
+    [props, t]
+  )
+
+  const mpCode = useWeChatMpCode({
+    active: props.open,
+    requestCode: requestWeChatMpBindCode,
+    checkOnce,
+  })
+
+  return (
+    <Dialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={t('Bind WeChat Account')}
+      description={t(
+        'Scan the QR code to follow the Official Account, then send it the code below.'
+      )}
+      contentClassName='max-w-sm'
+      contentHeight='auto'
+      bodyClassName='space-y-4'
+      footer={
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => props.onOpenChange(false)}
+        >
+          {t('Cancel')}
+        </Button>
+      }
+    >
+      <WeChatMpCodePanel
+        phase={mpCode.phase}
+        code={mpCode.code}
+        qrCodeUrl={mpCode.qrCodeUrl || props.qrCodeUrl}
+        errorMessage={mpCode.errorMessage}
+        onRefresh={mpCode.refresh}
+      />
+    </Dialog>
+  )
+}
+
+/** Legacy external wechat-server flow: the user types in the received code. */
+function WeChatCodeBindDialog(props: WeChatBindDialogProps) {
   const { t } = useTranslation()
   const [verificationCode, setVerificationCode] = useState('')
   const [submitting, setSubmitting] = useState(false)

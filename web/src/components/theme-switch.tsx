@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,64 +19,49 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Check, Moon, Sun } from 'lucide-react'
-import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Monitor, Moon, Sun } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/context/theme-provider'
-import { cn } from '@/lib/utils'
+
+// 点一下往后走一档,三档循环。
+const NEXT_THEME = { light: 'dark', dark: 'system', system: 'light' } as const
 
 export function ThemeSwitch() {
   const { t } = useTranslation()
-  const { theme, setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
 
-  /* Update theme-color meta tag
-   * when theme is updated */
+  /* 同步 meta[theme-color](手机浏览器地址栏底色)。直接读页面实际背景色,而不是
+   * 写死一组黑白。依赖用 resolvedTheme 而不是 theme,「跟随系统」时也才能跟着变。 */
   useEffect(() => {
-    const themeColor = theme === 'dark' ? '#020817' : '#fff'
     const metaThemeColor = document.querySelector("meta[name='theme-color']")
-    if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor)
-  }, [theme])
+    if (!metaThemeColor) return
+    const page =
+      document.querySelector<HTMLElement>('[data-public-surface]') ||
+      document.body
+    const pageColor = getComputedStyle(page).backgroundColor
+    if (pageColor) metaThemeColor.setAttribute('content', pageColor)
+  }, [resolvedTheme])
+
+  let Icon = Sun
+  let stateLabel = t('Light')
+  if (theme === 'system') {
+    Icon = Monitor
+    stateLabel = t('System')
+  } else if (theme === 'dark') {
+    Icon = Moon
+    stateLabel = t('Dark')
+  }
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
-        render={<Button variant='ghost' size='icon' className='h-9 w-9' />}
-      >
-        <Sun className='size-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90' />
-        <Moon className='absolute size-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0' />
-        <span className='sr-only'>{t('Toggle theme')}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
-        <DropdownMenuItem onClick={() => setTheme('light')}>
-          {t('Light')}{' '}
-          <Check
-            size={14}
-            className={cn('ms-auto', theme !== 'light' && 'hidden')}
-          />
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>
-          {t('Dark')}
-          <Check
-            size={14}
-            className={cn('ms-auto', theme !== 'dark' && 'hidden')}
-          />
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>
-          {t('System')}
-          <Check
-            size={14}
-            className={cn('ms-auto', theme !== 'system' && 'hidden')}
-          />
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant='ghost'
+      size='icon'
+      className='public-theme-switch text-foreground h-9 w-9'
+      onClick={() => setTheme(NEXT_THEME[theme])}
+      aria-label={`${t('Toggle theme')} — ${stateLabel}`}
+      title={`${t('Toggle theme')} — ${stateLabel}`}
+    >
+      <Icon className='size-[1.2rem]' />
+    </Button>
   )
 }

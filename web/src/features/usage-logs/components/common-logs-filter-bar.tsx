@@ -19,10 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
 import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import type { Table } from '@tanstack/react-table'
-import { Eye, EyeOff } from 'lucide-react'
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Eye, EyeOff } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -38,7 +38,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-import { LOG_TYPE_ALL_VALUE, LOG_TYPE_FILTERS } from '../constants'
+import {
+  LOG_QUOTA_STATUS_ALL_VALUE,
+  LOG_QUOTA_STATUS_FILTERS,
+  LOG_TYPE_ALL_VALUE,
+  LOG_TYPE_FILTERS,
+} from '../constants'
 import { buildSearchParams } from '../lib/filter'
 import { getDefaultTimeRange } from '../lib/utils'
 import type { CommonLogFilters } from '../types'
@@ -87,6 +92,7 @@ function buildSearchSourceKey(values: {
   username?: unknown
   requestId?: unknown
   upstreamRequestId?: unknown
+  quotaStatus?: unknown
   type?: unknown
 }) {
   return [
@@ -99,6 +105,7 @@ function buildSearchSourceKey(values: {
     values.username,
     values.requestId,
     values.upstreamRequestId,
+    values.quotaStatus,
     Array.isArray(values.type) ? values.type.join(',') : values.type,
   ]
     .map((value) => String(value ?? ''))
@@ -132,6 +139,7 @@ export function CommonLogsFilterBar<TData>(
       username: searchParams.username,
       requestId: searchParams.requestId,
       upstreamRequestId: searchParams.upstreamRequestId,
+      quotaStatus: searchParams.quotaStatus,
       type: searchParams.type,
     }
     const filters: CommonLogFilters = {
@@ -146,6 +154,7 @@ export function CommonLogsFilterBar<TData>(
       username: searchParams.username || undefined,
       requestId: searchParams.requestId || undefined,
       upstreamRequestId: searchParams.upstreamRequestId || undefined,
+      quotaStatus: searchParams.quotaStatus || undefined,
     }
     return {
       sourceKey: buildSearchSourceKey(sourceValues),
@@ -162,6 +171,7 @@ export function CommonLogsFilterBar<TData>(
     searchParams.username,
     searchParams.requestId,
     searchParams.upstreamRequestId,
+    searchParams.quotaStatus,
     searchParams.type,
   ])
   const [draft, setDraft] = useState<CommonLogDraft>(() => searchState)
@@ -242,7 +252,11 @@ export function CommonLogsFilterBar<TData>(
 
   const hasTypeFilter = logType !== LOG_TYPE_ALL_VALUE
   const hasAdditionalFilters =
-    !!filters.model || !!filters.group || hasTypeFilter || hasExpandedFilters
+    !!filters.model ||
+    !!filters.group ||
+    hasTypeFilter ||
+    !!filters.quotaStatus ||
+    hasExpandedFilters
 
   const expandedFilterCount = [
     filters.token,
@@ -264,6 +278,18 @@ export function CommonLogsFilterBar<TData>(
   )
   const logTypeLabel =
     logTypeItems.find((type) => type.value === logType)?.label ?? t('All Types')
+  const quotaStatusItems = useMemo(
+    () =>
+      LOG_QUOTA_STATUS_FILTERS.map((item) => ({
+        value: item.value,
+        label: t(item.label),
+      })),
+    [t]
+  )
+  const quotaStatusValue = filters.quotaStatus ?? LOG_QUOTA_STATUS_ALL_VALUE
+  const quotaStatusLabel =
+    quotaStatusItems.find((item) => item.value === quotaStatusValue)?.label ??
+    t('All Charges')
 
   const statsBar = (
     <div className='flex flex-wrap items-center gap-2'>
@@ -360,6 +386,33 @@ export function CommonLogsFilterBar<TData>(
       </Select>
     </LogsFilterField>
   )
+  const quotaStatusFilter = (
+    <LogsFilterField>
+      <Select
+        items={quotaStatusItems}
+        value={quotaStatusValue}
+        onValueChange={(value) => {
+          handleChange(
+            'quotaStatus',
+            value && value !== LOG_QUOTA_STATUS_ALL_VALUE ? value : undefined
+          )
+        }}
+      >
+        <SelectTrigger>
+          <SelectValue>{quotaStatusLabel}</SelectValue>
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>
+          <SelectGroup>
+            {LOG_QUOTA_STATUS_FILTERS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {t(item.label)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </LogsFilterField>
+  )
   const advancedFilters = (
     <>
       <LogsFilterField>
@@ -422,6 +475,7 @@ export function CommonLogsFilterBar<TData>(
           {modelFilter}
           {groupFilter}
           {typeFilter}
+          {quotaStatusFilter}
         </>
       }
       advancedFilters={advancedFilters}
@@ -431,12 +485,17 @@ export function CommonLogsFilterBar<TData>(
           {modelFilter}
           {groupFilter}
           {typeFilter}
+          {quotaStatusFilter}
           {advancedFilters}
         </>
       }
       mobileFilterCount={
-        [filters.model, filters.group, hasTypeFilter].filter(Boolean).length +
-        expandedFilterCount
+        [
+          filters.model,
+          filters.group,
+          hasTypeFilter,
+          filters.quotaStatus,
+        ].filter(Boolean).length + expandedFilterCount
       }
       hasAdvancedActiveFilters={hasExpandedFilters}
       advancedFilterCount={expandedFilterCount}

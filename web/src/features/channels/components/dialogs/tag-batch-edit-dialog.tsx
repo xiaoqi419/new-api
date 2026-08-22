@@ -17,12 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, AlertCircle } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
+import { Loader2, AlertCircle } from '@/components/icons'
 import { MultiSelect } from '@/components/multi-select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -73,7 +73,7 @@ export function TagBatchEditDialog({
   const groupOptions = useMemo(() => {
     if (!groupsData?.data) return []
     const allGroups = new Set([...groupsData.data, ...groups])
-    return Array.from(allGroups).map((group) => ({
+    return [...allGroups].map((group) => ({
       value: group,
       label: group,
     }))
@@ -121,7 +121,7 @@ export function TagBatchEditDialog({
     if (modelMapping.trim()) {
       try {
         JSON.parse(modelMapping)
-      } catch (_error) {
+      } catch {
         toast.error(t('Model mapping must be valid JSON'))
         return
       }
@@ -219,8 +219,7 @@ export function TagBatchEditDialog({
           <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
         </div>
       ) : (
-        <>
-          <div className='space-y-4 py-4'>
+        <div className='space-y-4 py-4'>
             <Alert>
               <AlertCircle className='h-4 w-4' />
               <AlertDescription>
@@ -294,8 +293,7 @@ export function TagBatchEditDialog({
                 {t('User groups that can access channels with this tag')}
               </p>
             </div>
-          </div>
-        </>
+        </div>
       )}
     </Dialog>
   )

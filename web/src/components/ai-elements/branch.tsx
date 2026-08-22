@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 'use client'
 
 import type { UIMessage } from 'ai'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import {
   type ComponentProps,
   createContext,
@@ -32,6 +31,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

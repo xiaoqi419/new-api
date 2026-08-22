@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -18,6 +19,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -135,48 +137,23 @@ func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *r
 	return nil
 }
 
-// EstimateBilling 根据请求 metadata 中的输出分辨率与是否包含视频输入，返回相对基准价的计费 OtherRatio。
+// EstimateBilling 按「视频分档价格」设置把请求特征（输出分辨率、输入是否含视频、输出是否有声）
+// 折算成相对基准档的计费 OtherRatio。
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInfo) map[string]float64 {
 	req, err := relaycommon.GetTaskRequest(c)
 	if err != nil {
 		return nil
 	}
-	hasVideo := hasVideoInMetadata(req.Metadata)
 	resolution, _ := req.Metadata["resolution"].(string)
-	ratio, ok := GetVideoInputRatio(info.OriginModelName, resolution, hasVideo)
+	ratio, ok := ratio_setting.GetVideoPriceRatio(info.OriginModelName, ratio_setting.VideoRequestShape{
+		Resolution: resolution,
+		HasVideo:   hasVideoInMetadata(req.Metadata),
+		HasAudio:   generatesAudioInMetadata(req.Metadata),
+	})
 	if !ok || ratio == 1.0 {
 		return nil
 	}
-	return map[string]float64{"video_input": ratio}
-}
-
-// hasVideoInMetadata 直接检查 metadata 的 content 数组是否包含 video_url 条目，
-// 避免构建完整的上游 requestPayload。
-func hasVideoInMetadata(metadata map[string]interface{}) bool {
-	if metadata == nil {
-		return false
-	}
-	contentRaw, ok := metadata["content"]
-	if !ok {
-		return false
-	}
-	contentSlice, ok := contentRaw.([]interface{})
-	if !ok {
-		return false
-	}
-	for _, item := range contentSlice {
-		itemMap, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if itemMap["type"] == "video_url" {
-			return true
-		}
-		if _, has := itemMap["video_url"]; has {
-			return true
-		}
-	}
-	return false
+	return map[string]float64{"video_tier": ratio}
 }
 
 // BuildRequestBody converts request into Doubao specific format.
@@ -226,6 +203,12 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 	if dResp.ID == "" {
 		taskErr = service.TaskErrorWrapper(fmt.Errorf("task_id is empty"), "invalid_response", http.StatusInternalServerError)
 		return
+	}
+
+	// 火山官方 Ark 格式：创建任务仅返回 {"id": <task_id>}
+	if c.GetString("relay_response_format") == "ark" {
+		c.JSON(http.StatusOK, gin.H{"id": info.PublicTaskID})
+		return dResp.ID, responseBody, nil
 	}
 
 	ov := dto.NewOpenAIVideo()
@@ -294,7 +277,7 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		return nil, errors.Wrap(err, "unmarshal metadata failed")
 	}
 
-	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
+	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 || sec == relaycommon.AutoTaskDurationSeconds {
 		r.Duration = lo.ToPtr(dto.IntValue(sec))
 	}
 
@@ -336,6 +319,15 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		taskResult.Status = model.TaskStatusFailure
 		taskResult.Progress = "100%"
 		taskResult.Reason = resTask.Error.Message
+	case "cancelled", "expired":
+		// Both are terminal upstream; without them the poller keeps asking until
+		// the global task timeout and the refund is delayed by up to a day.
+		taskResult.Status = model.TaskStatusFailure
+		taskResult.Progress = "100%"
+		taskResult.Reason = resTask.Error.Message
+		if taskResult.Reason == "" {
+			taskResult.Reason = "task " + resTask.Status
+		}
 	default:
 		// Unknown status, treat as processing
 		taskResult.Status = model.TaskStatusInProgress
@@ -369,4 +361,82 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, erro
 	}
 
 	return common.Marshal(openAIVideo)
+}
+
+// ConvertToArkVideo 以火山官方 Ark 任务对象格式输出。originTask.Data 存的就是上游原生 task 对象，
+// 这里原样透传，仅把 id 换成本平台的公开 task_id，并在缺失时补 status/model。
+func (a *TaskAdaptor) ConvertToArkVideo(originTask *model.Task) ([]byte, error) {
+	out := map[string]any{}
+	if len(originTask.Data) > 0 {
+		if err := common.Unmarshal(originTask.Data, &out); err != nil {
+			return nil, errors.Wrap(err, "unmarshal doubao task data failed")
+		}
+	}
+	out["id"] = originTask.TaskID
+	if s, ok := out["status"].(string); !ok || s == "" {
+		out["status"] = arkVideoStatus(originTask.Status)
+	}
+	if m, ok := out["model"].(string); !ok || m == "" {
+		out["model"] = originTask.Properties.OriginModelName
+	}
+	return common.Marshal(out)
+}
+
+// arkVideoStatus 把内部任务状态映射为火山官方 Ark 状态字符串。
+func arkVideoStatus(s model.TaskStatus) string {
+	switch s {
+	case model.TaskStatusSuccess:
+		return "succeeded"
+	case model.TaskStatusFailure:
+		return "failed"
+	case model.TaskStatusInProgress:
+		return "running"
+	default:
+		return "queued"
+	}
+}
+
+// hasVideoInMetadata 直接检查 metadata 的 content 数组是否包含 video_url 条目，
+// 避免构建完整的上游 requestPayload。
+func hasVideoInMetadata(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	contentRaw, ok := metadata["content"]
+	if !ok {
+		return false
+	}
+	contentSlice, ok := contentRaw.([]interface{})
+	if !ok {
+		return false
+	}
+	for _, item := range contentSlice {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if itemMap["type"] == "video_url" {
+			return true
+		}
+		if _, has := itemMap["video_url"]; has {
+			return true
+		}
+	}
+	return false
+}
+
+// generatesAudioInMetadata 判断请求是否要求输出有声视频。上游不传该参数时默认无声，
+// 因此仅在显式为真时返回 true；字符串形态与 dto.BoolValue 的解析口径保持一致。
+func generatesAudioInMetadata(metadata map[string]interface{}) bool {
+	if metadata == nil {
+		return false
+	}
+	switch v := metadata["generate_audio"].(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(strings.TrimSpace(v), "true")
+	default:
+		return false
+	}
 }

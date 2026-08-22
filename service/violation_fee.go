@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -82,21 +83,28 @@ func shouldChargeViolationFee(err *types.NewAPIError) bool {
 }
 
 func calcViolationFeeQuota(amount, groupRatio float64) int {
+	if math.IsNaN(amount) || math.IsInf(amount, 0) || math.IsNaN(groupRatio) || math.IsInf(groupRatio, 0) ||
+		math.IsNaN(common.QuotaPerUnit) || math.IsInf(common.QuotaPerUnit, 0) {
+		return 0
+	}
 	if amount <= 0 {
 		return 0
 	}
-	if groupRatio <= 0 {
+	if groupRatio <= 0 || common.QuotaPerUnit <= 0 {
 		return 0
 	}
-	quota := decimal.NewFromFloat(amount).
+	quotaDecimal := decimal.NewFromFloat(amount).
 		Mul(decimal.NewFromFloat(common.QuotaPerUnit)).
 		Mul(decimal.NewFromFloat(groupRatio)).
-		Round(0).
-		IntPart()
+		Round(0)
+	quota, clamp := common.QuotaFromDecimalChecked(quotaDecimal)
+	if clamp != nil {
+		return 0
+	}
 	if quota <= 0 {
 		return 0
 	}
-	return int(quota)
+	return quota
 }
 
 // ChargeViolationFeeIfNeeded charges an additional fee after the normal flow finishes (including refund).

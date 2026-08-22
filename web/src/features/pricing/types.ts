@@ -54,6 +54,8 @@ export type PricingModel = {
   billing_mode?: string
   /** Raw expression describing dynamic / tiered billing */
   billing_expr?: string
+  /** Per-tier video pricing, present only for video models with a tier table */
+  video_price_tiers?: VideoPriceTiers
   /** Pricing version returned by backend, useful for cache busting */
   pricing_version?: string
   /**
@@ -68,6 +70,29 @@ export type PricingModel = {
   input_modalities?: Modality[]
   output_modalities?: Modality[]
   capabilities?: ModelCapability[]
+}
+
+/** Dimensions a video model actually prices differently by. */
+export type VideoPriceAxis = 'resolution' | 'video_input' | 'audio_output'
+
+export type VideoPriceTier = {
+  resolution?: string
+  has_video?: boolean
+  has_audio?: boolean
+  price: number
+}
+
+/**
+ * Video models are billed per token like any ratio-based model, but vendors
+ * charge a different unit price per output resolution / video input / audio
+ * output. `axes` lists the dimensions this model is actually priced by, so the
+ * table never shows a column the vendor supports but does not charge for.
+ * Prices share `base_price`'s unit; only their ratio matters.
+ */
+export type VideoPriceTiers = {
+  axes: VideoPriceAxis[]
+  base_price: number
+  tiers: VideoPriceTier[]
 }
 
 /** Input/output modalities supported by a model. */
@@ -88,15 +113,32 @@ export type ModelCapability =
   | 'caching'
   | 'embeddings'
 
+export type AutoGroupRoute = {
+  key: string
+  name: string
+  description: string
+  groups: string[]
+  user_selectable: boolean
+}
+
+/**
+ * Group name to its human readable description.
+ *
+ * `/api/pricing` serves `service.GetUserUsableGroups`, which is a
+ * `map[string]string`; ratios travel separately in `group_ratio`.
+ */
+export type UsableGroupMap = Record<string, string>
+
 export type PricingData = {
   success: boolean
   message?: string
   data: PricingModel[]
   vendors: PricingVendor[]
   group_ratio: Record<string, number>
-  usable_group: Record<string, { desc: string; ratio: number }>
+  usable_group: UsableGroupMap
   supported_endpoint: Record<string, string>
   auto_groups: string[]
+  auto_group_routes: AutoGroupRoute[]
 }
 
 export type TokenUnit = 'M' | 'K'

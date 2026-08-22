@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -16,6 +17,51 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var allowedGroupSwitchCooldowns = map[int]bool{5: true, 10: true, 30: true}
+
+// normalizeGroupSwitch validates and normalizes the token's group auto-switch
+// fields against the requesting user's usable groups. It mutates the token in
+// place: deduping candidates, clamping the failure threshold to [1,5], and
+// snapping the cooldown to an allowed value. When switch mode is off it clears
+// the candidate list.
+func normalizeGroupSwitch(token *model.Token, userId int) error {
+	if !token.GroupSwitchEnabled {
+		token.GroupSwitchGroups = ""
+		return nil
+	}
+	userGroup, _ := model.GetUserGroup(userId, false)
+	usable := service.GetUserUsableGroups(userGroup)
+	seen := make(map[string]bool)
+	groups := make([]string, 0)
+	for _, group := range token.GetGroupSwitchGroups() {
+		if group == "" || seen[group] {
+			continue
+		}
+		if _, ok := usable[group]; !ok {
+			return fmt.Errorf("分组不可用: %s", group)
+		}
+		seen[group] = true
+		groups = append(groups, group)
+	}
+	if len(groups) < 2 {
+		return errors.New("自动切换至少需要选择 2 个候选分组")
+	}
+	encoded, err := common.Marshal(groups)
+	if err != nil {
+		return err
+	}
+	token.GroupSwitchGroups = string(encoded)
+	if token.GroupSwitchThreshold < 1 {
+		token.GroupSwitchThreshold = 1
+	} else if token.GroupSwitchThreshold > 5 {
+		token.GroupSwitchThreshold = 5
+	}
+	if !allowedGroupSwitchCooldowns[token.GroupSwitchCooldown] {
+		token.GroupSwitchCooldown = 10
+	}
+	return nil
+}
 
 type tokenAutoGroupsInput struct {
 	Set    bool
@@ -212,6 +258,41 @@ func GetTokenStatus(c *gin.Context) {
 	})
 }
 
+// GetTokensConcurrency 返回当前用户所有令牌的实时并发使用情况。
+// supported=false 表示当前部署为内存模式，无法读取实时并发（仅显示上限）。
+func GetTokensConcurrency(c *gin.Context) {
+	userId := c.GetInt("id")
+	var rows []struct {
+		Id             int `gorm:"column:id"`
+		MaxConcurrency int `gorm:"column:max_concurrency"`
+	}
+	if err := model.DB.Model(&model.Token{}).
+		Select("id, max_concurrency").
+		Where("user_id = ?", userId).
+		Find(&rows).Error; err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	ids := make([]int, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.Id)
+	}
+	inUseMap, supported := service.GetTokenConcurrencyInUse(ids)
+
+	items := make(map[string]gin.H, len(rows))
+	for _, r := range rows {
+		items[strconv.Itoa(r.Id)] = gin.H{
+			"in_use": inUseMap[r.Id],
+			"max":    r.MaxConcurrency,
+		}
+	}
+	common.ApiSuccess(c, gin.H{
+		"supported": supported,
+		"items":     items,
+	})
+}
+
 func GetTokenUsage(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -273,6 +354,10 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
 	}
+	if err := normalizeGroupSwitch(&token, c.GetInt("id")); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	// 非无限额度时，检查额度值是否超出有效范围
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
@@ -314,20 +399,28 @@ func AddToken(c *gin.Context) {
 		return
 	}
 	cleanToken := model.Token{
-		UserId:             c.GetInt("id"),
-		Name:               token.Name,
-		Key:                key,
-		CreatedTime:        common.GetTimestamp(),
-		AccessedTime:       common.GetTimestamp(),
-		ExpiredTime:        token.ExpiredTime,
-		RemainQuota:        token.RemainQuota,
-		UnlimitedQuota:     token.UnlimitedQuota,
-		ModelLimitsEnabled: token.ModelLimitsEnabled,
-		ModelLimits:        token.ModelLimits,
-		AllowIps:           token.AllowIps,
-		Group:              token.Group,
-		CrossGroupRetry:    token.CrossGroupRetry,
-		AutoGroups:         token.AutoGroups,
+		UserId:               c.GetInt("id"),
+		Name:                 token.Name,
+		Key:                  key,
+		CreatedTime:          common.GetTimestamp(),
+		AccessedTime:         common.GetTimestamp(),
+		ExpiredTime:          token.ExpiredTime,
+		RemainQuota:          token.RemainQuota,
+		UnlimitedQuota:       token.UnlimitedQuota,
+		ModelLimitsEnabled:   token.ModelLimitsEnabled,
+		ModelLimits:          token.ModelLimits,
+		AllowIps:             token.AllowIps,
+		Group:                token.Group,
+		CrossGroupRetry:      token.CrossGroupRetry,
+		GroupSwitchEnabled:   token.GroupSwitchEnabled,
+		GroupSwitchGroups:    token.GroupSwitchGroups,
+		GroupSwitchThreshold: token.GroupSwitchThreshold,
+		GroupSwitchCooldown:  token.GroupSwitchCooldown,
+		MaxConcurrency:       token.MaxConcurrency,
+		AutoGroups:           token.AutoGroups,
+	}
+	if cleanToken.MaxConcurrency < 0 {
+		cleanToken.MaxConcurrency = 0
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -397,6 +490,10 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
+		if err := normalizeGroupSwitch(&token, c.GetInt("id")); err != nil {
+			common.ApiError(c, err)
+			return
+		}
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime
@@ -407,6 +504,14 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		cleanToken.GroupSwitchEnabled = token.GroupSwitchEnabled
+		cleanToken.GroupSwitchGroups = token.GroupSwitchGroups
+		cleanToken.GroupSwitchThreshold = token.GroupSwitchThreshold
+		cleanToken.GroupSwitchCooldown = token.GroupSwitchCooldown
+		cleanToken.MaxConcurrency = token.MaxConcurrency
+		if cleanToken.MaxConcurrency < 0 {
+			cleanToken.MaxConcurrency = 0
+		}
 		if token.Group != "auto" {
 			cleanToken.CrossGroupRetry = false
 			_ = cleanToken.SetAutoGroups(nil)

@@ -1,3 +1,10 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { SiGithub, SiWechat, SiLinux } from 'react-icons/si'
+import { toast } from 'sonner'
+
+import { IconDiscord } from '@/assets/brand-icons'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,14 +23,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { SiGithub, SiWechat, SiLinux } from 'react-icons/si'
-import { toast } from 'sonner'
-
-import { IconDiscord } from '@/assets/brand-icons'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Mail, Shield, Send, Link2, Unlink } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'

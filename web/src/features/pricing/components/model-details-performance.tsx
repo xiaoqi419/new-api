@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, HeartPulse, Timer } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -26,6 +25,7 @@ import {
   staticDataTableClassNames as tableStyles,
 } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
+import { AlertTriangle, HeartPulse, Timer } from '@/components/icons'
 import { getPerfMetrics } from '@/features/performance-metrics/api'
 import {
   formatLatency,
@@ -36,7 +36,8 @@ import {
 import type { PerformanceGroup } from '@/features/performance-metrics/types'
 import { cn } from '@/lib/utils'
 
-import { type UptimeDayPoint } from '../lib/mock-stats'
+import type { UptimeDayPoint } from '../lib/mock-stats'
+import { toGroupUptimeSeries, toUptimePct } from '../lib/perf-uptime'
 import type { PricingModel } from '../types'
 import { LatencyTrendChart, UptimeTrendChart } from './model-details-charts'
 import { UptimeSparkline } from './model-details-uptime-sparkline'
@@ -64,9 +65,7 @@ function StatCard(props: {
         {props.value}
       </span>
       {props.hint && (
-        <span className='text-muted-foreground/70 text-[11px]'>
-          {props.hint}
-        </span>
+        <span className='text-muted-foreground text-[11px]'>{props.hint}</span>
       )}
     </div>
   )
@@ -80,12 +79,6 @@ type PerformanceRow = {
   avg_tps: number
 }
 
-function toUptimePct(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  const clamped = Math.min(100, Math.max(0, value))
-  return Math.round(clamped * 100) / 100
-}
-
 function toLatencySeries(groups: PerformanceGroup[]) {
   const byTs = new Map<number, number[]>()
   for (const group of groups) {
@@ -97,7 +90,7 @@ function toLatencySeries(groups: PerformanceGroup[]) {
     }
   }
 
-  return Array.from(byTs.entries())
+  return [...byTs.entries()]
     .sort(([a], [b]) => a - b)
     .map(([ts, values]) => ({
       timestamp: new Date(ts * 1000).toISOString(),
@@ -121,7 +114,7 @@ function toUptimeSeries(groups: PerformanceGroup[]): UptimeDayPoint[] {
       byTs.set(point.ts, current)
     }
   }
-  return Array.from(byTs.entries())
+  return [...byTs.entries()]
     .sort(([a], [b]) => a - b)
     .map(([ts, value]) => {
       const uptime =
@@ -138,18 +131,6 @@ function toUptimeSeries(groups: PerformanceGroup[]): UptimeDayPoint[] {
     })
 }
 
-function toGroupUptimeSeries(group: PerformanceGroup): UptimeDayPoint[] {
-  return group.series.map((point) => {
-    const successRate = toUptimePct(point.success_rate)
-    return {
-      date: new Date(point.ts * 1000).toISOString(),
-      uptime_pct: successRate,
-      incidents: successRate < 100 ? 1 : 0,
-      outage_minutes: 0,
-    }
-  })
-}
-
 function average(
   rows: PerformanceRow[],
   field: 'avg_ttft_ms' | 'avg_latency_ms'
@@ -161,7 +142,10 @@ function average(
   )
 }
 
-export function ModelDetailsPerformance(props: { model: PricingModel }) {
+export function ModelDetailsPerformance(props: {
+  model: PricingModel
+  hideGroupTable?: boolean
+}) {
   const { t } = useTranslation()
   const metricsQuery = useQuery({
     queryKey: ['perf-metrics', props.model.model_name],
@@ -248,62 +232,64 @@ export function ModelDetailsPerformance(props: { model: PricingModel }) {
         />
       </div>
 
-      <section>
-        <SectionHeader
-          icon={HeartPulse}
-          title={t('Per-group performance')}
-          description={t('Average latency, TTFT, TPS, and success rate')}
-        />
-        <StaticDataTable
-          className='rounded-lg'
-          tableClassName='text-sm'
-          headerRowClassName={tableStyles.compactHeaderRow}
-          data={performances}
-          getRowKey={(perf) => perf.group}
-          columns={[
-            {
-              id: 'group',
-              header: t('Group'),
-              className: tableStyles.compactHeaderCell,
-              cellClassName: tableStyles.compactCell,
-              cell: (perf) => <GroupBadge group={perf.group} size='sm' />,
-            },
-            {
-              id: 'tps',
-              header: 'TPS',
-              className: tableStyles.compactHeaderCellRight,
-              cellClassName: tableStyles.compactNumericCell,
-              cell: (perf) => formatThroughput(perf.avg_tps),
-            },
-            {
-              id: 'ttft',
-              header: t('Average TTFT'),
-              className: tableStyles.compactHeaderCellRight,
-              cellClassName: tableStyles.compactNumericCell,
-              cell: (perf) => formatLatency(perf.avg_ttft_ms),
-            },
-            {
-              id: 'latency',
-              header: t('Average latency'),
-              className: tableStyles.compactHeaderCellRight,
-              cellClassName: tableStyles.compactMutedNumericCell,
-              cell: (perf) => formatLatency(perf.avg_latency_ms),
-            },
-            {
-              id: 'success',
-              header: t('Success rate'),
-              className: cn(tableStyles.compactHeaderCell, 'min-w-[180px]'),
-              cellClassName: tableStyles.compactCell,
-              cell: (perf) => (
-                <UptimeSparkline
-                  size='sm'
-                  series={uptimeByGroup[perf.group] ?? []}
-                />
-              ),
-            },
-          ]}
-        />
-      </section>
+      {!props.hideGroupTable && (
+        <section>
+          <SectionHeader
+            icon={HeartPulse}
+            title={t('Per-group performance')}
+            description={t('Average latency, TTFT, TPS, and success rate')}
+          />
+          <StaticDataTable
+            className='rounded-lg'
+            tableClassName='text-sm'
+            headerRowClassName={tableStyles.compactHeaderRow}
+            data={performances}
+            getRowKey={(perf) => perf.group}
+            columns={[
+              {
+                id: 'group',
+                header: t('Group'),
+                className: tableStyles.compactHeaderCell,
+                cellClassName: tableStyles.compactCell,
+                cell: (perf) => <GroupBadge group={perf.group} size='sm' />,
+              },
+              {
+                id: 'tps',
+                header: 'TPS',
+                className: tableStyles.compactHeaderCellRight,
+                cellClassName: tableStyles.compactNumericCell,
+                cell: (perf) => formatThroughput(perf.avg_tps),
+              },
+              {
+                id: 'ttft',
+                header: t('Average TTFT'),
+                className: tableStyles.compactHeaderCellRight,
+                cellClassName: tableStyles.compactNumericCell,
+                cell: (perf) => formatLatency(perf.avg_ttft_ms),
+              },
+              {
+                id: 'latency',
+                header: t('Average latency'),
+                className: tableStyles.compactHeaderCellRight,
+                cellClassName: tableStyles.compactMutedNumericCell,
+                cell: (perf) => formatLatency(perf.avg_latency_ms),
+              },
+              {
+                id: 'success',
+                header: t('Success rate'),
+                className: cn(tableStyles.compactHeaderCell, 'min-w-[180px]'),
+                cellClassName: tableStyles.compactCell,
+                cell: (perf) => (
+                  <UptimeSparkline
+                    size='sm'
+                    series={uptimeByGroup[perf.group] ?? []}
+                  />
+                ),
+              },
+            ]}
+          />
+        </section>
+      )}
 
       <section>
         <SectionHeader
@@ -330,7 +316,7 @@ export function ModelDetailsPerformance(props: { model: PricingModel }) {
           }
           accent={
             incidentCount > 0 ? (
-              <span className='inline-flex items-center gap-1 text-amber-600 dark:text-amber-400'>
+              <span className='text-warning inline-flex items-center gap-1'>
                 <AlertTriangle className='size-3.5' />
                 {t('{{count}} incidents', {
                   count: incidentCount,
@@ -355,15 +341,13 @@ function SectionHeader(props: {
   return (
     <div className='mb-2 flex flex-wrap items-center justify-between gap-2'>
       <div className='flex min-w-0 items-center gap-2'>
-        <Icon className='text-muted-foreground/70 size-3.5 shrink-0' />
+        <Icon className='text-muted-foreground size-3.5 shrink-0' />
         <div className='min-w-0'>
           <div className='text-foreground text-sm font-semibold'>
             {props.title}
           </div>
           {props.description && (
-            <p className='text-muted-foreground/80 text-xs'>
-              {props.description}
-            </p>
+            <p className='text-muted-foreground text-xs'>{props.description}</p>
           )}
         </div>
       </div>

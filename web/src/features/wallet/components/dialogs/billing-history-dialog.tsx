@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Search, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { Dialog } from '@/components/dialog'
+import {
+  Search,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import {
   AlertDialog,
@@ -147,26 +153,32 @@ export function BillingHistoryDialog({
 
           {/* Records List */}
           <div className='max-h-[min(54vh,520px)] overflow-y-auto pr-1'>
-            {loading ? (
+            {loading && (
               <div className='space-y-3'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className='rounded-lg border p-3 sm:p-4'>
-                    <div className='flex items-start justify-between'>
-                      <div className='flex-1 space-y-2'>
-                        <Skeleton className='h-4 w-48' />
-                        <Skeleton className='h-3 w-32' />
+                {['first', 'second', 'third', 'fourth', 'fifth'].map(
+                  (skeleton) => (
+                    <div
+                      key={skeleton}
+                      className='rounded-lg border p-3 sm:p-4'
+                    >
+                      <div className='flex items-start justify-between'>
+                        <div className='flex-1 space-y-2'>
+                          <Skeleton className='h-4 w-48' />
+                          <Skeleton className='h-3 w-32' />
+                        </div>
+                        <Skeleton className='h-5 w-16' />
                       </div>
-                      <Skeleton className='h-5 w-16' />
+                      <div className='mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4'>
+                        <Skeleton className='h-3 w-full' />
+                        <Skeleton className='h-3 w-full' />
+                        <Skeleton className='h-3 w-full' />
+                      </div>
                     </div>
-                    <div className='mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4'>
-                      <Skeleton className='h-3 w-full' />
-                      <Skeleton className='h-3 w-full' />
-                      <Skeleton className='h-3 w-full' />
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
-            ) : records.length === 0 ? (
+            )}
+            {!loading && records.length === 0 && (
               <div className='text-muted-foreground flex min-h-40 flex-col items-center justify-center py-10 text-center'>
                 <p className='text-sm font-medium'>
                   {t('No billing records found')}
@@ -177,7 +189,8 @@ export function BillingHistoryDialog({
                     : t('Your transaction history will appear here')}
                 </p>
               </div>
-            ) : (
+            )}
+            {!loading && records.length > 0 && (
               <div className='space-y-3'>
                 {records.map((record) => {
                   const statusConfig = getStatusConfig(record.status)
@@ -252,7 +265,7 @@ export function BillingHistoryDialog({
                           <Label className='text-muted-foreground text-xs'>
                             {t('Payment')}
                           </Label>
-                          <div className='text-sm font-semibold text-red-600'>
+                          <div className='text-destructive text-sm font-semibold'>
                             {formatNumber(record.money)}
                           </div>
                         </div>

@@ -84,10 +84,14 @@ func ClaudeErrorWrapperLocal(err error, code string, statusCode int) *dto.Claude
 	return claudeErr
 }
 
+// maxUpstreamErrorBodyBytes 限制读取上游错误响应体的大小，
+// 避免异常上游返回超大错误体时放大内存占用。超出部分会被截断。
+const maxUpstreamErrorBodyBytes = 1 << 20 // 1 MiB
+
 func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFail bool) (newApiErr *types.NewAPIError) {
 	newApiErr = types.InitOpenAIError(types.ErrorCodeBadResponseStatusCode, resp.StatusCode)
 
-	responseBody, err := io.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, maxUpstreamErrorBodyBytes))
 	if err != nil {
 		return
 	}

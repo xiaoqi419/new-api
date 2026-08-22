@@ -28,7 +28,7 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { toast } from 'sonner'
 
-import { getStatus } from '@/lib/api'
+import { statusQueryOptions } from '@/lib/api'
 import { installBuildMetadata } from '@/lib/build-metadata'
 import { applyFaviconToDom } from '@/lib/dom-utils'
 import '@/lib/dayjs'
@@ -36,9 +36,9 @@ import { initializeFrontendCache } from '@/lib/frontend-cache'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { DirectionProvider } from './context/direction-provider'
-import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
-import './i18n/config'
+import { i18nReady } from './i18n/config'
+import { dropOrphanedPreferenceCookies } from './lib/orphaned-preferences'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
 
@@ -135,8 +135,10 @@ if (!rootElement) {
     } catch {
       /* empty */
     }
-    // Background refresh
-    getStatus()
+    // Background refresh, primed into the shared cache so the root layout and
+    // every `useStatus()` consumer reuse this response instead of refetching.
+    queryClient
+      .fetchQuery(statusQueryOptions)
       .then((s) => {
         if (s?.system_name) {
           apply(s.system_name as string)
@@ -155,19 +157,23 @@ if (!rootElement) {
     /* empty */
   }
 })()
+dropOrphanedPreferenceCookies()
+
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <FontProvider>
+  // The active locale is an async chunk now; rendering before it lands would
+  // paint untranslated keys and then swap them out.
+  void i18nReady.finally(() => {
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
             <DirectionProvider>
               <RouterProvider router={router} />
             </DirectionProvider>
-          </FontProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>
-  )
+          </ThemeProvider>
+        </QueryClientProvider>
+      </StrictMode>
+    )
+  })
 }

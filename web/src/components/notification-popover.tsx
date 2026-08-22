@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { TFunction } from 'i18next'
-import { Bell, Megaphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { Bell, Megaphone } from '@/components/icons'
 import { RichContent } from '@/components/rich-content'
+import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,26 +41,24 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  ANNOUNCEMENT_TYPE_LABEL_KEYS,
+  ANNOUNCEMENT_TYPE_VARIANTS,
+} from '@/features/announcements/constants'
+import type { Announcement } from '@/features/announcements/types'
+import type { NotificationTab } from '@/hooks/use-notifications'
 import { getAnnouncementColorClass } from '@/lib/colors'
 import { formatDateTimeObject } from '@/lib/time'
 import { cn } from '@/lib/utils'
-
-interface AnnouncementItem {
-  id?: number | string
-  type?: string
-  content?: string
-  extra?: string
-  publishDate?: string | Date
-}
 
 interface NotificationPopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   unreadCount: number
-  activeTab: 'notice' | 'announcements'
-  onTabChange: (tab: 'notice' | 'announcements') => void
-  notice: string
-  announcements: AnnouncementItem[]
+  activeTab: NotificationTab
+  onTabChange: (tab: NotificationTab) => void
+  announcements: Announcement[]
+  versions: Announcement[]
   loading: boolean
   className?: string
 }
@@ -124,30 +123,19 @@ function getRelativeTime(publishDate: string | Date, t: TFunction): string {
 }
 
 /**
- * Announcement status dot indicator
+ * Announcement status dot indicator. Driven by level, not type: the shared
+ * color map speaks in severity (default/success/warning/error), while an
+ * announcement's type says where it belongs (release notes / notice / activity).
  */
-function AnnouncementDot({ type }: { type?: string }) {
+function AnnouncementDot({ level }: { level?: string }) {
   return (
     <span
       className={cn(
         'mt-1.5 inline-block size-2 shrink-0 rounded-full',
-        getAnnouncementColorClass(type)
+        getAnnouncementColorClass(level)
       )}
     />
   )
-}
-
-function getAnnouncementRenderKey(announcement: AnnouncementItem): string {
-  if (announcement.id !== undefined && announcement.id !== null) {
-    return `id:${announcement.id}`
-  }
-
-  return JSON.stringify({
-    content: announcement.content ?? '',
-    extra: announcement.extra ?? '',
-    publishDate: announcement.publishDate ?? '',
-    type: announcement.type ?? '',
-  })
 }
 
 /**
@@ -176,41 +164,6 @@ function EmptyState({
 }
 
 /**
- * Notice tab content
- */
-function NoticeContent({
-  notice,
-  loading,
-  t,
-}: {
-  notice: string
-  loading: boolean
-  t: TFunction
-}) {
-  if (loading) {
-    return (
-      <EmptyState
-        icon={<Bell />}
-        title={t('Loading...')}
-        description={t('Latest platform updates and notices')}
-      />
-    )
-  }
-
-  if (!notice) {
-    return (
-      <EmptyState icon={<Bell />} title={t('No announcements at this time')} />
-    )
-  }
-
-  return (
-    <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
-      <RichContent breaks content={notice} />
-    </ScrollArea>
-  )
-}
-
-/**
  * Announcements tab content
  */
 function AnnouncementsContent({
@@ -218,7 +171,7 @@ function AnnouncementsContent({
   loading,
   t,
 }: {
-  announcements: AnnouncementItem[]
+  announcements: Announcement[]
   loading: boolean
   t: TFunction
 }) {
@@ -242,37 +195,41 @@ function AnnouncementsContent({
     <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
       <div className='flex flex-col'>
         {announcements.map((item, idx) => {
-          const announcementKey = getAnnouncementRenderKey(item)
-          const publishDate = item.publishDate
-            ? new Date(item.publishDate)
+          const publishDate = item.publish_time
+            ? new Date(item.publish_time * 1000)
             : null
-          const relativeTime = publishDate
-            ? getRelativeTime(publishDate, t)
-            : ''
-          const absoluteTime = publishDate
-            ? formatDateTimeObject(publishDate)
-            : ''
 
           return (
-            <div key={announcementKey}>
+            <div key={item.id}>
               <div className='py-3'>
                 <div className='flex items-start gap-3'>
-                  <AnnouncementDot type={item.type} />
+                  <AnnouncementDot level={item.level} />
                   <div className='flex min-w-0 flex-1 flex-col gap-2'>
-                    <div className='text-sm'>
-                      <RichContent breaks content={item.content || ''} />
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <span className='text-sm font-medium'>{item.title}</span>
+                      <StatusBadge
+                        label={t(ANNOUNCEMENT_TYPE_LABEL_KEYS[item.type])}
+                        variant={ANNOUNCEMENT_TYPE_VARIANTS[item.type]}
+                        copyable={false}
+                      />
+                      {item.pinned ? (
+                        <StatusBadge
+                          label={t('Pinned')}
+                          variant='warning'
+                          copyable={false}
+                        />
+                      ) : null}
                     </div>
 
-                    {item.extra ? (
-                      <div className='text-muted-foreground text-xs'>
-                        <RichContent breaks content={item.extra} />
+                    {item.content ? (
+                      <div className='text-sm'>
+                        <RichContent breaks content={item.content} />
                       </div>
                     ) : null}
 
-                    {absoluteTime ? (
+                    {publishDate ? (
                       <div className='text-muted-foreground text-xs'>
-                        {relativeTime ? `${relativeTime} • ` : null}
-                        {absoluteTime}
+                        {`${getRelativeTime(publishDate, t)} • ${formatDateTimeObject(publishDate)}`}
                       </div>
                     ) : null}
                   </div>
@@ -288,7 +245,61 @@ function AnnouncementsContent({
 }
 
 /**
- * Notification popover with Notice and Announcements tabs
+ * Version timeline tab content
+ */
+function TimelineContent({
+  versions,
+  loading,
+  t,
+}: {
+  versions: Announcement[]
+  loading: boolean
+  t: TFunction
+}) {
+  if (loading) {
+    return (
+      <EmptyState
+        icon={<Bell />}
+        title={t('Loading...')}
+        description={t('Latest platform updates and notices')}
+      />
+    )
+  }
+
+  if (versions.length === 0) {
+    return <EmptyState icon={<Bell />} title={t('No records')} />
+  }
+
+  return (
+    <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
+      <div className='flex flex-col gap-3'>
+        {versions.map((item) => (
+          <div key={item.id} className='flex items-start gap-3'>
+            <AnnouncementDot level={item.level} />
+            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <span className='font-mono text-sm font-medium'>
+                  {item.version}
+                </span>
+                <span className='text-muted-foreground truncate text-xs'>
+                  {item.title}
+                </span>
+              </div>
+              {item.publish_time ? (
+                <span className='text-muted-foreground text-xs'>
+                  {formatDateTimeObject(new Date(item.publish_time * 1000))}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  )
+}
+
+/**
+ * Notification popover listing published announcements plus a version timeline
  */
 export function NotificationPopover({
   open,
@@ -296,8 +307,8 @@ export function NotificationPopover({
   unreadCount,
   activeTab,
   onTabChange,
-  notice,
   announcements,
+  versions,
   loading,
   className,
 }: NotificationPopoverProps) {
@@ -342,19 +353,15 @@ export function NotificationPopover({
           onValueChange={onTabChange as (value: string) => void}
         >
           <TabsList className='grid w-full grid-cols-2'>
-            <TabsTrigger value='notice' className='gap-1.5'>
-              <Bell className='size-3.5' />
-              {t('Notice')}
-            </TabsTrigger>
             <TabsTrigger value='announcements' className='gap-1.5'>
               <Megaphone className='size-3.5' />
+              {t('Announcements')}
+            </TabsTrigger>
+            <TabsTrigger value='timeline' className='gap-1.5'>
+              <Bell className='size-3.5' />
               {t('Timeline')}
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value='notice' className='mt-2'>
-            <NoticeContent notice={notice} loading={loading} t={t} />
-          </TabsContent>
 
           <TabsContent value='announcements' className='mt-2'>
             <AnnouncementsContent
@@ -362,6 +369,10 @@ export function NotificationPopover({
               loading={loading}
               t={t}
             />
+          </TabsContent>
+
+          <TabsContent value='timeline' className='mt-2'>
+            <TimelineContent versions={versions} loading={loading} t={t} />
           </TabsContent>
         </Tabs>
 

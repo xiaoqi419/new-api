@@ -93,14 +93,17 @@ func TestValidateTopUpQuotaReturnsMaximumAmount(t *testing.T) {
 	require.EqualError(t, err, "单笔充值数量不能大于 4294")
 }
 
-func TestRequestAmountRejectsTopUpThatCannotBeSettled(t *testing.T) {
+func TestRequestAmountRejectsTopUpAboveSingleTransactionLimit(t *testing.T) {
 	oldQuotaPerUnit := common.QuotaPerUnit
 	oldDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	oldAmountOptions := operation_setting.GetPaymentSetting().AmountOptions
 	common.QuotaPerUnit = 500000
 	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	operation_setting.GetPaymentSetting().AmountOptions = []int{500}
 	t.Cleanup(func() {
 		common.QuotaPerUnit = oldQuotaPerUnit
 		operation_setting.GetGeneralSetting().QuotaDisplayType = oldDisplayType
+		operation_setting.GetPaymentSetting().AmountOptions = oldAmountOptions
 	})
 
 	gin.SetMode(gin.TestMode)
@@ -109,22 +112,24 @@ func TestRequestAmountRejectsTopUpThatCannotBeSettled(t *testing.T) {
 	ctx.Request = httptest.NewRequest(
 		http.MethodPost,
 		"/api/user/amount",
-		strings.NewReader(`{"amount":4295}`),
+		strings.NewReader(`{"amount":501}`),
 	)
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
 	RequestAmount(ctx)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.JSONEq(t, `{"message":"error","data":"单笔充值数量不能大于 4294"}`, recorder.Body.String())
+	assert.JSONEq(t, `{"message":"error","data":"单笔充值不能大于 500"}`, recorder.Body.String())
 }
 
 func TestRequestAmountRejectsTopUpThatWouldOverflowWallet(t *testing.T) {
 	oldQuotaPerUnit := common.QuotaPerUnit
 	oldDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	oldAmountOptions := operation_setting.GetPaymentSetting().AmountOptions
 	oldDB := model.DB
 	common.QuotaPerUnit = 500000
 	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	operation_setting.GetPaymentSetting().AmountOptions = []int{500}
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
@@ -133,6 +138,7 @@ func TestRequestAmountRejectsTopUpThatWouldOverflowWallet(t *testing.T) {
 	t.Cleanup(func() {
 		common.QuotaPerUnit = oldQuotaPerUnit
 		operation_setting.GetGeneralSetting().QuotaDisplayType = oldDisplayType
+		operation_setting.GetPaymentSetting().AmountOptions = oldAmountOptions
 		model.DB = oldDB
 		sqlDB, dbErr := db.DB()
 		if dbErr == nil {
@@ -143,7 +149,7 @@ func TestRequestAmountRejectsTopUpThatWouldOverflowWallet(t *testing.T) {
 	require.NoError(t, model.DB.Create(&model.User{
 		Id:       42,
 		Username: "topup_capacity_user",
-		Quota:    1_000_000,
+		Quota:    common.MaxQuota - 500*int(common.QuotaPerUnit),
 		Status:   common.UserStatusEnabled,
 	}).Error)
 
@@ -154,7 +160,7 @@ func TestRequestAmountRejectsTopUpThatWouldOverflowWallet(t *testing.T) {
 	ctx.Request = httptest.NewRequest(
 		http.MethodPost,
 		"/api/user/amount",
-		strings.NewReader(`{"amount":4294}`),
+		strings.NewReader(`{"amount":500}`),
 	)
 	ctx.Request.Header.Set("Content-Type", "application/json")
 

@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Search, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Search, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -51,7 +51,7 @@ export function SearchBar(props: SearchBarProps) {
 
   return (
     <div className={cn('relative', props.className)}>
-      <Search className='text-muted-foreground/60 pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2' />
+      <Search className='pointer-events-none absolute top-1/2 left-5 size-4 -translate-y-1/2 text-[#626262]' />
       <input
         ref={inputRef}
         type='text'
@@ -59,10 +59,10 @@ export function SearchBar(props: SearchBarProps) {
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         className={cn(
-          'border-border/60 bg-background placeholder:text-muted-foreground/50',
-          'hover:border-border',
-          'focus:border-primary/50 focus:ring-primary/20 focus:ring-2',
-          'h-10 w-full rounded-lg border pr-16 pl-10 text-sm transition-all outline-none'
+          'border-[#dcdcdc] bg-white text-[#111] placeholder:text-[#8a8a8a]',
+          'hover:border-[#c9c9c9]',
+          'focus:border-[#2f00e5] focus:ring-[#2f00e5]/20 focus:ring-2',
+          'h-[54px] w-full rounded-full border pr-16 pl-12 text-sm transition-colors outline-none dark:border-white/15 dark:bg-white dark:text-[#111]'
         )}
         aria-label={t('Search models')}
       />
@@ -72,13 +72,13 @@ export function SearchBar(props: SearchBarProps) {
             variant='ghost'
             size='icon'
             onClick={props.onClear}
-            className='text-muted-foreground/60 hover:text-foreground size-7'
+            className='size-8 rounded-full text-[#626262] hover:bg-[#f1f1f1] hover:text-[#111]'
             aria-label={t('Clear search')}
           >
             <X className='size-4' />
           </Button>
         ) : (
-          <kbd className='bg-muted text-muted-foreground pointer-events-none hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline-block'>
+          <kbd className='pointer-events-none hidden rounded-full bg-[#f1f1f1] px-2 py-1 font-mono text-[10px] text-[#626262] sm:inline-block'>
             ⌘K
           </kbd>
         )}

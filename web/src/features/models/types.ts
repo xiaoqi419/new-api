@@ -46,6 +46,16 @@ export interface Model {
   created_time: number
   updated_time: number
   name_rule: number
+  // Catalog display metadata (Model Square only; does not affect requests).
+  // Modalities/capabilities are stored as comma-separated strings on the row.
+  context_length?: number
+  max_output_tokens?: number
+  knowledge_cutoff?: string
+  release_date?: string
+  parameter_count?: string
+  input_modalities?: string
+  output_modalities?: string
+  capabilities?: string
   // Runtime fields
   bound_channels?: BoundChannel[]
   enable_groups?: string[]

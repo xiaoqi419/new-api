@@ -19,9 +19,11 @@ For commercial licensing, please contact support@quantumnous.com
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { LayoutProvider } from '@/context/layout-provider'
 import { SearchProvider } from '@/context/search-provider'
+import { LegalConsentGate } from '@/features/legal/legal-consent-gate'
+import { usePromoBanner } from '@/hooks/use-promo-banner'
 import { getCookie } from '@/lib/cookies'
+import { PROMO_BANNER_HEIGHT } from '@/lib/promo-banner'
 import { cn } from '@/lib/utils'
 
 import { AppHeader } from './app-header'
@@ -33,28 +35,38 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  const { visible: promoVisible } = usePromoBanner()
 
   return (
-    <LayoutProvider>
-      <SearchProvider>
-        <SidebarProvider defaultOpen={defaultOpen} className='flex-col'>
-          <SkipToMain />
-          <AppHeader />
-          <div className='flex min-h-0 w-full flex-1'>
-            <AppSidebar />
-            <SidebarInset
-              className={cn(
-                '@container/content',
-                'h-[calc(100svh-var(--app-header-height,0px))]',
-                'min-h-0 overflow-hidden',
-                'peer-data-[variant=inset]:h-[calc(100svh-var(--app-header-height,0px)-(var(--spacing)*4))]'
-              )}
-            >
-              {props.children ?? <AnimatedOutlet />}
-            </SidebarInset>
-          </div>
-        </SidebarProvider>
-      </SearchProvider>
-    </LayoutProvider>
+    <SearchProvider>
+      <SidebarProvider
+        defaultOpen={defaultOpen}
+        className='flex-col'
+        style={
+          promoVisible
+            ? ({
+                '--app-header-height': `calc(3rem + ${PROMO_BANNER_HEIGHT})`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <SkipToMain />
+        <LegalConsentGate />
+        <AppHeader />
+        <div className='flex min-h-0 w-full flex-1'>
+          <AppSidebar />
+          <SidebarInset
+            className={cn(
+              '@container/content',
+              'h-[calc(100svh-var(--app-header-height,0px))]',
+              'min-h-0 overflow-hidden',
+              'peer-data-[variant=inset]:h-[calc(100svh-var(--app-header-height,0px)-(var(--spacing)*4))]'
+            )}
+          >
+            {props.children ?? <AnimatedOutlet />}
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </SearchProvider>
   )
 }

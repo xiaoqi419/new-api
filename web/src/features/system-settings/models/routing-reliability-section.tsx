@@ -99,6 +99,23 @@ const createRoutingReliabilitySchema = (
           ),
         channel_test_mode: z.enum(channelTestModes),
       }),
+      health_probe_setting: z.object({
+        enabled: z.boolean(),
+        interval_minutes: z.coerce
+          .number()
+          .int()
+          .min(5, t('Interval must be at least 5 minutes')),
+        concurrency: z.coerce
+          .number()
+          .int(t('Enter a positive integer'))
+          .min(1, t('Concurrency must be between 1 and 32'))
+          .max(32, t('Concurrency must be between 1 and 32')),
+        max_targets_per_round: z.coerce
+          .number()
+          .int(t('Enter a positive integer'))
+          .min(1, t('Must probe at least 1 target per round')),
+        authenticity_enabled: z.boolean(),
+      }),
     })
     .superRefine((values, ctx) => {
       const disableParsed = parseHttpStatusCodeRules(
@@ -147,6 +164,11 @@ type RoutingReliabilitySectionProps = {
     'monitor_setting.auto_test_channel_minutes': number
     'monitor_setting.channel_test_concurrency': number
     'monitor_setting.channel_test_mode': ChannelTestMode
+    'health_probe_setting.enabled': boolean
+    'health_probe_setting.interval_minutes': number
+    'health_probe_setting.concurrency': number
+    'health_probe_setting.max_targets_per_round': number
+    'health_probe_setting.authenticity_enabled': boolean
   }
 }
 
@@ -166,6 +188,11 @@ type NormalizedRoutingReliabilityValues = {
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.channel_test_concurrency': number
   'monitor_setting.channel_test_mode': ChannelTestMode
+  'health_probe_setting.enabled': boolean
+  'health_probe_setting.interval_minutes': number
+  'health_probe_setting.concurrency': number
+  'health_probe_setting.max_targets_per_round': number
+  'health_probe_setting.authenticity_enabled': boolean
 }
 
 function normalizeChannelTestMode(value?: string): ChannelTestMode {
@@ -198,6 +225,14 @@ const buildFormDefaults = (
       defaults['monitor_setting.channel_test_mode']
     ),
   },
+  health_probe_setting: {
+    enabled: defaults['health_probe_setting.enabled'],
+    interval_minutes: defaults['health_probe_setting.interval_minutes'],
+    concurrency: defaults['health_probe_setting.concurrency'],
+    max_targets_per_round:
+      defaults['health_probe_setting.max_targets_per_round'],
+    authenticity_enabled: defaults['health_probe_setting.authenticity_enabled'],
+  },
 })
 
 const normalizeDefaults = (
@@ -225,6 +260,15 @@ const normalizeDefaults = (
   'monitor_setting.channel_test_mode': normalizeChannelTestMode(
     defaults['monitor_setting.channel_test_mode']
   ),
+  'health_probe_setting.enabled': defaults['health_probe_setting.enabled'],
+  'health_probe_setting.interval_minutes':
+    defaults['health_probe_setting.interval_minutes'],
+  'health_probe_setting.concurrency':
+    defaults['health_probe_setting.concurrency'],
+  'health_probe_setting.max_targets_per_round':
+    defaults['health_probe_setting.max_targets_per_round'],
+  'health_probe_setting.authenticity_enabled':
+    defaults['health_probe_setting.authenticity_enabled'],
 })
 
 const normalizeFormValues = (
@@ -250,6 +294,14 @@ const normalizeFormValues = (
   'monitor_setting.channel_test_concurrency':
     values.monitor_setting.channel_test_concurrency,
   'monitor_setting.channel_test_mode': values.monitor_setting.channel_test_mode,
+  'health_probe_setting.enabled': values.health_probe_setting.enabled,
+  'health_probe_setting.interval_minutes':
+    values.health_probe_setting.interval_minutes,
+  'health_probe_setting.concurrency': values.health_probe_setting.concurrency,
+  'health_probe_setting.max_targets_per_round':
+    values.health_probe_setting.max_targets_per_round,
+  'health_probe_setting.authenticity_enabled':
+    values.health_probe_setting.authenticity_enabled,
 })
 
 export function RoutingReliabilitySection({
@@ -543,6 +595,134 @@ export function RoutingReliabilitySection({
                       <FormDescription>
                         {t(
                           'Bring channels back online after successful checks'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className='flex min-w-0 flex-col gap-4'>
+            <div className='flex flex-col gap-1'>
+              <h4 className='text-sm font-medium'>{t('Model health probe')}</h4>
+            </div>
+            <div className='grid min-w-0 gap-6 lg:grid-cols-3'>
+              <FormField
+                control={form.control}
+                name='health_probe_setting.enabled'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Enable model health probe')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'Periodically send a minimal request to each chat model on every enabled channel, powering the model marketplace health bars and the channel monitor availability rate'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='health_probe_setting.interval_minutes'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Probe interval (minutes)')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={5}
+                        step={1}
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Time between probe rounds. Values below 5 minutes are clamped to 5.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='health_probe_setting.concurrency'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Probe concurrency')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={1}
+                        max={32}
+                        step={1}
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Maximum number of probes running at the same time (1-32), keeping upstream load in check.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='health_probe_setting.max_targets_per_round'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Max targets per round')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={1}
+                        step={1}
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Upper bound on channel x model combinations probed in a single round (at least 1), so one round cannot burn through upstream quota.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='health_probe_setting.authenticity_enabled'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Model authenticity check')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'Replace the probe prompt with a self-identification question (no extra requests) and compare the upstream reported model name, response structure fingerprint and the model self-description. Results appear on the channel monitor page; only vendor-family level mismatches are flagged as suspicious and no channel is disabled automatically.'
                         )}
                       </FormDescription>
                     </SettingsSwitchContent>

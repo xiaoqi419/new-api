@@ -57,6 +57,11 @@ func TestMain(m *testing.M) {
 		&SystemInstance{},
 		&SystemTask{},
 		&SystemTaskLock{},
+		&Agent{},
+		&AgentLedger{},
+		&AgentDomain{},
+		&AgentOption{},
+		&AgentPaymentConfig{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
@@ -89,6 +94,10 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM system_instances")
 		DB.Exec("DELETE FROM system_task_locks")
 		DB.Exec("DELETE FROM system_tasks")
+		DB.Exec("DELETE FROM agents")
+		DB.Exec("DELETE FROM agent_ledgers")
+		DB.Exec("DELETE FROM agent_domains")
+		DB.Exec("DELETE FROM agent_options")
 	})
 }
 

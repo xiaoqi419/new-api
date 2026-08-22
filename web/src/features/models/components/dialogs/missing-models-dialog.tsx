@@ -17,11 +17,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Search,
+} from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -124,18 +130,20 @@ export function MissingModelsDialog({
       bodyClassName='space-y-4'
       initialFocus={!isMobile}
     >
-      {isLoading ? (
+      {isLoading && (
         <div className='flex items-center justify-center py-12'>
           <Loader2 className='h-8 w-8 animate-spin' />
         </div>
-      ) : missingModels.length === 0 ? (
+      )}
+      {!isLoading && missingModels.length === 0 && (
         <div className='text-muted-foreground py-12 text-center'>
           <p>{t('No missing models found.')}</p>
           <p className='text-sm'>
             {t('All models in use are properly configured.')}
           </p>
         </div>
-      ) : (
+      )}
+      {!isLoading && missingModels.length > 0 && (
         <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto'>
           <div className='flex flex-shrink-0 items-center justify-between gap-3'>
             <div className='text-muted-foreground text-sm whitespace-nowrap'>

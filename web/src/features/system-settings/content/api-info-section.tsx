@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Trash2, Save } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -28,6 +27,7 @@ import { BadgeCell } from '@/components/data-table/core/badge-cell'
 import { StaticDataTable } from '@/components/data-table/static/static-data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
 import { Dialog } from '@/components/dialog'
+import { Plus, Trash2, Save } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import {
   AlertDialog,
@@ -59,7 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getBgColorClass } from '@/lib/colors'
+import { getBgColorClass, PICKABLE_COLORS } from '@/lib/colors'
 
 import { SettingsSwitchField } from '../components/settings-form-layout'
 import { SettingsSection } from '../components/settings-section'
@@ -89,23 +89,6 @@ const createApiInfoSchema = (t: (key: string) => string) =>
 type ApiInfoFormValues = z.infer<ReturnType<typeof createApiInfoSchema>>
 
 const API_INFO_FORM_ID = 'api-info-form'
-
-const colorOptions = [
-  { value: 'blue', label: 'Blue' },
-  { value: 'green', label: 'Green' },
-  { value: 'cyan', label: 'Cyan' },
-  { value: 'purple', label: 'Purple' },
-  { value: 'pink', label: 'Pink' },
-  { value: 'red', label: 'Red' },
-  { value: 'orange', label: 'Orange' },
-  { value: 'amber', label: 'Amber' },
-  { value: 'yellow', label: 'Yellow' },
-  { value: 'lime', label: 'Lime' },
-  { value: 'teal', label: 'Teal' },
-  { value: 'indigo', label: 'Indigo' },
-  { value: 'violet', label: 'Violet' },
-  { value: 'slate', label: 'Slate' },
-]
 
 function parseApiInfoList(data: string): ApiInfo[] {
   try {
@@ -469,7 +452,7 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
                 <FormItem>
                   <FormLabel>{t('Badge Color')}</FormLabel>
                   <Select
-                    items={colorOptions.map((option) => ({
+                    items={PICKABLE_COLORS.map((option) => ({
                       value: option.value,
                       label: (
                         <div className='flex items-center gap-2'>
@@ -490,7 +473,7 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
                     </FormControl>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectGroup>
-                        {colorOptions.map((option) => (
+                        {PICKABLE_COLORS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             <div className='flex items-center gap-2'>
                               <div

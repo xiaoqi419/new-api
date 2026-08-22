@@ -58,13 +58,16 @@ export function buildSearchParams(
         ...(commonFilters.upstreamRequestId && {
           upstreamRequestId: commonFilters.upstreamRequestId,
         }),
+        ...(commonFilters.quotaStatus && {
+          quotaStatus: commonFilters.quotaStatus,
+        }),
       }
     }
     case 'drawing': {
       const drawingFilters = filters as DrawingLogFilters
       return {
         ...baseParams,
-        ...(drawingFilters.mjId && { filter: drawingFilters.mjId }),
+        ...(drawingFilters.model && { model: drawingFilters.model }),
       }
     }
     case 'task': {

@@ -18,10 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 'use client'
 
-import { ChevronsUpDownIcon } from 'lucide-react'
 import { type ComponentProps, createContext, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ChevronsUpDownIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Card,

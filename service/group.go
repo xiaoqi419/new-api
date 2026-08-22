@@ -52,11 +52,21 @@ func IsUserSelectableGroup(userGroup, groupName string) bool {
 	return GroupInUserUsableGroups(userGroup, groupName) && ratio_setting.ContainsGroupRatio(groupName)
 }
 
-// GetUserAutoGroup 根据用户分组获取自动分组设置
+// GetUserAutoGroup 根据用户分组获取（旧版）自动分组链路，等价于解析 "auto"。
 func GetUserAutoGroup(userGroup string) []string {
-	autoGroups := make([]string, 0)
+	return GetUserAutoGroupChain(userGroup, "auto")
+}
+
+// GetUserAutoGroupChain 解析某个 token 分组（"auto" 或 "auto:<key>"）对应的
+// 有序真实分组链路，按当前用户可选分组过滤并去重。
+func GetUserAutoGroupChain(userGroup, tokenGroup string) []string {
+	chain := setting.ResolveAutoGroupChain(tokenGroup)
+	if len(chain) == 0 {
+		return []string{}
+	}
+	autoGroups := make([]string, 0, len(chain))
 	seen := make(map[string]struct{})
-	for _, group := range setting.GetAutoGroups() {
+	for _, group := range chain {
 		if !IsUserSelectableGroup(userGroup, group) {
 			continue
 		}
@@ -104,6 +114,43 @@ func GetRequestAutoGroups(c *gin.Context, userGroup string) []string {
 		return []string{}
 	}
 	return FilterUserTokenAutoGroups(userGroup, groups)
+}
+
+// ResolveRequestAutoGroups 解析本次请求实际生效的有序自动分组链路：
+// "auto:<key>" 走具名链路配置，裸 "auto" 走令牌自带的候选快照并回退到全局 Auto 列表。
+func ResolveRequestAutoGroups(c *gin.Context, userGroup, usingGroup string) []string {
+	if strings.HasPrefix(usingGroup, setting.AutoGroupPrefix) {
+		return GetUserAutoGroupChain(userGroup, usingGroup)
+	}
+	return GetRequestAutoGroups(c, userGroup)
+}
+
+// UserAutoGroupRoute 是暴露给前端（价格页/令牌表单）的自动链路信息，
+// Groups 为按当前用户可用分组过滤后的真实链路。
+type UserAutoGroupRoute struct {
+	Key            string   `json:"key"`
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	Groups         []string `json:"groups"`
+	UserSelectable bool     `json:"user_selectable"`
+}
+
+// GetUserAutoGroupRoutes 返回所有已启用的具名自动链路（按用户可用分组过滤链路）。
+func GetUserAutoGroupRoutes(userGroup string) []UserAutoGroupRoute {
+	result := make([]UserAutoGroupRoute, 0)
+	for _, route := range setting.GetAutoGroupRoutes() {
+		if !route.Enabled {
+			continue
+		}
+		result = append(result, UserAutoGroupRoute{
+			Key:            route.Key,
+			Name:           route.Name,
+			Description:    route.Description,
+			Groups:         GetUserAutoGroupChain(userGroup, setting.AutoGroupPrefix+route.Key),
+			UserSelectable: route.UserSelectable,
+		})
+	}
+	return result
 }
 
 // GetGroupsEnabledModels 按 groups 顺序获取各分组启用的模型并去重

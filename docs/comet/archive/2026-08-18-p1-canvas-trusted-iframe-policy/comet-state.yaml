@@ -1,0 +1,176 @@
+schema: comet.native.v4
+name: p1-canvas-trusted-iframe-policy
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/p1-canvas-trusted-iframe-policy
+  target_branch: codex/p0-wallet-wechatpay
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：`web/src/features/canvas/index.tsx` 的 `/canvas-app` iframe 不再包含
+      `sandbox` 属性，其他 iframe 属性与同源消息桥行为保持不变。
+    result: passed
+    reason:
+      text: The sole /canvas-app iframe has no sandbox attribute; all other iframe
+        attributes and both parent/child strict same-origin postMessage targets
+        and origin guards remain unchanged from the target branch.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2：`web/.oxlintrc.json` 的唯一变化是新增一个 files 仅为
+      `src/features/canvas/index.tsx`、rules 仅为 `react/iframe-missing-sandbox:
+      off` 的 override。"
+    result: passed
+    reason:
+      text: The oxlint diff adds exactly one override matching only
+        src/features/canvas/index.tsx and disabling only
+        react/iframe-missing-sandbox; the global rule remains error and no
+        ignore pattern or other config changed.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：Canvas 定向 oxlint 返回 0 errors，`bun run typecheck` 通过，相关既有测试通过或明确报告没有直接
+      Canvas 测试。
+    result: passed
+    reason:
+      text: Independent Canvas scoped oxlint and bun typecheck both exited 0.
+        Repository search found no direct Canvas or host-bridge test, which is
+        explicitly permitted when reported.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：Git diff 只包含本 change 正式产物、Canvas iframe 文件和精确 lint
+      override；package/lock、依赖、其他配置和微信登录均不变，`git diff --check` 通过。
+    result: passed
+    reason:
+      text: The clean candidate differs from codex/p0-wallet-wechatpay only by two
+        formal Comet artifacts plus the approved Canvas source and oxlint config
+        files; diff check passed and no package, lock, dependency, other config,
+        backend or WeChat login path changed.
+      truncated: false
+builder_handoff:
+  candidate_id: c2845b4c-bc39-4fa2-93b9-795c82f63174
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4dcb1f95-2a94-4039-91a1-f201fad91dd1
+  iteration: 1
+  summary:
+    text: Removed the same-origin Canvas iframe sandbox and added the single
+      approved file-level oxlint override while preserving iframe attributes and
+      the strict same-origin theme/token message bridge.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+  checks:
+    - name:
+        text: Canvas scoped oxlint
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun x oxlint -c .oxlintrc.json src/features/canvas/index.tsx
+          exited 0 with zero errors.
+        truncated: false
+    - name:
+        text: default frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully with tsgo -b.
+        truncated: false
+    - name:
+        text: direct Canvas tests
+        truncated: false
+      result: not-run
+      note:
+        text: Repository search found no CanvasStudio, canvas-app or host-message
+          *.test.ts/tsx or *.spec.ts/tsx files; no synthetic test was added.
+        truncated: false
+    - name:
+        text: scope, config and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; implementation diff is exactly
+          web/src/features/canvas/index.tsx plus web/.oxlintrc.json, whose new
+          override contains one file and one disabled rule.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The approved trusted same-origin iframe has no browser sandbox isolation;
+        stronger isolation requires a separate-origin architecture and
+        redesigned storage/message bridge.
+      truncated: false
+    - text: No direct Canvas browser interaction test exists; runtime interaction
+        remains covered only by static bridge review and later release gates.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T12:53:02.767Z
+blockers: []
+verification:
+  candidate_id: c2845b4c-bc39-4fa2-93b9-795c82f63174
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:19ee8337-3297-4220-ad74-fdf0efd72261
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Independent gpt-5.6-terra/xhigh verification passed A1-A4 with fresh lint,
+      typecheck, scope, config and same-origin bridge evidence.
+    truncated: false
+  risks:
+    - text: The approved trusted same-origin Canvas now has ordinary same-origin
+        authority and no browser sandbox isolation; stronger isolation requires
+        a separate-origin redesign.
+      truncated: false
+    - text: No direct browser interaction test exists for the Canvas host bridge;
+        current evidence is static bridge review, scoped lint and typecheck.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T13:01:51.344Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent gpt-5.6-terra/xhigh verification passed A1-A4 with fresh lint,
+        typecheck, scope, config and same-origin bridge evidence.
+      truncated: false
+    completed_at: 2026-08-18T13:01:51.344Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-18T12:23:46.106Z

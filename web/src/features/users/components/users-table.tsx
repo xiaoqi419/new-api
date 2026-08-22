@@ -37,6 +37,7 @@ import {
   USER_STATUS,
   getUserStatusOptions,
   getUserRoleOptions,
+  getUserBalanceOptions,
   isUserDeleted,
 } from '../constants'
 import type { User, UserSortBy } from '../types'
@@ -83,6 +84,7 @@ export function UsersTable() {
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'role', searchKey: 'role', type: 'array' },
       { columnId: 'group', searchKey: 'group', type: 'string' },
+      { columnId: 'quota', searchKey: 'balance', type: 'array' },
     ],
   })
   const statusFilter =
@@ -96,6 +98,10 @@ export function UsersTable() {
   const groupFilter =
     (columnFilters.find((filter) => filter.id === 'group')?.value as string) ??
     ''
+  const balanceFilter =
+    (columnFilters.find((filter) => filter.id === 'quota')?.value as
+      | string[]
+      | undefined) ?? []
 
   const sortParams = useMemo(() => {
     const activeSort = sorting[0]
@@ -129,13 +135,17 @@ export function UsersTable() {
       statusFilter,
       roleFilter,
       groupFilter,
+      balanceFilter,
       sortParams,
       refreshTrigger,
     ],
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
       const hasColumnFilter =
-        statusFilter.length > 0 || roleFilter.length > 0 || Boolean(groupFilter)
+        statusFilter.length > 0 ||
+        roleFilter.length > 0 ||
+        Boolean(groupFilter) ||
+        balanceFilter.length > 0
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -150,6 +160,7 @@ export function UsersTable() {
               status: statusFilter[0] ?? '',
               role: roleFilter[0] ?? '',
               group: groupFilter,
+              balance: balanceFilter[0] ?? '',
             })
           : await getUsers(params)
 
@@ -230,15 +241,18 @@ export function UsersTable() {
             options: getUserRoleOptions(t),
             singleSelect: true,
           },
+          {
+            columnId: 'quota',
+            title: t('Balance'),
+            options: getUserBalanceOptions(t),
+            singleSelect: true,
+          },
         ],
       }}
-      getRowClassName={(row, { isMobile }) =>
-        isDisabledUserRow(row.original)
-          ? isMobile
-            ? DISABLED_ROW_MOBILE
-            : DISABLED_ROW_DESKTOP
-          : undefined
-      }
+      getRowClassName={(row, { isMobile }) => {
+        if (!isDisabledUserRow(row.original)) return undefined
+        return isMobile ? DISABLED_ROW_MOBILE : DISABLED_ROW_DESKTOP
+      }}
       bulkActions={<DataTableBulkActions table={table} />}
     />
   )

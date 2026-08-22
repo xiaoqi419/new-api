@@ -1,3 +1,15 @@
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { BundledLanguage } from 'shiki/bundle/web'
+
+import {
+  CodeBlock,
+  CodeBlockCopyButton,
+} from '@/components/ai-elements/code-block'
+import {
+  StaticDataTable,
+  staticDataTableClassNames as tableStyles,
+} from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -23,19 +35,7 @@ import {
   ScrollText,
   Sigma,
   Zap,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { BundledLanguage } from 'shiki/bundle/web'
-
-import {
-  CodeBlock,
-  CodeBlockCopyButton,
-} from '@/components/ai-elements/code-block'
-import {
-  StaticDataTable,
-  staticDataTableClassNames as tableStyles,
-} from '@/components/data-table'
+} from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStatus } from '@/hooks/use-status'
@@ -109,7 +109,7 @@ function buildChatSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${bodyJson.replace(/\n/g, '\n     ')}'`,
+      `  -d '${bodyJson.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
 
@@ -177,7 +177,7 @@ function buildAnthropicSample(lang: Lang, ctx: SampleContext): string {
       `  -H "x-api-key: $${ctx.apiKeyEnv}" \\`,
       `  -H "anthropic-version: 2023-06-01" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -249,7 +249,7 @@ function buildGeminiSample(lang: Lang, ctx: SampleContext): string {
     return [
       `curl '${url}' \\`,
       `  -H 'Content-Type: application/json' \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -299,7 +299,7 @@ function buildEmbeddingSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -365,7 +365,7 @@ function buildImageSample(lang: Lang, ctx: SampleContext): string {
       `curl ${url} \\`,
       `  -H "Authorization: Bearer $${ctx.apiKeyEnv}" \\`,
       `  -H "Content-Type: application/json" \\`,
-      `  -d '${body.replace(/\n/g, '\n     ')}'`,
+      `  -d '${body.replaceAll('\n', '\n     ')}'`,
     ].join('\n')
   }
   if (lang === 'python') {
@@ -423,6 +423,168 @@ function buildImageSample(lang: Lang, ctx: SampleContext): string {
   ].join('\n')
 }
 
+const VIDEO_ENDPOINT_TYPES = new Set([
+  'openai-video',
+  'video',
+  'doubao-video',
+  'jimeng-video',
+])
+
+/** 视频端点各家下游形状不同，这里按端点类型给出提交体、提交 URL 与轮询 URL。
+ *  即梦用 query 参数区分提交/查询，任务 id 走 body 而不是路径。 */
+function videoSampleShape(ctx: SampleContext, prompt: string) {
+  const path = `${ctx.baseUrl}${ctx.endpointPath}`
+  if (ctx.endpointType === 'doubao-video') {
+    return {
+      submitUrl: path,
+      body: {
+        model: ctx.modelName,
+        content: [{ type: 'text', text: prompt }],
+      } as Record<string, unknown>,
+      pollUrl: `${path}/<TASK_ID>`,
+      pollMethod: 'GET' as const,
+      pollBody: null as Record<string, unknown> | null,
+      // Ark 原生格式回传火山自己的状态词，不是 OpenAI 的 completed
+      doneStates: ['succeeded', 'failed', 'cancelled'],
+    }
+  }
+  if (ctx.endpointType === 'jimeng-video') {
+    const base = `${path}?Action=%s&Version=2022-08-31`
+    return {
+      submitUrl: base.replace('%s', 'CVSync2AsyncSubmitTask'),
+      body: { req_key: ctx.modelName, prompt },
+      pollUrl: base.replace('%s', 'CVSync2AsyncGetResult'),
+      pollMethod: 'POST' as const,
+      pollBody: { req_key: ctx.modelName, task_id: '<TASK_ID>' },
+      doneStates: ['completed', 'failed'],
+    }
+  }
+  const body: Record<string, unknown> = { model: ctx.modelName, prompt }
+  if (ctx.endpointType === 'openai-video') {
+    body.seconds = '4'
+    body.size = '1280x720'
+  }
+  return {
+    submitUrl: path,
+    body,
+    pollUrl: `${path}/<TASK_ID>`,
+    pollMethod: 'GET' as const,
+    pollBody: null,
+    doneStates: ['completed', 'failed'],
+  }
+}
+
+function buildVideoSample(lang: Lang, ctx: SampleContext): string {
+  const prompt = 'A calico cat playing a piano on stage, cinematic lighting.'
+  const shape = videoSampleShape(ctx, prompt)
+  const bodyJson = JSON.stringify(shape.body, null, 2)
+  const auth = `Bearer $${ctx.apiKeyEnv}`
+
+  if (lang === 'curl') {
+    const submit = [
+      `# 1. 提交任务，返回 { "id": "<TASK_ID>", "status": "queued" }`,
+      `curl "${shape.submitUrl}" \\`,
+      `  -H "Authorization: ${auth}" \\`,
+      `  -H "Content-Type: application/json" \\`,
+      `  -d '${bodyJson.replaceAll('\n', '\n     ')}'`,
+    ]
+    const poll =
+      shape.pollMethod === 'GET'
+        ? [
+            ``,
+            `# 2. 轮询任务状态，直到 status 变为 ${shape.doneStates[0]}`,
+            `curl "${shape.pollUrl}" \\`,
+            `  -H "Authorization: ${auth}"`,
+          ]
+        : [
+            ``,
+            `# 2. 轮询任务状态，直到 status 变为 ${shape.doneStates[0]}`,
+            `curl "${shape.pollUrl}" \\`,
+            `  -H "Authorization: ${auth}" \\`,
+            `  -H "Content-Type: application/json" \\`,
+            `  -d '${JSON.stringify(shape.pollBody, null, 2).replaceAll('\n', '\n     ')}'`,
+          ]
+    const download = [
+      ``,
+      `# 3. 下载成片`,
+      `curl "${ctx.baseUrl}/v1/videos/<TASK_ID>/content" \\`,
+      `  -H "Authorization: ${auth}" \\`,
+      `  -o video.mp4`,
+    ]
+    return [...submit, ...poll, ...download].join('\n')
+  }
+
+  if (lang === 'python') {
+    const pollCall =
+      shape.pollMethod === 'GET'
+        ? `    task = requests.get(f"${shape.pollUrl.replace('<TASK_ID>', '{task_id}')}", headers=headers).json()`
+        : `    task = requests.post(\n        "${shape.pollUrl}",\n        headers=headers,\n        json={**${JSON.stringify(shape.pollBody).replace('"<TASK_ID>"', 'task_id')}},\n    ).json()`
+    return [
+      'import time',
+      '',
+      'import requests',
+      '',
+      `headers = {"Authorization": "Bearer <YOUR_API_KEY>"}`,
+      '',
+      '# 1. 提交任务',
+      `task = requests.post(`,
+      `    "${shape.submitUrl}",`,
+      `    headers=headers,`,
+      `    json=${bodyJson.replaceAll('\n', '\n    ')},`,
+      `).json()`,
+      `task_id = task["id"]`,
+      '',
+      '# 2. 轮询直到完成',
+      `while task["status"] not in (${shape.doneStates.map((s) => `"${s}"`).join(', ')}):`,
+      '    time.sleep(5)',
+      pollCall,
+      '',
+      '# 3. 下载成片',
+      `video = requests.get(f"${ctx.baseUrl}/v1/videos/{task_id}/content", headers=headers)`,
+      'open("video.mp4", "wb").write(video.content)',
+    ].join('\n')
+  }
+
+  const pollFetch =
+    shape.pollMethod === 'GET'
+      ? [
+          `  const res = await fetch(\`${shape.pollUrl.replace('<TASK_ID>', '${taskId}')}\`, {`,
+          `    headers,`,
+          `  })`,
+        ]
+      : [
+          `  const res = await fetch('${shape.pollUrl}', {`,
+          `    method: 'POST',`,
+          `    headers: { ...headers, 'Content-Type': 'application/json' },`,
+          `    body: JSON.stringify(${JSON.stringify(shape.pollBody).replace('"<TASK_ID>"', 'taskId')}),`,
+          `  })`,
+        ]
+  return [
+    `const headers = { Authorization: \`Bearer \${process.env.${ctx.apiKeyEnv}}\` }`,
+    '',
+    `// 1. 提交任务`,
+    `const submit = await fetch('${shape.submitUrl}', {`,
+    `  method: 'POST',`,
+    `  headers: { ...headers, 'Content-Type': 'application/json' },`,
+    `  body: JSON.stringify(${bodyJson}),`,
+    `})`,
+    `let task = await submit.json()`,
+    `const taskId = task.id`,
+    '',
+    `// 2. 轮询直到完成`,
+    `while (!${JSON.stringify(shape.doneStates)}.includes(task.status)) {`,
+    `  await new Promise((r) => setTimeout(r, 5000))`,
+    ...pollFetch,
+    `  task = await res.json()`,
+    `}`,
+    '',
+    `// 3. 下载成片`,
+    `const video = await fetch(\`${ctx.baseUrl}/v1/videos/\${taskId}/content\`, {`,
+    `  headers,`,
+    `})`,
+  ].join('\n')
+}
+
 function buildSample(
   lang: Lang,
   endpointType: string,
@@ -430,9 +592,11 @@ function buildSample(
 ): string {
   if (endpointType === 'anthropic') return buildAnthropicSample(lang, ctx)
   if (endpointType === 'gemini') return buildGeminiSample(lang, ctx)
-  if (endpointType === 'embeddings' || endpointType === 'jina-rerank')
+  if (endpointType === 'embeddings' || endpointType === 'jina-rerank') {
     return buildEmbeddingSample(lang, ctx)
+  }
   if (endpointType === 'image-generation') return buildImageSample(lang, ctx)
+  if (VIDEO_ENDPOINT_TYPES.has(endpointType)) return buildVideoSample(lang, ctx)
   return buildChatSample(lang, ctx)
 }
 
@@ -582,7 +746,7 @@ function SupportedParametersSection(props: { model: PricingModel }) {
                 {p.required && (
                   <Badge
                     variant='outline'
-                    className='h-6 border-rose-500/40 px-2 text-sm text-rose-600 dark:text-rose-400'
+                    className='border-destructive/40 text-destructive h-6 px-2 text-sm'
                   >
                     {t('required')}
                   </Badge>
@@ -658,7 +822,7 @@ function ParamRangeCell(props: { param: SupportedParameter }) {
       </div>
     )
   }
-  return <span className='text-muted-foreground/60 text-sm'>—</span>
+  return <span className='text-muted-foreground text-sm'>—</span>
 }
 
 // ---------------------------------------------------------------------------
@@ -783,7 +947,7 @@ function SectionTitle(props: {
   const Icon = props.icon
   return (
     <h3 className='text-foreground mb-3 flex items-center gap-1.5 text-sm font-semibold'>
-      <Icon className='text-muted-foreground/70 size-3.5' />
+      <Icon className='text-muted-foreground size-3.5' />
       {props.children}
     </h3>
   )

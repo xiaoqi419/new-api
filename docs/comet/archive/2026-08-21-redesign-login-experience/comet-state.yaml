@@ -1,0 +1,687 @@
+schema: comet.native.v4
+name: redesign-login-experience
+language: zh-CN
+phase: archive
+status: done
+state_version: 20
+brief: brief.md
+spec_changes:
+  - capability: authentication-login-page
+    operation: create
+    source: specs/authentication-login-page/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/redesign-login-experience
+  target_branch: secondary-dev
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 3
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：在宽度不小于 1024px 的登录页中，可见暗色点阵背景和居中的有边界双栏主面板；主面板不会贴满整个视口，也不会出现大块无意义留白。
+    result: passed
+    reason:
+      text: 桌面点阵背景与有边界居中双栏面板已实现。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：桌面左栏只展示一次站点品牌，并可见醒目的两行主标题、简短说明、Claude/Codex/Gemini
+      与更多模型提示；不显示额外的产品能力胶囊标签，内容层级使用当前站点数据和主题。
+    result: passed
+    reason:
+      text: 左栏单次品牌、标题、说明和模型提示齐全，无能力胶囊。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：右栏可见紧凑的登录容器、欢迎标题、账号密码字段、忘记密码入口和主要登录按钮，控件对齐稳定，长英文文案不溢出。
+    result: passed
+    reason:
+      text: 右侧紧凑登录卡保留字段、忘记密码和提交按钮。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：登录页与注册页始终同时显示“登录 /
+      注册”分段入口，并可在现有两个独立路由间双向切换；后台注册开关继续控制注册服务，不再用于制造两页不对称的导航。
+    result: passed
+    reason:
+      text: 两页始终显示独立 /sign-in 与 /sign-up 链接。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：后台启用的密码登录、Passkey、GitHub、Discord、OIDC、LinuxDO、Telegram、微信和自定义 OAuth
+      仍按现有状态条件显示并走原有处理逻辑；未启用的方式不显示。
+    result: passed
+    reason:
+      text: 密码、Passkey 和各 OAuth 状态分支保留。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：账号密码登录仍执行 Turnstile/点击验证码校验，并在服务端要求时跳转 2FA；登录成功后的 redirect 参数仍生效。
+    result: passed
+    reason:
+      text: Turnstile、点击验证码、2FA 和 redirect 流程未改变。
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：在手机和平板宽度下页面切换为表单优先的单栏布局，品牌信息适度收敛，无横向滚动、遮挡或不可触达控件。
+    result: passed
+    reason:
+      text: 移动单栏、min-w-0 和横向溢出限制已实现。
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: A8：页面不依赖装饰动画表达信息；当前不额外添加装饰动画，后续若加入动画仍必须尊重 `prefers-reduced-motion`。
+    result: passed
+    reason:
+      text: 未新增装饰动画。
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: A9：页面颜色来自现有主题语义变量及其中性色，不出现硬编码旧粉色，也不照搬参考图的荧光绿色。
+    result: passed
+    reason:
+      text: 使用主题变量和中性色，无旧粉色或荧光绿。
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: A10：新增用户可见文案具备中英文翻译，changelog 最新位置包含本次登录页重设计记录。
+    result: passed
+    reason:
+      text: 新增文案走 i18n，changelog 顶部含本次记录。
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: A11：注册开启时访问
+      `/sign-up`，桌面端可见与登录页一致的有边界双栏主面板和单次品牌展示，右侧紧凑显示现有注册字段与创建账户按钮；移动端表单优先且无横向溢出，登录/注册入口可在两个独立路由间正常切换。
+    result: passed
+    reason:
+      text: 注册页复用共享外壳并保留独立注册表单。
+      truncated: false
+  - id: A12
+    source: specs/authentication-login-page/spec.md
+    text: 登录页与注册页必须以统一的暗色科技感视觉呈现 AI
+      模型接入能力，同时让各自认证表单保持紧凑、清晰、可靠。视觉层可以随主题与系统配置变化，认证行为必须保持兼容。
+    result: passed
+    reason:
+      text: 登录与注册采用统一视觉，认证行为保留。
+      truncated: false
+  - id: A13
+    source: specs/authentication-login-page/spec.md
+    text: 登录页与注册页外层使用深色中性背景和低对比度点阵纹理。
+    result: passed
+    reason:
+      text: 暗色中性背景和低对比度点阵存在。
+      truncated: false
+  - id: A14
+    source: specs/authentication-login-page/spec.md
+    text: 主要内容是水平、垂直视觉居中的双栏面板，具有稳定最大宽度、细边框和不超过 8px 的圆角。
+    result: passed
+    reason:
+      text: 稳定最大宽度、边框和 8px 圆角双栏面板存在。
+      truncated: false
+  - id: A15
+    source: specs/authentication-login-page/spec.md
+    text: 左栏包含一次且仅一次站点品牌、两行核心标题、辅助说明、模型/工具标签和简短页脚，不显示额外的产品能力胶囊标签。
+    result: passed
+    reason:
+      text: 左栏单次品牌、叙事、模型提示和页脚均存在。
+      truncated: false
+  - id: A16
+    source: specs/authentication-login-page/spec.md
+    text: 左栏标题和说明优先使用现有 `login_page_config`；缺少配置时显示可国际化默认文案。
+    result: passed
+    reason:
+      text: 优先读取 login_page_config，缺省走 i18n 默认值。
+      truncated: false
+  - id: A17
+    source: specs/authentication-login-page/spec.md
+    text: 模型标签至少表达 Claude、Codex、Gemini 和更多模型能力，但不得伪装为可交互按钮。
+    result: passed
+    reason:
+      text: Claude、Codex、Gemini、40+ 为非交互提示。
+      truncated: false
+  - id: A18
+    source: specs/authentication-login-page/spec.md
+    text: 右栏包含独立的登录操作容器，并与左栏通过清晰但克制的分隔建立层级。
+    result: passed
+    reason:
+      text: 表单区独立，并在桌面端以左边框分层。
+      truncated: false
+  - id: A19
+    source: specs/authentication-login-page/spec.md
+    text: 操作区显示欢迎标题和简短说明，不重复站点 Logo 或站点名称。
+    result: passed
+    reason:
+      text: 操作区有欢迎标题和说明，不重复品牌。
+      truncated: false
+  - id: A20
+    source: specs/authentication-login-page/spec.md
+    text: 登录页与注册页始终同时显示登录/注册分段入口，避免只能从注册返回登录而不能从登录进入注册的非对称体验。
+    result: passed
+    reason:
+      text: 两个认证入口在两页均可见。
+      truncated: false
+  - id: A21
+    source: specs/authentication-login-page/spec.md
+    text: 分段入口继续导航现有 `/sign-in` 与 `/sign-up` 路由，不在同一页面嵌入注册表单。
+    result: passed
+    reason:
+      text: 入口导航既有独立路由，未合并表单。
+      truncated: false
+  - id: A22
+    source: specs/authentication-login-page/spec.md
+    text: 账号、密码、忘记密码、提交按钮、协议说明保持现有语义与行为。
+    result: passed
+    reason:
+      text: 账号、密码、找回密码、提交和协议语义保留。
+      truncated: false
+  - id: A23
+    source: specs/authentication-login-page/spec.md
+    text: 密码登录关闭时，不渲染账号密码表单；其他登录方式继续可用。
+    result: passed
+    reason:
+      text: password_login_enabled 为 false 时不渲染密码表单。
+      truncated: false
+  - id: A24
+    source: specs/authentication-login-page/spec.md
+    text: OAuth、微信、Telegram、Passkey 和自定义登录方式严格按现有状态字段显示，LinuxDO 启用时必须可见。
+    result: passed
+    reason:
+      text: OAuth、微信、Telegram、Passkey、自定义和 LinuxDO 状态分支保留。
+      truncated: false
+  - id: A25
+    source: specs/authentication-login-page/spec.md
+    text: 登录提交继续包含 Turnstile 与点击验证码流程；服务端要求 2FA 时继续进入现有 OTP 路由；成功后的 redirect 参数继续生效。
+    result: passed
+    reason:
+      text: 登录验证、2FA 和 redirect 原 hooks 保留。
+      truncated: false
+  - id: A26
+    source: specs/authentication-login-page/spec.md
+    text: 注册页复用登录页的背景、双栏主面板和左侧品牌叙事区，右侧使用独立的紧凑注册容器。
+    result: passed
+    reason:
+      text: 注册页复用背景、面板、品牌区，右侧保留注册容器。
+      truncated: false
+  - id: A27
+    source: specs/authentication-login-page/spec.md
+    text: 注册容器不重复站点 Logo 或站点名称，继续显示现有登录/注册分段入口、注册字段、创建账户按钮和协议说明。
+    result: passed
+    reason:
+      text: 注册容器无重复品牌，保留入口、字段、提交与协议。
+      truncated: false
+  - id: A28
+    source: specs/authentication-login-page/spec.md
+    text: 登录/注册分段入口继续在 `/sign-in` 与 `/sign-up` 两个独立路由间导航，不把两套表单合并为单页状态机。
+    result: passed
+    reason:
+      text: 注册与登录仍是独立路由。
+      truncated: false
+  - id: A29
+    source: specs/authentication-login-page/spec.md
+    text: 用户名、密码、确认密码及后台按状态启用的邮箱验证、验证码、邀请码等现有字段和校验逻辑保持不变。
+    result: passed
+    reason:
+      text: 原 SignUpForm 和校验逻辑未改。
+      truncated: false
+  - id: A30
+    source: specs/authentication-login-page/spec.md
+    text: 自助注册关闭或自用模式开启时，后台注册服务的权限行为保持不变；分段导航的可见性不代表注册服务已开放。
+    result: passed
+    reason:
+      text: 仅改变入口可见性，未改变注册服务权限。
+      truncated: false
+  - id: A31
+    source: specs/authentication-login-page/spec.md
+    text: 使用项目现有主题语义变量作为主色来源，以蓝色/青色和中性色构建层级。
+    result: passed
+    reason:
+      text: 主色来自现有语义变量，辅以蓝青和中性色。
+      truncated: false
+  - id: A32
+    source: specs/authentication-login-page/spec.md
+    text: 禁止新增硬编码旧粉色作为强调色，禁止照搬参考图的荧光绿色主按钮。
+    result: passed
+    reason:
+      text: 未新增禁止色。
+      truncated: false
+  - id: A33
+    source: specs/authentication-login-page/spec.md
+    text: 使用细描边、低强度阴影/光效和点阵纹理形成科技感，不使用拓扑网络图或大面积装饰图形。
+    result: passed
+    reason:
+      text: 点阵、细边框和低强度阴影实现科技感，无拓扑大图。
+      truncated: false
+  - id: A34
+    source: specs/authentication-login-page/spec.md
+    text: 当前版本不额外添加装饰动画；未来若加入轻微背景位移、光扫或呼吸效果，不得引起布局变化或干扰表单。
+    result: passed
+    reason:
+      text: 当前无额外装饰动画。
+      truncated: false
+  - id: A35
+    source: specs/authentication-login-page/spec.md
+    text: 动画一旦存在必须尊重 `prefers-reduced-motion`，减少动画后信息与操作仍完整。
+    result: passed
+    reason:
+      text: 当前无动画，reduced-motion 条件不被触发。
+      truncated: false
+  - id: A36
+    source: specs/authentication-login-page/spec.md
+    text: 小于桌面断点时，登录页与注册页均切换为单栏、表单优先布局；桌面叙事区收敛为简短品牌/标题信息或隐藏。
+    result: passed
+    reason:
+      text: lg 以下收敛为表单优先单栏。
+      truncated: false
+  - id: A37
+    source: specs/authentication-login-page/spec.md
+    text: 320px 及以上常见移动宽度不得横向滚动，长英文 OAuth 名称和翻译文案不得撑破控件。
+    result: passed
+    reason:
+      text: Chrome 320px 中英文长文案实测无横向溢出。
+      truncated: false
+  - id: A38
+    source: specs/authentication-login-page/spec.md
+    text: 固定格式控件使用稳定高度和宽度约束，加载图标、错误信息和动态按钮文字不得造成整体跳动。
+    result: passed
+    reason:
+      text: 控件使用稳定尺寸和 min-w-0/截断约束。
+      truncated: false
+  - id: A39
+    source: specs/authentication-login-page/spec.md
+    text: 装饰元素对辅助技术隐藏；表单标签、链接、按钮、焦点状态和键盘顺序保持可访问。
+    result: passed
+    reason:
+      text: 装饰 aria-hidden，既有表单、链接和按钮语义保留。
+      truncated: false
+  - id: A40
+    source: specs/authentication-login-page/spec.md
+    text: 继续使用现有站点名称、Logo、登录页标题、描述、背景和统计配置，不改变后端协议。
+    result: passed
+    reason:
+      text: 继续使用系统名称、Logo 和 login_page_config。
+      truncated: false
+  - id: A41
+    source: specs/authentication-login-page/spec.md
+    text: 现有未配置场景必须有合理默认值，状态加载期间不得出现错误品牌或破碎资源。
+    result: passed
+    reason:
+      text: 未配置时有 i18n 默认文案，品牌加载沿用 Skeleton。
+      truncated: false
+  - id: A42
+    source: specs/authentication-login-page/spec.md
+    text: 注册页改用统一认证体验外壳，但继续使用原有注册表单和行为；找回密码、OTP、OAuth 回调页面继续使用原有布局和行为，不得造成功能回归。
+    result: passed
+    reason:
+      text: 仅登录/注册切换外壳；其他认证页面未改。
+      truncated: false
+  - id: A43
+    source: specs/authentication-login-page/spec.md
+    text: 组件测试覆盖登录与注册页始终双向可见的路由入口、主要布局区域、OAuth/密码登录容器、注册表单容器和移动端语义结构。
+    result: passed
+    reason:
+      text: 定向 Vitest 7/7 覆盖布局、入口、条件登录和注册容器。
+      truncated: false
+  - id: A44
+    source: specs/authentication-login-page/spec.md
+    text: 静态检查、类型检查和生产构建必须通过。
+    result: passed
+    reason:
+      text: Runtime lint、format、typecheck、生产构建及别名修正后的 Vitest 均通过。
+      truncated: false
+  - id: A45
+    source: specs/authentication-login-page/spec.md
+    text: 浏览器验证至少覆盖登录与注册页的桌面和手机视口，以及中文和英文长文案场景。
+    result: passed
+    reason:
+      text: Chrome 证据覆盖 1440x900 与 320x760、登录/注册、中英文及长文案；八个场景无节点或页面横向溢出，入口和表单均可见。
+      truncated: false
+builder_handoff:
+  candidate_id: 07c3c49d-39e2-40c3-8b43-d00495f9a0c6
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:f35fc882-5df3-49da-a26b-7108263b23ee
+  iteration: 2
+  summary:
+    text: Completed the unified sign-in/sign-up redesign and follow-up fixes. Both
+      auth routes now expose symmetric sign-in/sign-up navigation, authenticated
+      navigation remains compatible, and the Model Square hero keys are present
+      in every locale including Simplified Chinese. The test candidate was
+      rebuilt by merging server locale dictionaries so newer translations are
+      preserved, then deployed as torch-ai-test:20260822-auth-nav-followup.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+    - A44
+    - A45
+  checks:
+    - name:
+        text: Auth Vitest
+        truncated: false
+      result: passed
+      note:
+        text: 7/7 targeted authentication tests passed.
+        truncated: false
+    - name:
+        text: Targeted lint and format
+        truncated: false
+      result: passed
+      note:
+        text: oxlint and oxfmt passed for affected files.
+        truncated: false
+    - name:
+        text: TypeScript build
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b passed.
+        truncated: false
+    - name:
+        text: Production frontend build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild production build passed.
+        truncated: false
+    - name:
+        text: Locale synchronization
+        truncated: false
+      result: passed
+      note:
+        text: All seven locale dictionaries report zero missing and zero extra keys.
+        truncated: false
+    - name:
+        text: Browser verification
+        truncated: false
+      result: passed
+      note:
+        text: Verified sign-in and sign-up route switching and Simplified Chinese Model
+          Square hero text on the deployed test candidate.
+        truncated: false
+    - name:
+        text: Test environment safety
+        truncated: false
+      result: passed
+      note:
+        text: torch-ai-test-app is healthy; production new-api-2 is exited; maintenance
+          entry returns 200; root redirects to maintenance; /v1/models returns
+          403.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The candidate is intentionally left uncommitted and unarchived pending the
+        user's visual acceptance.
+      truncated: false
+    - text: The production container remains stopped and the maintenance gateway
+        remains enabled by prior user instruction.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T18:41:32.504Z
+blockers: []
+verification:
+  candidate_id: 07c3c49d-39e2-40c3-8b43-d00495f9a0c6
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:767bfe17-c8be-421b-8273-a6cd8055796b
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: login-layout-tests
+      name:
+        text: Focused login layout component tests
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: vitest@3.2.4
+          truncated: false
+        - text: run
+          truncated: false
+        - text: --config
+          truncated: false
+        - text: vitest.auth.config.ts
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 13997
+    - id: auth-targeted-lint
+      name:
+        text: Targeted authentication lint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/auth/auth-layout.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-card.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-tabs.tsx
+          truncated: false
+        - text: src/features/auth/components/oauth-providers.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/components/user-auth-form.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-up/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 579
+    - id: auth-targeted-format
+      name:
+        text: Targeted authentication format check
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: src/features/auth/auth-layout.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-card.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/components/auth-tabs.tsx
+          truncated: false
+        - text: src/features/auth/components/oauth-providers.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/components/user-auth-form.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-up/index.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/i18n/locales/en.json
+          truncated: false
+        - text: src/i18n/locales/fr.json
+          truncated: false
+        - text: src/i18n/locales/ja.json
+          truncated: false
+        - text: src/i18n/locales/ru.json
+          truncated: false
+        - text: src/i18n/locales/vi.json
+          truncated: false
+        - text: src/i18n/locales/zh-TW.json
+          truncated: false
+        - text: src/i18n/locales/zh.json
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1331
+    - id: frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 19513
+    - id: frontend-production-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 39514
+  summary:
+    text: 独立核对 Runtime 状态、brief、完整 spec、认证实现、测试、diff 和补充浏览器证据；A1-A45 全部通过。
+    truncated: false
+  risks:
+    - text: 工作区仍有本 change 之外的未提交脚本或 skill 改动，归档时不得归入本 change。
+      truncated: false
+    - text: changelog 记录附在现有最新版本，发布前需确认版本号与最终镜像标签一致。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T19:00:20.712Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户确认将注册页纳入同一套新视觉，需更新正式范围后重新实现与验收
+      truncated: false
+    completed_at: 2026-08-21T16:24:12.636Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-21T16:25:29.470Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-21T18:14:50.120Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-21T18:38:38.289Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Verifier check plan used Vitest without the repository alias and produced
+        an infrastructure-only false failure. Added a temporary alias-aware
+        verification config; implementation is unchanged and all required checks
+        pass with the corrected command.
+      truncated: false
+    completed_at: 2026-08-21T18:39:27.508Z
+  - goal_cycle: 3
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立核对 Runtime 状态、brief、完整 spec、认证实现、测试、diff 和补充浏览器证据；A1-A45 全部通过。
+      truncated: false
+    completed_at: 2026-08-21T19:00:20.712Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-21T15:10:14.494Z

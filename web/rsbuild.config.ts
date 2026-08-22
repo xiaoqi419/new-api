@@ -16,11 +16,15 @@ export default defineConfig(({ envMode }) => {
     'http://localhost:3000'
 
   const isProd = envMode === 'production'
+  // /canvas-app 是随镜像发布的另一个前端(web/canvas),由后端静态托管,
+  // 主站 /canvas 页面用 iframe 内嵌它。不转发的话开发时 iframe 会落到
+  // 主站路由上,显示 404。
+  // /v1 与 /v1beta 是网关自己的中继入口:生产环境同源,开发时不转发会被 dev
+  // server 当成前端路由返回 HTML,画布和站内生图页都会静默失败。
   const devProxy = Object.fromEntries(
-    (['/api', '/mj', '/pg'] as const).map((key) => [
-      key,
-      { target: serverUrl, changeOrigin: true },
-    ])
+    (['/api', '/mj', '/pg', '/canvas-app', '/v1', '/v1beta'] as const).map(
+      (key) => [key, { target: serverUrl, changeOrigin: true }]
+    )
   ) as Record<string, { target: string; changeOrigin: boolean }>
 
   return {
@@ -48,6 +52,24 @@ export default defineConfig(({ envMode }) => {
           name: 'vendor-tanstack',
           chunks: 'all',
           priority: 0,
+          enforce: true,
+        },
+        // Only the markdown renderer and the code viewer pull these in, and both
+        // are route-level lazy. Left to the default heuristics they get merged
+        // into the shared vendor chunk that first paint already needs, which put
+        // ~2.4MB of editor and formula code on the critical path.
+        'lib-codemirror': {
+          test: /node_modules[\\/]@codemirror[\\/]/,
+          name: 'lib-codemirror',
+          chunks: 'all',
+          priority: 10,
+          enforce: true,
+        },
+        'lib-katex': {
+          test: /node_modules[\\/]katex[\\/]/,
+          name: 'lib-katex',
+          chunks: 'all',
+          priority: 10,
           enforce: true,
         },
       },

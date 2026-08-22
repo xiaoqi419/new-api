@@ -16,15 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  Copy,
-  Check,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  AlertTriangle,
-} from 'lucide-react'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -43,12 +39,20 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ReactNode, useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Dialog } from '@/components/dialog'
-import { StatusBadge, type StatusBadgeProps } from '@/components/status-badge'
+import {
+  Copy,
+  Check,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  AlertTriangle,
+} from '@/components/icons'
+import {
+  StatusBadge,
+  type StatusBadgeProps,
+  textColorMap,
+} from '@/components/status-badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -418,33 +422,6 @@ function formatLabelValue(label: string, value: string) {
   return label.endsWith('：') ? `${label}${value}` : `${label} ${value}`
 }
 
-const percentTextClassName: Record<
-  NonNullable<StatusBadgeProps['variant']>,
-  string
-> = {
-  success: 'text-success',
-  warning: 'text-warning',
-  danger: 'text-destructive',
-  info: 'text-info',
-  neutral: 'text-muted-foreground',
-  purple: 'text-chart-4',
-  amber: 'text-warning',
-  blue: 'text-chart-1',
-  cyan: 'text-chart-2',
-  green: 'text-success',
-  grey: 'text-muted-foreground',
-  indigo: 'text-chart-1',
-  'light-blue': 'text-info',
-  'light-green': 'text-emerald-500 dark:text-emerald-300',
-  lime: 'text-chart-3',
-  orange: 'text-warning',
-  pink: 'text-chart-5',
-  red: 'text-destructive',
-  teal: 'text-chart-2',
-  violet: 'text-chart-4',
-  yellow: 'text-warning',
-}
-
 type RateLimitWindowProps = {
   title: string
   window?: CodexRateLimitWindow | null
@@ -477,7 +454,7 @@ function RateLimitWindow(props: RateLimitWindowProps) {
             <div
               className={cn(
                 'text-xl leading-none font-semibold tabular-nums',
-                percentTextClassName[variant ?? 'neutral']
+                textColorMap[variant ?? 'neutral']
               )}
             >
               {hasData ? `${percent}%` : '-'}
@@ -1101,7 +1078,7 @@ export function CodexUsageDialog({
     >
       <div className='flex flex-col gap-4'>
         {errorMessage && (
-          <div className='rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400'>
+          <div className='border-destructive/25 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm'>
             {errorMessage}
           </div>
         )}

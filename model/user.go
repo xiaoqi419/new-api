@@ -78,7 +78,7 @@ func resolveUserSortOptions(sortOptions []UserSortOptions) UserSortOptions {
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
 	Id               int                        `json:"id"`
-	Username         string                     `json:"username" gorm:"unique;index" validate:"max=20"`
+	Username         string                     `json:"username" gorm:"uniqueIndex:idx_users_agent_username,priority:2;index" validate:"max=20"`
 	Password         string                     `json:"password" gorm:"not null;" validate:"min=8,max=20"`
 	OriginalPassword string                     `json:"original_password" gorm:"-:all"` // this field is only for Password change verification, don't save it to database!
 	DisplayName      string                     `json:"display_name" gorm:"index" validate:"max=20"`
@@ -101,6 +101,7 @@ type User struct {
 	AffQuota         int                        `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int                        `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
 	InviterId        int                        `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	RebateRatio      *float64                   `json:"rebate_ratio" gorm:"column:rebate_ratio"` // 该用户作为邀请人的专属返现比例；为空时使用全局默认
 	DeletedAt        gorm.DeletedAt             `gorm:"index"`
 	LinuxDOId        string                     `json:"linux_do_id" gorm:"column:linux_do_id;index"`
 	Setting          string                     `json:"setting" gorm:"type:text;column:setting"`
@@ -108,22 +109,27 @@ type User struct {
 	StripeCustomer   string                     `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	CreatedAt        int64                      `json:"created_at" gorm:"autoCreateTime;column:created_at"`
 	LastLoginAt      int64                      `json:"last_login_at" gorm:"default:0;column:last_login_at"`
+	MaxConcurrency   int                        `json:"max_concurrency" gorm:"type:int;default:0;column:max_concurrency"`                                         // 用户级最大并发，0=不限
+	AgentId          int                        `json:"agent_id" gorm:"type:int;default:0;index;uniqueIndex:idx_users_agent_username,priority:1;column:agent_id"` // 所属代理，0=平台直属
+	IsAgent          bool                       `json:"is_agent" gorm:"default:false;column:is_agent"`                                                            // 是否代理 owner 账号
 	AuthVersion      int64                      `json:"-" gorm:"type:bigint;not null;default:1;column:auth_version"`
 	AdminPermissions map[string]map[string]bool `json:"admin_permissions,omitempty" gorm:"-:all"`
 }
 
 func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
-		Id:          user.Id,
-		Group:       user.Group,
-		Quota:       user.Quota,
-		Status:      user.Status,
-		Role:        user.Role,
-		Username:    user.Username,
-		Setting:     user.Setting,
-		Email:       user.Email,
-		AuthVersion: user.AuthVersion,
-		CacheSchema: userCacheSchemaVersion,
+		Id:             user.Id,
+		Group:          user.Group,
+		Quota:          user.Quota,
+		Status:         user.Status,
+		Role:           user.Role,
+		Username:       user.Username,
+		Setting:        user.Setting,
+		Email:          user.Email,
+		MaxConcurrency: user.MaxConcurrency,
+		AgentId:        user.AgentId,
+		AuthVersion:    user.AuthVersion,
+		CacheSchema:    userCacheSchemaVersion,
 	}
 	return cache
 }
@@ -301,6 +307,26 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	return true, nil
 }
 
+// CheckUserExistOrDeletedInAgent 在指定代理(租户)命名空间内检查用户名/邮箱是否已被占用(含软删除)。
+func CheckUserExistOrDeletedInAgent(username string, email string, agentId int) (bool, error) {
+	var user User
+	var err error
+	email = NormalizeEmail(email)
+	query := DB.Unscoped().Where("agent_id = ?", agentId)
+	if email == "" {
+		err = query.Where("username = ?", username).First(&user).Error
+	} else {
+		err = query.Where("username = ? OR LOWER(email) = ?", username, email).First(&user).Error
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
@@ -421,7 +447,7 @@ func GetAllUsers(pageInfo *common.PageInfo, sortOptions ...UserSortOptions) (use
 	return users, total, nil
 }
 
-func SearchUsers(keyword string, group string, role *int, status *int, startIdx int, num int, sortOptions ...UserSortOptions) ([]*User, int64, error) {
+func SearchUsers(keyword string, group string, role *int, status *int, balance string, startIdx int, num int, sortOptions ...UserSortOptions) ([]*User, int64, error) {
 	var users []*User
 	var total int64
 	var err error
@@ -465,6 +491,14 @@ func SearchUsers(keyword string, group string, role *int, status *int, startIdx 
 		} else {
 			query = query.Where("deleted_at IS NULL").Where("status = ?", *status)
 		}
+	}
+	switch balance {
+	case "negative":
+		query = query.Where("quota < ?", 0)
+	case "zero":
+		query = query.Where("quota = ?", 0)
+	case "positive":
+		query = query.Where("quota > ?", 0)
 	}
 
 	// 获取总数
@@ -583,7 +617,7 @@ func (user *User) TransferAffQuotaToQuota(quota int) error {
 
 func (user *User) prepareForInsert(tx *gorm.DB) error {
 	user.Email = NormalizeEmail(user.Email)
-	if err := ensureEmailAvailableWithTx(tx, user.Email, 0); err != nil {
+	if err := ensureEmailAvailableInAgentWithTx(tx, user.Email, user.AgentId, 0); err != nil {
 		return err
 	}
 	if user.Password == "" {
@@ -632,6 +666,32 @@ func ensureEmailAvailableWithTx(tx *gorm.DB, email string, excludeUserID int) er
 	return nil
 }
 
+// ensureEmailAvailableInAgentWithTx 在指定代理(租户)命名空间内校验邮箱可用性(应用层软唯一，
+// 允许不同代理复用同一邮箱)。email 为空视为可用。
+func ensureEmailAvailableInAgentWithTx(tx *gorm.DB, email string, agentId int, excludeUserID int) error {
+	email = NormalizeEmail(email)
+	if email == "" {
+		return nil
+	}
+	query := emailQuery(tx, email).Where("agent_id = ?", agentId)
+	if excludeUserID > 0 {
+		query = query.Where("id <> ?", excludeUserID)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrEmailAlreadyTaken
+	}
+	return nil
+}
+
+// EnsureEmailAvailableInAgent 是 ensureEmailAvailableInAgentWithTx 的非事务入口，供注册前预检。
+func EnsureEmailAvailableInAgent(email string, agentId int, excludeUserID int) error {
+	return ensureEmailAvailableInAgentWithTx(DB, email, agentId, excludeUserID)
+}
+
 func (user *User) Insert(inviterId int) error {
 	if err := DB.Transaction(func(tx *gorm.DB) error {
 		return withNormalizedEmailLock(tx, user.Email, func(tx *gorm.DB) error {
@@ -660,9 +720,9 @@ func (user *User) Insert(inviterId int) error {
 
 func (user *User) finishInsert(inviterId int) {
 	// 用户创建成功后，根据角色初始化边栏配置
-	// 需要重新获取用户以确保有正确的ID和Role
+	// 需要重新获取用户以确保有正确的ID和Role（按 id 回查，复合命名空间下 username 不再全局唯一）
 	var createdUser User
-	if err := DB.Where("username = ?", user.Username).First(&createdUser).Error; err == nil {
+	if err := DB.Where("id = ?", user.Id).First(&createdUser).Error; err == nil {
 		// 生成基于角色的默认边栏配置
 		defaultSidebarConfig := generateDefaultSidebarConfigForRole(createdUser.Role)
 		if defaultSidebarConfig != "" {
@@ -838,10 +898,11 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 
 	newUser := *user
 	updates := map[string]interface{}{
-		"username":     newUser.Username,
-		"display_name": newUser.DisplayName,
-		"group":        newUser.Group,
-		"remark":       newUser.Remark,
+		"username":        newUser.Username,
+		"display_name":    newUser.DisplayName,
+		"group":           newUser.Group,
+		"remark":          newUser.Remark,
+		"max_concurrency": newUser.MaxConcurrency,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password
@@ -903,9 +964,25 @@ func (user *User) ClearBinding(bindingType string) error {
 	return updateUserCache(*user)
 }
 
+// isRootUserById 读取数据库中该用户的当前角色，判断是否为 root。
+// 调用方常只传 user.Id，user.Role 未必已加载，因此需回查数据库。
+func isRootUserById(id int) (bool, error) {
+	var role int
+	err := DB.Model(&User{}).Where("id = ?", id).Select("role").Scan(&role).Error
+	if err != nil {
+		return false, err
+	}
+	return role == common.RoleRootUser, nil
+}
+
 func (user *User) Delete() error {
 	if user.Id == 0 {
 		return errors.New("id 为空！")
+	}
+	if isRoot, err := isRootUserById(user.Id); err != nil {
+		return err
+	} else if isRoot {
+		return ErrCannotDeleteRootUser
 	}
 	var nextAuthVersion int64
 	if err := DB.Transaction(func(tx *gorm.DB) error {
@@ -930,6 +1007,11 @@ func (user *User) Delete() error {
 func (user *User) HardDelete() error {
 	if user.Id == 0 {
 		return errors.New("id 为空！")
+	}
+	if isRoot, err := isRootUserById(user.Id); err != nil {
+		return err
+	} else if isRoot {
+		return ErrCannotDeleteRootUser
 	}
 	var tokens []Token
 	var deletedAuthVersion int64
@@ -988,13 +1070,37 @@ func (user *User) ValidateAndFill() (err error) {
 	// When querying with struct, GORM will only query with non-zero fields,
 	// that means if your field's value is 0, '', false or other zero values,
 	// it won't be used to build query conditions
+	return user.ValidateAndFillWithTenant(0)
+}
+
+// ValidateAndFillWithTenant 在指定租户(代理)命名空间内校验用户名/邮箱+密码并回填用户。
+// tenantAgentId=0 表示平台主站；>0 表示代理白标域名。代理域名上优先识别代理 owner
+// (平台账号 agent_id=0)，使其可在自有域名登录为管理员(S2/S3)。
+func (user *User) ValidateAndFillWithTenant(tenantAgentId int) (err error) {
 	password := user.Password
 	username := strings.TrimSpace(user.Username)
 	if username == "" || password == "" {
 		return ErrUserEmptyCredentials
 	}
-	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	// 代理域名：优先匹配该代理的 owner 账号(平台账号 agent_id=0)
+	if tenantAgentId > 0 {
+		if agent, aerr := GetAgentById(tenantAgentId); aerr == nil && agent != nil && agent.OwnerUserId > 0 {
+			owner := &User{}
+			oerr := DB.Where("id = ? AND agent_id = 0 AND (username = ? OR email = ?)", agent.OwnerUserId, username, username).First(owner).Error
+			if oerr == nil {
+				if owner.Password == "" || !common.ValidatePasswordAndHash(password, owner.Password) || owner.Status != common.UserStatusEnabled {
+					return ErrInvalidCredentials
+				}
+				*user = *owner
+				return nil
+			}
+			if !errors.Is(oerr, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("%w: %v", ErrDatabase, oerr)
+			}
+		}
+	}
+	// 按租户作用域查找(平台=0 或 代理终端用户=tenantAgentId)
+	err = DB.Where("agent_id = ? AND (username = ? OR email = ?)", tenantAgentId, username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials
@@ -1104,6 +1210,25 @@ func GetUniqueUserByEmail(email string) (*User, error) {
 
 func IsWeChatIdAlreadyTaken(wechatId string) bool {
 	return DB.Unscoped().Where("wechat_id = ?", wechatId).Find(&User{}).RowsAffected == 1
+}
+
+// BindWeChatIdToUser 只写 wechat_id 一列，不回写整条用户快照，避免把并发发生的
+// 额度变动等改动覆盖掉。WHERE 里带上「当前未绑定」，两个请求同时绑同一账号时
+// 后到的一个会 RowsAffected==0 而不是静默顶替。
+func BindWeChatIdToUser(id int, wechatId string) error {
+	if id == 0 || wechatId == "" {
+		return errors.New("参数为空！")
+	}
+	result := DB.Model(&User{}).
+		Where("id = ? AND (wechat_id IS NULL OR wechat_id = ?)", id, "").
+		Update("wechat_id", wechatId)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("该账号已绑定其他微信，请先在个人中心解绑")
+	}
+	return nil
 }
 
 func IsGitHubIdAlreadyTaken(githubId string) bool {
@@ -1315,6 +1440,35 @@ func decreaseUserQuota(id int, quota int) (err error) {
 		return err
 	}
 	return err
+}
+
+// DecreaseUserQuotaIfEnough atomically deducts quota only when the row can still
+// cover it, returning ok=false (without error) when the balance is insufficient.
+// The single conditional UPDATE closes the check-then-act race in wallet
+// pre-consume, where concurrent requests could otherwise both pass a stale
+// balance read and drive the quota negative. Post-consume settlement keeps using
+// the unconditional path on purpose, so a delivered request is always charged
+// even if it pushes the balance below zero.
+func DecreaseUserQuotaIfEnough(id int, quota int) (ok bool, err error) {
+	if quota < 0 {
+		return false, errors.New("quota 不能为负数！")
+	}
+	if quota == 0 {
+		return true, nil
+	}
+	result := DB.Model(&User{}).Where("id = ? AND quota >= ?", id, quota).Update("quota", gorm.Expr("quota - ?", quota))
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+	gopool.Go(func() {
+		if cacheErr := cacheDecrUserQuota(id, int64(quota)); cacheErr != nil {
+			common.SysLog("failed to decrease user quota: " + cacheErr.Error())
+		}
+	})
+	return true, nil
 }
 
 func DeltaUpdateUserQuota(id int, delta int) (err error) {

@@ -1,3 +1,7 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { StaticDataTable } from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Tag as TagIcon } from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { StaticDataTable } from '@/components/data-table'
+import { Tag as TagIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useSystemConfigStore } from '@/stores/system-config-store'
@@ -209,7 +209,15 @@ export function DynamicPricingBreakdown({
   const normalizedMatchedTierLabel = normalizeTierLabel(
     matchedTierLabel ?? undefined
   )
-
+  const tierRows = useMemo(() => {
+    const duplicateCounts = new Map<string, number>()
+    return tiers.map((tier) => {
+      const signature = JSON.stringify(tier)
+      const duplicateCount = duplicateCounts.get(signature) ?? 0
+      duplicateCounts.set(signature, duplicateCount + 1)
+      return { tier, key: `tier-${signature}-${duplicateCount}` }
+    })
+  }, [tiers])
   if (!expr) return null
 
   if (!hasTiers) {
@@ -217,7 +225,7 @@ export function DynamicPricingBreakdown({
       <section className={cn('min-w-0', !compact && 'py-4')}>
         {!compact && (
           <div className='mb-3 flex items-center gap-2'>
-            <span className='inline-flex size-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shadow-sm dark:bg-amber-500/20 dark:text-amber-300'>
+            <span className='bg-warning/15 text-warning inline-flex size-6 items-center justify-center rounded-lg shadow-sm'>
               <TagIcon className='size-3.5' />
             </span>
             <div>
@@ -247,14 +255,13 @@ export function DynamicPricingBreakdown({
       (tier) => Number(tier[v.field as string as keyof ParsedTier] || 0) > 0
     )
   })
-  const mobileTierKeyOccurrences = new Map<string, number>()
   const requestRuleKeyOccurrences = new Map<string, number>()
 
   return (
     <section className={cn('min-w-0', !compact && 'py-3 sm:py-4')}>
       {!compact && (
         <div className='mb-3 flex items-start gap-2 sm:mb-4'>
-          <span className='mt-0.5 inline-flex size-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shadow-sm dark:bg-amber-500/20 dark:text-amber-300'>
+          <span className='bg-warning/15 text-warning mt-0.5 inline-flex size-6 items-center justify-center rounded-lg shadow-sm'>
             <TagIcon className='size-3.5' />
           </span>
           <div>
@@ -280,35 +287,31 @@ export function DynamicPricingBreakdown({
             {t('Tiered price table')}
           </div>
           <div className='space-y-1.5 sm:hidden'>
-            {tiers.map((tier) => {
+            {tierRows.map(({ tier, key }) => {
               const condSummary = formatConditionSummary(tier.conditions, t)
               const isMatched =
                 matchedTierLabel != null &&
                 matchedTierLabel !== '' &&
                 tier.label === matchedTierLabel
-              const rowKey = nextOccurrenceKey(
-                JSON.stringify(tier),
-                mobileTierKeyOccurrences
-              )
               return (
                 <div
-                  key={`tier-mobile-${rowKey}`}
+                  key={key}
                   className={cn(
                     'rounded-md border p-2',
-                    isMatched && 'border-emerald-500/40 bg-emerald-500/10'
+                    isMatched && 'border-success/40 bg-success/10'
                   )}
                 >
                   <div className='mb-1.5 flex flex-wrap items-center gap-1.5'>
                     <Badge
                       variant='secondary'
-                      className='bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+                      className='bg-chart-1/15 text-tag-1'
                     >
                       {tier.label || t('Default')}
                     </Badge>
                     {isMatched && (
                       <Badge
                         variant='secondary'
-                        className='bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                        className='bg-success/15 text-success'
                       >
                         {t('Matched')}
                       </Badge>
@@ -361,10 +364,7 @@ export function DynamicPricingBreakdown({
               const isMatched =
                 normalizedMatchedTierLabel !== '' &&
                 normalizeTierLabel(tier.label) === normalizedMatchedTierLabel
-              return cn(
-                isMatched &&
-                  'bg-emerald-50/70 hover:bg-emerald-50/70 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/10'
-              )
+              return cn(isMatched && 'bg-success/8 hover:bg-success/8')
             }}
             columns={[
               {
@@ -386,14 +386,14 @@ export function DynamicPricingBreakdown({
                       <div className='flex flex-wrap items-center gap-1.5'>
                         <Badge
                           variant='secondary'
-                          className='bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+                          className='bg-chart-1/15 text-tag-1'
                         >
                           {tier.label || t('Default')}
                         </Badge>
                         {isMatched && (
                           <Badge
                             variant='secondary'
-                            className='bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                            className='bg-success/15 text-success'
                           >
                             {t('Matched')}
                           </Badge>

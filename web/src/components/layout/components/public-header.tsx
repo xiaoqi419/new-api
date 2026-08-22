@@ -24,9 +24,11 @@ import { Dialog } from '@/components/dialog'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
+import { PromoBanner } from '@/components/promo-banner'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CommunityMenu } from '@/features/community'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
@@ -45,6 +47,7 @@ type AuthPromptTarget = {
 }
 
 export interface PublicHeaderProps {
+  visualSurface?: 'home' | 'business'
   navLinks?: TopNavLink[]
   mobileLinks?: TopNavLink[]
   navContent?: React.ReactNode
@@ -66,6 +69,7 @@ export function PublicHeader(props: PublicHeaderProps) {
     navLinks = defaultTopNavLinks,
     showThemeSwitch = true,
     showLanguageSwitcher = true,
+    mobileLinks: providedMobileLinks,
     logo: customLogo,
     siteName: customSiteName,
     homeUrl = '/',
@@ -95,8 +99,55 @@ export function PublicHeader(props: PublicHeaderProps) {
 
   const user = auth.user
   const isAuthenticated = !!user
+  const isHomeRoute = pathname === '/'
+  const isHomeVisualSurface =
+    (props.visualSurface ?? (isHomeRoute ? 'home' : 'business')) === 'home'
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const mobileNavLinks = providedMobileLinks ?? links
+  let logoContent: React.ReactNode
+
+  if (loading) {
+    logoContent = <Skeleton className='size-full rounded-lg' />
+  } else if (customLogo) {
+    logoContent = customLogo
+  } else {
+    logoContent = (
+      <HeaderLogo
+        src={systemLogo}
+        loading={loading}
+        logoLoaded={logoLoaded}
+        className='size-full rounded-lg object-contain'
+      />
+    )
+  }
+
+  let authContent: React.ReactNode
+  if (loading) {
+    authContent = <Skeleton className='h-8 w-20 rounded-lg' />
+  } else if (isAuthenticated) {
+    authContent = <ProfileDropdown />
+  } else {
+    authContent = (
+      <Button
+        size='sm'
+        className='public-header-cta h-8 rounded-lg px-3.5 text-xs font-medium'
+        render={<Link to={isHomeRoute ? '/sign-up' : '/sign-in'} />}
+      >
+        {t(isHomeRoute ? 'Get Started' : 'Sign in')}
+      </Button>
+    )
+  }
+
+  let mobileAuthHref = '/sign-in'
+  let mobileAuthLabel = t('Sign in')
+  if (isAuthenticated) {
+    mobileAuthHref = '/dashboard'
+    mobileAuthLabel = t('Go to Dashboard')
+  } else if (isHomeRoute) {
+    mobileAuthHref = '/sign-up'
+    mobileAuthLabel = t('Get Started')
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -173,55 +224,60 @@ export function PublicHeader(props: PublicHeaderProps) {
     [t]
   )
 
+  let frameLayoutClass = 'max-w-[52rem] px-3 pt-3'
+  let navLayoutClass =
+    'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
+  if (!scrolled) {
+    frameLayoutClass = isHomeVisualSurface
+      ? 'w-full max-w-[1392px] px-4 pt-4 sm:px-6 sm:pt-6 xl:px-[54px] xl:pt-6'
+      : 'max-w-7xl px-4 pt-0 md:px-6'
+    navLayoutClass = isHomeVisualSurface ? 'h-16 px-0' : 'h-16 px-2'
+  }
+
   return (
     <>
-      <header className='pointer-events-none fixed inset-x-0 top-0 z-50'>
+      <header
+        data-public-header
+        className={cn(
+          'pointer-events-none fixed inset-x-0 top-0 z-50',
+          props.className
+        )}
+      >
+        <PromoBanner />
         <div
           className={cn(
-            'pointer-events-auto mx-auto transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-            scrolled ? 'max-w-[52rem] px-3 pt-3' : 'max-w-7xl px-4 pt-0 md:px-6'
+            'public-header-frame pointer-events-auto mx-auto transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
+            frameLayoutClass
           )}
         >
           <nav
             className={cn(
-              'flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-              scrolled
-                ? 'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
-                : 'h-16 px-2'
+              'public-header-nav flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              scrolled && 'public-header-scrolled',
+              navLayoutClass
             )}
           >
             {/* Logo */}
             <Link
               to={homeUrl}
-              className='group flex shrink-0 items-center gap-2.5'
+              className='public-header-brand group focus-visible:ring-ring flex shrink-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
             >
-              <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
-                {loading ? (
-                  <Skeleton className='size-full rounded-lg' />
-                ) : customLogo ? (
-                  customLogo
-                ) : (
-                  <HeaderLogo
-                    src={systemLogo}
-                    loading={loading}
-                    logoLoaded={logoLoaded}
-                    className='size-full rounded-lg object-contain'
-                  />
-                )}
+              <div className='public-header-brand-mark flex size-9 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
+                {logoContent}
               </div>
-              <span className='text-sm font-semibold tracking-tight'>
-                {loading ? <Skeleton className='h-4 w-16' /> : displaySiteName}
+              <span className='public-header-site-name text-xl font-bold tracking-tight'>
+                {loading ? <Skeleton className='h-6 w-24' /> : displaySiteName}
               </span>
             </Link>
 
             {/* Desktop nav */}
-            <div className='hidden items-center gap-0.5 sm:flex'>
-              {links.map((link, i) => {
+            <div className='public-header-desktop public-header-links hidden items-center gap-0.5 sm:flex'>
+              {links.map((link) => {
                 const isActive = pathname === link.href
                 if (link.external) {
                   return (
                     <a
-                      key={i}
+                      key={`${link.title}-${link.href}`}
                       href={link.href}
                       target='_blank'
                       rel='noopener noreferrer'
@@ -229,7 +285,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                       tabIndex={link.disabled ? -1 : undefined}
                       onClick={(event) => handleNavLinkClick(event, link)}
                       className={cn(
-                        'text-muted-foreground hover:text-foreground rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
+                        'public-header-nav-link text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                         link.disabled && 'pointer-events-none opacity-50'
                       )}
                     >
@@ -239,14 +295,14 @@ export function PublicHeader(props: PublicHeaderProps) {
                 }
                 return (
                   <Link
-                    key={i}
+                    key={`${link.title}-${link.href}`}
                     to={link.href}
                     disabled={link.disabled}
                     onClick={(event) => handleNavLinkClick(event, link)}
                     className={cn(
-                      'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
+                      'public-header-nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       isActive
-                        ? 'text-foreground'
+                        ? 'public-header-nav-link-active text-foreground font-semibold'
                         : 'text-muted-foreground hover:text-foreground',
                       link.disabled && 'pointer-events-none opacity-50'
                     )}
@@ -256,49 +312,49 @@ export function PublicHeader(props: PublicHeaderProps) {
                 )
               })}
 
+              <CommunityMenu
+                variant='nav'
+                className='public-header-community'
+              />
+            </div>
+
+            <div className='public-header-desktop public-header-controls hidden items-center gap-3 sm:flex'>
               {(showLanguageSwitcher ||
                 showThemeSwitch ||
                 showNotifications) && (
-                <div className='bg-border/40 mx-2 h-4 w-px' />
+                <div className='public-header-divider bg-border/40 mx-2 h-4 w-px' />
               )}
 
-              {showLanguageSwitcher && <LanguageSwitcher />}
+              {showLanguageSwitcher && (
+                <div className='public-header-language'>
+                  <LanguageSwitcher />
+                </div>
+              )}
               {showThemeSwitch && <ThemeSwitch />}
               {showNotifications && (
                 <NotificationPopover
+                  className='public-header-notifications'
                   open={notifications.popoverOpen}
                   onOpenChange={notifications.setPopoverOpen}
                   unreadCount={notifications.unreadCount}
                   activeTab={notifications.activeTab}
                   onTabChange={notifications.setActiveTab}
-                  notice={notifications.notice}
                   announcements={notifications.announcements}
+                  versions={notifications.versions}
                   loading={notifications.loading}
                 />
               )}
 
               {showAuthButtons && (
                 <>
-                  <div className='bg-border/40 mx-1 h-4 w-px' />
-                  {loading ? (
-                    <Skeleton className='h-8 w-20 rounded-lg' />
-                  ) : isAuthenticated ? (
-                    <ProfileDropdown />
-                  ) : (
-                    <Button
-                      size='sm'
-                      className='h-8 rounded-lg px-3.5 text-xs font-medium'
-                      render={<Link to='/sign-in' />}
-                    >
-                      {t('Sign in')}
-                    </Button>
-                  )}
+                  <div className='public-header-divider bg-border/40 mx-1 h-4 w-px' />
+                  {authContent}
                 </>
               )}
             </div>
 
             {/* Mobile: compact actions + hamburger */}
-            <div className='flex items-center gap-2 sm:hidden'>
+            <div className='public-header-mobile flex items-center gap-2 sm:hidden'>
               {showThemeSwitch && <ThemeSwitch />}
               {showAuthButtons && !loading && isAuthenticated && (
                 <ProfileDropdown />
@@ -310,6 +366,8 @@ export function PublicHeader(props: PublicHeaderProps) {
                 className='size-9'
                 onClick={() => setMobileOpen((v) => !v)}
                 aria-label={t('Toggle navigation menu')}
+                aria-expanded={mobileOpen}
+                aria-controls='public-mobile-navigation'
               >
                 <div className='relative size-4'>
                   <span
@@ -339,6 +397,7 @@ export function PublicHeader(props: PublicHeaderProps) {
 
       {/* Mobile full-screen overlay */}
       <div
+        id='public-mobile-navigation'
         className={cn(
           'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:pointer-events-none sm:hidden',
           mobileOpen
@@ -348,10 +407,10 @@ export function PublicHeader(props: PublicHeaderProps) {
       >
         <div className='flex h-full flex-col justify-between px-8 pt-20 pb-10'>
           <nav className='flex flex-col gap-1'>
-            {links.map((link, i) => {
+            {mobileNavLinks.map((link, i) => {
               const isActive = pathname === link.href
               const linkClassName = cn(
-                'flex items-center gap-3 py-3 text-base font-medium tracking-tight transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                'flex items-center gap-3 rounded-md py-3 text-base font-medium tracking-tight transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 mobileOpen
                   ? 'translate-y-0 opacity-100'
                   : 'translate-y-4 opacity-0',
@@ -364,7 +423,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               if (link.external) {
                 return (
                   <a
-                    key={i}
+                    key={`${link.title}-${link.href}`}
                     href={link.href}
                     target='_blank'
                     rel='noopener noreferrer'
@@ -380,7 +439,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               }
               return (
                 <Link
-                  key={i}
+                  key={`${link.title}-${link.href}`}
                   to={link.href}
                   disabled={link.disabled}
                   onClick={(event) => handleNavLinkClick(event, link, true)}
@@ -404,11 +463,11 @@ export function PublicHeader(props: PublicHeaderProps) {
           >
             {showAuthButtons && (
               <Link
-                to={isAuthenticated ? '/dashboard' : '/sign-in'}
+                to={mobileAuthHref}
                 onClick={() => setMobileOpen(false)}
-                className='bg-foreground text-background inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:opacity-80'
+                className='bg-foreground text-background focus-visible:ring-ring inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 active:opacity-80'
               >
-                {isAuthenticated ? t('Go to Dashboard') : t('Sign in')}
+                {mobileAuthLabel}
               </Link>
             )}
           </div>

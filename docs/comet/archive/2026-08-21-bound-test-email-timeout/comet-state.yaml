@@ -1,0 +1,370 @@
+schema: comet.native.v4
+name: bound-test-email-timeout
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: smtp-email-timeout
+    operation: create
+    source: specs/smtp-email-timeout/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/bound-test-email-timeout
+  target_branch: comet/auth-access-quality-pass
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 接受 TCP 连接但不发送 SMTP greeting 的本地服务端会使 `SendEmail` 返回包含 greeting 和 timeout
+      阶段的安全错误。
+    result: passed
+    reason:
+      text: The focused loopback greeting-stall test passed and asserts a safe error
+        containing both the greeting stage and timeout semantics.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 在隐式 TLS 或 STARTTLS 的握手阶段停止响应的本地服务端会使 `SendEmail` 返回对应 TLS
+      阶段的安全错误，而不会让请求等待到网关超时。
+    result: passed
+    reason:
+      text: Independent focused tests passed for stalled implicit-TLS and STARTTLS
+        handshakes, each asserting its stage name and an unwrap-visible timeout
+        error.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 正常明文、STARTTLS 和 465 隐式 TLS 流程继续发送邮件；`SMTPInsecureSkipVerify` 仍控制测试/兼容证书校验。
+    result: passed
+    reason:
+      text: The full common package suite passed, including explicit STARTTLS
+        delivery, plaintext-without-auto-upgrade, and legacy port-465
+        implicit-TLS coverage; the TLS verification switch remains in
+        smtpTLSConfig.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 经 `/api/option/test_email` 返回的失败消息不包含 SMTP token、账号、收件人或邮件正文。
+    result: passed
+    reason:
+      text: The endpoint remains unchanged and sends SendEmail errors through its
+        existing HTTP-200 JSON failure contract; all new timeout tests assert
+        the externally surfaced error contains no token, account, receiver,
+        subject, or body fixture.
+      truncated: false
+  - id: A5
+    source: specs/smtp-email-timeout/spec.md
+    text: SMTP 邮件发送必须从 TCP 拨号开始使用约 10 秒的共享绝对 deadline。该 deadline 必须作用于 TCP 连接、服务端
+      greeting、隐式 TLS 握手、STARTTLS 协商和握手、认证、发件人、收件人、DATA、正文写入、正文结束与 QUIT 的全部网络
+      I/O。任何阶段都不得获得独立的完整超时预算。
+    result: passed
+    reason:
+      text: newSMTPClient creates one deadline once, uses it for DialContext and
+        SetDeadline, and never resets it; the same connection is reused through
+        greeting, TLS, SMTP commands, message writer, and QUIT.
+      truncated: false
+  - id: A6
+    source: specs/smtp-email-timeout/spec.md
+    text: 所有 SMTP 连接通过 `net.Dialer.DialContext` 在该 absolute deadline 下建立，并在成功后立即对底层
+      `net.Conn` 设置同一个 deadline。
+    result: passed
+    reason:
+      text: Static review confirms net.Dialer.DialContext is given the absolute
+        context deadline and a successful net.Conn immediately receives that
+        same deadline.
+      truncated: false
+  - id: A7
+    source: specs/smtp-email-timeout/spec.md
+    text: 启用 `SMTPSSLEnabled` 或未启用 STARTTLS 的 465 端口继续使用隐式 TLS；TLS 握手失败或超时返回可识别的隐式
+      TLS 阶段错误。
+    result: passed
+    reason:
+      text: The implicit-TLS branch retains SMTPSSLEnabled and legacy 465 selection,
+        performs tls.Client.HandshakeContext on the deadline-bound connection,
+        and wraps failures as the implicit TLS handshake stage.
+      truncated: false
+  - id: A8
+    source: specs/smtp-email-timeout/spec.md
+    text: 启用 `SMTPStartTLSEnabled` 时继续要求服务器支持 STARTTLS，并在协商或握手失败、超时时返回可识别的 STARTTLS
+      阶段错误。
+    result: passed
+    reason:
+      text: The explicit STARTTLS branch still requires the advertised extension,
+        labels negotiation and handshake failures, and the stalled STARTTLS
+        handshake regression passed.
+      truncated: false
+  - id: A9
+    source: specs/smtp-email-timeout/spec.md
+    text: 明文 SMTP、显式 STARTTLS、隐式 TLS、现有认证选择逻辑和 `SMTPInsecureSkipVerify` 的证书校验语义保持兼容。
+    result: passed
+    reason:
+      text: No SMTP configuration-selection behavior was changed beyond transport
+        construction; common-package tests passed for plaintext, explicit
+        STARTTLS, implicit TLS, auth variants, and certificate rejection.
+      truncated: false
+  - id: A10
+    source: specs/smtp-email-timeout/spec.md
+    text: 每个可失败的 SMTP 阶段以 `%w` 包装底层错误，允许调用方使用 `errors.Is` 或 `errors.As` 识别原因。
+    result: passed
+    reason:
+      text: Each underlying dial, TLS, greeting, SMTP command, DATA, message-write,
+        completion, and QUIT error is passed through wrapSMTPStageError using
+        %w; smtpSafeError.Unwrap retains the original cause, verified by ErrorAs
+        in the focused tests.
+      truncated: false
+  - id: A11
+    source: specs/smtp-email-timeout/spec.md
+    text: 对外 `Error()` 文本必须标识失败阶段，并在 deadline 到期时标识 timeout；不得包含 SMTP
+      token、账号、收件人、邮件主题或正文。
+    result: passed
+    reason:
+      text: smtpSafeError exposes only timeout or failed while the outer wrapper adds
+        the stage. Focused tests assert stage/timeout text and absence of all
+        sensitive fixtures.
+      truncated: false
+  - id: A12
+    source: specs/smtp-email-timeout/spec.md
+    text: "`SendEmail` 返回安全阶段错误后，`/api/option/test_email` 继续使用既有
+      RootAuth、CriticalRateLimit、HTTP 200 JSON 失败结构和成功审计行为，无需新增或改变控制器协议。"
+    result: passed
+    reason:
+      text: No controller or route diff exists. Static inspection confirms RootAuth
+        plus CriticalRateLimit remain applied and SendTestEmail retains its
+        authenticated HTTP-200 JSON error/success behavior and success audit
+        record.
+      truncated: false
+  - id: A13
+    source: specs/smtp-email-timeout/spec.md
+    text: 测试只使用本地监听器和临时自签名证书，不访问公网或真实邮箱。
+    result: passed
+    reason:
+      text: New stalled-server fixtures bind only 127.0.0.1:0 and use no external SMTP
+        service, real mailbox, credential, or public network.
+      truncated: false
+  - id: A14
+    source: specs/smtp-email-timeout/spec.md
+    text: greeting 不发送、隐式 TLS handshake 卡住、STARTTLS handshake 卡住三类测试通过包内受控 deadline
+      快速完成，断言错误阶段、timeout 语义、错误链和敏感值不泄露，而不比较实际耗时。
+    result: passed
+    reason:
+      text: The three new stall tests use the package-local 100ms deadline, assert
+        stage, timeout, error chain, and redaction, and do not compare elapsed
+        time.
+      truncated: false
+  - id: A15
+    source: specs/smtp-email-timeout/spec.md
+    text: 既有明文、STARTTLS、隐式 TLS 与 TLS 校验测试继续覆盖成功和拒绝路径。
+    result: passed
+    reason:
+      text: go test ./common -count=1 passed independently, preserving existing plain,
+        STARTTLS, implicit-TLS, auth, and TLS-verification regression coverage.
+      truncated: false
+builder_handoff:
+  candidate_id: 88483021-18d5-4a93-aa4e-03d5113eff7e
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:67bdeee7-ef29-4516-9640-a7180cfd1d93
+  iteration: 1
+  summary:
+    text: Bound SMTP email delivery with one approximately ten-second absolute
+      deadline from TCP dial through greeting, TLS/STARTTLS, and SMTP I/O.
+      Failures now expose only the SMTP stage and timeout/failed state while
+      retaining the underlying error chain. Added deterministic local-listener
+      regression coverage for stalled greeting, implicit TLS handshake, and
+      STARTTLS handshake without changing SMTP configuration semantics or the
+      test-email controller contract.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+  checks:
+    - name:
+        text: Focused stalled SMTP regressions
+        truncated: false
+      result: passed
+      note:
+        text: go test ./common -run 'TestSendEmailTimesOut' -count=1
+        truncated: false
+    - name:
+        text: Common package tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./common -count=1
+        truncated: false
+    - name:
+        text: Common package vet
+        truncated: false
+      result: passed
+      note:
+        text: go vet ./common
+        truncated: false
+    - name:
+        text: Go formatting
+        truncated: false
+      result: passed
+      note:
+        text: gofmt -d common/email.go common/email_test.go produced no output
+        truncated: false
+    - name:
+        text: Diff whitespace
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The test-email controller was not changed because it already returns
+        SendEmail errors through its existing authenticated JSON contract; local
+        tests assert the returned error text contains no credential, account,
+        receiver, subject, or body values.
+      truncated: false
+    - text: Timeout regressions intentionally use only loopback listeners and a
+        package-local shortened deadline; no external SMTP service or
+        timing-performance assertion was used.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T19:58:36.919Z
+blockers: []
+verification:
+  candidate_id: 88483021-18d5-4a93-aa4e-03d5113eff7e
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:21d45a45-ffb3-4609-a4c9-8096b1fb4096
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: smtp-timeout-regressions
+      name:
+        text: Stalled SMTP timeout regressions
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./common
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: TestSendEmailTimesOut
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1994
+    - id: common-tests
+      name:
+        text: Common package tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./common
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2335
+    - id: common-vet
+      name:
+        text: Common package vet
+        truncated: false
+      argv_display:
+        - text: vet
+          truncated: false
+        - text: ./common
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 384
+    - id: diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 65
+  summary:
+    text: Independent read-only verification passes all 15 acceptance items. The
+      deadline is established once at connection setup, applied to the live
+      net.Conn, and carried across TLS and SMTP I/O; stage errors preserve their
+      underlying causes while exposing only safe text. Focused and full
+      common-package tests, vet, formatting, and diff checks passed.
+    truncated: false
+  risks:
+    - text: No endpoint integration test was added because controller and router code
+        are unchanged; this verifier confirmed the existing RootAuth,
+        CriticalRateLimit, HTTP-200 JSON contract, and safe SendEmail error
+        boundary by static inspection.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T20:11:20.630Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passes all 15 acceptance items. The
+        deadline is established once at connection setup, applied to the live
+        net.Conn, and carried across TLS and SMTP I/O; stage errors preserve
+        their underlying causes while exposing only safe text. Focused and full
+        common-package tests, vet, formatting, and diff checks passed.
+      truncated: false
+    completed_at: 2026-08-21T20:11:20.630Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-21T19:33:58.383Z

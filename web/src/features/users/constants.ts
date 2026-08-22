@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Shield, User, Users } from 'lucide-react'
+import { Shield, User, Users } from '@/components/icons'
 
 import type { User as UserType } from './types'
 
@@ -94,6 +94,16 @@ export const getUserRoleOptions = (t: (key: string) => string) => [
   { label: t('User'), value: String(USER_ROLE.USER), icon: User },
   { label: t('Admin'), value: String(USER_ROLE.ADMIN), icon: Users },
   { label: t('Root'), value: String(USER_ROLE.ROOT), icon: Shield },
+]
+
+// ============================================================================
+// User Balance Status Configuration
+// ============================================================================
+
+export const getUserBalanceOptions = (t: (key: string) => string) => [
+  { label: t('Negative Balance'), value: 'negative' },
+  { label: t('Zero Balance'), value: 'zero' },
+  { label: t('Normal Balance'), value: 'positive' },
 ]
 
 // ============================================================================

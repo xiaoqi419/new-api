@@ -1,3 +1,7 @@
+import type { ComponentType } from 'react'
+import type { UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Building2, Home, Presentation } from 'lucide-react'
-import type { ComponentType } from 'react'
-import type { UseFormReturn } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-
+import { Building2, Home, Presentation } from '@/components/icons'
 import {
   FormControl,
   FormField,
@@ -113,7 +113,7 @@ export function UsageModeStep({ form }: UsageModeStepProps) {
                             {t(descriptionKey)}
                           </p>
                         </div>
-                        <Icon className='text-muted-foreground/70 group-hover:text-primary group-focus-within:text-primary group-has-data-[checked]:text-primary ml-auto size-5 shrink-0 transition' />
+                        <Icon className='text-muted-foreground group-hover:text-primary group-focus-within:text-primary group-has-data-[checked]:text-primary ml-auto size-5 shrink-0 transition' />
                       </div>
                     </Label>
                   )

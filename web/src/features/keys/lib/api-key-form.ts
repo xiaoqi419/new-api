@@ -41,12 +41,28 @@ export function getApiKeyFormSchema(t: TFunction, maxAutoGroups = 5) {
       model_limits: z.array(z.string()),
       allow_ips: z.string().optional(),
       group: z.string().optional(),
+      group_switch_enabled: z.boolean().optional(),
+      group_switch_groups: z.array(z.string()).optional(),
+      group_switch_threshold: z.number().min(1).max(5).optional(),
+      group_switch_cooldown: z.number().optional(),
+      max_concurrency: z.number().min(0).optional(),
       auto_groups_mode: z.enum(['inherit', 'custom']),
       auto_groups: z.array(z.string()),
       cross_group_retry: z.boolean().optional(),
       tokenCount: z.number().min(1).optional(),
     })
     .superRefine((data, ctx) => {
+      if (
+        data.group_switch_enabled &&
+        (data.group_switch_groups?.length ?? 0) < 2
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['group_switch_groups'],
+          message: t('Please select at least 2 candidate groups'),
+        })
+      }
+
       if (data.group === 'auto') {
         if (
           data.auto_groups_mode === 'custom' &&
@@ -111,14 +127,19 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   model_limits: [],
   allow_ips: '',
   group: DEFAULT_GROUP,
+  group_switch_enabled: false,
+  group_switch_groups: [],
+  group_switch_threshold: 2,
+  group_switch_cooldown: 10,
+  max_concurrency: 0,
   auto_groups_mode: 'inherit',
   auto_groups: [],
-  cross_group_retry: true,
+  cross_group_retry: false,
   tokenCount: 1,
 }
 
 export function getApiKeyFormDefaultValues(
-  defaultUseAutoGroup: boolean
+  defaultUseAutoGroup = false
 ): ApiKeyFormValues {
   return {
     ...API_KEY_FORM_DEFAULT_VALUES,
@@ -126,6 +147,21 @@ export function getApiKeyFormDefaultValues(
     auto_groups_mode: 'inherit',
     auto_groups: [],
     cross_group_retry: defaultUseAutoGroup,
+  }
+}
+
+/**
+ * Parse the token's stored candidate group list (JSON array string).
+ */
+export function parseGroupSwitchGroups(value?: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter((v) => typeof v === 'string')
+      : []
+  } catch {
+    return []
   }
 }
 
@@ -152,6 +188,11 @@ export function transformFormDataToPayload(
     model_limits: data.model_limits.join(','),
     allow_ips: data.allow_ips || '',
     group: data.group || '',
+    group_switch_enabled: !!data.group_switch_enabled,
+    group_switch_groups: JSON.stringify(data.group_switch_groups ?? []),
+    group_switch_threshold: data.group_switch_threshold ?? 2,
+    group_switch_cooldown: data.group_switch_cooldown ?? 10,
+    max_concurrency: data.max_concurrency ?? 0,
     auto_groups:
       data.group === 'auto' && data.auto_groups_mode === 'custom'
         ? data.auto_groups
@@ -190,6 +231,11 @@ export function transformApiKeyToFormDefaults(
       : [],
     allow_ips: apiKey.allow_ips || '',
     group: apiKey.group || DEFAULT_GROUP,
+    group_switch_enabled: !!apiKey.group_switch_enabled,
+    group_switch_groups: parseGroupSwitchGroups(apiKey.group_switch_groups),
+    group_switch_threshold: apiKey.group_switch_threshold || 2,
+    group_switch_cooldown: apiKey.group_switch_cooldown || 10,
+    max_concurrency: apiKey.max_concurrency ?? 0,
     auto_groups_mode: autoGroupsMode,
     auto_groups: autoGroups,
     cross_group_retry: !!apiKey.cross_group_retry,

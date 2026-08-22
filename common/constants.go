@@ -2,7 +2,7 @@ package common
 
 import (
 	"crypto/tls"
-	//"os"
+	"os"
 	//"strconv"
 	"sync"
 	"time"
@@ -17,6 +17,15 @@ var Footer = ""
 var Logo = ""
 var TopUpLink = ""
 
+// GetTheme returns the active frontend theme. Set THEME=classic to serve the
+// classic theme; any other value (or unset) serves the default theme.
+func GetTheme() string {
+	if os.Getenv("THEME") == "classic" {
+		return "classic"
+	}
+	return "default"
+}
+
 // var ChatLink = ""
 // var ChatLink2 = ""
 var QuotaPerUnit = 500 * 1000.0 // $0.002 / 1K tokens
@@ -28,7 +37,7 @@ var TaskEnabled = true
 var DataExportEnabled = true
 var DataExportInterval = 5         // unit: minute
 var DataExportDefaultTime = "hour" // unit: minute
-var DefaultCollapseSidebar = false // default value of collapse sidebar
+var DefaultCollapseSidebar = true  // default value of collapse sidebar
 
 // Any options with "Secret", "Token" in its key won't be return by GetOptions
 
@@ -67,7 +76,11 @@ var LinuxDOOAuthEnabled = false
 var WeChatAuthEnabled = false
 var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
+var ClickCaptchaEnabled = false
 var RegisterEnabled = true
+
+// AgentAutoApproveEnabled 代理前台申请自动审批：开启时申请即激活代理(置 is_agent=1)，无需管理员审批。
+var AgentAutoApproveEnabled = false
 
 var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
 var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
@@ -115,6 +128,13 @@ var WeChatServerAddress = ""
 var WeChatServerToken = ""
 var WeChatAccountQRCodeImageURL = ""
 
+// WeChatMpToken 为内置公众号消息回调的校验 Token，与微信公众平台后台配置一致。
+// 配置后可不依赖外部 wechat-server，由 new-api 自身托管验证码登录回调。
+var WeChatMpToken = ""
+var WeChatMpName = ""      // 公众号名称（展示用）
+var WeChatMpAppId = ""     // 公众号 AppID（选填）
+var WeChatMpAppSecret = "" // 公众号 AppSecret（选填）
+
 var TurnstileSiteKey = ""
 var TurnstileSecretKey = ""
 
@@ -124,6 +144,15 @@ var TelegramBotName = ""
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
 var QuotaForInvitee = 0
+
+// RebateEnabled 控制好友充值返现功能是否开启。
+var RebateEnabled = false
+
+// RebateRatio 全局默认返现比例（0-1），邀请人未单独设置时使用。
+var RebateRatio = 0.0
+
+// GroupBuyEnabled 控制拼团充值功能是否开启。
+var GroupBuyEnabled = false
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false
@@ -214,6 +243,21 @@ var (
 	DownloadRateLimitNum            = 10
 	DownloadRateLimitDuration int64 = 60
 
+	// Token refresh gets its own bucket. The browser silently renews a 15-minute
+	// access token behind a 30-day session, so one active user spends a handful of
+	// these per hour. Sharing the login bucket makes that fatal: a few users behind
+	// one egress IP (mobile carrier NAT, an office, a campus) drain the 20 slots,
+	// and once refresh starts collecting 429s the user cannot sign back in either,
+	// because signing in spends the very same budget.
+	AuthRefreshRateLimitNum            = 120
+	AuthRefreshRateLimitDuration int64 = 20 * 60
+
+	// Click captcha images get their own bucket: they share an IP with the login
+	// bucket otherwise, so every refresh would eat one of the user's sign-in
+	// attempts. Issuing an image is cheap, a wrong answer forces a new one.
+	CaptchaRateLimitNum            = 60
+	CaptchaRateLimitDuration int64 = 10 * 60
+
 	// Per-user search rate limit (applies after authentication, keyed by user ID)
 	SearchRateLimitEnable         = true
 	SearchRateLimitNum            = 10
@@ -221,6 +265,12 @@ var (
 )
 
 var RateLimitKeyExpirationDuration = 20 * time.Minute
+
+// 并发限制：超出最大并发时等待空闲槽位的最长时长，超时返回 429。
+var ConcurrencyWaitTimeout = 30 * time.Second
+
+// 并发限制安全 TTL：分布式计数中超过该时长仍未释放的在途条目视为僵尸并清理，防止计数卡死。
+var ConcurrencySafetyTTL = 10 * time.Minute
 
 const (
 	UserStatusEnabled  = 1 // don't use 0, 0 is the default value!
@@ -252,4 +302,5 @@ const (
 	TopUpStatusSuccess = "success"
 	TopUpStatusFailed  = "failed"
 	TopUpStatusExpired = "expired"
+	TopUpStatusHeld    = "held" // 代理用户充值已支付但代理钱包不足，挂起待代理补足后自动补发
 )

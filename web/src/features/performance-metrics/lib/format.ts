@@ -61,28 +61,42 @@ export function getSuccessRateLevel(rate: number): SuccessRateLevel {
 }
 
 const SUCCESS_RATE_TEXT_CLASS: Record<SuccessRateLevel, string> = {
-  excellent: 'text-emerald-600 dark:text-emerald-400',
-  good: 'text-emerald-500 dark:text-emerald-300',
-  warning: 'text-amber-600 dark:text-amber-400',
-  critical: 'text-red-600 dark:text-red-400',
+  excellent: 'text-success',
+  // 不带透明度：--success/80 在最深承载面上只有 3.6:1。档位差已经由数字本身表达。
+  good: 'text-success',
+  warning: 'text-warning',
+  critical: 'text-destructive',
   unknown: 'text-muted-foreground',
 }
 
 const SUCCESS_RATE_DOT_CLASS: Record<SuccessRateLevel, string> = {
-  excellent: 'bg-emerald-500',
-  good: 'bg-emerald-400',
-  warning: 'bg-amber-500',
-  critical: 'bg-red-500',
+  excellent: 'bg-success',
+  good: 'bg-success/70',
+  warning: 'bg-warning',
+  critical: 'bg-destructive',
   unknown: 'bg-muted-foreground',
 }
 
-// Hex colors for non-CSS contexts (e.g. chart libraries that need raw values).
-const SUCCESS_RATE_HEX_COLOR: Record<SuccessRateLevel, string> = {
-  excellent: '#10b981', // emerald-500 (full green)
-  good: '#34d399', // emerald-400 (slightly lighter green)
-  warning: '#f59e0b', // amber-500
-  critical: '#ef4444', // red-500
-  unknown: '#9ca3af', // gray-400
+/* VChart canvas cannot resolve CSS variables. Keep these explicit values in
+ * sync with the light/dark business semantic tokens in theme.css. */
+const SUCCESS_RATE_HEX_COLOR: Record<
+  'light' | 'dark',
+  Record<SuccessRateLevel, string>
+> = {
+  light: {
+    excellent: '#16c784', // --business-success
+    good: '#16c784', // --business-success
+    warning: '#f4b740', // --business-warning
+    critical: '#ef4444', // --business-destructive
+    unknown: '#5b6b78', // --business-muted-foreground
+  },
+  dark: {
+    excellent: '#16c784', // --business-success
+    good: '#16c784', // --business-success
+    warning: '#f4b740', // --business-warning
+    critical: '#ef4444', // --business-destructive
+    unknown: '#b0bbc5', // --business-muted-foreground
+  },
 }
 
 export function getSuccessRateTextClass(rate: number): string {
@@ -93,6 +107,13 @@ export function getSuccessRateDotClass(rate: number): string {
   return SUCCESS_RATE_DOT_CLASS[getSuccessRateLevel(rate)]
 }
 
-export function getSuccessRateColor(rate: number): string {
-  return SUCCESS_RATE_HEX_COLOR[getSuccessRateLevel(rate)]
+export function getSuccessRateColor(
+  rate: number,
+  resolvedTheme: string
+): string {
+  const palette =
+    resolvedTheme === 'dark'
+      ? SUCCESS_RATE_HEX_COLOR.dark
+      : SUCCESS_RATE_HEX_COLOR.light
+  return palette[getSuccessRateLevel(rate)]
 }

@@ -16,11 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { MinusSignIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { OTPInput, OTPInputContext } from 'input-otp'
 import * as React from 'react'
 
+import { Minus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 function InputOTP({
@@ -95,7 +94,7 @@ function InputOTPSeparator({ ...props }: React.ComponentProps<'div'>) {
       role='separator'
       {...props}
     >
-      <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} />
+      <Minus />
     </div>
   )
 }

@@ -17,11 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
-import { Zap } from 'lucide-react'
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react'
 
 import { DataTableColumnHeader } from '@/components/data-table'
+import { Zap } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import {
   Tooltip,
@@ -65,6 +65,35 @@ export function CacheTooltip({
   )
 }
 
+const durationBgMap: Record<string, string> = {
+  success: 'border border-success/25 bg-success/10 !text-success',
+  warning: 'border border-warning/25 bg-warning/10 !text-warning',
+  danger: 'border border-destructive/25 bg-destructive/10 !text-destructive',
+}
+
+/**
+ * Completed-duration pill shared by the generic duration column and the task
+ * logs realtime cell so finished rows render identically.
+ */
+export function DurationBadge({
+  durationSec,
+  warningThresholdSec = 60,
+}: {
+  durationSec: number
+  warningThresholdSec?: number
+}) {
+  const variant = durationSec > warningThresholdSec ? 'danger' : 'success'
+  return (
+    <StatusBadge
+      label={`${durationSec.toFixed(1)}s`}
+      variant={variant}
+      size='sm'
+      copyable={false}
+      className={cn('rounded-md font-mono', durationBgMap[variant])}
+    />
+  )
+}
+
 // ============================================================================
 // Column Definition Factories
 // ============================================================================
@@ -87,7 +116,7 @@ export function createTimestampColumn<T>(config: {
     cell: ({ row }) => {
       const timestamp = row.getValue(accessorKey) as number
       if (!timestamp) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
       return (
         <span className='font-mono text-xs tabular-nums'>
@@ -131,28 +160,13 @@ export function createDurationColumn<T>(config: {
       )
 
       if (!duration) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
-      }
-
-      const variant =
-        duration.durationSec > warningThresholdSec ? 'danger' : 'success'
-
-      const durationBgMap: Record<string, string> = {
-        success:
-          'border border-emerald-200/40 bg-emerald-50/35 !text-emerald-600 dark:border-emerald-900/40 dark:bg-emerald-950/15 dark:!text-emerald-400',
-        warning:
-          'border border-amber-200/45 bg-amber-50/35 !text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/15 dark:!text-amber-400',
-        danger:
-          'border border-rose-200/50 bg-rose-50/35 !text-red-600 dark:border-rose-900/40 dark:bg-rose-950/15 dark:!text-red-400',
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
 
       return (
-        <StatusBadge
-          label={`${duration.durationSec.toFixed(1)}s`}
-          variant={variant}
-          size='sm'
-          copyable={false}
-          className={cn('rounded-md font-mono', durationBgMap[variant])}
+        <DurationBadge
+          durationSec={duration.durationSec}
+          warningThresholdSec={warningThresholdSec}
         />
       )
     },
@@ -177,7 +191,7 @@ export function createChannelColumn<T>(config: {
     cell: ({ row }) => {
       const channelId = row.getValue(accessorKey) as number
       if (!channelId) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
       return (
         <StatusBadge
@@ -214,7 +228,7 @@ export function createFailReasonColumn<T>(config: {
       const [dialogOpen, setDialogOpen] = useState(false)
 
       if (!failReason) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
 
       return (
@@ -225,7 +239,7 @@ export function createFailReasonColumn<T>(config: {
             onClick={() => setDialogOpen(true)}
             title={cellTitle}
           >
-            <span className='truncate leading-snug text-red-600 group-hover:underline dark:text-red-400'>
+            <span className='text-destructive truncate leading-snug group-hover:underline'>
               {failReason}
             </span>
           </button>
@@ -258,7 +272,7 @@ export function createProgressColumn<T>(config: {
     cell: ({ row }) => {
       const progress = row.getValue(accessorKey) as string
       if (!progress) {
-        return <span className='text-muted-foreground/60 text-xs'>-</span>
+        return <span className='text-muted-foreground text-xs'>-</span>
       }
       return (
         <span className='border-border/60 bg-muted/30 inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-xs'>

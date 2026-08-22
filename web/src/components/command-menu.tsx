@@ -67,37 +67,42 @@ export function CommandMenu() {
             <CommandEmpty>{t('No results found.')}</CommandEmpty>
             {navGroups.map((group) => (
               <CommandGroup key={group.id || group.title} heading={group.title}>
-                {group.items.map((navItem, i) => {
-                  if (navItem.url)
+                {group.items.map((navItem) => {
+                  if (navItem.url) {
+                    const Icon = navItem.icon ?? ArrowRight
                     return (
                       <CommandItem
-                        key={`${navItem.url}-${i}`}
+                        key={navItem.url}
                         value={navItem.title}
                         onSelect={() => {
                           runCommand(() => navigate({ to: navItem.url }))
                         }}
                       >
                         <div className='flex size-4 items-center justify-center'>
-                          <ArrowRight className='text-muted-foreground/80 size-2' />
+                          <Icon className='text-muted-foreground size-4' />
                         </div>
                         {navItem.title}
                       </CommandItem>
                     )
+                  }
 
-                  return navItem.items?.map((subItem, i) => (
-                    <CommandItem
-                      key={`${navItem.title}-${subItem.url}-${i}`}
-                      value={`${navItem.title}-${subItem.url}`}
-                      onSelect={() => {
-                        runCommand(() => navigate({ to: subItem.url }))
-                      }}
-                    >
-                      <div className='flex size-4 items-center justify-center'>
-                        <ArrowRight className='text-muted-foreground/80 size-2' />
-                      </div>
-                      {navItem.title} <ChevronRight /> {subItem.title}
-                    </CommandItem>
-                  ))
+                  return navItem.items?.map((subItem) => {
+                    const Icon = subItem.icon ?? navItem.icon ?? ArrowRight
+                    return (
+                      <CommandItem
+                        key={`${navItem.title}-${subItem.url}`}
+                        value={`${navItem.title}-${subItem.url}`}
+                        onSelect={() => {
+                          runCommand(() => navigate({ to: subItem.url }))
+                        }}
+                      >
+                        <div className='flex size-4 items-center justify-center'>
+                          <Icon className='text-muted-foreground size-4' />
+                        </div>
+                        {navItem.title} <ChevronRight /> {subItem.title}
+                      </CommandItem>
+                    )
+                  })
                 })}
               </CommandGroup>
             ))}

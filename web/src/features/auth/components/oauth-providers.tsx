@@ -26,36 +26,45 @@ import {
   IconTelegram,
   IconWeChat,
 } from '@/assets/brand-icons'
+import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 import { useOAuthLogin } from '../hooks/use-oauth-login'
 import type { SystemStatus } from '../types'
+import { authSecondaryButtonClassName } from './auth-card'
 import { TelegramLoginDialog } from './telegram-login-dialog'
 
 type OAuthProvidersProps = {
   status: SystemStatus | null
   disabled?: boolean
   className?: string
+  layout?: 'auto' | 'compact'
   onWeChatLogin?: () => void
-  isWeChatLoading?: boolean
   redirectTo?: string
 }
 
 type ProviderButton = {
   key: string
+  /** Full sentence, kept as the tooltip because the tile only has room for a name. */
   label: string
+  shortLabel: string
   onClick: () => void
   icon?: ReactNode
   disabled?: boolean
+}
+
+const gridColumnsClassName: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
 }
 
 export function OAuthProviders({
   status,
   disabled = false,
   className,
+  layout = 'auto',
   onWeChatLogin,
-  isWeChatLoading = false,
   redirectTo,
 }: OAuthProvidersProps) {
   const { t } = useTranslation()
@@ -73,6 +82,10 @@ export function OAuthProviders({
     isTelegramPending,
     handleTelegramAuthorization,
     setIsTelegramDialogOpen,
+    isClickCaptchaEnabled,
+    isCaptchaDialogOpen,
+    setIsCaptchaDialogOpen,
+    handleCaptchaSolved,
   } = useOAuthLogin(status, redirectTo)
 
   const providerButtons: ProviderButton[] = []
@@ -81,9 +94,9 @@ export function OAuthProviders({
     providerButtons.push({
       key: 'wechat',
       label: t('Continue with WeChat'),
+      shortLabel: t('WeChat'),
       onClick: onWeChatLogin,
-      icon: <IconWeChat className='h-4 w-4' />,
-      disabled: isWeChatLoading,
+      icon: <IconWeChat className='size-[19px]' />,
     })
   }
 
@@ -91,8 +104,9 @@ export function OAuthProviders({
     providerButtons.push({
       key: 'github',
       label: githubButtonText || t('Continue with GitHub'),
+      shortLabel: 'GitHub',
       onClick: handleGitHubLogin,
-      icon: <IconGithub className='h-4 w-4' />,
+      icon: <IconGithub className='size-[19px]' />,
       disabled: githubButtonDisabled,
     })
   }
@@ -101,8 +115,9 @@ export function OAuthProviders({
     providerButtons.push({
       key: 'discord',
       label: t('Continue with Discord'),
+      shortLabel: 'Discord',
       onClick: handleDiscordLogin,
-      icon: <IconDiscord className='h-4 w-4' />,
+      icon: <IconDiscord className='size-[19px]' />,
     })
   }
 
@@ -113,6 +128,7 @@ export function OAuthProviders({
       label: t('Continue with {{name}}', {
         name: oidcDisplayName,
       }),
+      shortLabel: oidcDisplayName,
       onClick: handleOIDCLogin,
     })
   }
@@ -121,8 +137,9 @@ export function OAuthProviders({
     providerButtons.push({
       key: 'linuxdo',
       label: t('Continue with LinuxDO'),
+      shortLabel: 'LinuxDO',
       onClick: handleLinuxDOLogin,
-      icon: <IconLinuxDo className='h-4 w-4' />,
+      icon: <IconLinuxDo className='size-[19px]' />,
     })
   }
 
@@ -130,6 +147,7 @@ export function OAuthProviders({
     providerButtons.push({
       key: 'telegram',
       label: t('Continue with Telegram'),
+      shortLabel: 'Telegram',
       onClick: handleTelegramLogin,
       icon: <IconTelegram data-icon='inline-start' />,
     })
@@ -142,6 +160,7 @@ export function OAuthProviders({
       providerButtons.push({
         key: `custom-${provider.slug}`,
         label: t('Continue with {{name}}', { name: provider.name }),
+        shortLabel: provider.name,
         onClick: () => handleCustomOAuthLogin(provider),
       })
     }
@@ -151,36 +170,50 @@ export function OAuthProviders({
 
   return (
     <>
-      <div className={cn('space-y-3', className)}>
-        <div className='relative'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background text-muted-foreground px-2'>
-              {t('Or continue with')}
-            </span>
-          </div>
-        </div>
-
-        <div className='flex flex-col gap-2'>
-          {providerButtons.map(
-            ({ key, label, onClick, icon, disabled: extraDisabled }) => (
-              <Button
-                key={key}
-                variant='outline'
-                type='button'
-                disabled={disabled || isLoading || extraDisabled}
-                onClick={onClick}
-                className='h-11 w-full justify-center gap-2 rounded-lg'
-              >
-                {icon}
-                {label}
-              </Button>
-            )
-          )}
-        </div>
+      <div
+        className={cn(
+          'grid min-w-0 gap-3',
+          layout === 'compact'
+            ? 'grid-cols-2'
+            : (gridColumnsClassName[providerButtons.length] ?? 'grid-cols-3'),
+          className
+        )}
+      >
+        {providerButtons.map(
+          ({
+            key,
+            label,
+            shortLabel,
+            onClick,
+            icon,
+            disabled: extraDisabled,
+          }) => (
+            <Button
+              key={key}
+              variant='outline'
+              type='button'
+              title={label}
+              disabled={disabled || isLoading || extraDisabled}
+              onClick={onClick}
+              className={cn(
+                authSecondaryButtonClassName,
+                'min-w-0 overflow-hidden px-2'
+              )}
+            >
+              {icon}
+              <span className='min-w-0 truncate'>{shortLabel}</span>
+            </Button>
+          )
+        )}
       </div>
+
+      {isClickCaptchaEnabled && (
+        <ClickCaptchaDialog
+          open={isCaptchaDialogOpen}
+          onOpenChange={setIsCaptchaDialogOpen}
+          onSolved={handleCaptchaSolved}
+        />
+      )}
 
       <TelegramLoginDialog
         open={isTelegramDialogOpen}

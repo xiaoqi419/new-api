@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { X, User, Wallet, LogOut } from 'lucide-react'
 import { AnimatePresence, motion, type Variants } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
+import { X, User, Wallet, LogOut } from '@/components/icons'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -114,20 +114,22 @@ function MobileUserProfile({ user, onNavigate }: MobileUserProfileProps) {
 
         {/* Navigation links - same style as top nav */}
         <Link
-          to='/profile'
+          to='/account/$section'
+          params={{ section: 'profile' }}
           onClick={onNavigate}
-          className='text-primary/60 hover:text-primary/80 border-border flex items-center gap-2.5 border-b p-2.5 transition-colors'
+          className='text-muted-foreground hover:text-primary border-border flex items-center gap-2.5 border-b p-2.5 transition-colors'
         >
-          <User className='size-4' />
+          <User className='text-primary size-4' />
           {t('Profile')}
         </Link>
 
         <Link
-          to='/wallet'
+          to='/finance/$section'
+          params={{ section: 'wallet' }}
           onClick={onNavigate}
-          className='text-primary/60 hover:text-primary/80 border-border flex items-center gap-2.5 border-b p-2.5 transition-colors'
+          className='text-muted-foreground hover:text-primary border-border flex items-center gap-2.5 border-b p-2.5 transition-colors'
         >
-          <Wallet className='size-4' />
+          <Wallet className='text-primary size-4' />
           {t('Wallet')}
         </Link>
 
@@ -135,7 +137,7 @@ function MobileUserProfile({ user, onNavigate }: MobileUserProfileProps) {
         <Button
           variant='ghost'
           onClick={() => setSignOutOpen(true)}
-          className='text-destructive hover:text-destructive/80 h-auto w-full justify-start gap-2.5 p-2.5 hover:bg-transparent'
+          className='text-destructive hover:text-destructive hover:bg-destructive/10 h-auto w-full justify-start gap-2.5 p-2.5'
         >
           <LogOut className='size-4' />
           {t('Sign out')}
@@ -255,21 +257,26 @@ export function MobileDrawer({
               >
                 {loading ? (
                   <div className='flex flex-col gap-1 p-2'>
-                    {Array.from({ length: 4 }, (_, i) => (
-                      <Skeleton key={i} className='h-8 w-full' />
+                    {[
+                      'skeleton-1',
+                      'skeleton-2',
+                      'skeleton-3',
+                      'skeleton-4',
+                    ].map((skeletonKey) => (
+                      <Skeleton key={skeletonKey} className='h-8 w-full' />
                     ))}
                   </div>
                 ) : (
                   <AnimatePresence>
-                    {mobileLinksList.map((link, index) => (
+                    {mobileLinksList.map((link) => (
                       <motion.div
-                        key={`${link.href}-${index}`}
+                        key={`${link.title}-${link.href}`}
                         className='border-border border-b p-2.5 last:border-b-0'
                         variants={MOBILE_DRAWER_ANIMATION.menuItem as Variants}
                       >
                         <Link
                           to={link.href}
-                          className='text-primary/60 hover:text-primary/80 transition-colors'
+                          className='text-muted-foreground hover:text-primary transition-colors'
                           onClick={onClose}
                         >
                           {link.title}

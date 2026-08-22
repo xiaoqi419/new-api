@@ -1,3 +1,6 @@
+import { memo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, RotateCw } from 'lucide-react'
-import { memo, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Activity, RotateCw } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -33,10 +33,10 @@ import { cn } from '@/lib/utils'
 import { PanelWrapper } from '../ui/panel-wrapper'
 
 const STATUS_COLOR_MAP: Record<number, string> = {
-  1: 'bg-emerald-500',
-  0: 'bg-red-500',
-  2: 'bg-amber-500',
-  3: 'bg-blue-500',
+  1: 'bg-success',
+  0: 'bg-destructive',
+  2: 'bg-warning',
+  3: 'bg-chart-1',
 }
 const DEFAULT_STATUS_COLOR = 'bg-muted-foreground/40'
 
@@ -134,7 +134,7 @@ export function UptimePanel() {
                   <h4 className='text-muted-foreground text-xs font-semibold tracking-wider uppercase'>
                     {group.categoryName}
                   </h4>
-                  <span className='text-muted-foreground/40 font-mono text-xs tabular-nums'>
+                  <span className='text-muted-foreground font-mono text-xs tabular-nums'>
                     {group.monitors?.length || 0}
                   </span>
                 </div>
@@ -157,7 +157,7 @@ export function UptimePanel() {
                       <StatusDot status={monitor.status} />
                       <span className='truncate text-sm'>{monitor.name}</span>
                       {monitor.group && (
-                        <span className='text-muted-foreground/40 shrink-0 text-xs'>
+                        <span className='text-muted-foreground shrink-0 text-xs'>
                           ({monitor.group})
                         </span>
                       )}

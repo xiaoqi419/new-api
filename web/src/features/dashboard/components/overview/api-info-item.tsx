@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+
+import { CopyButton } from '@/components/copy-button'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Zap, ExternalLink, Gauge } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
-import { CopyButton } from '@/components/copy-button'
+import { Zap, ExternalLink, Gauge } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -56,11 +56,11 @@ export function ApiInfoItemComponent(props: ApiInfoItemProps) {
             <span className='font-mono text-sm font-semibold'>
               {item.route}
             </span>
-            <span className='text-muted-foreground/60 hidden truncate text-xs md:inline'>
+            <span className='text-muted-foreground hidden truncate text-xs md:inline'>
               {item.description}
             </span>
           </div>
-          <span className='text-muted-foreground/40 truncate font-mono text-xs'>
+          <span className='text-muted-foreground truncate font-mono text-xs'>
             {item.url}
           </span>
         </div>

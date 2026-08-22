@@ -1,0 +1,451 @@
+schema: comet.native.v4
+name: animate-auth-model-connections
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+spec_changes:
+  - capability: auth-model-connections
+    operation: create
+    source: specs/auth-model-connections/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/animate-auth-model-connections
+  target_branch: comet/auth-access-quality-pass
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 2
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：在 `lg` 及以上的认证品牌区，Claude、Codex、Gemini
+      与“40+”提示之间存在单一、可见的流动连接/高光；模型提示本身仍在原位置，页面不发生布局位移。
+    result: passed
+    reason:
+      text: 桌面品牌区保留原四项模型栅格，并新增单一绝对定位轨道与连续 transform 高光，不进入文档流。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：连接层为装饰性且不响应指针事件，不遮挡标题、说明、模型名称或表单，也不表现为按钮或链接。
+    result: passed
+    reason:
+      text: 装饰层为 aria-hidden、pointer-events-none、absolute 的 1px 底部轨道；模型栅格保持相对
+        z-10，表单仍为独立网格区域。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：光效使用当前主题的语义变量，不遗留硬编码旧粉色，不创建拓扑网络。
+    result: passed
+    reason:
+      text: 轨道和高光均通过 color-mix 使用 var(--primary)；针对组件的静态检索未发现粉色、拓扑或粒子标记。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4：`prefers-reduced-motion: reduce` 下动画停止并显示静态连接，模型信息保持完整。"
+    result: passed
+    reason:
+      text: reduced-motion 媒体查询将高光 animation 设为 none 且保留静态轨道元素和模型列表。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：认证体验布局回归测试、相关格式/lint/类型检查和生产构建通过，并在 changelog 中记录本次用户可见改进。
+    result: passed
+    reason:
+      text: Runtime 的聚焦测试、格式、lint、typecheck、生产构建和 diff 检查均通过；最新 changelog 条目已记录改进。
+      truncated: false
+  - id: A6
+    source: specs/auth-model-connections/spec.md
+    text: 认证体验的桌面品牌叙事区在已有 Claude、Codex、Gemini
+      与“40+”模型能力提示之间展示一条克制的单轨连接。连接以静态轨道加短暂流动高光呈现多模型接入能力，不承担导航、状态或输入职责；登录与注册的认证能力、文案和表单行为保持不变。
+    result: passed
+    reason:
+      text: 实现为单条静态轨道及其高光，仅作模型接入装饰；登录和注册继续共享原有布局组件。
+      truncated: false
+  - id: A7
+    source: specs/auth-model-connections/spec.md
+    text: 仅在 `lg` 及以上显示的 `data-auth-region='brand'`
+      内渲染连接装饰；移动端继续隐藏整个桌面品牌区，因此不新增手机布局负担。
+    result: passed
+    reason:
+      text: 装饰位于 data-auth-region='brand' 内；该区域保持 hidden lg:flex，因此移动端不渲染桌面品牌区。
+      truncated: false
+  - id: A8
+    source: specs/auth-model-connections/spec.md
+    text: 模型提示继续保留既有四列栅格、名称、厂商图标、`aria-label='AI models supported'` 与“40+”汇总项。
+    result: passed
+    reason:
+      text: 原四列 grid、Claude/Codex/Gemini/40+ 文本、图标和 aria-label='AI models supported'
+        均保留。
+      truncated: false
+  - id: A9
+    source: specs/auth-model-connections/spec.md
+    text: 连接装饰绝对定位在模型提示的局部容器中，不占正常文档流；现有模型项的高度、间距、文字宽度和标题/说明位置不得改变。
+    result: passed
+    reason:
+      text: 新增相对包装器沿用原 mt-8；连接层 absolute inset-x-3 bottom-3 h-px，不影响模型栅格的正常流尺寸。
+      truncated: false
+  - id: A10
+    source: specs/auth-model-connections/spec.md
+    text: 装饰层不可接收指针事件，使用 `aria-hidden='true'`，不得遮挡模型名称、图标、正文、统计信息或右侧表单。
+    result: passed
+    reason:
+      text: 连接层无可交互祖先，具备 aria-hidden 与 pointer-events-none；其 1px 轨道位于模型卡片底部。
+      truncated: false
+  - id: A11
+    source: specs/auth-model-connections/spec.md
+    text: 效果为单一线性轨道及其高光，不渲染节点关系、分支、拓扑网络、粒子或其他独立背景插画。
+    result: passed
+    reason:
+      text: 装饰只渲染 track 和 flow 两个 span，没有节点、分支、拓扑、粒子或插画结构。
+      truncated: false
+  - id: A12
+    source: specs/auth-model-connections/spec.md
+    text: 轨道和高光仅使用当前认证体验可继承的主题语义变量，尤其是 `--primary`；不写入旧粉色的 hex、rgb 或命名颜色值。
+    result: passed
+    reason:
+      text: CSS 仅以 var(--primary) 派生颜色；静态检索未发现硬编码 hex、rgb 或旧粉色命名色。
+      truncated: false
+  - id: A13
+    source: specs/auth-model-connections/spec.md
+    text: 默认状态下高光沿轨道连续移动，但不改变元素几何、布局、透明内容的可读性或触发动画以外的状态更新。
+    result: passed
+    reason:
+      text: 默认动画只对高光执行 translateX；diff 未新增状态更新、定时器或会改变布局几何的动画。
+      truncated: false
+  - id: A14
+    source: specs/auth-model-connections/spec.md
+    text: "`@media (prefers-reduced-motion: reduce)`
+      必须停止高光动画，并保留可见的静态轨道；模型提示和认证操作始终可见、可用。"
+    result: passed
+    reason:
+      text: "@media (prefers-reduced-motion: reduce) 停止动画并将 transform
+        复位，静态轨道和认证内容仍存在。"
+      truncated: false
+  - id: A15
+    source: specs/auth-model-connections/spec.md
+    text: 实现不得新增 JavaScript 定时器、事件监听器或第三方动画依赖。
+    result: passed
+    reason:
+      text: 受影响组件静态检索未发现 setInterval、setTimeout、addEventListener 或新增第三方动画依赖。
+      truncated: false
+  - id: A16
+    source: specs/auth-model-connections/spec.md
+    text: "`AuthExperienceLayout`
+      继续为登录与注册提供相同的面板、主题、品牌区与表单区；不修改页面传入参数、身份验证状态机、OAuth、验证码或导航。"
+    result: passed
+    reason:
+      text: AuthExperienceLayout 的 props 与登录/注册调用点未改；diff 限于装饰、其回归测试和 changelog。
+      truncated: false
+  - id: A17
+    source: specs/auth-model-connections/spec.md
+    text: 本能力不引入新的用户可见文案；现有模型名、无障碍标签和翻译键继续复用。
+    result: passed
+    reason:
+      text: 认证界面未增加用户可见文案或翻译键；模型名称和既有无障碍标签继续复用。
+      truncated: false
+  - id: A18
+    source: specs/auth-model-connections/spec.md
+    text: changelog 最新条目记录认证叙事区已增加尊重减少动态效果偏好的模型连接提示。
+    result: passed
+    reason:
+      text: CHANGELOG 首项记录减少动态效果偏好的模型连接提示；版本 20260822-7792801d6 与 build-push.sh
+        的日期加当前短 SHA 规则一致。
+      truncated: false
+  - id: A19
+    source: specs/auth-model-connections/spec.md
+    text: "专属布局测试覆盖模型提示保留、单轨装饰存在、绝对/无指针事件约束、主题变量引用以及 `prefers-reduced-motion:
+      reduce` 静态化规则。"
+    result: passed
+    reason:
+      text: 专属布局测试断言模型保留、单轨存在、absolute/pointer-events、主题变量、keyframes 和 reduced-motion
+        静态化。
+      truncated: false
+  - id: A20
+    source: specs/auth-model-connections/spec.md
+    text: 静态检查确认没有拓扑标记、可交互控件、硬编码粉色或动画导致的文档流尺寸约束修改。
+    result: passed
+    reason:
+      text: 独立静态检索确认组件无拓扑、粒子、可交互事件、硬编码粉色/hex 或定时器标记。
+      truncated: false
+  - id: A21
+    source: specs/auth-model-connections/spec.md
+    text: 受影响的聚焦测试、格式/lint、TypeScript 类型检查、前端生产构建和差异空白检查通过。
+    result: passed
+    reason:
+      text: Runtime 实际记录为：Vitest 7/7、oxlint、oxfmt、tsgo -b、Rsbuild build 与 git diff
+        --check 全部 exit 0。
+      truncated: false
+builder_handoff:
+  candidate_id: 26a082e0-6615-4e4f-a8d7-171b2716443d
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:bdf86d2d-70c6-4c4d-9c72-3e058e9e5db7
+  iteration: 1
+  summary:
+    text: Added a restrained, desktop-only model connection treatment to the
+      existing authentication narrative panel. Claude, Codex, Gemini, and 40+
+      retain their existing semantic model grid while an aria-hidden,
+      pointer-events-none single track and flowing highlight render behind the
+      lower card area without taking layout space. The effect derives its color
+      from --primary, contains no topology or legacy pink values, and becomes a
+      visible static track when prefers-reduced-motion is enabled. The change
+      includes the formal child brief/spec, a focused regression contract, and
+      the required changelog entry.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+  checks:
+    - name:
+        text: Authentication model-connection regression
+        truncated: false
+      result: passed
+      note:
+        text: npx.cmd vitest run --config
+          ..\.comet\runtime\vitest-auth-animation.config.ts
+          src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx passed (7
+          tests).
+        truncated: false
+    - name:
+        text: Affected-file formatting
+        truncated: false
+      result: passed
+      note:
+        text: npx.cmd oxfmt --check
+          src/features/auth/components/auth-experience-layout.tsx
+          src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          src/features/changelog/data.ts passed.
+        truncated: false
+    - name:
+        text: Affected-file lint
+        truncated: false
+      result: passed
+      note:
+        text: npx.cmd oxlint -c .oxlintrc.json on the animation component, its layout
+          test, and the changelog passed.
+        truncated: false
+    - name:
+        text: Frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: The repository's locked @typescript/native-preview tsgo binary completed
+          tsgo -b successfully.
+        truncated: false
+    - name:
+        text: Frontend production build
+        truncated: false
+      result: passed
+      note:
+        text: The repository's locked @rsbuild/core binary completed rsbuild build
+          successfully.
+        truncated: false
+    - name:
+        text: Animation static contract
+        truncated: false
+      result: passed
+      note:
+        text: Static search confirmed the component contains only the model-connection
+          marker, --primary-derived color-mix values, and the reduced-motion
+          media query; no timer, event-listener, topology, or pink match was
+          found.
+        truncated: false
+    - name:
+        text: Diff whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: This child did not run an interactive browser screenshot walkthrough; its
+        visual and reduced-motion contracts are covered by the focused component
+        test and the independent Verifier should assess the rendered experience
+        separately.
+      truncated: false
+    - text: The current child baseline lacks a committed Vitest alias config, so the
+        focused test uses an ignored Runtime config. The sibling
+        password-recovery child supplies the generic tracked Vitest config for
+        the integrated Supervisor branch.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-21T20:05:20.761Z
+blockers: []
+verification:
+  candidate_id: 26a082e0-6615-4e4f-a8d7-171b2716443d
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:7385593c-813f-4882-83af-7047f4b311f0
+  iteration: 1
+  attempt: 2
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: auth-model-connection-tests
+      name:
+        text: Authentication model connection regressions
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: vitest@3.2.4
+          truncated: false
+        - text: run
+          truncated: false
+        - text: --config
+          truncated: false
+        - text: ../.comet/runtime/vitest-auth-animation.config.ts
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 9387
+    - id: auth-model-connection-lint
+      name:
+        text: Targeted model connection lint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 142
+    - id: auth-model-connection-format
+      name:
+        text: Targeted model connection format
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: src/features/auth/components/auth-experience-layout.tsx
+          truncated: false
+        - text: src/features/auth/sign-in/__tests__/sign-in-layout.test.tsx
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 370
+    - id: frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2676
+    - id: frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 14504
+    - id: diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 59
+  summary:
+    text: 独立读取正式 brief/spec、当前 diff、调用点、Runtime 日志和静态检索后，A1-A21 均通过；当前候选满足认证模型连接验收。
+    truncated: false
+  risks:
+    - text: 未运行交互式浏览器截图；桌面和移动契约依据共享组件的 hidden lg:flex 响应式边界、DOM 回归测试与当前 CSS 静态审查。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-21T20:46:53.030Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier check ID
+        frontend-typecheck conflicts with a Runtime check"
+      truncated: false
+    completed_at: 2026-08-21T20:39:51.731Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立读取正式 brief/spec、当前 diff、调用点、Runtime 日志和静态检索后，A1-A21 均通过；当前候选满足认证模型连接验收。
+      truncated: false
+    completed_at: 2026-08-21T20:46:53.030Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-21T19:34:09.623Z

@@ -145,13 +145,23 @@ func validatePrompt(prompt string) *dto.TaskError {
 // overflow quota calculation into a negative charge.
 const MaxTaskDurationSeconds = 3600
 
+// AutoTaskDurationSeconds asks the provider to choose the output length itself.
+// Seedance 2.5 defaults to it and its video editing task accepts nothing else.
+// Adaptors that turn duration into a billing multiplier already substitute a
+// positive default for any non-positive value, so the sentinel cannot reach
+// quota calculation.
+const AutoTaskDurationSeconds = -1
+
 func validateTaskDurationBounds(req TaskSubmitReq) *dto.TaskError {
 	seconds := req.Duration
 	if seconds == 0 && req.Seconds != "" {
 		seconds, _ = strconv.Atoi(req.Seconds)
 	}
+	if seconds == AutoTaskDurationSeconds {
+		return nil
+	}
 	if seconds < 0 || seconds > MaxTaskDurationSeconds {
-		return createTaskError(fmt.Errorf("seconds must be between 1 and %d", MaxTaskDurationSeconds), "invalid_seconds", http.StatusBadRequest, true)
+		return createTaskError(fmt.Errorf("seconds must be %d (auto) or between 1 and %d", AutoTaskDurationSeconds, MaxTaskDurationSeconds), "invalid_seconds", http.StatusBadRequest, true)
 	}
 	return nil
 }

@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { ChevronLeft } from '@/components/icons'
 import {
   SidebarHeader,
   SidebarMenu,

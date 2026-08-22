@@ -1,3 +1,10 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
+  StaticDataTable,
+  staticDataTableClassNames as tableStyles,
+} from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -21,14 +28,7 @@ import {
   ArrowUpRight,
   ExternalLink,
   Trophy,
-} from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import {
-  StaticDataTable,
-  staticDataTableClassNames as tableStyles,
-} from '@/components/data-table'
+} from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 import {
@@ -46,14 +46,16 @@ const COMPACT_NUMBER = new Intl.NumberFormat(undefined, {
 function RankBadge(props: { rank: number }) {
   const rank = props.rank
   const isPodium = rank <= 3
-  const palette =
-    rank === 1
-      ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-      : rank === 2
-        ? 'bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300'
-        : rank === 3
-          ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
-          : 'bg-muted text-muted-foreground'
+  // Gold / silver / bronze must stay three distinguishable hues, so the podium
+  // maps onto three separate tokens rather than collapsing into `warning`.
+  let palette = 'bg-muted text-muted-foreground'
+  if (rank === 1) {
+    palette = 'bg-warning/15 text-warning'
+  } else if (rank === 2) {
+    palette = 'bg-neutral/15 text-neutral'
+  } else if (rank === 3) {
+    palette = 'bg-chart-3/15 text-tag-3'
+  }
   return (
     <span
       className={cn(
@@ -70,12 +72,12 @@ function GrowthChip(props: { value: number }) {
   const value = props.value
   const isUp = value > 0
   const isDown = value < 0
-  const palette = isUp
-    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-    : isDown
-      ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
-      : 'bg-muted text-muted-foreground'
-  const Icon = isUp ? ArrowUpRight : isDown ? ArrowDownRight : null
+  let palette = 'bg-muted text-muted-foreground'
+  if (isUp) {
+    palette = 'bg-success/15 text-success'
+  } else if (isDown) {
+    palette = 'bg-destructive/15 text-destructive'
+  }
   const formatted = `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
   return (
     <span
@@ -84,7 +86,8 @@ function GrowthChip(props: { value: number }) {
         palette
       )}
     >
-      {Icon && <Icon className='size-3' />}
+      {isUp && <ArrowUpRight className='size-3' />}
+      {isDown && <ArrowDownRight className='size-3' />}
       {formatted}
     </span>
   )
@@ -102,7 +105,7 @@ function AppLink(props: { app: AppRanking }) {
       className='text-foreground hover:text-primary inline-flex items-center gap-1 transition-colors'
     >
       {props.app.name}
-      <ExternalLink className='text-muted-foreground/40 size-3' />
+      <ExternalLink className='text-muted-foreground size-3' />
     </a>
   )
 }
@@ -131,7 +134,7 @@ export function ModelDetailsApps(props: { model: PricingModel }) {
           <div className='text-foreground mt-1 font-mono text-lg font-semibold tabular-nums'>
             {apps.length}
           </div>
-          <p className='text-muted-foreground/70 text-[11px]'>
+          <p className='text-muted-foreground text-[11px]'>
             {t('Top integrations using this model')}
           </p>
         </div>
@@ -142,7 +145,7 @@ export function ModelDetailsApps(props: { model: PricingModel }) {
           <div className='text-foreground mt-1 font-mono text-lg font-semibold tabular-nums'>
             {COMPACT_NUMBER.format(totalMonthlyTokens)}
           </div>
-          <p className='text-muted-foreground/70 text-[11px]'>
+          <p className='text-muted-foreground text-[11px]'>
             {t('Aggregated across the apps below')}
           </p>
         </div>
@@ -153,7 +156,7 @@ export function ModelDetailsApps(props: { model: PricingModel }) {
           <div className='text-foreground mt-1 truncate text-base font-semibold'>
             {top.name}
           </div>
-          <p className='text-muted-foreground/70 truncate text-[11px]'>
+          <p className='text-muted-foreground truncate text-[11px]'>
             {top.category} · {formatTokenVolume(top.monthly_tokens)}{' '}
             {t('tokens / mo')}
           </p>
@@ -225,7 +228,7 @@ export function ModelDetailsApps(props: { model: PricingModel }) {
         ]}
       />
 
-      <p className='text-muted-foreground/60 text-[11px] leading-relaxed'>
+      <p className='text-muted-foreground text-[11px] leading-relaxed'>
         {t(
           'App rankings shown here are simulated for preview purposes and will be replaced with live usage data once the backend integration is complete.'
         )}

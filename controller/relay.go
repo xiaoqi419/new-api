@@ -25,6 +25,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/samber/lo"
@@ -66,6 +67,71 @@ func geminiRelayHandler(c *gin.Context, info *relaycommon.RelayInfo) *types.NewA
 		err = relay.GeminiHelper(c, info)
 	}
 	return err
+}
+
+// dispatchRelay 按 relayFormat 调用对应的中继处理器。
+func dispatchRelay(c *gin.Context, relayInfo *relaycommon.RelayInfo, relayFormat types.RelayFormat) *types.NewAPIError {
+	switch relayFormat {
+	case types.RelayFormatOpenAIRealtime:
+		return relay.WssHelper(c, relayInfo)
+	case types.RelayFormatClaude:
+		return relay.ClaudeHelper(c, relayInfo)
+	case types.RelayFormatGemini:
+		return geminiRelayHandler(c, relayInfo)
+	default:
+		return relayHandler(c, relayInfo)
+	}
+}
+
+// tryChannelFallbackUpstream 尝试渠道自带兜底转发：用备用 BaseURL + Key 重发一次。
+// attempted=false 表示未配置兜底、条件不满足或已在兜底中，未发起兜底请求。
+// 计费口径不变（渠道 Id/Type/分组均不变，仅替换转发目标与凭证）。
+func tryChannelFallbackUpstream(c *gin.Context, channel *model.Channel, relayInfo *relaycommon.RelayInfo, relayFormat types.RelayFormat) (*types.NewAPIError, bool) {
+	// 避免在兜底请求中再次触发兜底，造成循环。
+	if c.GetBool("in_channel_fallback") {
+		return nil, false
+	}
+	// 首次尝试时 getChannel 返回的是仅含 Id/Type/Name 的精简渠道对象（Setting 为空），
+	// 兜底配置存于渠道 Setting，需按渠道 Id 读取完整渠道（走缓存，不额外查库）。
+	settingChannel := channel
+	if settingChannel.Setting == nil && settingChannel.Id > 0 {
+		if full, err := model.CacheGetChannel(channel.Id); err == nil && full != nil {
+			settingChannel = full
+		}
+	}
+	fb := settingChannel.GetSetting().FallbackUpstream
+	if fb == nil || !fb.Enabled || strings.TrimSpace(fb.BaseURL) == "" {
+		return nil, false
+	}
+
+	// 备份原始转发目标与凭证，兜底结束后恢复，避免污染后续换渠道重试。
+	originalBaseURL := common.GetContextKeyString(c, constant.ContextKeyChannelBaseUrl)
+	originalKey := common.GetContextKeyString(c, constant.ContextKeyChannelKey)
+
+	fallbackKey := fb.Key
+	if strings.TrimSpace(fallbackKey) == "" {
+		fallbackKey = originalKey // 未单独配置兜底 Key 时复用原渠道 Key
+	}
+	common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, strings.TrimSpace(fb.BaseURL))
+	common.SetContextKey(c, constant.ContextKeyChannelKey, fallbackKey)
+	c.Set("in_channel_fallback", true)
+
+	defer func() {
+		common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, originalBaseURL)
+		common.SetContextKey(c, constant.ContextKeyChannelKey, originalKey)
+		c.Set("in_channel_fallback", false)
+	}()
+
+	// 重新读取请求体，供兜底请求消费。
+	bodyStorage, bodyErr := common.GetBodyStorage(c)
+	if bodyErr != nil {
+		return nil, false
+	}
+	c.Request.Body = io.NopCloser(bodyStorage)
+
+	logger.LogInfo(c, fmt.Sprintf("渠道 #%d 请求失败，尝试兜底转发至 %s", channel.Id, fb.BaseURL))
+	fallbackErr := dispatchRelay(c, relayInfo, relayFormat)
+	return fallbackErr, true
 }
 
 func Relay(c *gin.Context, relayFormat types.RelayFormat) {
@@ -136,6 +202,16 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		meta = fastTokenCountMetaForPricing(request)
 	}
 
+	// 图片按次计费时，分辨率/质量档位倍率要在预扣费之前乘进单价，否则预扣和结算会用不同的价。
+	if imageRequest, ok := request.(*dto.ImageRequest); ok && meta != nil {
+		if ratio, ok := ratio_setting.GetImagePriceRatio(relayInfo.OriginModelName, ratio_setting.ImageRequestShape{
+			Size:    imageRequest.Size,
+			Quality: imageRequest.Quality,
+		}); ok {
+			meta.ImagePriceRatio = ratio
+		}
+	}
+
 	if needSensitiveCheck && meta != nil {
 		contains, words := service.CheckSensitiveText(meta.CombineText)
 		if contains {
@@ -191,7 +267,21 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	// Group auto-switch needs enough retry budget to traverse each candidate
+	// group up to its per-group failure threshold before escalating.
+	maxRetry := common.RetryTimes
+	if common.GetContextKeyBool(c, constant.ContextKeyTokenGroupSwitch) {
+		candidates := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroupSwitchCandidates)
+		threshold := common.GetContextKeyInt(c, constant.ContextKeyTokenGroupSwitchThreshold)
+		if threshold < 1 {
+			threshold = 1
+		}
+		if budget := len(candidates) * threshold; budget > maxRetry {
+			maxRetry = budget
+		}
+	}
+
+	for ; retryParam.GetRetry() <= maxRetry; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
@@ -217,20 +307,23 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 		c.Request.Body = io.NopCloser(bodyStorage)
 
-		switch relayFormat {
-		case types.RelayFormatOpenAIRealtime:
-			newAPIError = relay.WssHelper(c, relayInfo)
-		case types.RelayFormatClaude:
-			newAPIError = relay.ClaudeHelper(c, relayInfo)
-		case types.RelayFormatGemini:
-			newAPIError = geminiRelayHandler(c, relayInfo)
-		default:
-			newAPIError = relayHandler(c, relayInfo)
-		}
+		newAPIError = dispatchRelay(c, relayInfo, relayFormat)
 
 		if newAPIError == nil {
 			relayInfo.LastError = nil
 			return
+		}
+
+		// 渠道自带兜底转发：本渠道请求失败且错误可重试时，用备用 BaseURL + Key 在同一渠道对象上重试一次。
+		// 兜底是渠道自身能力，不受全局重试次数门控（传 retryTimes=1 仅判断错误类型是否可重试）。
+		if shouldRetry(c, newAPIError, 1) {
+			if fallbackErr, attempted := tryChannelFallbackUpstream(c, channel, relayInfo, relayFormat); attempted {
+				if fallbackErr == nil {
+					relayInfo.LastError = nil
+					return
+				}
+				newAPIError = fallbackErr
+			}
 		}
 
 		newAPIError = service.NormalizeViolationFeeError(newAPIError)
@@ -238,9 +331,12 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 
-		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
+		if !shouldRetry(c, newAPIError, maxRetry-retryParam.GetRetry()) {
 			break
 		}
+		// Count this failed group attempt; escalate to the next candidate group
+		// once the per-group threshold is reached (no-op unless group switch is on).
+		service.RecordGroupSwitchFailure(c)
 	}
 
 	useChannel := c.GetStringSlice("use_channel")
@@ -513,62 +609,73 @@ func RelayTask(c *gin.Context) {
 		}
 	}()
 
-	retryParam := &service.RetryParam{
-		Ctx:         c,
-		TokenGroup:  relayInfo.TokenGroup,
-		ModelName:   relayInfo.OriginModelName,
-		RequestPath: c.Request.URL.Path,
-		Retry:       common.GetPointer(0),
-	}
+	for assetRetry := 0; ; assetRetry++ {
+		result = nil
+		taskErr = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
-		var channel *model.Channel
+		retryParam := &service.RetryParam{
+			Ctx:         c,
+			TokenGroup:  relayInfo.TokenGroup,
+			ModelName:   relayInfo.OriginModelName,
+			RequestPath: c.Request.URL.Path,
+			Retry:       common.GetPointer(0),
+		}
 
-		if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
-			channel = lockedCh
-			if retryParam.GetRetry() > 0 {
-				if setupErr := middleware.SetupContextForSelectedChannel(c, channel, relayInfo.OriginModelName); setupErr != nil {
-					taskErr = service.TaskErrorWrapperLocal(setupErr.Err, "setup_locked_channel_failed", http.StatusInternalServerError)
+		for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+			var channel *model.Channel
+
+			if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
+				channel = lockedCh
+				if retryParam.GetRetry() > 0 {
+					if setupErr := middleware.SetupContextForSelectedChannel(c, channel, relayInfo.OriginModelName); setupErr != nil {
+						taskErr = service.TaskErrorWrapperLocal(setupErr.Err, "setup_locked_channel_failed", http.StatusInternalServerError)
+						break
+					}
+				}
+			} else {
+				var channelErr *types.NewAPIError
+				channel, channelErr = getChannel(c, relayInfo, retryParam)
+				if channelErr != nil {
+					logger.LogError(c, channelErr.Error())
+					taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
 					break
 				}
 			}
-		} else {
-			var channelErr *types.NewAPIError
-			channel, channelErr = getChannel(c, relayInfo, retryParam)
-			if channelErr != nil {
-				logger.LogError(c, channelErr.Error())
-				taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
+
+			addUsedChannel(c, channel.Id)
+			bodyStorage, bodyErr := common.GetBodyStorage(c)
+			if bodyErr != nil {
+				if common.IsRequestBodyTooLargeError(bodyErr) || errors.Is(bodyErr, common.ErrRequestBodyTooLarge) {
+					taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusRequestEntityTooLarge)
+				} else {
+					taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusBadRequest)
+				}
+				break
+			}
+			c.Request.Body = io.NopCloser(bodyStorage)
+
+			result, taskErr = relay.RelayTaskSubmit(c, relayInfo)
+			if taskErr == nil {
+				break
+			}
+
+			if !taskErr.LocalError {
+				processChannelError(c,
+					*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey,
+						common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()),
+					types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
+			}
+
+			if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {
 				break
 			}
 		}
 
-		addUsedChannel(c, channel.Id)
-		bodyStorage, bodyErr := common.GetBodyStorage(c)
-		if bodyErr != nil {
-			if common.IsRequestBodyTooLargeError(bodyErr) || errors.Is(bodyErr, common.ErrRequestBodyTooLarge) {
-				taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusRequestEntityTooLarge)
-			} else {
-				taskErr = service.TaskErrorWrapperLocal(bodyErr, "read_request_body_failed", http.StatusBadRequest)
-			}
-			break
+		if taskErr != nil && assetRetry == 0 && isArkPrivacyBlocked(taskErr) &&
+			autoConvertArkAssetsOnPrivacyBlock(c, relayInfo) {
+			continue
 		}
-		c.Request.Body = io.NopCloser(bodyStorage)
-
-		result, taskErr = relay.RelayTaskSubmit(c, relayInfo)
-		if taskErr == nil {
-			break
-		}
-
-		if !taskErr.LocalError {
-			processChannelError(c,
-				*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey,
-					common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()),
-				types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
-		}
-
-		if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {
-			break
-		}
+		break
 	}
 
 	useChannel := c.GetStringSlice("use_channel")

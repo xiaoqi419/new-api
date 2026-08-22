@@ -1,3 +1,6 @@
+import type { UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ShieldCheck } from 'lucide-react'
-import type { UseFormReturn } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-
+import { ShieldCheck } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -42,9 +42,9 @@ export function AdminStep({ form, rootInitialized }: AdminStepProps) {
   const { t } = useTranslation()
   if (rootInitialized) {
     return (
-      <Alert className='border-sky-200 bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/40'>
+      <Alert className='border-info/25 bg-info/8'>
         <AlertDescription className='flex items-start gap-2'>
-          <ShieldCheck className='mt-0.5 size-4 text-sky-500' />
+          <ShieldCheck className='text-info mt-0.5 size-4' />
           {t(
             'The administrator account is already initialized. You can keep your existing credentials and continue to the next step.'
           )}

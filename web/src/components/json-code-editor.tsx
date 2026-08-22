@@ -1,3 +1,16 @@
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { Yace, type Plugin } from 'yace'
+import { code } from 'yace/highlighters/code'
+import { autoClose, history, tab } from 'yace/plugins'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,20 +29,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { AlertCircle, Braces, CheckCircle2, Code2, Copy } from 'lucide-react'
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentProps,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { Yace, type Plugin } from 'yace'
-import { code } from 'yace/highlighters/code'
-import { autoClose, history, tab } from 'yace/plugins'
-
+  AlertCircle,
+  Braces,
+  CheckCircle2,
+  Code2,
+  Copy,
+} from '@/components/icons'
 import {
   createScrollLayerSynchronizer,
   formatJsonDraft,
@@ -276,15 +282,13 @@ export function JsonCodeEditor({
         <div className='text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs font-medium'>
           <Braces className='h-3.5 w-3.5' aria-hidden='true' />
           <span>{t('JSON')}</span>
-          <span className='text-muted-foreground/70 font-mono'>
-            {cursorText}
-          </span>
+          <span className='text-muted-foreground font-mono'>{cursorText}</span>
         </div>
         <div className='flex items-center gap-2'>
           <span
             className={cn(
               'flex items-center gap-1 text-xs',
-              jsonStatus.isValid ? 'text-emerald-600' : 'text-destructive'
+              jsonStatus.isValid ? 'text-success' : 'text-destructive'
             )}
           >
             {jsonStatus.isValid ? (

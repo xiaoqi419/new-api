@@ -17,6 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { Row } from '@tanstack/react-table'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
 import {
   Pencil,
   Trash2,
@@ -28,13 +34,8 @@ import {
   ShieldAlert,
   Link2,
   CreditCard,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
+  Globe,
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenuItem,
@@ -58,6 +59,7 @@ import {
 import { getUserActionMessage } from '../lib'
 import type { User, ManageUserAction } from '../types'
 import { UserBindingDialog } from './dialogs/user-binding-dialog'
+import { UserIpsDialog } from './dialogs/user-ips-dialog'
 import { useUsers } from './users-provider'
 
 interface DataTableRowActionsProps {
@@ -72,6 +74,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const [resetTwoFAOpen, setResetTwoFAOpen] = useState(false)
   const [bindingDialogOpen, setBindingDialogOpen] = useState(false)
   const [subscriptionsDialogOpen, setSubscriptionsDialogOpen] = useState(false)
+  const [userIpsDialogOpen, setUserIpsDialogOpen] = useState(false)
 
   const handleEdit = () => {
     setCurrentRow(user)
@@ -222,6 +225,18 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuShortcut>
         </DropdownMenuItem>
 
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setUserIpsDialogOpen(true)
+          }}
+        >
+          {t('View User IPs')}
+          <DropdownMenuShortcut>
+            <Globe size={16} />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
@@ -300,6 +315,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         onOpenChange={setSubscriptionsDialogOpen}
         user={{ id: user.id, username: user.username }}
         onSuccess={triggerRefresh}
+      />
+
+      <UserIpsDialog
+        open={userIpsDialogOpen}
+        onOpenChange={setUserIpsDialogOpen}
+        user={{ id: user.id, username: user.username }}
       />
     </div>
   )

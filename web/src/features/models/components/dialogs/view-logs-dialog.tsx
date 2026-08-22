@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Download, Loader2, RefreshCcw, Terminal } from 'lucide-react'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -40,6 +39,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
+import { Download, Loader2, RefreshCcw, Terminal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'
 import {
@@ -174,28 +174,32 @@ export function ViewLogsDialog({
   if (isLoadingContainers || isLoadingLogs) {
     logsContent = (
       <div className='flex items-center justify-center py-8'>
-        <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
+        <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
       </div>
     )
   } else if (containers.length === 0) {
     logsContent = (
-      <div className='py-8 text-center text-gray-400'>{t('No containers')}</div>
+      <div className='text-muted-foreground py-8 text-center'>
+        {t('No containers')}
+      </div>
     )
   } else if (!containerId) {
     logsContent = (
-      <div className='py-8 text-center text-gray-400'>
+      <div className='text-muted-foreground py-8 text-center'>
         {t('Please select a container')}
       </div>
     )
   } else if (!logsText.trim()) {
     logsContent = (
-      <div className='py-8 text-center text-gray-400'>{t('No logs')}</div>
+      <div className='text-muted-foreground py-8 text-center'>
+        {t('No logs')}
+      </div>
     )
   } else {
     logsContent = (
       <div className='font-mono text-sm'>
         {keyedLogLines.map(({ key, line }) => (
-          <div key={key} className='whitespace-pre-wrap text-gray-200'>
+          <div key={key} className='text-foreground whitespace-pre-wrap'>
             {line}
           </div>
         ))}

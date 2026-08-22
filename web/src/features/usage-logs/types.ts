@@ -54,13 +54,14 @@ export interface CommonLogFilters extends CommonFilters {
   username?: string
   requestId?: string
   upstreamRequestId?: string
+  quotaStatus?: string
 }
 
 /**
- * Drawing logs specific filters
+ * Drawing logs specific filters (unified view)
  */
 export interface DrawingLogFilters extends CommonFilters {
-  mjId?: string
+  model?: string
 }
 
 /**
@@ -284,8 +285,45 @@ export interface MidjourneyLog {
 }
 
 // ============================================================================
+// Drawing Logs (unified materialized view) Types
+// ============================================================================
+
+/**
+ * Unified drawing-log row from /api/drawing_logs. Merges synchronous image
+ * generations (source "image": /v1/images/generations + edits, chat/responses
+ * image output) with Midjourney tasks (source "mj").
+ */
+export interface DrawingLog {
+  id: number
+  user_id: number
+  username?: string
+  created_at: number // seconds
+  source: string // image | mj
+  source_id: string
+  log_mode: string // images_generation | images_edit | chat_image | image_generation_call | mj_*
+  model_name: string
+  channel_id: number
+  channel_name?: string
+  quota: number
+  status: string // success | failed | (mj statuses)
+  prompt?: string
+  result_urls?: string // JSON array of stored thumbnail keys
+  progress?: string
+  group?: string
+  token_name?: string
+  content?: string
+  other?: string
+}
+
+// ============================================================================
 // Task Logs Types
 // ============================================================================
+
+export interface TaskProperties {
+  input?: string
+  origin_model_name?: string
+  upstream_model_name?: string
+}
 
 export interface TaskLog {
   id: number
@@ -295,11 +333,14 @@ export interface TaskLog {
   task_id: string
   action: string // MUSIC, LYRICS, GENERATE, TEXT_GENERATE, etc.
   channel_id: number
+  quota?: number // consumed quota (settled), present on success
   submit_time: number // seconds
   finish_time?: number // seconds
   progress?: string
   progress_message_en?: string
-  data?: string // JSON string
+  properties?: TaskProperties // origin/upstream model name
+  data?: unknown // JSON object (video params/usage) or array (suno clips)
+  result_url?: string // task result URL (video address, etc.), present on success
   fail_reason?: string
   status: string // NOT_START, SUBMITTED, IN_PROGRESS, SUCCESS, FAILURE, QUEUED, UNKNOWN
   other?: string
@@ -324,16 +365,36 @@ export interface GetLogsParams {
   group?: string
   request_id?: string
   upstream_request_id?: string
+  quota_status?: string
 }
 
 export interface GetLogsResponse {
   success: boolean
   message?: string
   data?: {
-    items: UsageLog[] | MidjourneyLog[] | TaskLog[]
+    items: UsageLog[] | MidjourneyLog[] | TaskLog[] | DrawingLog[]
     total: number
     page: number
     page_size: number
+  }
+}
+
+export interface UserRankingRow {
+  user_id: number
+  username: string
+  value: number
+  last_time?: number
+  ip?: string
+}
+
+export interface UserRankingResponse {
+  success: boolean
+  message?: string
+  data?: {
+    dimension: string
+    start: number
+    end: number
+    items: UserRankingRow[]
   }
 }
 
@@ -414,4 +475,18 @@ export interface UserInfo {
   aff_count?: number
   aff_quota?: number
   remark?: string
+}
+
+export interface UserErrorStatRow {
+  name: string
+  count: number
+}
+
+export interface UserStat {
+  quota: number
+  requests: number
+  failures: number
+  by_content: UserErrorStatRow[] | null
+  start_timestamp: number
+  end_timestamp: number
 }

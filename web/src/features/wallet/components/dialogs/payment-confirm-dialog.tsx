@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Loader2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { Loader2 } from '@/components/icons'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,7 +116,7 @@ export function PaymentConfirmDialog({
             <div className='bg-muted/50 rounded-lg p-3'>
               <div className='flex items-center justify-between text-sm'>
                 <span className='text-muted-foreground'>{t('You save')}</span>
-                <span className='font-semibold text-green-600'>
+                <span className='text-success font-semibold'>
                   {formatCurrency(discountAmount)}
                 </span>
               </div>

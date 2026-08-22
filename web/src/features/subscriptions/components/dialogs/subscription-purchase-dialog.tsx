@@ -1,3 +1,9 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
+import { GroupBadge } from '@/components/group-badge'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,13 +22,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Crown, CalendarClock, Package } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
-import { GroupBadge } from '@/components/group-badge'
+import { Crown, CalendarClock, Package } from '@/components/icons'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,6 +34,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { EpayCheckoutDialog } from '@/features/wallet/components/dialogs/epay-checkout-dialog'
+import { openSubscriptionEpayCheckout } from '@/features/wallet/lib/payment'
+import type { EpayCheckoutData } from '@/features/wallet/types'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { formatQuota } from '@/lib/format'
 import { DEFAULT_CURRENCY_CONFIG } from '@/stores/system-config-store'
@@ -44,6 +47,7 @@ import {
   paySubscriptionEpay,
   paySubscriptionWaffoPancake,
   paySubscriptionBalance,
+  getSubscriptionEpayStatus,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
 import type { PlanRecord } from '../../types'
@@ -73,14 +77,27 @@ export function SubscriptionPurchaseDialog(props: Props) {
   const { currency } = useSystemConfig()
   const [paying, setPaying] = useState(false)
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
+  const [epayCheckout, setEpayCheckout] = useState<EpayCheckoutData | null>(
+    null
+  )
 
   useEffect(() => {
     if (props.open && props.epayMethods && props.epayMethods.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initialize the server-provided method when opening the dialog
       setSelectedEpayMethod(props.epayMethods[0].type)
     } else if (!props.open) {
       setSelectedEpayMethod('')
     }
   }, [props.open, props.epayMethods])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- closing the parent invalidates its nested checkout
+    if (!props.open) setEpayCheckout(null)
+  }, [props.open])
+
+  const closeEpayCheckout = useCallback(() => {
+    setEpayCheckout(null)
+  }, [])
 
   const plan = props.plan?.plan
   if (!plan) return null
@@ -181,10 +198,6 @@ export function SubscriptionPurchaseDialog(props: Props) {
     }
   }
 
-  const isSafari =
-    typeof navigator !== 'undefined' &&
-    /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-
   const handlePayEpay = async () => {
     if (!selectedEpayMethod) {
       toast.error(t('Please select a payment method'))
@@ -196,25 +209,12 @@ export function SubscriptionPurchaseDialog(props: Props) {
         plan_id: plan.id,
         payment_method: selectedEpayMethod,
       })
-      if (res.message === 'success' && res.url) {
-        const form = document.createElement('form')
-        form.action = res.url
-        form.method = 'POST'
-        if (!isSafari) {
-          form.target = '_blank'
-        }
-        Object.entries(res.data || {}).forEach(([key, value]) => {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          input.value = String(value)
-          form.appendChild(input)
-        })
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
-        toast.success(t('Payment initiated'))
-        props.onOpenChange(false)
+      const opened = openSubscriptionEpayCheckout(
+        res.data,
+        { paymentMethod: selectedEpayMethod, money: price },
+        setEpayCheckout
+      )
+      if (res.message === 'success' && opened) {
       } else {
         toast.error(
           res.message && res.message !== 'success'
@@ -227,6 +227,28 @@ export function SubscriptionPurchaseDialog(props: Props) {
     } finally {
       setPaying(false)
     }
+  }
+
+  const retryEpayCheckout = () => {
+    setEpayCheckout(null)
+    void handlePayEpay()
+  }
+
+  if (epayCheckout) {
+    return (
+      <EpayCheckoutDialog
+        open
+        checkout={epayCheckout}
+        getStatus={getSubscriptionEpayStatus}
+        onClose={closeEpayCheckout}
+        onSuccess={async () => {
+          await props.onPurchaseSuccess?.()
+          closeEpayCheckout()
+          props.onOpenChange(false)
+        }}
+        onRetry={retryEpayCheckout}
+      />
+    )
   }
 
   const handlePayBalance = async () => {
@@ -405,12 +427,10 @@ export function SubscriptionPurchaseDialog(props: Props) {
             {hasEpay && (
               <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-2'>
                 <Select
-                  items={[
-                    ...(props.epayMethods || []).map((m) => ({
-                      value: m.type,
-                      label: m.name || m.type,
-                    })),
-                  ]}
+                  items={(props.epayMethods || []).map((m) => ({
+                    value: m.type,
+                    label: m.name || m.type,
+                  }))}
                   value={selectedEpayMethod}
                   onValueChange={(v) => v !== null && setSelectedEpayMethod(v)}
                   disabled={limitReached}

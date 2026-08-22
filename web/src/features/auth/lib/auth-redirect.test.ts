@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import assert from 'node:assert/strict'
 import { describe, expect, test } from 'vitest'
 
 import type { AuthUser } from '@/stores/auth-store'
@@ -57,6 +58,24 @@ describe('authentication redirect validation', () => {
   test('rejects invalid or non-HTTP application origins', () => {
     expect(sanitizeAuthRedirect('/dashboard', 'not-an-origin')).toBe(null)
     expect(sanitizeAuthRedirect('/dashboard', 'file:///tmp/app')).toBe(null)
+  })
+
+  test('rejects error and auth screens so signing in never loops back to them', () => {
+    for (const target of [
+      '/403',
+      '/403/',
+      '/404',
+      '/500',
+      '/sign-in',
+      '/sign-up',
+      '/otp',
+    ]) {
+      assert.equal(sanitizeAuthRedirect(target, origin), null)
+    }
+    assert.equal(
+      sanitizeAuthRedirect('/groupbuy/detail?no=GB1', origin),
+      '/groupbuy/detail?no=GB1'
+    )
   })
 })
 

@@ -72,6 +72,11 @@ For commercial licensing, please contact support@quantumnous.com
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-tag-1: var(--tag-1);
+  --color-tag-2: var(--tag-2);
+  --color-tag-3: var(--tag-3);
+  --color-tag-4: var(--tag-4);
+  --color-tag-5: var(--tag-5);
   --color-overview-accent-1: var(--overview-accent-1);
   --color-overview-accent-2: var(--overview-accent-2);
   --color-overview-accent-3: var(--overview-accent-3);
@@ -83,6 +88,88 @@ For commercial licensing, please contact support@quantumnous.com
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-home-background: var(--home-background);
+  --color-home-foreground: var(--home-foreground);
+  --color-home-card: var(--home-card);
+  --color-home-card-foreground: var(--home-card-foreground);
+  --color-home-popover: var(--home-popover);
+  --color-home-popover-foreground: var(--home-popover-foreground);
+  --color-home-secondary: var(--home-secondary);
+  --color-home-secondary-foreground: var(--home-secondary-foreground);
+  --color-home-muted: var(--home-muted);
+  --color-home-muted-foreground: var(--home-muted-foreground);
+  --color-home-primary: var(--home-primary);
+  --color-home-primary-foreground: var(--home-primary-foreground);
+  --color-home-lime: var(--home-lime);
+  --color-home-purple: var(--home-purple);
+  --color-home-accent: var(--home-accent);
+  --color-home-accent-foreground: var(--home-accent-foreground);
+  --color-home-success: var(--home-success);
+  --color-home-warning: var(--home-warning);
+  --color-home-info: var(--home-info);
+  --color-home-border: var(--home-border);
+  --color-business-background: var(--business-background);
+  --color-business-foreground: var(--business-foreground);
+  --color-business-card: var(--business-card);
+  --color-business-card-foreground: var(--business-card-foreground);
+  --color-business-popover: var(--business-popover);
+  --color-business-popover-foreground: var(--business-popover-foreground);
+  --color-business-primary: var(--business-primary);
+  --color-business-primary-foreground: var(--business-primary-foreground);
+  --color-business-secondary: var(--business-secondary);
+  --color-business-secondary-foreground: var(--business-secondary-foreground);
+  --color-business-muted: var(--business-muted);
+  --color-business-muted-foreground: var(--business-muted-foreground);
+  --color-business-accent: var(--business-accent);
+  --color-business-accent-foreground: var(--business-accent-foreground);
+  --color-business-destructive: var(--business-destructive);
+  --color-business-destructive-foreground: var(
+    --business-destructive-foreground
+  );
+  --color-business-success: var(--business-success);
+  --color-business-success-foreground: var(--business-success-foreground);
+  --color-business-warning: var(--business-warning);
+  --color-business-warning-foreground: var(--business-warning-foreground);
+  --color-business-info: var(--business-info);
+  --color-business-info-foreground: var(--business-info-foreground);
+  --color-business-neutral: var(--business-neutral);
+  --color-business-neutral-foreground: var(--business-neutral-foreground);
+  --color-business-border: var(--business-border);
+  --color-business-input: var(--business-input);
+  --color-business-ring: var(--business-ring);
+  --color-business-chart-1: var(--business-chart-1);
+  --color-business-chart-2: var(--business-chart-2);
+  --color-business-chart-3: var(--business-chart-3);
+  --color-business-chart-4: var(--business-chart-4);
+  --color-business-chart-5: var(--business-chart-5);
+  --color-business-tag-1: var(--business-tag-1);
+  --color-business-tag-2: var(--business-tag-2);
+  --color-business-tag-3: var(--business-tag-3);
+  --color-business-tag-4: var(--business-tag-4);
+  --color-business-tag-5: var(--business-tag-5);
+  --color-business-overview-accent-1: var(--business-overview-accent-1);
+  --color-business-overview-accent-2: var(--business-overview-accent-2);
+  --color-business-overview-accent-3: var(--business-overview-accent-3);
+  --color-business-sidebar: var(--business-sidebar);
+  --color-business-sidebar-foreground: var(--business-sidebar-foreground);
+  --color-business-sidebar-primary: var(--business-sidebar-primary);
+  --color-business-sidebar-primary-foreground: var(
+    --business-sidebar-primary-foreground
+  );
+  --color-business-sidebar-accent: var(--business-sidebar-accent);
+  --color-business-sidebar-accent-foreground: var(
+    --business-sidebar-accent-foreground
+  );
+  --color-business-sidebar-border: var(--business-sidebar-border);
+  --color-business-sidebar-ring: var(--business-sidebar-ring);
+  --color-business-skeleton-base: var(--business-skeleton-base);
+  --color-business-skeleton-highlight: var(--business-skeleton-highlight);
+  --color-business-table-row: var(--business-table-row);
+  --color-business-table-header: var(--business-table-header);
+  --color-business-table-header-hover: var(--business-table-header-hover);
+  --color-business-table-disabled: var(--business-table-disabled);
+  --color-business-table-disabled-hover: var(--business-table-disabled-hover);
+  --color-business-table-disabled-border: var(--business-table-disabled-border);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -103,145 +190,263 @@ For commercial licensing, please contact support@quantumnous.com
    * in theme-presets.css. Default mirrors `--font-sans` so behavior is
    * identical when no font preference is set. */
   --font-body: var(--font-sans);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.692 0.141 243.716);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0 0);
-  --secondary-foreground: oklch(0.42 0.16 250);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.49 0 0);
-  --accent: color-mix(in oklch, var(--primary) 12%, var(--background));
-  --accent-foreground: oklch(0.145 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.596 0.145 163.225);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.681 0.162 75.834);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.588 0.158 241.966);
-  --info-foreground: oklch(0.985 0 0);
-  --neutral: oklch(0.708 0 0);
-  --neutral-foreground: oklch(0.145 0 0);
-  --border: oklch(0.93 0 0);
-  --input: oklch(0.93 0 0);
-  --ring: oklch(0.708 0.16 249.003);
-  --chart-1: oklch(0.72 0.18 250);
-  --chart-2: oklch(0.65 0.15 200);
-  --chart-3: oklch(0.7 0.12 280);
-  --chart-4: oklch(0.68 0.19 325);
-  --chart-5: oklch(0.68 0.16 155);
-  --overview-accent-1: oklch(0.72 0.18 250);
-  --overview-accent-2: oklch(0.65 0.15 200);
-  --overview-accent-3: oklch(0.7 0.12 280);
-  --sidebar: color-mix(in oklch, var(--foreground) 0.5%, var(--background));
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.64 0.197 253.892);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: color-mix(in oklch, var(--primary) 12%, var(--background));
-  --sidebar-accent-foreground: oklch(0.579 0.196 255.909);
-  --sidebar-border: oklch(0.93 0 0);
-  --sidebar-ring: oklch(0.58 0.2 250);
-  --skeleton-base: oklch(0.97 0 0);
-  --skeleton-highlight: oklch(0.985 0 0);
-  --table-row: var(--background);
-  --table-header: color-mix(
-    in oklch,
-    var(--foreground) 1.5%,
-    var(--background)
-  );
-  --table-header-hover: color-mix(
-    in oklch,
-    var(--foreground) 3%,
-    var(--background)
-  );
-  /* Disabled rows: kept subtle so they read as "quiet", not as a colored
-     alert state. */
-  --table-disabled: color-mix(
-    in oklch,
-    var(--foreground) 3%,
-    var(--background)
-  );
-  --table-disabled-hover: color-mix(
-    in oklch,
-    var(--foreground) 4.5%,
-    var(--background)
-  );
-  --table-disabled-border: color-mix(
-    in oklch,
-    var(--foreground) 16%,
-    var(--background)
-  );
+  /* 暖桃 → 珊瑚 → 洋红，按饱和度采样自品牌字母标。不随亮暗色切换，
+   * 因为这是品牌固有色而非主题派生色；首页字标与登录卡字标共用这一组。 */
+  --brand-wordmark-from: #f89f5a;
+  --brand-wordmark-via: #f7758f;
+  --brand-wordmark-to: #f072d3;
+}
+
+/* Semantic palettes keep the business shell and marketing surface isolated.
+ * Generic shadcn aliases below point to business by default; scoped home/auth
+ * surfaces continue to opt into the independent home tokens. */
+:root {
+  --business-background: #ffffff;
+  --business-foreground: #111111;
+  --business-card: #ffffff;
+  --business-card-foreground: #111111;
+  --business-popover: #ffffff;
+  --business-popover-foreground: #111111;
+  --business-primary: #42a5f5;
+  --business-primary-foreground: #09263c;
+  --business-secondary: #f2f6f9;
+  --business-secondary-foreground: #244760;
+  --business-muted: #f3f6f8;
+  --business-muted-foreground: #5b6b78;
+  --business-accent: #e7f6ff;
+  --business-accent-foreground: #164967;
+  --business-destructive: #ef4444;
+  --business-destructive-foreground: #ffffff;
+  --business-success: #16c784;
+  --business-success-foreground: #073a29;
+  --business-warning: #f4b740;
+  --business-warning-foreground: #4e3300;
+  --business-info: #2dc6c8;
+  --business-info-foreground: #063d3f;
+  --business-neutral: #697586;
+  --business-neutral-foreground: #ffffff;
+  --business-border: #e3e8ee;
+  --business-input: #cbd5df;
+  --business-ring: #42a5f5;
+  --business-chart-1: #1976d2;
+  --business-chart-2: #00838f;
+  --business-chart-3: #16835e;
+  --business-chart-4: #7e57c2;
+  --business-chart-5: #a16207;
+  --business-tag-1: #1976d2;
+  --business-tag-2: #00838f;
+  --business-tag-3: #16835e;
+  --business-tag-4: #7e57c2;
+  --business-tag-5: #a16207;
+  --business-overview-accent-1: #1976d2;
+  --business-overview-accent-2: #00838f;
+  --business-overview-accent-3: #16835e;
+  --business-sidebar: #f7fafc;
+  --business-sidebar-foreground: #111111;
+  --business-sidebar-primary: #42a5f5;
+  --business-sidebar-primary-foreground: #09263c;
+  --business-sidebar-accent: #e7f6ff;
+  --business-sidebar-accent-foreground: #164967;
+  --business-sidebar-border: #e3e8ee;
+  --business-sidebar-ring: #42a5f5;
+  --business-skeleton-base: #e9eef3;
+  --business-skeleton-highlight: #f8fafc;
+  --business-table-row: #ffffff;
+  --business-table-header: #f7f9fb;
+  --business-table-header-hover: #eef3f7;
+  --business-table-disabled: #f3f5f7;
+  --business-table-disabled-hover: #eaedf0;
+  --business-table-disabled-border: #d7dee5;
+
+  --home-background: #ffffff;
+  --home-foreground: #0e0e0e;
+  --home-card: #ffffff;
+  --home-card-foreground: #0e0e0e;
+  --home-popover: #ffffff;
+  --home-popover-foreground: #0e0e0e;
+  --home-primary: #2f00e5;
+  --home-primary-foreground: #ffffff;
+  --home-secondary: #f6f6f4;
+  --home-secondary-foreground: #0e0e0e;
+  --home-muted: #f3f3f3;
+  --home-muted-foreground: #6b6b6b;
+  --home-accent: #d4ff1f;
+  --home-accent-foreground: #0e0e0e;
+  --home-destructive: #ef4444;
+  --home-destructive-foreground: #ffffff;
+  --home-success: #d4ff1f;
+  --home-success-foreground: #0e0e0e;
+  --home-warning: #f4b740;
+  --home-warning-foreground: #0e0e0e;
+  --home-info: #2f00e5;
+  --home-info-foreground: #ffffff;
+  --home-neutral: #ecece8;
+  --home-neutral-foreground: #6b6b6b;
+  --home-border: #e0e0db;
+  --home-input: #c9c9c3;
+  --home-ring: #2f00e5;
+  --home-sidebar: #f6f6f4;
+  --home-sidebar-foreground: #0e0e0e;
+  --home-sidebar-accent: #ecece8;
+  --home-sidebar-border: #e0e0db;
+  --home-footer-background: #0e0e0e;
+  --home-footer-foreground: #ffffff;
+  --home-lime: #d4ff1f;
+  --home-purple: #2f00e5;
 }
 
 .dark {
-  /* OpenAI-like dark mode with a crisp charcoal canvas. */
-  --background: oklch(0.235 0 0);
-  --foreground: oklch(0.965 0 0);
-  --card: oklch(0.285 0 0);
-  --card-foreground: oklch(0.965 0 0);
-  --popover: oklch(0.305 0 0);
-  --popover-foreground: oklch(0.965 0 0);
-  --primary: oklch(0.54 0.142 248.516);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.335 0 0);
-  --secondary-foreground: oklch(0.9 0.05 250);
-  --muted: oklch(0.305 0 0);
-  --muted-foreground: oklch(0.78 0 0);
-  --accent: color-mix(in oklch, var(--primary) 20%, var(--background));
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.769 0.188 70.08);
-  --warning-foreground: oklch(0.145 0 0);
-  --info: oklch(0.613 0.14 239.919);
-  --info-foreground: oklch(0.145 0 0);
-  --neutral: oklch(0.76 0 0);
-  --neutral-foreground: oklch(0.155 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 17%);
-  --ring: oklch(0.554 0.148 250.726);
-  --chart-1: oklch(0.76 0.14 250);
-  --chart-2: oklch(0.76 0.13 200);
-  --chart-3: oklch(0.76 0.13 285);
-  --chart-4: oklch(0.75 0.16 325);
-  --chart-5: oklch(0.76 0.14 155);
-  --sidebar: oklch(0.225 0 0);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.588 0.123 246.488);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: color-mix(in oklch, var(--primary) 20%, var(--background));
-  --sidebar-accent-foreground: oklch(0.9 0.05 250);
-  --sidebar-border: oklch(1 0 0 / 11%);
-  --sidebar-ring: oklch(0.7 0.17 250);
-  --skeleton-base: oklch(0.335 0 0);
-  --skeleton-highlight: oklch(0.44 0 0);
-  --table-row: var(--background);
-  --table-header: color-mix(in oklch, var(--foreground) 6%, var(--background));
-  --table-header-hover: color-mix(
-    in oklch,
-    var(--foreground) 9%,
-    var(--background)
-  );
-  --table-disabled: color-mix(
-    in oklch,
-    var(--foreground) 7%,
-    var(--background)
-  );
-  --table-disabled-hover: color-mix(
-    in oklch,
-    var(--foreground) 9.5%,
-    var(--background)
-  );
-  --table-disabled-border: color-mix(
-    in oklch,
-    var(--foreground) 24%,
-    var(--background)
-  );
+  --business-background: #1f1f1f;
+  --business-foreground: #f5f5f5;
+  --business-card: #242424;
+  --business-card-foreground: #f5f5f5;
+  --business-popover: #2b2b2b;
+  --business-popover-foreground: #f5f5f5;
+  --business-primary: #42a5f5;
+  --business-primary-foreground: #071b2b;
+  --business-secondary: #2b2b2b;
+  --business-secondary-foreground: #f1f5f8;
+  --business-muted: #282828;
+  --business-muted-foreground: #b0bbc5;
+  --business-accent: #18384a;
+  --business-accent-foreground: #d9f4ff;
+  --business-destructive: #ef4444;
+  --business-destructive-foreground: #ffffff;
+  --business-success: #16c784;
+  --business-success-foreground: #071f17;
+  --business-warning: #f4b740;
+  --business-warning-foreground: #261a00;
+  --business-info: #2dc6c8;
+  --business-info-foreground: #041f20;
+  --business-neutral: #aab4be;
+  --business-neutral-foreground: #111111;
+  --business-border: #3a3a3a;
+  --business-input: #4a4a4a;
+  --business-ring: #42a5f5;
+  --business-chart-1: #64b5f6;
+  --business-chart-2: #4dd0e1;
+  --business-chart-3: #4ade80;
+  --business-chart-4: #b39ddb;
+  --business-chart-5: #fbbf24;
+  --business-tag-1: #64b5f6;
+  --business-tag-2: #4dd0e1;
+  --business-tag-3: #4ade80;
+  --business-tag-4: #b39ddb;
+  --business-tag-5: #fbbf24;
+  --business-overview-accent-1: #64b5f6;
+  --business-overview-accent-2: #4dd0e1;
+  --business-overview-accent-3: #4ade80;
+  --business-sidebar: #111111;
+  --business-sidebar-foreground: #f5f5f5;
+  --business-sidebar-primary: #42a5f5;
+  --business-sidebar-primary-foreground: #071b2b;
+  --business-sidebar-accent: #1e3542;
+  --business-sidebar-accent-foreground: #d9f4ff;
+  --business-sidebar-border: #343434;
+  --business-sidebar-ring: #42a5f5;
+  --business-skeleton-base: #30343a;
+  --business-skeleton-highlight: #414750;
+  --business-table-row: #1f1f1f;
+  --business-table-header: #2b2b2b;
+  --business-table-header-hover: #303030;
+  --business-table-disabled: #292929;
+  --business-table-disabled-hover: #303030;
+  --business-table-disabled-border: #454545;
+
+  --home-background: #1f1f1f;
+  --home-foreground: #ffffff;
+  --home-card: #1c1c1c;
+  --home-card-foreground: #ffffff;
+  --home-popover: #111111;
+  --home-popover-foreground: #ffffff;
+  --home-primary: #d4ff1f;
+  --home-primary-foreground: #0e0e0e;
+  --home-secondary: #1c1c1c;
+  --home-secondary-foreground: #ffffff;
+  --home-muted: #282828;
+  --home-muted-foreground: #a8a8a8;
+  --home-accent: #2f00e5;
+  --home-accent-foreground: #ffffff;
+  --home-destructive: #ef4444;
+  --home-destructive-foreground: #ffffff;
+  --home-success: #d4ff1f;
+  --home-success-foreground: #0e0e0e;
+  --home-warning: #f4b740;
+  --home-warning-foreground: #0e0e0e;
+  --home-info: #9b8cff;
+  --home-info-foreground: #0e0e0e;
+  --home-neutral: #3b3b3b;
+  --home-neutral-foreground: #a8a8a8;
+  --home-border: #373737;
+  --home-input: #4b4b4b;
+  --home-ring: #d4ff1f;
+  --home-sidebar: #111111;
+  --home-sidebar-foreground: #ffffff;
+  --home-sidebar-accent: #1c1c1c;
+  --home-sidebar-border: #333333;
+  --home-footer-background: #0e0e0e;
+  --home-footer-foreground: #ffffff;
+}
+
+/* Keep the existing utility classes useful while making their palette
+ * explicit. The public layout applies the homepage aliases below only to the
+ * marketing route; all dashboard and public utility pages use business. */
+:root,
+.dark {
+  --background: var(--business-background);
+  --foreground: var(--business-foreground);
+  --card: var(--business-card);
+  --card-foreground: var(--business-card-foreground);
+  --popover: var(--business-popover);
+  --popover-foreground: var(--business-popover-foreground);
+  --primary: var(--business-primary);
+  --primary-foreground: var(--business-primary-foreground);
+  --secondary: var(--business-secondary);
+  --secondary-foreground: var(--business-secondary-foreground);
+  --muted: var(--business-muted);
+  --muted-foreground: var(--business-muted-foreground);
+  --accent: var(--business-accent);
+  --accent-foreground: var(--business-accent-foreground);
+  --destructive: var(--business-destructive);
+  --destructive-foreground: var(--business-destructive-foreground);
+  --success: var(--business-success);
+  --success-foreground: var(--business-success-foreground);
+  --warning: var(--business-warning);
+  --warning-foreground: var(--business-warning-foreground);
+  --info: var(--business-info);
+  --info-foreground: var(--business-info-foreground);
+  --neutral: var(--business-neutral);
+  --neutral-foreground: var(--business-neutral-foreground);
+  --border: var(--business-border);
+  --input: var(--business-input);
+  --ring: var(--business-ring);
+  --chart-1: var(--business-chart-1);
+  --chart-2: var(--business-chart-2);
+  --chart-3: var(--business-chart-3);
+  --chart-4: var(--business-chart-4);
+  --chart-5: var(--business-chart-5);
+  --tag-1: var(--business-tag-1);
+  --tag-2: var(--business-tag-2);
+  --tag-3: var(--business-tag-3);
+  --tag-4: var(--business-tag-4);
+  --tag-5: var(--business-tag-5);
+  --overview-accent-1: var(--business-overview-accent-1);
+  --overview-accent-2: var(--business-overview-accent-2);
+  --overview-accent-3: var(--business-overview-accent-3);
+  --sidebar: var(--business-sidebar);
+  --sidebar-foreground: var(--business-sidebar-foreground);
+  --sidebar-primary: var(--business-sidebar-primary);
+  --sidebar-primary-foreground: var(--business-sidebar-primary-foreground);
+  --sidebar-accent: var(--business-sidebar-accent);
+  --sidebar-accent-foreground: var(--business-sidebar-accent-foreground);
+  --sidebar-border: var(--business-sidebar-border);
+  --sidebar-ring: var(--business-sidebar-ring);
+  --skeleton-base: var(--business-skeleton-base);
+  --skeleton-highlight: var(--business-skeleton-highlight);
+  --table-row: var(--business-table-row);
+  --table-header: var(--business-table-header);
+  --table-header-hover: var(--business-table-header-hover);
+  --table-disabled: var(--business-table-disabled);
+  --table-disabled-hover: var(--business-table-disabled-hover);
+  --table-disabled-border: var(--business-table-disabled-border);
 }

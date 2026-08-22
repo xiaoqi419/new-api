@@ -18,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/console_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/QuantumNous/new-api/setting/ui_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,10 +68,14 @@ func GetStatus(c *gin.Context) {
 		"system_name":                 common.SystemName,
 		"logo":                        common.Logo,
 		"footer_html":                 common.Footer,
+		"login_page_config":           common.OptionMap["LoginPageConfig"],
+		"promo_banner_config":         common.OptionMap["PromoBannerConfig"],
 		"wechat_qrcode":               common.WeChatAccountQRCodeImageURL,
 		"wechat_login":                common.WeChatAuthEnabled,
+		"wechat_mp":                   wechatMpLoginEnabled(),
 		"server_address":              system_setting.ServerAddress,
 		"turnstile_check":             common.TurnstileCheckEnabled,
+		"click_captcha_enabled":       common.ClickCaptchaEnabled,
 		"turnstile_site_key":          common.TurnstileSiteKey,
 		"docs_link":                   operation_setting.GetGeneralSetting().DocsLink,
 		"quota_per_unit":              common.QuotaPerUnit,
@@ -107,6 +112,8 @@ func GetStatus(c *gin.Context) {
 		// 模块管理配置
 		"HeaderNavModules":    common.OptionMap["HeaderNavModules"],
 		"SidebarModulesAdmin": common.OptionMap["SidebarModulesAdmin"],
+		"ui_appearance":       ui_setting.GetAppearance(),
+		"apimart_home":        ui_setting.GetApimartHome(),
 
 		"oidc_enabled":                system_setting.GetOIDCSettings().Enabled,
 		"oidc_client_id":              system_setting.GetOIDCSettings().ClientId,
@@ -122,6 +129,8 @@ func GetStatus(c *gin.Context) {
 		"setup":                       constant.Setup,
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
+		"legal_version":               legalSetting.Version(),
+		"community_links":             common.OptionMap["CommunityLinks"],
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
 	}
 
@@ -164,6 +173,19 @@ func GetStatus(c *gin.Context) {
 		data["custom_oauth_providers"] = providersInfo
 	}
 
+	// 白标：代理域名覆盖站点品牌字段(未设置则回退平台)。
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "SystemName"); v != "" {
+			data["system_name"] = v
+		}
+		if v := model.GetTenantOption(tenantAgentId, "Logo"); v != "" {
+			data["logo"] = v
+		}
+		if v := model.GetTenantOption(tenantAgentId, "Footer"); v != "" {
+			data["footer_html"] = v
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -174,22 +196,34 @@ func GetStatus(c *gin.Context) {
 
 func GetNotice(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	notice := common.OptionMap["Notice"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "Notice"); v != "" {
+			notice = v
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["Notice"],
+		"data":    notice,
 	})
 	return
 }
 
 func GetAbout(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	about := common.OptionMap["About"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "About"); v != "" {
+			about = v
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["About"],
+		"data":    about,
 	})
 	return
 }
@@ -225,11 +259,28 @@ func GetMidjourney(c *gin.Context) {
 
 func GetHomePageContent(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
+	content := common.OptionMap["HomePageContent"]
+	common.OptionMapRWMutex.RUnlock()
+	if tenantAgentId := common.GetContextKeyInt(c, constant.ContextKeyTenantAgentId); tenantAgentId > 0 {
+		if v := model.GetTenantOption(tenantAgentId, "HomePageContent"); v != "" {
+			content = v
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    content,
+	})
+	return
+}
+
+func GetHomePageConfig(c *gin.Context) {
+	common.OptionMapRWMutex.RLock()
 	defer common.OptionMapRWMutex.RUnlock()
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["HomePageContent"],
+		"data":    common.OptionMap["HomePageConfig"],
 	})
 	return
 }
@@ -344,7 +395,8 @@ func ResetPassword(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	if !common.VerifyCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
+	// 原子校验并消费重置令牌，避免并发请求同时通过校验后重复重置密码。
+	if !common.VerifyAndConsumeCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
 		return
 	}
@@ -355,10 +407,11 @@ func ResetPassword(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
 			return
 		}
+		// 数据库写入等瞬时失败：释放令牌，允许用户在有效期内重试。
+		common.RegisterVerificationCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose)
 		common.ApiError(c, err)
 		return
 	}
-	common.DeleteKey(req.Email, common.PasswordResetPurpose)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

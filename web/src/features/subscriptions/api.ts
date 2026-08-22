@@ -30,6 +30,7 @@ import type {
   SubscriptionPayResponse,
   SubscriptionPayRequest,
   SelfSubscriptionData,
+  SubscriptionStatusResponse,
 } from './types'
 
 // ============================================================================
@@ -193,12 +194,25 @@ export async function listWaffoPancakeSubscriptionProductOptions(): Promise<
 
 export async function paySubscriptionEpay(
   data: SubscriptionPayRequest & { payment_method: string }
-): Promise<SubscriptionPayResponse & { url?: string }> {
+): Promise<SubscriptionPayResponse> {
   const res = await api.post('/api/subscription/epay/pay', data)
   return {
     ...res.data,
     url: res.data.url || (res as unknown as { url?: string }).url,
   }
+}
+
+export async function getSubscriptionEpayStatus(
+  tradeNo: string
+): Promise<SubscriptionStatusResponse> {
+  const res = await api.get(
+    `/api/subscription/epay/status?trade_no=${encodeURIComponent(tradeNo)}`,
+    { skipBusinessError: true, skipErrorHandler: true } as Record<
+      string,
+      unknown
+    >
+  )
+  return res.data
 }
 
 // ============================================================================
@@ -234,6 +248,6 @@ export async function updateBillingPreference(
 }
 
 export async function getGroups(): Promise<ApiResponse<string[]>> {
-  const res = await api.get('/api/group')
+  const res = await api.get('/api/group/')
   return res.data
 }

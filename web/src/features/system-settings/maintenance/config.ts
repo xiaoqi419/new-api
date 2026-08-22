@@ -27,8 +27,14 @@ export type HeaderNavModulesConfig = {
   pricing: HeaderNavAccessConfig
   rankings: HeaderNavAccessConfig
   docs: boolean
+  externalDocs: boolean
   about: boolean
-  [key: string]: boolean | HeaderNavAccessConfig
+  icons?: Record<string, string>
+  [key: string]:
+    | boolean
+    | HeaderNavAccessConfig
+    | Record<string, string>
+    | undefined
 }
 
 export type SidebarSectionConfig = {
@@ -50,6 +56,7 @@ export const HEADER_NAV_DEFAULT: HeaderNavModulesConfig = {
     requireAuth: false,
   },
   docs: true,
+  externalDocs: true,
   about: true,
 }
 
@@ -155,6 +162,16 @@ export function parseHeaderNavModules(
       }
       if (key === 'rankings') {
         result.rankings = parseAccessModule(raw, base.rankings)
+        return
+      }
+      if (key === 'icons') {
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          const map: Record<string, string> = {}
+          Object.entries(raw as Record<string, unknown>).forEach(([k, v]) => {
+            if (typeof v === 'string') map[k] = v
+          })
+          result.icons = map
+        }
         return
       }
 

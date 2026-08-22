@@ -1,7 +1,8 @@
 package service
 
 import (
-	"errors"
+	"fmt"
+	"sort"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -45,118 +46,137 @@ func (p *RetryParam) ResetRetryNextTry() {
 	p.resetNextTry = true
 }
 
-// CacheGetRandomSatisfiedChannel tries to get a random channel that satisfies the requirements.
-// 尝试获取一个满足要求的随机渠道。
+// CacheGetRandomSatisfiedChannel returns a channel satisfying the request.
 //
-// For "auto" tokenGroup with cross-group Retry enabled:
-// 对于启用了跨分组重试的 "auto" tokenGroup：
+// When the token has group auto-switch enabled (per-API-Key candidate groups),
+// it walks the candidate groups ordered by group ratio (low to high),
+// escalating to the next group when the current group has no channel for the
+// model or has reached the per-group failure threshold. See getGroupSwitchChannel.
 //
-//   - Each group will exhaust all its priorities before moving to the next group.
-//     每个分组会用完所有优先级后才会切换到下一个分组。
-//
-//   - Uses ContextKeyAutoGroupIndex to track current group index.
-//     使用 ContextKeyAutoGroupIndex 跟踪当前分组索引。
-//
-//   - Uses ContextKeyAutoGroupRetryIndex to track the global Retry count when current group started.
-//     使用 ContextKeyAutoGroupRetryIndex 跟踪当前分组开始时的全局重试次数。
-//
-//   - priorityRetry = Retry - startRetryIndex, represents the priority level within current group.
-//     priorityRetry = Retry - startRetryIndex，表示当前分组内的优先级级别。
-//
-//   - When GetRandomSatisfiedChannel returns nil (priorities exhausted), moves to next group.
-//     当 GetRandomSatisfiedChannel 返回 nil（优先级用完）时，切换到下一个分组。
-//
-// Example flow (2 groups, each with 2 priorities, RetryTimes=3):
-// 示例流程（2个分组，每个有2个优先级，RetryTimes=3）：
-//
-//	Retry=0: GroupA, priority0 (startRetryIndex=0, priorityRetry=0)
-//	         分组A, 优先级0
-//
-//	Retry=1: GroupA, priority1 (startRetryIndex=0, priorityRetry=1)
-//	         分组A, 优先级1
-//
-//	Retry=2: GroupA exhausted → GroupB, priority0 (startRetryIndex=2, priorityRetry=0)
-//	         分组A用完 → 分组B, 优先级0
-//
-//	Retry=3: GroupB, priority1 (startRetryIndex=2, priorityRetry=1)
-//	         分组B, 优先级1
+// Otherwise it selects a channel from the token's fixed group.
 func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, error) {
-	var channel *model.Channel
-	var err error
-	selectGroup := param.TokenGroup
+	if common.GetContextKeyBool(param.Ctx, constant.ContextKeyTokenGroupSwitch) {
+		return getGroupSwitchChannel(param)
+	}
+
+	channel, err := model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath)
+	if err != nil {
+		return nil, param.TokenGroup, err
+	}
+	return channel, param.TokenGroup, nil
+}
+
+// orderedSwitchCandidates returns the token's candidate groups filtered by the
+// user's usable groups and sorted ascending by group ratio (cheapest first).
+func orderedSwitchCandidates(param *RetryParam, userGroup string) []string {
+	raw := common.GetContextKeyStringSlice(param.Ctx, constant.ContextKeyTokenGroupSwitchCandidates)
+	if len(raw) == 0 {
+		return nil
+	}
+	usable := GetUserUsableGroups(userGroup)
+	seen := make(map[string]bool, len(raw))
+	filtered := make([]string, 0, len(raw))
+	for _, group := range raw {
+		if group == "" || seen[group] {
+			continue
+		}
+		if _, ok := usable[group]; !ok {
+			continue
+		}
+		seen[group] = true
+		filtered = append(filtered, group)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		return GetUserGroupRatio(userGroup, filtered[i]) < GetUserGroupRatio(userGroup, filtered[j])
+	})
+	return filtered
+}
+
+func getGroupSwitchChannel(param *RetryParam) (*model.Channel, string, error) {
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
+	candidates := orderedSwitchCandidates(param, userGroup)
 
-	if param.TokenGroup == "auto" {
-		autoGroups := GetRequestAutoGroups(param.Ctx, userGroup)
-		if len(autoGroups) == 0 {
-			return nil, selectGroup, errors.New("auto groups is not enabled")
+	// Not enough valid candidates after filtering: degrade to a fixed selection.
+	if len(candidates) < 2 {
+		fallbackGroup := param.TokenGroup
+		if len(candidates) == 1 {
+			fallbackGroup = candidates[0]
 		}
-
-		// startGroupIndex: the group index to start searching from
-		// startGroupIndex: 开始搜索的分组索引
-		startGroupIndex := 0
-		crossGroupRetry := common.GetContextKeyBool(param.Ctx, constant.ContextKeyTokenCrossGroupRetry)
-
-		if lastGroupIndex, exists := common.GetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex); exists {
-			if idx, ok := lastGroupIndex.(int); ok {
-				startGroupIndex = idx
-			}
+		if fallbackGroup == "" {
+			fallbackGroup = userGroup
 		}
-
-		for i := startGroupIndex; i < len(autoGroups); i++ {
-			autoGroup := autoGroups[i]
-			// Calculate priorityRetry for current group
-			// 计算当前分组的 priorityRetry
-			priorityRetry := param.GetRetry()
-			// If moved to a new group, reset priorityRetry and update startRetryIndex
-			// 如果切换到新分组，重置 priorityRetry 并更新 startRetryIndex
-			if i > startGroupIndex {
-				priorityRetry = 0
-			}
-			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
-
-			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath)
-			if channel == nil {
-				// Current group has no available channel for this model, try next group
-				// 当前分组没有该模型的可用渠道，尝试下一个分组
-				logger.LogDebug(param.Ctx, "No available channel in group %s for model %s at priorityRetry %d, trying next group", autoGroup, param.ModelName, priorityRetry)
-				// 重置状态以尝试下一个分组
-				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
-				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)
-				// Reset retry counter so outer loop can continue for next group
-				// 重置重试计数器，以便外层循环可以为下一个分组继续
-				param.SetRetry(0)
-				continue
-			}
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, autoGroup)
-			selectGroup = autoGroup
-			logger.LogDebug(param.Ctx, "Auto selected group: %s", autoGroup)
-
-			// Prepare state for next retry
-			// 为下一次重试准备状态
-			if crossGroupRetry && priorityRetry >= common.RetryTimes {
-				// Current group has exhausted all retries, prepare to switch to next group
-				// This request still uses current group, but next retry will use next group
-				// 当前分组已用完所有重试次数，准备切换到下一个分组
-				// 本次请求仍使用当前分组，但下次重试将使用下一个分组
-				logger.LogDebug(param.Ctx, "Current group %s retries exhausted (priorityRetry=%d >= RetryTimes=%d), preparing switch to next group for next retry", autoGroup, priorityRetry, common.RetryTimes)
-				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
-				// Reset retry counter so outer loop can continue for next group
-				// 重置重试计数器，以便外层循环可以为下一个分组继续
-				param.SetRetry(0)
-				param.ResetRetryNextTry()
-			} else {
-				// Stay in current group, save current state
-				// 保持在当前分组，保存当前状态
-				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i)
-			}
-			break
-		}
-	} else {
-		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath)
+		channel, err := model.GetRandomSatisfiedChannel(fallbackGroup, param.ModelName, param.GetRetry(), param.RequestPath)
 		if err != nil {
-			return nil, param.TokenGroup, err
+			return nil, fallbackGroup, err
+		}
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, fallbackGroup)
+		return channel, fallbackGroup, nil
+	}
+
+	tokenId := common.GetContextKeyInt(param.Ctx, constant.ContextKeyTokenId)
+	sticky := GetStickyGroupSwitch(tokenId, param.ModelName, userGroup)
+
+	startIndex := 0
+	if idx, exists := common.GetContextKey(param.Ctx, constant.ContextKeyGroupSwitchIndex); exists {
+		// Mid-request retry: continue from where the previous attempt left off.
+		if v, ok := idx.(int); ok {
+			startIndex = v
+		}
+	} else if sticky != "" {
+		// First attempt of the request: honor the sticky cooldown group.
+		for i, group := range candidates {
+			if group == sticky {
+				startIndex = i
+				break
+			}
 		}
 	}
-	return channel, selectGroup, nil
+
+	failCount := common.GetContextKeyInt(param.Ctx, constant.ContextKeyGroupSwitchFail)
+
+	for i := startIndex; i < len(candidates); i++ {
+		group := candidates[i]
+		channel, _ := model.GetRandomSatisfiedChannel(group, param.ModelName, failCount, param.RequestPath)
+		if channel == nil {
+			// No channel for this model in this group -> escalate immediately.
+			logger.LogDebug(param.Ctx, "group switch: no channel in group %s for model %s, escalating", group, param.ModelName)
+			failCount = 0
+			continue
+		}
+		common.SetContextKey(param.Ctx, constant.ContextKeyGroupSwitchIndex, i)
+		common.SetContextKey(param.Ctx, constant.ContextKeyGroupSwitchFail, failCount)
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, group)
+		// Remember a genuinely higher group so later requests skip cheaper groups
+		// during the cooldown window. Skip when reusing the current sticky group
+		// so its original expiry is preserved (no refresh on reuse).
+		if i > 0 && group != sticky {
+			cooldown := common.GetContextKeyInt(param.Ctx, constant.ContextKeyTokenGroupSwitchCooldown)
+			SetStickyGroupSwitch(tokenId, param.ModelName, userGroup, group, cooldown)
+		}
+		return channel, group, nil
+	}
+
+	return nil, param.TokenGroup, fmt.Errorf("no available channel across candidate groups for model %s", param.ModelName)
+}
+
+// RecordGroupSwitchFailure records a retryable upstream failure for the current
+// candidate group. When the per-group threshold is reached it advances to the
+// next candidate group (resetting the per-group counter) so the next retry
+// escalates. No-op when group auto-switch is not active for this request.
+func RecordGroupSwitchFailure(c *gin.Context) {
+	if !common.GetContextKeyBool(c, constant.ContextKeyTokenGroupSwitch) {
+		return
+	}
+	threshold := common.GetContextKeyInt(c, constant.ContextKeyTokenGroupSwitchThreshold)
+	if threshold < 1 {
+		threshold = 1
+	}
+	failCount := common.GetContextKeyInt(c, constant.ContextKeyGroupSwitchFail) + 1
+	if failCount >= threshold {
+		index := common.GetContextKeyInt(c, constant.ContextKeyGroupSwitchIndex) + 1
+		common.SetContextKey(c, constant.ContextKeyGroupSwitchIndex, index)
+		common.SetContextKey(c, constant.ContextKeyGroupSwitchFail, 0)
+		return
+	}
+	common.SetContextKey(c, constant.ContextKeyGroupSwitchFail, failCount)
 }

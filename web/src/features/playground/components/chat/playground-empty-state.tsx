@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -22,9 +24,7 @@ import {
   GraduationCapIcon,
   MessageSquarePlusIcon,
   NotepadTextIcon,
-} from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 type PlaygroundEmptyStateProps = {

@@ -1,0 +1,390 @@
+schema: comet.native.v4
+name: subscription-scope-group-migration
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+spec_changes:
+  - capability: subscription-plan-schema
+    operation: create
+    source: specs/subscription-plan-schema/spec.md
+workspace:
+  isolation: current
+  change_branch: comet/figma-model-square-refresh
+  target_branch: comet/figma-model-square-refresh
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 全新 SQLite 数据库启动迁移后，`subscription_plans` 包含 `scope_group varchar(64)
+      DEFAULT ''`，创建 `ScopeGroup="codex"` 的套餐成功并可读回。
+    result: passed
+    reason:
+      text: 全新 SQLite 路径的 CREATE TABLE DDL 已包含 scope_group varchar(64) DEFAULT
+        ''；focused test 验证可创建 ScopeGroup=codex 的套餐并按原值读回。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 历史 SQLite 表缺少 `scope_group` 且已有套餐数据时，启动迁移会补列，既有行保持不变并读取为空作用域。
+    result: passed
+    reason:
+      text: legacy required 列清单通过 ALTER TABLE ADD COLUMN 补齐
+        scope_group；测试验证历史套餐字段保持不变，ScopeGroup 读取为空。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 对同一数据库重复执行迁移不会报错或重复修改 schema。
+    result: passed
+    reason:
+      text: legacy 回归测试重复调用迁移并验证成功，既有 codex 值保持不变，scope_group 最终仅有一列。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: MySQL 和 PostgreSQL 继续通过既有 GORM `AutoMigrate(&SubscriptionPlan{})` 维护该列，不引入
+      SQLite 语法。
+    result: passed
+    reason:
+      text: 两处非 SQLite 分支仍调用 DB.AutoMigrate(&SubscriptionPlan{})；本次 diff 未改变这些分支。
+      truncated: false
+  - id: A5
+    source: specs/subscription-plan-schema/spec.md
+    text: Fresh SQLite schema - **WHEN** 服务首次在空 SQLite 数据库执行主数据库迁移 - **THEN**
+      `subscription_plans` 表包含 `scope_group` 列 - **AND** 该列使用 `varchar(64)
+      DEFAULT ''` - **AND** 创建带显式作用域分组的订阅套餐成功并可按原值读回。
+    result: passed
+    reason:
+      text: fresh SQLite 隔离测试验证列存在、显式 codex 写入成功且读回一致。
+      truncated: false
+  - id: A6
+    source: specs/subscription-plan-schema/spec.md
+    text: Upgrade an existing SQLite schema - **WHEN** 已有 `subscription_plans` 表缺少
+      `scope_group` 且包含历史套餐行 - **THEN** 启动迁移使用 SQLite 支持的 `ALTER TABLE ... ADD
+      COLUMN` 补齐该列 - **AND** 历史套餐的既有字段和值保持不变 - **AND** 历史套餐的 `scope_group`
+      读取为空字符串，以保持适用于所有分组的旧行为。
+    result: passed
+    reason:
+      text: legacy 测试建立不含 scope_group 且带历史行的表，迁移后验证补列、历史字段保留和默认空 scope。
+      truncated: false
+  - id: A7
+    source: specs/subscription-plan-schema/spec.md
+    text: Idempotent startup - **WHEN** 同一数据库已经包含 `scope_group` 并再次执行迁移 - **THEN**
+      迁移成功结束 - **AND** 不重复添加列或破坏现有套餐数据。
+    result: passed
+    reason:
+      text: 测试覆盖迁移重复执行，确认不报错、不覆盖已写入的 scope_group，也不重复添加列。
+      truncated: false
+  - id: A8
+    source: specs/subscription-plan-schema/spec.md
+    text: Other supported databases - **WHEN** 主数据库为 MySQL 或 PostgreSQL - **THEN**
+      继续使用 GORM `AutoMigrate(&SubscriptionPlan{})` 管理 `scope_group` - **AND**
+      不执行 SQLite 专用 PRAGMA 或 DDL。
+    result: passed
+    reason:
+      text: MySQL/PostgreSQL 仍由既有 AutoMigrate 路径管理；SQLite helper 在非 SQLite 数据库类型下立即返回。
+      truncated: false
+  - id: A9
+    source: specs/subscription-plan-schema/spec.md
+    text: "`SubscriptionPlan.ScopeGroup` 的数据库列 MUST 存在于全新和历史 SQLite schema。"
+    result: passed
+    reason:
+      text: fresh CREATE DDL 和历史缺列补齐清单均包含 scope_group；两个隔离 SQLite 场景均通过。
+      truncated: false
+  - id: A10
+    source: specs/subscription-plan-schema/spec.md
+    text: SQLite CREATE DDL 与缺列补齐清单 MUST 使用相同的列名、类型和默认值。
+    result: passed
+    reason:
+      text: 两个 schema 路径的列名、类型和默认值完全一致，均为 scope_group varchar(64) DEFAULT ''。
+      truncated: false
+  - id: A11
+    source: specs/subscription-plan-schema/spec.md
+    text: 迁移 MUST 保留空作用域代表全分组适用的历史业务语义。
+    result: passed
+    reason:
+      text: 历史行迁移后 ScopeGroup 为空字符串，保留空作用域适用于所有分组的既有业务语义。
+      truncated: false
+  - id: A12
+    source: specs/subscription-plan-schema/spec.md
+    text: 迁移 MUST 支持重复执行。
+    result: passed
+    reason:
+      text: 同一 legacy 数据库连续迁移两次成功，scope_group 仅存在一列，已写入数据保持不变。
+      truncated: false
+builder_handoff:
+  candidate_id: 32d8041b-db4e-49ff-91dc-b39e4fd337c8
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:69030bb5-c923-407e-b1ed-789b17ab7abe
+  iteration: 2
+  summary:
+    text: Fixed the SQLite subscription_plans schema drift that caused plan creation
+      to fail with a missing scope_group column. Both the fresh CREATE TABLE DDL
+      and the legacy required-column migration now define scope_group
+      varchar(64) DEFAULT ''. Added isolated SQLite regressions covering fresh
+      creation, legacy rows, default empty scope, explicit codex writes and
+      idempotent reruns; documented the user-facing fix in the current changelog
+      entry. MySQL/PostgreSQL AutoMigrate behavior is unchanged. The canonical
+      ignored classic and canvas frontend assets have now been built so the
+      complete root Go suite is executable and green.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+  checks:
+    - name:
+        text: Focused SQLite migration regression
+        truncated: false
+      result: passed
+      note:
+        text: go test ./model -run TestEnsureSubscriptionPlanTableSQLite -count=1
+          passed; covers fresh and legacy schemas, plan creation and
+          idempotence.
+        truncated: false
+    - name:
+        text: Model package tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./model -count=1 passed.
+        truncated: false
+    - name:
+        text: Full Go test suite
+        truncated: false
+      result: passed
+      note:
+        text: go test ./... -count=1 -timeout=10m passed after generating the
+          repository's required ignored classic/canvas embed assets with their
+          canonical build commands.
+        truncated: false
+    - name:
+        text: Go formatting
+        truncated: false
+      result: passed
+      note:
+        text: gofmt -d produced no output for model/main.go and the new migration test.
+        truncated: false
+    - name:
+        text: Changelog formatting and lint
+        truncated: false
+      result: passed
+      note:
+        text: Scoped oxfmt and oxlint passed for web/src/features/changelog/data.ts.
+        truncated: false
+    - name:
+        text: Schema residual audit
+        truncated: false
+      result: passed
+      note:
+        text: SubscriptionPlan field audit found scope_group was the only missing
+          business column; it is now present in both SQLite schema paths.
+        truncated: false
+    - name:
+        text: Git whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check completed successfully.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No external MySQL or PostgreSQL DSN is configured for live integration
+        testing; both retain the existing GORM AutoMigrate(&SubscriptionPlan{})
+        path and no non-SQLite code changed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-20T21:39:51.880Z
+blockers: []
+verification:
+  candidate_id: 32d8041b-db4e-49ff-91dc-b39e4fd337c8
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:d636377c-1445-4c35-abc9-e8dc21535fcd
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: scope-migration-focused-final
+      name:
+        text: Focused subscription plan SQLite migration final
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: TestEnsureSubscriptionPlanTableSQLite
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: -timeout=5m
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3422
+    - id: model-tests-final
+      name:
+        text: Model package tests final
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: -timeout=5m
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 8155
+    - id: go-tests
+      name:
+        text: Full Go test suite after frontend asset builds
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./...
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: -timeout=10m
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 28851
+    - id: changelog-format-final
+      name:
+        text: Changelog formatting final
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\oxfmt.cmd --check src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 618
+    - id: changelog-lint-final
+      name:
+        text: Changelog lint final
+        truncated: false
+      argv_display:
+        - text: /d
+          truncated: false
+        - text: /s
+          truncated: false
+        - text: /c
+          truncated: false
+        - text: node_modules\.bin\oxlint.cmd -c .oxlintrc.json
+            src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 507
+  summary:
+    text: 候选 32d8041b-db4e-49ff-91dc-b39e4fd337c8 通过独立只读验证。A1-A12 全部满足；focused
+      SQLite 回归、完整 Go 测试套件、gofmt 差异检查和 git diff --check 均通过。
+    truncated: false
+  risks:
+    - text: 当前环境未配置真实 MySQL 或 PostgreSQL
+        DSN，因此未执行这两个方言的现场集成测试；对应代码路径未被本次变更修改，并已静态确认继续使用 GORM
+        AutoMigrate(&SubscriptionPlan{})。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-20T21:45:47.958Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-20T21:20:13.512Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-20T21:36:35.776Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Invalidate the first verification plan because its full Go check ran
+        before required ignored frontend embed assets were generated. The
+        canonical classic and canvas builds now exist and go test ./... passes;
+        submit a fresh candidate so Runtime records a clean plan without
+        overwriting the historical failure.
+      truncated: false
+    completed_at: 2026-08-20T21:39:04.577Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 候选 32d8041b-db4e-49ff-91dc-b39e4fd337c8 通过独立只读验证。A1-A12 全部满足；focused
+        SQLite 回归、完整 Go 测试套件、gofmt 差异检查和 git diff --check 均通过。
+      truncated: false
+    completed_at: 2026-08-20T21:45:47.958Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-20T21:01:36.217Z

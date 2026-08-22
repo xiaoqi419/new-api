@@ -1,3 +1,13 @@
+import {
+  createContext,
+  useContext,
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+} from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,17 +26,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { RotateCcw, Save } from 'lucide-react'
-import {
-  createContext,
-  useContext,
-  type ComponentProps,
-  type ReactNode,
-  type RefObject,
-} from 'react'
-import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
-
+import { RotateCcw, Save } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 type SettingsPageContextValue = {

@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
@@ -145,6 +146,13 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 	if imageN > 0 {
 		logContent = append(logContent, fmt.Sprintf("生成数量 %d", imageN))
 	}
+
+	drawingMode := "images_generation"
+	if info.RelayMode == relayconstant.RelayModeImagesEdits {
+		drawingMode = "images_edit"
+	}
+	common.SetContextKey(c, constant.ContextKeyDrawingLogMode, drawingMode)
+	common.SetContextKey(c, constant.ContextKeyDrawingPrompt, request.Prompt)
 
 	service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), logContent)
 	return nil

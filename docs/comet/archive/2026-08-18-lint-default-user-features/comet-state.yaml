@@ -1,0 +1,313 @@
+schema: comet.native.v4
+name: lint-default-user-features
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-default-user-features
+  target_branch: codex/p1-lint-debt
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：权威 oxlint 对全部 owned feature 目录返回 0 errors。
+    result: passed
+    reason:
+      text: Independent gpt-5.6-terra/xhigh verification and the Runtime-owned check
+        both ran oxlint 1.74.0 over all twelve owned feature directories
+        including Canvas; exit code was 0 with 0 errors and 9 warning-only
+        diagnostics.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：语义性修复保持认证、请求、错误传播、列表 identity、余额/订阅状态和模块副作用；相关既有测试通过，或明确报告无测试。
+    result: passed
+    reason:
+      text: Independent high-risk semantic review found no auth, request, error
+        propagation, list identity, balance/subscription, payment, setup,
+        usage-log, user-management, or module side-effect regression. Duplicate
+        2FA codes use value-plus-occurrence keys in both dialogs without
+        changing copied rows. The 18 focused test files passed 102 tests with 0
+        failures and frontend typecheck passed.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：Git diff 只包含批准目录与本 child 正式产物，不含共享目录、lint 配置、package/lock、依赖或 disable
+      变化；目标基线中的 Canvas override 不计入本 child diff。
+    result: passed
+    reason:
+      text: The 44-path child diff contains only approved feature paths and formal
+        child artifacts. It has no relative Canvas or lint-config diff, no
+        package/lock/dependency/i18n/changelog/backend/classic changes, and no
+        added disables or TypeScript suppressions. The target baseline has
+        exactly one Canvas-only override disabling only
+        react/iframe-missing-sandbox; git diff --check passed.
+      truncated: false
+builder_handoff:
+  candidate_id: 75e0fb0c-c406-47db-907f-b98c95cbb2c1
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:d0758a11-cd6f-468e-9aaa-580b5299545f
+  iteration: 1
+  summary:
+    text: Synchronized the approved trusted same-origin Canvas baseline, cleared all
+      owned feature lint errors, and repaired duplicate 2FA backup-code list
+      identity with value-plus-occurrence keys while preserving existing auth,
+      account, subscription, wallet, payment, usage-log, setup, ranking, and
+      management behavior.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned feature oxlint after Canvas baseline synchronization
+        truncated: false
+      result: passed
+      note:
+        text: Repository oxlint 1.74.0 with the synchronized child web/.oxlintrc.json
+          returned 0 errors and 9 warning-only diagnostics across all twelve
+          approved feature directories, including Canvas.
+        truncated: false
+    - name:
+        text: owned existing frontend tests
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun test across the approved feature directories passed 102
+          tests in 18 files with 0 failures.
+        truncated: false
+    - name:
+        text: frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully after supervisor
+          synchronization.
+        truncated: false
+    - name:
+        text: scope, Canvas baseline, and diff checks
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; the child has no relative web/.oxlintrc.json or
+          Canvas diff against codex/p1-lint-debt; the target has exactly one
+          src/features/canvas/index.tsx override disabling only
+          react/iframe-missing-sandbox; no package, lock, dependency, i18n,
+          changelog, backend, classic, disable, ignore, or WeChat-login
+          expansion was introduced.
+        truncated: false
+    - name:
+        text: independent pre-verification semantic review
+        truncated: false
+      result: passed
+      note:
+        text: A read-only gpt-5.6-terra/xhigh reviewer found no candidate semantic
+          blocker beyond the then-pending Canvas baseline synchronization, and
+          confirmed duplicate-safe 2FA rows plus retained strict same-origin
+          Canvas message targets/checks.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The 102 existing tests do not include a dedicated duplicate-backup-code
+        component case; duplicate row preservation and JSON.stringify([code,
+        occurrence]) identity were verified independently by direct code review.
+      truncated: false
+    - text: Nine warning-only oxlint diagnostics remain and are explicitly outside
+        this child scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T15:29:09.523Z
+blockers: []
+verification:
+  candidate_id: 75e0fb0c-c406-47db-907f-b98c95cbb2c1
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:f252bcd0-e6dd-4867-9e86-43781f284e30
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: owned-feature-oxlint
+      name:
+        text: Owned default user feature oxlint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& '.\\node_modules\\.bin\\oxlint.exe' -c .oxlintrc.json src/features/auth
+            src/features/canvas src/features/keys src/features/profile
+            src/features/rankings src/features/redemption-codes
+            src/features/setup src/features/subscriptions
+            src/features/system-info src/features/usage-logs src/features/users
+            src/features/wallet; exit $LASTEXITCODE"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 681
+    - id: owned-feature-tests
+      name:
+        text: Owned default user feature tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun test src/features/auth src/features/canvas src/features/keys
+            src/features/profile src/features/rankings
+            src/features/redemption-codes src/features/setup
+            src/features/subscriptions src/features/system-info
+            src/features/usage-logs src/features/users src/features/wallet; exit
+            $LASTEXITCODE
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6603
+    - id: frontend-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: npx --yes bun run typecheck; exit $LASTEXITCODE
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6226
+    - id: scope-canvas-diff
+      name:
+        text: Scope, Canvas baseline, and diff invariants
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "git diff --check codex/p1-lint-debt...HEAD; if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE }; $relative = @(git diff --name-only
+            codex/p1-lint-debt...HEAD -- web/.oxlintrc.json
+            web/src/features/canvas/index.tsx); if ($relative.Count -ne 0) {
+            throw ('Unexpected child Canvas/config diff: ' + ($relative -join ',
+            ')) }; $cfg = Get-Content -Raw 'web/.oxlintrc.json' |
+            ConvertFrom-Json; $canvas = @($cfg.overrides | Where-Object {
+            @($_.files) -contains 'src/features/canvas/index.tsx' }); $iframe =
+            @($cfg.overrides | Where-Object { $_.rules.PSObject.Properties.Name
+            -contains 'react/iframe-missing-sandbox' }); if ($canvas.Count -ne 1
+            -or $iframe.Count -ne 1 -or @($canvas[0].files).Count -ne 1 -or
+            @($canvas[0].rules.PSObject.Properties).Count -ne 1 -or
+            $canvas[0].rules.'react/iframe-missing-sandbox' -ne 'off') { throw
+            'Canvas override is not exactly one file and one disabled rule' };
+            $changed = @(git diff --name-only codex/p1-lint-debt...HEAD);
+            $unexpected = @($changed | Where-Object { $_ -notmatch
+            '^(docs/comet/changes/lint-default-user-features/|web/src/features/\
+            (auth|canvas|keys|profile|rankings|redemption-codes|setup|subscript\
+            ions|system-info|usage-logs|users|wallet)/)' }); if
+            ($unexpected.Count -ne 0) { throw ('Out-of-scope paths: ' +
+            ($unexpected -join ', ')) }; $disable = @(git diff -U0
+            codex/p1-lint-debt...HEAD -- web/src/features | Select-String
+            '^\\+.*(?:eslint-disable|oxlint-disable|@ts-ignore|@ts-nocheck)');
+            if ($disable.Count -ne 0) { throw 'New disable or TypeScript
+            suppression found' }; exit 0"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 485
+  summary:
+    text: Independent gpt-5.6-terra/xhigh verification passes A1-A3 for goal cycle
+      2, iteration 1, attempt 1. All Runtime checks passed, the synchronized
+      Canvas baseline is exact, duplicate 2FA backup-code identity is safe, and
+      no semantic or scope blocker was found.
+    truncated: false
+  risks:
+    - text: Nine warning-only oxlint diagnostics remain outside this child scope.
+      truncated: false
+    - text: The existing 102 tests do not include a dedicated duplicate-backup-code
+        component case; both dialogs were independently verified by direct code
+        review to render all duplicate rows with JSON.stringify([code,
+        occurrence]) keys and unchanged join('\n') copy payloads.
+      truncated: false
+    - text: The trusted same-origin Canvas bridge does not additionally compare
+        event.source; this is pre-existing and not a regression under the
+        approved trust model, but should be revisited if Canvas later moves to a
+        different origin or trust boundary.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T15:47:30.788Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A1
+      - A2
+    summary:
+      text: Independent gpt-5.6-terra/xhigh Verifier failed A1 and A2, passed A3, and
+        returned the candidate to Build for a duplicate-safe 2FA key fix plus an
+        explicit Canvas security decision.
+      truncated: false
+    completed_at: 2026-08-18T11:32:09.261Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-18T15:27:05.319Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent gpt-5.6-terra/xhigh verification passes A1-A3 for goal cycle
+        2, iteration 1, attempt 1. All Runtime checks passed, the synchronized
+        Canvas baseline is exact, duplicate 2FA backup-code identity is safe,
+        and no semantic or scope blocker was found.
+      truncated: false
+    completed_at: 2026-08-18T15:47:30.788Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-18T10:06:41.771Z

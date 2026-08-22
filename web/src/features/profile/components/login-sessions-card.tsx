@@ -16,14 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Logout01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { LogOut, Smartphone } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -129,7 +128,7 @@ export function LoginSessionsCard() {
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant='icon'>
-            <HugeiconsIcon icon={SmartPhone01Icon} strokeWidth={2} />
+            <Smartphone />
           </EmptyMedia>
           <EmptyTitle>{t('Unable to load login sessions')}</EmptyTitle>
           <EmptyDescription>
@@ -150,7 +149,7 @@ export function LoginSessionsCard() {
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant='icon'>
-            <HugeiconsIcon icon={SmartPhone01Icon} strokeWidth={2} />
+            <Smartphone />
           </EmptyMedia>
           <EmptyTitle>{t('No active login sessions')}</EmptyTitle>
         </EmptyHeader>
@@ -185,11 +184,7 @@ export function LoginSessionsCard() {
               disabled={!hasOtherSessions || revokeOthersMutation.isPending}
               onClick={() => setConfirmOthers(true)}
             >
-              <HugeiconsIcon
-                icon={Logout01Icon}
-                data-icon='inline-start'
-                strokeWidth={2}
-              />
+              <LogOut data-icon='inline-start' />
               {t('Sign out other sessions')}
             </Button>
           </CardAction>

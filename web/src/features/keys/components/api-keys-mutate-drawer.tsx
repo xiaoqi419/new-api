@@ -18,29 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, KeyRound, Settings2, WalletCards } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm, type SubmitErrorHandler } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { DateTimePicker } from '@/components/datetime-picker'
-import {
-  SideDrawerSection,
-  SideDrawerSectionHeader,
-  sideDrawerContentClassName,
-  sideDrawerFooterClassName,
-  sideDrawerFormClassName,
-  sideDrawerHeaderClassName,
-  sideDrawerSwitchItemClassName,
-} from '@/components/drawer-layout'
+import { Dialog } from '@/components/dialog'
 import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import {
   Form,
   FormControl,
@@ -52,20 +38,19 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
-import { cn } from '@/lib/utils'
 
 import {
   createApiKey,
@@ -89,6 +74,36 @@ import {
 import { useApiKeys } from './api-keys-provider'
 import { AutoGroupOrderEditor } from './auto-group-order-editor'
 
+const THRESHOLD_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({
+  value: String(n),
+  label: String(n),
+}))
+const COOLDOWN_OPTIONS = [5, 10, 30].map((n) => ({
+  value: String(n),
+  label: String(n),
+}))
+
+const switchItemClassName =
+  'border-border/60 flex min-h-16 flex-row items-center justify-between gap-3 border-y py-3'
+
+// Maps each form field to the tab that contains it, so validation errors can
+// switch the user to the first tab that has a problem.
+const FIELD_TAB: Record<string, string> = {
+  name: 'basic',
+  group: 'basic',
+  group_switch_enabled: 'basic',
+  group_switch_groups: 'basic',
+  group_switch_threshold: 'basic',
+  group_switch_cooldown: 'basic',
+  expired_time: 'basic',
+  tokenCount: 'basic',
+  remain_quota_dollars: 'rate',
+  unlimited_quota: 'rate',
+  max_concurrency: 'rate',
+  allow_ips: 'security',
+  model_limits: 'advanced',
+}
+
 type ApiKeyMutateDrawerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -106,7 +121,7 @@ export function ApiKeysMutateDrawer({
   const { triggerRefresh } = useApiKeys()
   const { status, loading: statusLoading } = useStatus()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('basic')
   const [initializedTarget, setInitializedTarget] = useState<string | null>(
     null
   )
@@ -121,11 +136,7 @@ export function ApiKeysMutateDrawer({
   })
 
   // Fetch groups
-  const {
-    data: groupsData,
-    isFetched: groupsFetched,
-    isFetching: groupsFetching,
-  } = useQuery({
+  const { data: groupsData } = useQuery({
     queryKey: ['user-groups'],
     queryFn: getUserGroups,
     enabled: open,
@@ -165,7 +176,7 @@ export function ApiKeysMutateDrawer({
       })),
     [groupsData]
   )
-  const backendHasAuto = groups.some((g) => g.value === 'auto')
+  const backendHasAuto = groups.some((group) => group.value === 'auto')
   const availableAutoGroupNames = useMemo(
     () => groups.filter((group) => group.value !== 'auto').map((g) => g.value),
     [groups]
@@ -188,6 +199,13 @@ export function ApiKeysMutateDrawer({
     Number(autoGroupsData?.data?.max_count) > 0
       ? Number(autoGroupsData?.data?.max_count)
       : 5
+  // Candidate options for auto-switch, ordered by ratio (cheapest first).
+  const candidateGroupOptions = [...groups]
+    .sort((a, b) => (Number(a.ratio) || 0) - (Number(b.ratio) || 0))
+    .map((g) => ({
+      value: g.value,
+      label: typeof g.ratio === 'number' ? `${g.value} (×${g.ratio})` : g.value,
+    }))
   const schema = useMemo(
     () => getApiKeyFormSchema(t, maxAutoGroups),
     [t, maxAutoGroups]
@@ -204,16 +222,16 @@ export function ApiKeysMutateDrawer({
       setInitializedTarget(null)
       return
     }
+    setActiveTab('basic')
     if (
-      !groupsFetched ||
-      groupsFetching ||
+      !groupsData ||
       !autoGroupsFetched ||
-      autoGroupsFetching
+      autoGroupsFetching ||
+      (isUpdate && (!apiKeyFetched || apiKeyFetching)) ||
+      (!isUpdate && statusLoading)
     ) {
       return
     }
-    if (isUpdate && (!apiKeyFetched || apiKeyFetching)) return
-    if (!isUpdate && statusLoading) return
 
     const target = isUpdate && currentRow ? `update:${currentRow.id}` : 'create'
     if (initializedTarget === target) return
@@ -239,11 +257,10 @@ export function ApiKeysMutateDrawer({
     isUpdate,
     currentRow,
     form,
+    groupsData,
     defaultUseAutoGroup,
     statusLoading,
     backendHasAuto,
-    groupsFetched,
-    groupsFetching,
     autoGroupsFetched,
     autoGroupsFetching,
     apiKeyData,
@@ -254,12 +271,10 @@ export function ApiKeysMutateDrawer({
     initializedTarget,
   ])
 
-  const formTarget =
-    isUpdate && currentRow ? `update:${currentRow.id}` : 'create'
-  const isFormInitialized = initializedTarget === formTarget
   const selectedGroup = form.watch('group')
 
-  // Correct group after groups load: if the form value is not in available groups, fall back
+  // Correct fixed group after groups load: if the form value is not in
+  // available groups, fall back to a valid one.
   useEffect(() => {
     if (groups.length === 0) return
     const currentGroup = selectedGroup
@@ -332,7 +347,12 @@ export function ApiKeysMutateDrawer({
     }
   }
 
-  const onInvalid: SubmitErrorHandler<ApiKeyFormValues> = () => {
+  const onInvalid: SubmitErrorHandler<ApiKeyFormValues> = (errors) => {
+    const firstField = Object.keys(errors)[0]
+    const tab = firstField ? FIELD_TAB[firstField] : undefined
+    if (tab) {
+      setActiveTab(tab)
+    }
     toast.error(t('Please fix the highlighted fields before saving'))
   }
 
@@ -357,11 +377,12 @@ export function ApiKeysMutateDrawer({
   const quotaPlaceholder = tokensOnly
     ? t('Enter quota in tokens')
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
+  const groupSwitchEnabled = form.watch('group_switch_enabled')
   const autoGroupsMode = form.watch('auto_groups_mode')
   const unlimitedQuota = form.watch('unlimited_quota')
 
   return (
-    <Sheet
+    <Dialog
       open={open}
       onOpenChange={(v) => {
         onOpenChange(v)
@@ -369,35 +390,61 @@ export function ApiKeysMutateDrawer({
           form.reset()
         }
       }}
-    >
-      <SheetContent
-        className={sideDrawerContentClassName('max-w-none sm:!max-w-[620px]')}
-      >
-        <SheetHeader className={sideDrawerHeaderClassName()}>
-          <SheetTitle>
-            {isUpdate ? t('Update API Key') : t('Create API Key')}
-          </SheetTitle>
-          <SheetDescription>
-            {isUpdate
-              ? t('Update the API key by providing necessary info.')
-              : t('Add a new API key by providing necessary info.')}
-          </SheetDescription>
-        </SheetHeader>
-        <Form {...form}>
-          <form
-            id='api-key-form'
-            onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-            aria-busy={!isFormInitialized}
-            inert={!isFormInitialized || isSubmitting ? true : undefined}
-            className={sideDrawerFormClassName('gap-5')}
+      title={isUpdate ? t('Update API Key') : t('Create API Key')}
+      description={
+        isUpdate
+          ? t('Update the API key by providing necessary info.')
+          : t('Add a new API key by providing necessary info.')
+      }
+      contentClassName='sm:max-w-[600px]'
+      contentHeight='420px'
+      footer={
+        <>
+          <Button
+            type='button'
+            variant='outline'
+            className='w-full sm:w-auto'
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
           >
-            <SideDrawerSection>
-              <SideDrawerSectionHeader
-                title={t('Basic Information')}
-                description={t('Set API key basic information')}
-                icon={<KeyRound className='size-4' />}
-                iconTone='info'
-              />
+            {t('Close')}
+          </Button>
+          <Button
+            type='submit'
+            form='api-key-form'
+            disabled={isSubmitting}
+            className='w-full sm:w-auto'
+          >
+            {isSubmitting ? t('Saving...') : t('Save changes')}
+          </Button>
+        </>
+      }
+    >
+      <Form {...form}>
+        <form
+          id='api-key-form'
+          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+          className='flex flex-col gap-4'
+        >
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(String(v))}
+          >
+            <TabsList className='w-full flex-wrap justify-start'>
+              <TabsTrigger value='basic'>{t('Basic Information')}</TabsTrigger>
+              <TabsTrigger value='rate'>{t('Rate & Quota')}</TabsTrigger>
+              <TabsTrigger value='security'>
+                {t('Security Settings')}
+              </TabsTrigger>
+              <TabsTrigger value='advanced'>
+                {t('Advanced Settings')}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              value='basic'
+              className='flex flex-col gap-4 focus-visible:outline-none'
+            >
               <FormField
                 control={form.control}
                 name='name'
@@ -414,35 +461,60 @@ export function ApiKeysMutateDrawer({
 
               <FormField
                 control={form.control}
-                name='group'
+                name='group_switch_enabled'
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('Group')}</FormLabel>
+                  <FormItem className={switchItemClassName}>
+                    <div className='flex flex-col gap-0.5'>
+                      <FormLabel className='text-sm'>
+                        {t('Auto-switch groups')}
+                      </FormLabel>
+                      <FormDescription className='line-clamp-2 text-xs sm:line-clamp-none'>
+                        {t(
+                          'Pick multiple candidate groups; requests start from the cheapest and escalate to the next group on repeated failures.'
+                        )}
+                      </FormDescription>
+                    </div>
                     <FormControl>
-                      <ApiKeyGroupCombobox
-                        options={groups}
-                        value={field.value}
-                        onValueChange={(group) => {
-                          field.onChange(group)
-                          if (group === 'auto') {
-                            form.setValue('cross_group_retry', true, {
-                              shouldDirty: true,
-                            })
-                            return
-                          }
-                          form.setValue('cross_group_retry', false, {
-                            shouldDirty: true,
-                          })
-                        }}
-                        placeholder={t('Select a group')}
+                      <Switch
+                        checked={!!field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {selectedGroup === 'auto' && (
+              {!groupSwitchEnabled && (
+                <FormField
+                  control={form.control}
+                  name='group'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Group')}</FormLabel>
+                      <FormControl>
+                        <ApiKeyGroupCombobox
+                          options={groups}
+                          value={field.value}
+                          onValueChange={(group) => {
+                            field.onChange(group)
+                            form.setValue(
+                              'cross_group_retry',
+                              group === 'auto',
+                              {
+                                shouldDirty: true,
+                              }
+                            )
+                          }}
+                          placeholder={t('Select a group')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {!groupSwitchEnabled && selectedGroup === 'auto' && (
                 <FormField
                   control={form.control}
                   name='auto_groups'
@@ -483,12 +555,12 @@ export function ApiKeysMutateDrawer({
                 />
               )}
 
-              {selectedGroup === 'auto' && (
+              {!groupSwitchEnabled && selectedGroup === 'auto' && (
                 <FormField
                   control={form.control}
                   name='cross_group_retry'
                   render={({ field }) => (
-                    <FormItem className={sideDrawerSwitchItemClassName()}>
+                    <FormItem className={switchItemClassName}>
                       <div className='flex flex-col gap-0.5'>
                         <FormLabel className='text-sm'>
                           {t('Cross-group retry')}
@@ -508,6 +580,120 @@ export function ApiKeysMutateDrawer({
                     </FormItem>
                   )}
                 />
+              )}
+
+              {groupSwitchEnabled && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name='group_switch_groups'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Candidate groups')}</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            options={candidateGroupOptions}
+                            selected={field.value ?? []}
+                            onChange={field.onChange}
+                            placeholder={t('Select at least 2 groups')}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'Ordered automatically by ratio (low to high). Prefer groups on the same platform.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='group_switch_threshold'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {t('Failure threshold per group')}
+                          </FormLabel>
+                          <FormControl>
+                            <Select
+                              items={THRESHOLD_OPTIONS}
+                              value={String(field.value ?? 2)}
+                              onValueChange={(v) =>
+                                v !== null && field.onChange(Number(v))
+                              }
+                            >
+                              <SelectTrigger className='w-full'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent alignItemWithTrigger={false}>
+                                <SelectGroup>
+                                  {THRESHOLD_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Retryable upstream failures allowed in a group before escalating to the next.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='group_switch_cooldown'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Cooldown (minutes)')}</FormLabel>
+                          <FormControl>
+                            <Select
+                              items={COOLDOWN_OPTIONS}
+                              value={String(field.value ?? 10)}
+                              onValueChange={(v) =>
+                                v !== null && field.onChange(Number(v))
+                              }
+                            >
+                              <SelectTrigger className='w-full'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent alignItemWithTrigger={false}>
+                                <SelectGroup>
+                                  {COOLDOWN_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'After escalating, later requests keep using the higher group for this long before rechecking the cheapest.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <p className='text-muted-foreground text-xs'>
+                    {t(
+                      'Note: higher-ratio groups cost more. Escalated requests are billed at the group actually used.'
+                    )}
+                  </p>
+                </>
               )}
 
               <FormField
@@ -599,15 +785,12 @@ export function ApiKeysMutateDrawer({
                   )}
                 />
               )}
-            </SideDrawerSection>
+            </TabsContent>
 
-            <SideDrawerSection>
-              <SideDrawerSectionHeader
-                title={t('Quota Settings')}
-                description={t('Set quota amount and limits')}
-                icon={<WalletCards className='size-4' />}
-                iconTone='success'
-              />
+            <TabsContent
+              value='rate'
+              className='flex flex-col gap-4 focus-visible:outline-none'
+            >
               {!unlimitedQuota && (
                 <FormField
                   control={form.control}
@@ -645,7 +828,7 @@ export function ApiKeysMutateDrawer({
                 control={form.control}
                 name='unlimited_quota'
                 render={({ field }) => (
-                  <FormItem className={sideDrawerSwitchItemClassName()}>
+                  <FormItem className={switchItemClassName}>
                     <div className='flex flex-col gap-0.5'>
                       <FormLabel className='text-sm'>
                         {t('Unlimited Quota')}
@@ -663,109 +846,99 @@ export function ApiKeysMutateDrawer({
                   </FormItem>
                 )}
               />
-            </SideDrawerSection>
-
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-              <SideDrawerSection>
-                <CollapsibleTrigger
-                  render={
-                    <button
-                      type='button'
-                      className='hover:bg-muted/40 flex w-full items-center gap-3 rounded-md py-1.5 text-left transition-colors'
-                    />
-                  }
-                >
-                  <SideDrawerSectionHeader
-                    className='flex-1'
-                    title={t('Advanced Settings')}
-                    description={t('Set API key access restrictions')}
-                    icon={<Settings2 className='size-4' />}
-                  />
-                  <ChevronDown
-                    className={cn(
-                      'text-muted-foreground size-4 shrink-0 transition-transform',
-                      advancedOpen && 'rotate-180'
-                    )}
-                  />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className='flex flex-col gap-4 pt-2'>
-                    <FormField
-                      control={form.control}
-                      name='model_limits'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Model Limits')}</FormLabel>
-                          <FormControl>
-                            <MultiSelect
-                              options={models.map((m) => ({
-                                label: m,
-                                value: m,
-                              }))}
-                              selected={field.value}
-                              onChange={field.onChange}
-                              placeholder={t(
-                                'Select models (empty for allow all)'
-                              )}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            {t('Limit which models can be used with this key')}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
+              <FormField
+                control={form.control}
+                name='max_concurrency'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Max Concurrency')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type='number'
+                        step={1}
+                        placeholder='0'
+                        onChange={(e) =>
+                          field.onChange(
+                            Number.parseInt(e.target.value, 10) || 0
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Maximum simultaneous requests for this key (0 = unlimited)'
                       )}
-                    />
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </TabsContent>
 
-                    <FormField
-                      control={form.control}
-                      name='allow_ips'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {t('IP Whitelist (supports CIDR)')}
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea
-                              {...field}
-                              className='min-h-20 resize-none'
-                              placeholder={t(
-                                'One IP per line (empty for no restriction)'
-                              )}
-                              rows={3}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            {t(
-                              'Do not over-trust this feature. IP may be spoofed. Please use with nginx, CDN and other gateways.'
-                            )}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
+            <TabsContent
+              value='security'
+              className='flex flex-col gap-4 focus-visible:outline-none'
+            >
+              <FormField
+                control={form.control}
+                name='allow_ips'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('IP Whitelist (supports CIDR)')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        className='min-h-20 resize-none'
+                        placeholder={t(
+                          'One IP per line (empty for no restriction)'
+                        )}
+                        rows={3}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Do not over-trust this feature. IP may be spoofed. Please use with nginx, CDN and other gateways.'
                       )}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </SideDrawerSection>
-            </Collapsible>
-          </form>
-        </Form>
-        <SheetFooter className={sideDrawerFooterClassName()}>
-          <SheetClose
-            render={<Button variant='outline' className='w-full sm:w-auto' />}
-          >
-            {t('Close')}
-          </SheetClose>
-          <Button
-            type='button'
-            onClick={form.handleSubmit(onSubmit, onInvalid)}
-            disabled={!isFormInitialized || isSubmitting}
-            className='w-full sm:w-auto'
-          >
-            {isSubmitting ? t('Saving...') : t('Save changes')}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value='advanced'
+              className='flex flex-col gap-4 focus-visible:outline-none'
+            >
+              <FormField
+                control={form.control}
+                name='model_limits'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Model Limits')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={models.map((m) => ({
+                          label: m,
+                          value: m,
+                        }))}
+                        selected={field.value}
+                        onChange={field.onChange}
+                        placeholder={t('Select models (empty for allow all)')}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Limit which models can be used with this key')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </TabsContent>
+          </Tabs>
+        </form>
+      </Form>
+    </Dialog>
   )
 }

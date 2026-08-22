@@ -19,10 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 'use client'
 
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu'
-import { ArrowRight01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import * as React from 'react'
 
+import { Check, ChevronRight } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
@@ -156,11 +155,7 @@ function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <HugeiconsIcon
-        icon={ArrowRight01Icon}
-        strokeWidth={2}
-        className='ml-auto'
-      />
+      <ChevronRight className='ml-auto' />
     </ContextMenuPrimitive.SubmenuTrigger>
   )
 }
@@ -200,7 +195,7 @@ function ContextMenuCheckboxItem({
     >
       <span className='pointer-events-none absolute right-2'>
         <ContextMenuPrimitive.CheckboxItemIndicator>
-          <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
+          <Check />
         </ContextMenuPrimitive.CheckboxItemIndicator>
       </span>
       {children}
@@ -239,7 +234,7 @@ function ContextMenuRadioItem({
     >
       <span className='pointer-events-none absolute right-2'>
         <ContextMenuPrimitive.RadioItemIndicator>
-          <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
+          <Check />
         </ContextMenuPrimitive.RadioItemIndicator>
       </span>
       {children}

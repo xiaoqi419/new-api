@@ -19,6 +19,26 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  type ReactNode,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react'
+import { type SubmitErrorHandler, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import {
+  sideDrawerContentClassName,
+  sideDrawerFooterClassName,
+  sideDrawerFormClassName,
+  sideDrawerHeaderClassName,
+  sideDrawerSectionClassName,
+  sideDrawerSwitchItemClassName,
+} from '@/components/drawer-layout'
+import {
   ArrowRight,
   AlertCircle,
   Boxes,
@@ -42,27 +62,7 @@ import {
   Settings,
   SlidersHorizontal,
   Wand2,
-} from 'lucide-react'
-import {
-  type ReactNode,
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-} from 'react'
-import { type SubmitErrorHandler, useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import {
-  sideDrawerContentClassName,
-  sideDrawerFooterClassName,
-  sideDrawerFormClassName,
-  sideDrawerHeaderClassName,
-  sideDrawerSectionClassName,
-  sideDrawerSwitchItemClassName,
-} from '@/components/drawer-layout'
+} from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { JsonEditor } from '@/components/json-editor'
 import { MultiSelect } from '@/components/multi-select'
@@ -292,6 +292,14 @@ const SENSITIVE_FORM_FIELDS = [
   'pass_through_body_enabled',
   'system_prompt',
   'system_prompt_override',
+  'fallback',
+  'fallback_upstream_enabled',
+  'fallback_upstream_base_url',
+  'fallback_upstream_key',
+  'fallback_upstream_models',
+  'volc_asset_ak',
+  'volc_asset_sk',
+  'volc_project_name',
   'allow_service_tier',
   'disable_store',
   'allow_safety_identifier',
@@ -344,6 +352,13 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.thinking_to_content ||
     values.pass_through_body_enabled ||
     values.system_prompt_override ||
+    values.fallback ||
+    values.fallback_upstream_enabled ||
+    values.fallback_upstream_base_url?.trim() ||
+    values.fallback_upstream_models?.trim() ||
+    values.volc_asset_ak?.trim() ||
+    values.volc_asset_sk?.trim() ||
+    values.volc_project_name?.trim() ||
     (values.http_protocol && values.http_protocol !== 'auto') ||
     (values.http2_connection_shards != null &&
       values.http2_connection_shards > 1) ||
@@ -655,6 +670,7 @@ export function ChannelMutateDrawer({
     useState(false)
   const [clipboardConnectionInfo, setClipboardConnectionInfo] =
     useState<ChannelConnectionInfo | null>(null)
+  const [fallbackModelsLoading, setFallbackModelsLoading] = useState(false)
 
   const isEditing = Boolean(currentRow)
   const channelId = currentRow?.id ?? null
@@ -757,6 +773,11 @@ export function ChannelMutateDrawer({
   const currentHttp2ConnectionShards = form.watch('http2_connection_shards')
   const currentSystemPrompt = form.watch('system_prompt')
   const currentSystemPromptOverride = form.watch('system_prompt_override')
+  const currentFallback = form.watch('fallback')
+  const currentFallbackUpstreamEnabled = form.watch('fallback_upstream_enabled')
+  const currentVolcAssetAk = form.watch('volc_asset_ak')
+  const currentVolcAssetSk = form.watch('volc_asset_sk')
+  const currentVolcProjectName = form.watch('volc_project_name')
   const currentAllowServiceTier = form.watch('allow_service_tier')
   const currentDisableStore = form.watch('disable_store')
   const currentAllowSafetyIdentifier = form.watch('allow_safety_identifier')
@@ -1025,6 +1046,12 @@ export function ChannelMutateDrawer({
     currentProxy?.trim() ||
     currentSystemPrompt?.trim() ||
     currentSystemPromptOverride ||
+    currentFallback ||
+    currentFallbackUpstreamEnabled ||
+    (currentType === 54 &&
+      (currentVolcAssetAk?.trim() ||
+        currentVolcAssetSk?.trim() ||
+        currentVolcProjectName?.trim())) ||
     (currentHttpProtocol && currentHttpProtocol !== 'auto') ||
     (currentHttp2ConnectionShards != null && currentHttp2ConnectionShards > 1)
   )
@@ -1482,6 +1509,51 @@ export function ChannelMutateDrawer({
     throw new Error(response.message || t('No models fetched from upstream'))
   }, [canEditSensitive, channelId, form, isEditing, t])
 
+  const handleFetchFallbackModels = useCallback(async () => {
+    const baseUrl = form.getValues('fallback_upstream_base_url')?.trim()
+    if (!baseUrl) {
+      toast.error(t('Please fill in the backup Base URL first'))
+      return
+    }
+    // In edit mode the backend falls back to the real key stored in the DB
+    // when the submitted key is empty or masked; creation mode needs a plaintext key.
+    const useFallback = isEditing && Boolean(channelId)
+    const key =
+      form.getValues('fallback_upstream_key')?.trim() ||
+      form.getValues('key')?.trim() ||
+      ''
+    if (!useFallback && !key) {
+      toast.error(t('Please fill in the backup key or this channel key first'))
+      return
+    }
+    setFallbackModelsLoading(true)
+    try {
+      const response = await fetchModels({
+        base_url: baseUrl,
+        type: form.getValues('type'),
+        key,
+        ...(useFallback && channelId
+          ? { channel_id: channelId, use_fallback: true }
+          : {}),
+      })
+      if (response.success && response.data) {
+        const uniqueModels = [...new Set(response.data)]
+        form.setValue('fallback_upstream_models', uniqueModels.join(','), {
+          shouldDirty: true,
+        })
+        toast.success(
+          t('Fetched {{count}} model(s)', { count: uniqueModels.length })
+        )
+      } else {
+        toast.error(t('Failed to fetch model list'))
+      }
+    } catch {
+      toast.error(t('Failed to fetch model list'))
+    } finally {
+      setFallbackModelsLoading(false)
+    }
+  }, [form, isEditing, channelId, t])
+
   // Handle model operations
   const handleFillRelatedModels = useCallback(() => {
     if (!basicModels.length) {
@@ -1906,7 +1978,7 @@ export function ChannelMutateDrawer({
           </SheetHeader>
 
           {sensitiveLocked && (
-            <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+            <Alert className='border-warning/30 bg-warning/10 text-warning'>
               <AlertDescription>
                 {t(
                   'Sensitive channel settings are read-only for your account.'
@@ -2124,7 +2196,7 @@ export function ChannelMutateDrawer({
                         )}
 
                         {sensitiveLocked && (
-                          <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+                          <Alert className='border-warning/30 bg-warning/10 text-warning'>
                             <AlertDescription>
                               {t('No permission to perform this action')}
                             </AlertDescription>
@@ -3115,7 +3187,7 @@ export function ChannelMutateDrawer({
                                       )}
                                     </div>
                                   </div>
-                                  <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+                                  <Alert className='border-warning/30 bg-warning/10 text-warning'>
                                     <AlertDescription>
                                       {t(
                                         "Disclaimer: Personal use only. Do not distribute or share any credentials. This channel has prerequisites and requires prior setup; use it only if you understand the flow and risks, and comply with OpenAI's terms and policies. Credentials and configuration are for Codex CLI integration only, and are not intended for any other client, platform, or channel."
@@ -3291,7 +3363,7 @@ export function ChannelMutateDrawer({
                                   </FormControl>
                                   {modelMappingGuardrail.exposedTargetModels
                                     .length > 0 && (
-                                    <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+                                    <Alert className='border-warning/30 bg-warning/10 text-warning'>
                                       <AlertDescription className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                                         <span>
                                           {t('The mapped upstream model(s)')}{' '}
@@ -3548,7 +3620,7 @@ export function ChannelMutateDrawer({
                                   )}
                                   {modelMappingGuardrail.missingSourceModels
                                     .length > 0 && (
-                                    <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+                                    <Alert className='border-warning/30 bg-warning/10 text-warning'>
                                       <AlertDescription className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                                         <span>
                                           {t('Add')}{' '}
@@ -4062,7 +4134,7 @@ export function ChannelMutateDrawer({
                             iconTone='chart-3'
                           />
                           {sensitiveLocked && (
-                            <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
+                            <Alert className='border-warning/30 bg-warning/10 text-warning'>
                               <AlertDescription>
                                 {t('No permission to perform this action')}
                               </AlertDescription>
@@ -4370,6 +4442,214 @@ export function ChannelMutateDrawer({
                                 </FormItem>
                               )}
                             />
+
+                            <div className='divide-border space-y-0 divide-y border-y'>
+                              <FormField
+                                control={form.control}
+                                name='fallback'
+                                render={({ field }) => (
+                                  <FormItem className='flex items-center justify-between px-4 py-3'>
+                                    <div className='space-y-0.5'>
+                                      <FormLabel>
+                                        {t('Fallback Channel')}
+                                      </FormLabel>
+                                      <FormDescription>
+                                        {t(
+                                          'When enabled, this channel is excluded from normal selection and only used after all non-fallback channels for the same group and model are unavailable or their retries fail'
+                                        )}
+                                      </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                      <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name='fallback_upstream_enabled'
+                                render={({ field }) => (
+                                  <FormItem className='flex items-center justify-between px-4 py-3'>
+                                    <div className='space-y-0.5'>
+                                      <FormLabel>
+                                        {t('Fallback Forwarding')}
+                                      </FormLabel>
+                                      <FormDescription>
+                                        {t(
+                                          'When enabled, if this channel request fails with a retryable error, immediately retry once using the backup URL and key below. Billing is unchanged.'
+                                        )}
+                                      </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                      <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {currentFallbackUpstreamEnabled && (
+                              <div className='space-y-4'>
+                                <FormField
+                                  control={form.control}
+                                  name='fallback_upstream_base_url'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t('Backup Base URL')}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder={t(
+                                            'e.g. https://backup.example.com'
+                                          )}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name='fallback_upstream_key'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>{t('Backup Key')}</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type='password'
+                                          placeholder={t(
+                                            'Leave empty to reuse this channel key'
+                                          )}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name='fallback_upstream_models'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t('Backup Available Models')}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Textarea
+                                          rows={3}
+                                          placeholder={t(
+                                            'Comma-separated. Click the button below to fetch from the backup URL.'
+                                          )}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <Button
+                                  type='button'
+                                  variant='outline'
+                                  size='sm'
+                                  disabled={fallbackModelsLoading}
+                                  onClick={handleFetchFallbackModels}
+                                >
+                                  {fallbackModelsLoading && (
+                                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                  )}
+                                  {t('Fetch models from backup URL')}
+                                </Button>
+                              </div>
+                            )}
+
+                            {currentType === 54 && (
+                              <div className='space-y-4'>
+                                <FormField
+                                  control={form.control}
+                                  name='volc_asset_ak'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t('Volc Asset Library AccessKey')}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder={t(
+                                            'Required for private asset library AK/SK signing'
+                                          )}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormDescription>
+                                        {t(
+                                          'For the VolcEngine private asset library (virtual portraits), shared with video on this channel. The asset library cannot use an Ark API Key and requires AK/SK signing.'
+                                        )}
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name='volc_asset_sk'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t('Volc Asset Library SecretKey')}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type='password'
+                                          placeholder={t(
+                                            'Required for private asset library AK/SK signing'
+                                          )}
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name='volc_project_name'
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t('Volc Project Name')}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder='default'
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormDescription>
+                                        {t(
+                                          'The VolcEngine project the assets belong to. Leave empty for default.'
+                                        )}
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            )}
                           </fieldset>
                         </div>
 

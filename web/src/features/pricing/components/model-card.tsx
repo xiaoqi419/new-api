@@ -1,3 +1,6 @@
+import { memo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronRight, Copy } from 'lucide-react'
-import { memo, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Copy } from '@/components/icons'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
@@ -96,10 +96,10 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
     if (dynamicSummary.isSpecialExpression) {
       priceSummary = (
         <span className='min-w-0'>
-          <span className='text-amber-700 dark:text-amber-300'>
+          <span className='text-warning'>
             {t('Special billing expression')}
           </span>
-          <code className='text-muted-foreground/70 mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
+          <code className='text-muted-foreground mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
             {dynamicSummary.rawExpression}
           </code>
         </span>
@@ -194,85 +194,88 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   }
 
   return (
-    <div
+    <article
+      data-pricing-model-card
       className={cn(
-        'group relative flex flex-col rounded-xl border p-3 transition-colors sm:p-5',
-        'hover:bg-muted/20'
+        'group relative flex min-h-[154px] flex-col overflow-hidden rounded-[16px] border border-[#e2e2de] bg-white p-3 transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:border-[#c7c7c1] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] dark:border-white/12 dark:bg-[#151515] dark:hover:border-white/25 dark:hover:shadow-[0_10px_24px_rgba(0,0,0,0.28)] xl:h-[142px] xl:min-h-0'
       )}
     >
-      {/* Header: icon + name + price + actions */}
-      <div className='flex items-start justify-between gap-2.5 sm:gap-3'>
-        <div className='flex min-w-0 items-start gap-2.5 sm:gap-3'>
-          <div className='bg-muted/40 flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl'>
-            {modelIcon || (
-              <span className='text-muted-foreground text-sm font-bold'>
-                {initial}
-              </span>
-            )}
-          </div>
-          <div className='min-w-0'>
-            <h3 className='text-foreground truncate font-mono text-[15px] leading-tight font-bold'>
-              {props.model.model_name}
-            </h3>
-            <div className='mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm sm:mt-1 sm:gap-x-3'>
-              {priceSummary}
+      <button
+        type='button'
+        onClick={props.onClick}
+        className='absolute inset-0 z-0 rounded-[16px] outline-none focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111]'
+        aria-label={props.model.model_name}
+      />
+      <div className='pointer-events-none relative z-10 flex h-full flex-col'>
+        <div className='flex items-start justify-between gap-2'>
+          <div className='flex min-w-0 items-start gap-2'>
+            <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f1f1f1] dark:bg-white/10'>
+              {modelIcon || (
+                <span className='text-xs font-bold text-[#626262] dark:text-[#a8a8a8]'>
+                  {initial}
+                </span>
+              )}
+            </div>
+            <div className='min-w-0'>
+              <h3
+                title={props.model.model_name}
+                className='text-foreground truncate font-mono text-[13px] leading-[18px] font-bold'
+              >
+                {props.model.model_name}
+              </h3>
+              <div className='mt-0.5 flex max-h-9 flex-wrap items-baseline gap-x-2 gap-y-0 overflow-hidden text-[10px] leading-4'>
+                {priceSummary}
+              </div>
             </div>
           </div>
+
+          <div className='flex shrink-0 items-center'>
+            <button
+              type='button'
+              onClick={handleCopy}
+              className='pointer-events-auto rounded-full p-1.5 text-[#777] transition-colors hover:bg-[#f1f1f1] hover:text-[#111] motion-reduce:transition-none dark:text-[#a8a8a8] dark:hover:bg-white/10 dark:hover:text-white'
+              title={t('Copy')}
+              aria-label={t('Copy')}
+            >
+              <Copy className='size-3' />
+            </button>
+          </div>
         </div>
 
-        <div className='flex shrink-0 items-center gap-1.5'>
-          <button
-            type='button'
-            onClick={props.onClick}
-            className='text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors sm:px-2.5 sm:py-1.5'
-          >
-            {t('Details')}
-            <ChevronRight className='size-3.5' />
-          </button>
-          <button
-            type='button'
-            onClick={handleCopy}
-            className='text-muted-foreground hover:text-foreground hover:bg-muted rounded-md border p-1.5 transition-colors'
-            title={t('Copy')}
-          >
-            <Copy className='size-3.5' />
-          </button>
-        </div>
-      </div>
+        <p
+          title={props.model.description}
+          className='mt-2 line-clamp-1 flex-1 text-[11px] leading-4 text-[#626262] dark:text-[#a8a8a8]'
+        >
+          {props.model.description || t('No description available.')}
+        </p>
 
-      {/* Description */}
-      <p className='text-muted-foreground mt-2 line-clamp-1 flex-1 text-[13px] leading-relaxed sm:mt-4 sm:line-clamp-2 sm:min-h-[2.5rem]'>
-        {props.model.description || t('No description available.')}
-      </p>
+        <div className='mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1'>
+          <div className='flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1'>
+            {primaryGroup && (
+              <span className='max-w-[84px] truncate text-[10px] font-semibold text-[#626262] dark:text-[#a8a8a8]'>
+                {primaryGroup}
+              </span>
+            )}
+            <ModelBillingModeBadge model={props.model} />
+          </div>
+          <ModelPerfBadge perf={props.perf} className='row-span-2 self-start' />
 
-      {/* Footer: left metadata and right performance summary share row alignment */}
-      <div className='mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 sm:mt-4'>
-        <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-          {primaryGroup && (
-            <span className='text-muted-foreground text-sm font-medium'>
-              {primaryGroup}
-            </span>
-          )}
-          <ModelBillingModeBadge model={props.model} />
-        </div>
-        <ModelPerfBadge perf={props.perf} className='row-span-2 self-start' />
-
-        <div className='flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:gap-x-3 sm:gap-y-1'>
-          {bottomTags.map((item) => (
-            <span key={item} className='text-muted-foreground/70 text-xs'>
-              {item}
-            </span>
-          ))}
-          <span className='text-muted-foreground/50 text-xs'>
-            {tokenUnitLabel}
-          </span>
-          {hiddenCount > 0 && (
-            <span className='text-muted-foreground/40 text-xs'>
-              +{hiddenCount}
-            </span>
-          )}
+          <div className='flex min-w-0 items-center gap-x-1.5 overflow-hidden text-[10px]'>
+            {bottomTags.map((item) => (
+              <span
+                key={item}
+                className='truncate text-[#8a8a8a] dark:text-[#8a8a8a]'
+              >
+                {item}
+              </span>
+            ))}
+            <span className='shrink-0 text-[#8a8a8a]'>{tokenUnitLabel}</span>
+            {hiddenCount > 0 && (
+              <span className='shrink-0 text-[#8a8a8a]'>+{hiddenCount}</span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </article>
   )
 })

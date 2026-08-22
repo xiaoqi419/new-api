@@ -29,29 +29,62 @@ import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as ConsoleLogRouteImport } from './routes/console/log'
+import { Route as ConsoleTopupRouteImport } from './routes/console/topup'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
+import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
+import { Route as AuthenticatedAccountSectionRouteImport } from './routes/_authenticated/account/$section'
+import { Route as AuthenticatedAgentApplyIndexRouteImport } from './routes/_authenticated/agent-apply/index'
+import { Route as AuthenticatedAgentConsoleIndexRouteImport } from './routes/_authenticated/agent-console/index'
+import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents/index'
+import { Route as AuthenticatedAnnouncementsIndexRouteImport } from './routes/_authenticated/announcements/index'
+import { Route as AuthenticatedAnnouncementsAdminRouteImport } from './routes/_authenticated/announcements/admin'
+import { Route as AuthenticatedAssetLibraryIndexRouteImport } from './routes/_authenticated/asset-library/index'
+import { Route as AuthenticatedCanvasIndexRouteImport } from './routes/_authenticated/canvas/index'
+import { Route as AuthenticatedChangelogIndexRouteImport } from './routes/_authenticated/changelog/index'
+import { Route as AuthenticatedChannelMonitorIndexRouteImport } from './routes/_authenticated/channel-monitor/index'
+import { Route as AuthenticatedChannelMonitorDetailRouteImport } from './routes/_authenticated/channel-monitor/detail'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
+import { Route as AuthenticatedErrorReportsIndexRouteImport } from './routes/_authenticated/error-reports/index'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedFinanceIndexRouteImport } from './routes/_authenticated/finance/index'
+import { Route as AuthenticatedFinanceSectionRouteImport } from './routes/_authenticated/finance/$section'
+import { Route as AuthenticatedGroupbuyAdminRouteImport } from './routes/_authenticated/groupbuy/admin'
+import { Route as AuthenticatedGroupbuyDetailRouteImport } from './routes/_authenticated/groupbuy/detail'
+import { Route as AuthenticatedIdentityVerificationAdminRouteImport } from './routes/_authenticated/identity-verification/admin'
+import { Route as AuthenticatedImageGenerationIndexRouteImport } from './routes/_authenticated/image-generation/index'
+import { Route as AuthenticatedInvoicesAdminRouteImport } from './routes/_authenticated/invoices/admin'
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
+import { Route as AuthenticatedLotteryAdminRouteImport } from './routes/_authenticated/lottery/admin'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
+import { Route as AuthenticatedPlaygroundSectionRouteImport } from './routes/_authenticated/playground/$section'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
+import { Route as AuthenticatedRebateIndexRouteImport } from './routes/_authenticated/rebate/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
+import { Route as AuthenticatedTicketsIndexRouteImport } from './routes/_authenticated/tickets/index'
+import { Route as AuthenticatedTicketsAdminRouteImport } from './routes/_authenticated/tickets/admin'
+import { Route as AuthenticatedTicketsAdminDetailRouteImport } from './routes/_authenticated/tickets/admin-detail'
+import { Route as AuthenticatedTicketsDetailRouteImport } from './routes/_authenticated/tickets/detail'
 import { Route as AuthenticatedUsageLogsIndexRouteImport } from './routes/_authenticated/usage-logs/index'
 import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_authenticated/usage-logs/$section'
+import { Route as AuthenticatedUserRankingIndexRouteImport } from './routes/_authenticated/user-ranking/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
+import { Route as AuthenticatedVideoGenerationIndexRouteImport } from './routes/_authenticated/video-generation/index'
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
+import { Route as AuthenticatedWorkbenchIndexRouteImport } from './routes/_authenticated/workbench/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -167,6 +200,21 @@ const AboutIndexRoute = AboutIndexRouteImport.update({
   path: '/about/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsoleLogRoute = ConsoleLogRouteImport.update({
+  id: '/console/log',
+  path: '/console/log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleTopupRoute = ConsoleTopupRouteImport.update({
+  id: '/console/topup',
+  path: '/console/topup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/docs/',
+  path: '/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthProviderRoute = OauthProviderRouteImport.update({
   id: '/oauth/$provider',
   path: '/oauth/$provider',
@@ -192,6 +240,78 @@ const authUserResetRoute = authUserResetRouteImport.update({
   path: '/user/reset',
   getParentRoute: () => authRouteRoute,
 } as any)
+const AuthenticatedAccountIndexRoute =
+  AuthenticatedAccountIndexRouteImport.update({
+    id: '/account/',
+    path: '/account/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccountSectionRoute =
+  AuthenticatedAccountSectionRouteImport.update({
+    id: '/account/$section',
+    path: '/account/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentApplyIndexRoute =
+  AuthenticatedAgentApplyIndexRouteImport.update({
+    id: '/agent-apply/',
+    path: '/agent-apply/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentConsoleIndexRoute =
+  AuthenticatedAgentConsoleIndexRouteImport.update({
+    id: '/agent-console/',
+    path: '/agent-console/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgentsIndexRoute =
+  AuthenticatedAgentsIndexRouteImport.update({
+    id: '/agents/',
+    path: '/agents/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnnouncementsIndexRoute =
+  AuthenticatedAnnouncementsIndexRouteImport.update({
+    id: '/announcements/',
+    path: '/announcements/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnnouncementsAdminRoute =
+  AuthenticatedAnnouncementsAdminRouteImport.update({
+    id: '/announcements/admin',
+    path: '/announcements/admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAssetLibraryIndexRoute =
+  AuthenticatedAssetLibraryIndexRouteImport.update({
+    id: '/asset-library/',
+    path: '/asset-library/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCanvasIndexRoute =
+  AuthenticatedCanvasIndexRouteImport.update({
+    id: '/canvas/',
+    path: '/canvas/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChangelogIndexRoute =
+  AuthenticatedChangelogIndexRouteImport.update({
+    id: '/changelog/',
+    path: '/changelog/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChannelMonitorIndexRoute =
+  AuthenticatedChannelMonitorIndexRouteImport.update({
+    id: '/channel-monitor/',
+    path: '/channel-monitor/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChannelMonitorDetailRoute =
+  AuthenticatedChannelMonitorDetailRouteImport.update({
+    id: '/channel-monitor/detail',
+    path: '/channel-monitor/detail',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChannelsIndexRoute =
   AuthenticatedChannelsIndexRouteImport.update({
     id: '/channels/',
@@ -215,10 +335,58 @@ const AuthenticatedDashboardSectionRoute =
     path: '/dashboard/$section',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedErrorReportsIndexRoute =
+  AuthenticatedErrorReportsIndexRouteImport.update({
+    id: '/error-reports/',
+    path: '/error-reports/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
     path: '/errors/$error',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceIndexRoute =
+  AuthenticatedFinanceIndexRouteImport.update({
+    id: '/finance/',
+    path: '/finance/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceSectionRoute =
+  AuthenticatedFinanceSectionRouteImport.update({
+    id: '/finance/$section',
+    path: '/finance/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGroupbuyAdminRoute =
+  AuthenticatedGroupbuyAdminRouteImport.update({
+    id: '/groupbuy/admin',
+    path: '/groupbuy/admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGroupbuyDetailRoute =
+  AuthenticatedGroupbuyDetailRouteImport.update({
+    id: '/groupbuy/detail',
+    path: '/groupbuy/detail',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedIdentityVerificationAdminRoute =
+  AuthenticatedIdentityVerificationAdminRouteImport.update({
+    id: '/identity-verification/admin',
+    path: '/identity-verification/admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImageGenerationIndexRoute =
+  AuthenticatedImageGenerationIndexRouteImport.update({
+    id: '/image-generation/',
+    path: '/image-generation/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInvoicesAdminRoute =
+  AuthenticatedInvoicesAdminRouteImport.update({
+    id: '/invoices/admin',
+    path: '/invoices/admin',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedKeysIndexRoute = AuthenticatedKeysIndexRouteImport.update({
@@ -226,6 +394,12 @@ const AuthenticatedKeysIndexRoute = AuthenticatedKeysIndexRouteImport.update({
   path: '/keys/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLotteryAdminRoute =
+  AuthenticatedLotteryAdminRouteImport.update({
+    id: '/lottery/admin',
+    path: '/lottery/admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedModelsIndexRoute =
   AuthenticatedModelsIndexRouteImport.update({
     id: '/models/',
@@ -244,10 +418,22 @@ const AuthenticatedPlaygroundIndexRoute =
     path: '/playground/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPlaygroundSectionRoute =
+  AuthenticatedPlaygroundSectionRouteImport.update({
+    id: '/playground/$section',
+    path: '/playground/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfileIndexRoute =
   AuthenticatedProfileIndexRouteImport.update({
     id: '/profile/',
     path: '/profile/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRebateIndexRoute =
+  AuthenticatedRebateIndexRouteImport.update({
+    id: '/rebate/',
+    path: '/rebate/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRedemptionCodesIndexRoute =
@@ -274,6 +460,30 @@ const AuthenticatedSystemSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
   } as any)
+const AuthenticatedTicketsIndexRoute =
+  AuthenticatedTicketsIndexRouteImport.update({
+    id: '/tickets/',
+    path: '/tickets/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTicketsAdminRoute =
+  AuthenticatedTicketsAdminRouteImport.update({
+    id: '/tickets/admin',
+    path: '/tickets/admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTicketsAdminDetailRoute =
+  AuthenticatedTicketsAdminDetailRouteImport.update({
+    id: '/tickets/admin-detail',
+    path: '/tickets/admin-detail',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTicketsDetailRoute =
+  AuthenticatedTicketsDetailRouteImport.update({
+    id: '/tickets/detail',
+    path: '/tickets/detail',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsageLogsIndexRoute =
   AuthenticatedUsageLogsIndexRouteImport.update({
     id: '/usage-logs/',
@@ -286,15 +496,33 @@ const AuthenticatedUsageLogsSectionRoute =
     path: '/usage-logs/$section',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedUserRankingIndexRoute =
+  AuthenticatedUserRankingIndexRouteImport.update({
+    id: '/user-ranking/',
+    path: '/user-ranking/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   id: '/users/',
   path: '/users/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVideoGenerationIndexRoute =
+  AuthenticatedVideoGenerationIndexRouteImport.update({
+    id: '/video-generation/',
+    path: '/video-generation/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWalletIndexRoute =
   AuthenticatedWalletIndexRouteImport.update({
     id: '/wallet/',
     path: '/wallet/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWorkbenchIndexRoute =
+  AuthenticatedWorkbenchIndexRouteImport.update({
+    id: '/workbench/',
+    path: '/workbench/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
@@ -405,30 +633,63 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
+  '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
+  '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/finance/$section': typeof AuthenticatedFinanceSectionRoute
+  '/groupbuy/admin': typeof AuthenticatedGroupbuyAdminRoute
+  '/groupbuy/detail': typeof AuthenticatedGroupbuyDetailRoute
+  '/identity-verification/admin': typeof AuthenticatedIdentityVerificationAdminRoute
+  '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
+  '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
+  '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
+  '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
+  '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
+  '/account/': typeof AuthenticatedAccountIndexRoute
+  '/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
+  '/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
+  '/agents/': typeof AuthenticatedAgentsIndexRoute
+  '/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
+  '/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
+  '/canvas/': typeof AuthenticatedCanvasIndexRoute
+  '/changelog/': typeof AuthenticatedChangelogIndexRoute
+  '/channel-monitor/': typeof AuthenticatedChannelMonitorIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/error-reports/': typeof AuthenticatedErrorReportsIndexRoute
+  '/finance/': typeof AuthenticatedFinanceIndexRoute
+  '/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
+  '/rebate/': typeof AuthenticatedRebateIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
+  '/tickets/': typeof AuthenticatedTicketsIndexRoute
   '/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
+  '/user-ranking/': typeof AuthenticatedUserRankingIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/video-generation/': typeof AuthenticatedVideoGenerationIndexRoute
   '/wallet/': typeof AuthenticatedWalletIndexRoute
+  '/workbench/': typeof AuthenticatedWorkbenchIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -462,30 +723,63 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
+  '/docs': typeof DocsIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
+  '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
+  '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/finance/$section': typeof AuthenticatedFinanceSectionRoute
+  '/groupbuy/admin': typeof AuthenticatedGroupbuyAdminRoute
+  '/groupbuy/detail': typeof AuthenticatedGroupbuyDetailRoute
+  '/identity-verification/admin': typeof AuthenticatedIdentityVerificationAdminRoute
+  '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
+  '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
+  '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
+  '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
+  '/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
+  '/account': typeof AuthenticatedAccountIndexRoute
+  '/agent-apply': typeof AuthenticatedAgentApplyIndexRoute
+  '/agent-console': typeof AuthenticatedAgentConsoleIndexRoute
+  '/agents': typeof AuthenticatedAgentsIndexRoute
+  '/announcements': typeof AuthenticatedAnnouncementsIndexRoute
+  '/asset-library': typeof AuthenticatedAssetLibraryIndexRoute
+  '/canvas': typeof AuthenticatedCanvasIndexRoute
+  '/changelog': typeof AuthenticatedChangelogIndexRoute
+  '/channel-monitor': typeof AuthenticatedChannelMonitorIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/error-reports': typeof AuthenticatedErrorReportsIndexRoute
+  '/finance': typeof AuthenticatedFinanceIndexRoute
+  '/image-generation': typeof AuthenticatedImageGenerationIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
+  '/rebate': typeof AuthenticatedRebateIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-info': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
+  '/tickets': typeof AuthenticatedTicketsIndexRoute
   '/usage-logs': typeof AuthenticatedUsageLogsIndexRoute
+  '/user-ranking': typeof AuthenticatedUserRankingIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/video-generation': typeof AuthenticatedVideoGenerationIndexRoute
   '/wallet': typeof AuthenticatedWalletIndexRoute
+  '/workbench': typeof AuthenticatedWorkbenchIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -523,30 +817,63 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
+  '/console/log': typeof ConsoleLogRoute
+  '/console/topup': typeof ConsoleTopupRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
+  '/_authenticated/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/_authenticated/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
+  '/_authenticated/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/_authenticated/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/finance/$section': typeof AuthenticatedFinanceSectionRoute
+  '/_authenticated/groupbuy/admin': typeof AuthenticatedGroupbuyAdminRoute
+  '/_authenticated/groupbuy/detail': typeof AuthenticatedGroupbuyDetailRoute
+  '/_authenticated/identity-verification/admin': typeof AuthenticatedIdentityVerificationAdminRoute
+  '/_authenticated/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
+  '/_authenticated/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/_authenticated/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
+  '/_authenticated/tickets/admin': typeof AuthenticatedTicketsAdminRoute
+  '/_authenticated/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
+  '/_authenticated/tickets/detail': typeof AuthenticatedTicketsDetailRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
+  '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
+  '/_authenticated/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
+  '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
+  '/_authenticated/announcements/': typeof AuthenticatedAnnouncementsIndexRoute
+  '/_authenticated/asset-library/': typeof AuthenticatedAssetLibraryIndexRoute
+  '/_authenticated/canvas/': typeof AuthenticatedCanvasIndexRoute
+  '/_authenticated/changelog/': typeof AuthenticatedChangelogIndexRoute
+  '/_authenticated/channel-monitor/': typeof AuthenticatedChannelMonitorIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/error-reports/': typeof AuthenticatedErrorReportsIndexRoute
+  '/_authenticated/finance/': typeof AuthenticatedFinanceIndexRoute
+  '/_authenticated/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
+  '/_authenticated/rebate/': typeof AuthenticatedRebateIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
+  '/_authenticated/tickets/': typeof AuthenticatedTicketsIndexRoute
   '/_authenticated/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
+  '/_authenticated/user-ranking/': typeof AuthenticatedUserRankingIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/video-generation/': typeof AuthenticatedVideoGenerationIndexRoute
   '/_authenticated/wallet/': typeof AuthenticatedWalletIndexRoute
+  '/_authenticated/workbench/': typeof AuthenticatedWorkbenchIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -583,30 +910,63 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about/'
+    | '/docs/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
     | '/user/reset'
+    | '/account/$section'
+    | '/announcements/admin'
+    | '/channel-monitor/detail'
     | '/chat/$chatId'
     | '/dashboard/$section'
     | '/errors/$error'
+    | '/finance/$section'
+    | '/groupbuy/admin'
+    | '/groupbuy/detail'
+    | '/identity-verification/admin'
+    | '/invoices/admin'
+    | '/lottery/admin'
     | '/models/$section'
+    | '/playground/$section'
+    | '/tickets/admin'
+    | '/tickets/admin-detail'
+    | '/tickets/detail'
     | '/usage-logs/$section'
+    | '/account/'
+    | '/agent-apply/'
+    | '/agent-console/'
+    | '/agents/'
+    | '/announcements/'
+    | '/asset-library/'
+    | '/canvas/'
+    | '/changelog/'
+    | '/channel-monitor/'
     | '/channels/'
     | '/dashboard/'
+    | '/error-reports/'
+    | '/finance/'
+    | '/image-generation/'
     | '/keys/'
     | '/models/'
     | '/playground/'
     | '/profile/'
+    | '/rebate/'
     | '/redemption-codes/'
     | '/subscriptions/'
     | '/system-info/'
     | '/system-settings/'
+    | '/tickets/'
     | '/usage-logs/'
+    | '/user-ranking/'
     | '/users/'
+    | '/video-generation/'
     | '/wallet/'
+    | '/workbench/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -640,30 +1000,63 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about'
+    | '/docs'
     | '/pricing'
     | '/rankings'
     | '/setup'
     | '/user/reset'
+    | '/account/$section'
+    | '/announcements/admin'
+    | '/channel-monitor/detail'
     | '/chat/$chatId'
     | '/dashboard/$section'
     | '/errors/$error'
+    | '/finance/$section'
+    | '/groupbuy/admin'
+    | '/groupbuy/detail'
+    | '/identity-verification/admin'
+    | '/invoices/admin'
+    | '/lottery/admin'
     | '/models/$section'
+    | '/playground/$section'
+    | '/tickets/admin'
+    | '/tickets/admin-detail'
+    | '/tickets/detail'
     | '/usage-logs/$section'
+    | '/account'
+    | '/agent-apply'
+    | '/agent-console'
+    | '/agents'
+    | '/announcements'
+    | '/asset-library'
+    | '/canvas'
+    | '/changelog'
+    | '/channel-monitor'
     | '/channels'
     | '/dashboard'
+    | '/error-reports'
+    | '/finance'
+    | '/image-generation'
     | '/keys'
     | '/models'
     | '/playground'
     | '/profile'
+    | '/rebate'
     | '/redemption-codes'
     | '/subscriptions'
     | '/system-info'
     | '/system-settings'
+    | '/tickets'
     | '/usage-logs'
+    | '/user-ranking'
     | '/users'
+    | '/video-generation'
     | '/wallet'
+    | '/workbench'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -700,30 +1093,63 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/chat2link'
+    | '/console/log'
+    | '/console/topup'
     | '/oauth/$provider'
     | '/about/'
+    | '/docs/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
     | '/(auth)/user/reset'
+    | '/_authenticated/account/$section'
+    | '/_authenticated/announcements/admin'
+    | '/_authenticated/channel-monitor/detail'
     | '/_authenticated/chat/$chatId'
     | '/_authenticated/dashboard/$section'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/finance/$section'
+    | '/_authenticated/groupbuy/admin'
+    | '/_authenticated/groupbuy/detail'
+    | '/_authenticated/identity-verification/admin'
+    | '/_authenticated/invoices/admin'
+    | '/_authenticated/lottery/admin'
     | '/_authenticated/models/$section'
+    | '/_authenticated/playground/$section'
+    | '/_authenticated/tickets/admin'
+    | '/_authenticated/tickets/admin-detail'
+    | '/_authenticated/tickets/detail'
     | '/_authenticated/usage-logs/$section'
+    | '/_authenticated/account/'
+    | '/_authenticated/agent-apply/'
+    | '/_authenticated/agent-console/'
+    | '/_authenticated/agents/'
+    | '/_authenticated/announcements/'
+    | '/_authenticated/asset-library/'
+    | '/_authenticated/canvas/'
+    | '/_authenticated/changelog/'
+    | '/_authenticated/channel-monitor/'
     | '/_authenticated/channels/'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/error-reports/'
+    | '/_authenticated/finance/'
+    | '/_authenticated/image-generation/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
+    | '/_authenticated/rebate/'
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/subscriptions/'
     | '/_authenticated/system-info/'
     | '/_authenticated/system-settings/'
+    | '/_authenticated/tickets/'
     | '/_authenticated/usage-logs/'
+    | '/_authenticated/user-ranking/'
     | '/_authenticated/users/'
+    | '/_authenticated/video-generation/'
     | '/_authenticated/wallet/'
+    | '/_authenticated/workbench/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
@@ -752,8 +1178,11 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  ConsoleLogRoute: typeof ConsoleLogRoute
+  ConsoleTopupRoute: typeof ConsoleTopupRoute
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
+  DocsIndexRoute: typeof DocsIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
@@ -902,6 +1331,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/console/log': {
+      id: '/console/log'
+      path: '/console/log'
+      fullPath: '/console/log'
+      preLoaderRoute: typeof ConsoleLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/console/topup': {
+      id: '/console/topup'
+      path: '/console/topup'
+      fullPath: '/console/topup'
+      preLoaderRoute: typeof ConsoleTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/docs'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/$provider': {
       id: '/oauth/$provider'
       path: '/oauth/$provider'
@@ -937,6 +1387,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authUserResetRouteImport
       parentRoute: typeof authRouteRoute
     }
+    '/_authenticated/account/': {
+      id: '/_authenticated/account/'
+      path: '/account'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AuthenticatedAccountIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/account/$section': {
+      id: '/_authenticated/account/$section'
+      path: '/account/$section'
+      fullPath: '/account/$section'
+      preLoaderRoute: typeof AuthenticatedAccountSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agent-apply/': {
+      id: '/_authenticated/agent-apply/'
+      path: '/agent-apply'
+      fullPath: '/agent-apply/'
+      preLoaderRoute: typeof AuthenticatedAgentApplyIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agent-console/': {
+      id: '/_authenticated/agent-console/'
+      path: '/agent-console'
+      fullPath: '/agent-console/'
+      preLoaderRoute: typeof AuthenticatedAgentConsoleIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agents/': {
+      id: '/_authenticated/agents/'
+      path: '/agents'
+      fullPath: '/agents/'
+      preLoaderRoute: typeof AuthenticatedAgentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/announcements/': {
+      id: '/_authenticated/announcements/'
+      path: '/announcements'
+      fullPath: '/announcements/'
+      preLoaderRoute: typeof AuthenticatedAnnouncementsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/announcements/admin': {
+      id: '/_authenticated/announcements/admin'
+      path: '/announcements/admin'
+      fullPath: '/announcements/admin'
+      preLoaderRoute: typeof AuthenticatedAnnouncementsAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/asset-library/': {
+      id: '/_authenticated/asset-library/'
+      path: '/asset-library'
+      fullPath: '/asset-library/'
+      preLoaderRoute: typeof AuthenticatedAssetLibraryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/canvas/': {
+      id: '/_authenticated/canvas/'
+      path: '/canvas'
+      fullPath: '/canvas/'
+      preLoaderRoute: typeof AuthenticatedCanvasIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/changelog/': {
+      id: '/_authenticated/changelog/'
+      path: '/changelog'
+      fullPath: '/changelog/'
+      preLoaderRoute: typeof AuthenticatedChangelogIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/channel-monitor/': {
+      id: '/_authenticated/channel-monitor/'
+      path: '/channel-monitor'
+      fullPath: '/channel-monitor/'
+      preLoaderRoute: typeof AuthenticatedChannelMonitorIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/channel-monitor/detail': {
+      id: '/_authenticated/channel-monitor/detail'
+      path: '/channel-monitor/detail'
+      fullPath: '/channel-monitor/detail'
+      preLoaderRoute: typeof AuthenticatedChannelMonitorDetailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/channels/': {
       id: '/_authenticated/channels/'
       path: '/channels'
@@ -965,6 +1499,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardSectionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/error-reports/': {
+      id: '/_authenticated/error-reports/'
+      path: '/error-reports'
+      fullPath: '/error-reports/'
+      preLoaderRoute: typeof AuthenticatedErrorReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
       path: '/errors/$error'
@@ -972,11 +1513,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/finance/': {
+      id: '/_authenticated/finance/'
+      path: '/finance'
+      fullPath: '/finance/'
+      preLoaderRoute: typeof AuthenticatedFinanceIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance/$section': {
+      id: '/_authenticated/finance/$section'
+      path: '/finance/$section'
+      fullPath: '/finance/$section'
+      preLoaderRoute: typeof AuthenticatedFinanceSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/groupbuy/admin': {
+      id: '/_authenticated/groupbuy/admin'
+      path: '/groupbuy/admin'
+      fullPath: '/groupbuy/admin'
+      preLoaderRoute: typeof AuthenticatedGroupbuyAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/groupbuy/detail': {
+      id: '/_authenticated/groupbuy/detail'
+      path: '/groupbuy/detail'
+      fullPath: '/groupbuy/detail'
+      preLoaderRoute: typeof AuthenticatedGroupbuyDetailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/identity-verification/admin': {
+      id: '/_authenticated/identity-verification/admin'
+      path: '/identity-verification/admin'
+      fullPath: '/identity-verification/admin'
+      preLoaderRoute: typeof AuthenticatedIdentityVerificationAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/image-generation/': {
+      id: '/_authenticated/image-generation/'
+      path: '/image-generation'
+      fullPath: '/image-generation/'
+      preLoaderRoute: typeof AuthenticatedImageGenerationIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoices/admin': {
+      id: '/_authenticated/invoices/admin'
+      path: '/invoices/admin'
+      fullPath: '/invoices/admin'
+      preLoaderRoute: typeof AuthenticatedInvoicesAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/keys/': {
       id: '/_authenticated/keys/'
       path: '/keys'
       fullPath: '/keys/'
       preLoaderRoute: typeof AuthenticatedKeysIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/lottery/admin': {
+      id: '/_authenticated/lottery/admin'
+      path: '/lottery/admin'
+      fullPath: '/lottery/admin'
+      preLoaderRoute: typeof AuthenticatedLotteryAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/models/': {
@@ -1000,11 +1597,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlaygroundIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/playground/$section': {
+      id: '/_authenticated/playground/$section'
+      path: '/playground/$section'
+      fullPath: '/playground/$section'
+      preLoaderRoute: typeof AuthenticatedPlaygroundSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile/': {
       id: '/_authenticated/profile/'
       path: '/profile'
       fullPath: '/profile/'
       preLoaderRoute: typeof AuthenticatedProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rebate/': {
+      id: '/_authenticated/rebate/'
+      path: '/rebate'
+      fullPath: '/rebate/'
+      preLoaderRoute: typeof AuthenticatedRebateIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/redemption-codes/': {
@@ -1035,6 +1646,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
     }
+    '/_authenticated/tickets/': {
+      id: '/_authenticated/tickets/'
+      path: '/tickets'
+      fullPath: '/tickets/'
+      preLoaderRoute: typeof AuthenticatedTicketsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tickets/admin': {
+      id: '/_authenticated/tickets/admin'
+      path: '/tickets/admin'
+      fullPath: '/tickets/admin'
+      preLoaderRoute: typeof AuthenticatedTicketsAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tickets/admin-detail': {
+      id: '/_authenticated/tickets/admin-detail'
+      path: '/tickets/admin-detail'
+      fullPath: '/tickets/admin-detail'
+      preLoaderRoute: typeof AuthenticatedTicketsAdminDetailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tickets/detail': {
+      id: '/_authenticated/tickets/detail'
+      path: '/tickets/detail'
+      fullPath: '/tickets/detail'
+      preLoaderRoute: typeof AuthenticatedTicketsDetailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usage-logs/': {
       id: '/_authenticated/usage-logs/'
       path: '/usage-logs'
@@ -1049,6 +1688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsageLogsSectionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/user-ranking/': {
+      id: '/_authenticated/user-ranking/'
+      path: '/user-ranking'
+      fullPath: '/user-ranking/'
+      preLoaderRoute: typeof AuthenticatedUserRankingIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/users/': {
       id: '/_authenticated/users/'
       path: '/users'
@@ -1056,11 +1702,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/video-generation/': {
+      id: '/_authenticated/video-generation/'
+      path: '/video-generation'
+      fullPath: '/video-generation/'
+      preLoaderRoute: typeof AuthenticatedVideoGenerationIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/wallet/': {
       id: '/_authenticated/wallet/'
       path: '/wallet'
       fullPath: '/wallet/'
       preLoaderRoute: typeof AuthenticatedWalletIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workbench/': {
+      id: '/_authenticated/workbench/'
+      path: '/workbench'
+      fullPath: '/workbench/'
+      preLoaderRoute: typeof AuthenticatedWorkbenchIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/pricing/$modelId/': {
@@ -1257,47 +1917,111 @@ const AuthenticatedSystemSettingsRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemSettingsRouteRoute: typeof AuthenticatedSystemSettingsRouteRouteWithChildren
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
+  AuthenticatedAccountSectionRoute: typeof AuthenticatedAccountSectionRoute
+  AuthenticatedAnnouncementsAdminRoute: typeof AuthenticatedAnnouncementsAdminRoute
+  AuthenticatedChannelMonitorDetailRoute: typeof AuthenticatedChannelMonitorDetailRoute
   AuthenticatedChatChatIdRoute: typeof AuthenticatedChatChatIdRoute
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedFinanceSectionRoute: typeof AuthenticatedFinanceSectionRoute
+  AuthenticatedGroupbuyAdminRoute: typeof AuthenticatedGroupbuyAdminRoute
+  AuthenticatedGroupbuyDetailRoute: typeof AuthenticatedGroupbuyDetailRoute
+  AuthenticatedIdentityVerificationAdminRoute: typeof AuthenticatedIdentityVerificationAdminRoute
+  AuthenticatedInvoicesAdminRoute: typeof AuthenticatedInvoicesAdminRoute
+  AuthenticatedLotteryAdminRoute: typeof AuthenticatedLotteryAdminRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
+  AuthenticatedPlaygroundSectionRoute: typeof AuthenticatedPlaygroundSectionRoute
+  AuthenticatedTicketsAdminRoute: typeof AuthenticatedTicketsAdminRoute
+  AuthenticatedTicketsAdminDetailRoute: typeof AuthenticatedTicketsAdminDetailRoute
+  AuthenticatedTicketsDetailRoute: typeof AuthenticatedTicketsDetailRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
+  AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
+  AuthenticatedAgentApplyIndexRoute: typeof AuthenticatedAgentApplyIndexRoute
+  AuthenticatedAgentConsoleIndexRoute: typeof AuthenticatedAgentConsoleIndexRoute
+  AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
+  AuthenticatedAnnouncementsIndexRoute: typeof AuthenticatedAnnouncementsIndexRoute
+  AuthenticatedAssetLibraryIndexRoute: typeof AuthenticatedAssetLibraryIndexRoute
+  AuthenticatedCanvasIndexRoute: typeof AuthenticatedCanvasIndexRoute
+  AuthenticatedChangelogIndexRoute: typeof AuthenticatedChangelogIndexRoute
+  AuthenticatedChannelMonitorIndexRoute: typeof AuthenticatedChannelMonitorIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+  AuthenticatedErrorReportsIndexRoute: typeof AuthenticatedErrorReportsIndexRoute
+  AuthenticatedFinanceIndexRoute: typeof AuthenticatedFinanceIndexRoute
+  AuthenticatedImageGenerationIndexRoute: typeof AuthenticatedImageGenerationIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
+  AuthenticatedRebateIndexRoute: typeof AuthenticatedRebateIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
   AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
+  AuthenticatedTicketsIndexRoute: typeof AuthenticatedTicketsIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
+  AuthenticatedUserRankingIndexRoute: typeof AuthenticatedUserRankingIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+  AuthenticatedVideoGenerationIndexRoute: typeof AuthenticatedVideoGenerationIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
+  AuthenticatedWorkbenchIndexRoute: typeof AuthenticatedWorkbenchIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSystemSettingsRouteRoute:
     AuthenticatedSystemSettingsRouteRouteWithChildren,
   AuthenticatedChat2linkRoute: AuthenticatedChat2linkRoute,
+  AuthenticatedAccountSectionRoute: AuthenticatedAccountSectionRoute,
+  AuthenticatedAnnouncementsAdminRoute: AuthenticatedAnnouncementsAdminRoute,
+  AuthenticatedChannelMonitorDetailRoute:
+    AuthenticatedChannelMonitorDetailRoute,
   AuthenticatedChatChatIdRoute: AuthenticatedChatChatIdRoute,
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedFinanceSectionRoute: AuthenticatedFinanceSectionRoute,
+  AuthenticatedGroupbuyAdminRoute: AuthenticatedGroupbuyAdminRoute,
+  AuthenticatedGroupbuyDetailRoute: AuthenticatedGroupbuyDetailRoute,
+  AuthenticatedIdentityVerificationAdminRoute:
+    AuthenticatedIdentityVerificationAdminRoute,
+  AuthenticatedInvoicesAdminRoute: AuthenticatedInvoicesAdminRoute,
+  AuthenticatedLotteryAdminRoute: AuthenticatedLotteryAdminRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
+  AuthenticatedPlaygroundSectionRoute: AuthenticatedPlaygroundSectionRoute,
+  AuthenticatedTicketsAdminRoute: AuthenticatedTicketsAdminRoute,
+  AuthenticatedTicketsAdminDetailRoute: AuthenticatedTicketsAdminDetailRoute,
+  AuthenticatedTicketsDetailRoute: AuthenticatedTicketsDetailRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
+  AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
+  AuthenticatedAgentApplyIndexRoute: AuthenticatedAgentApplyIndexRoute,
+  AuthenticatedAgentConsoleIndexRoute: AuthenticatedAgentConsoleIndexRoute,
+  AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,
+  AuthenticatedAnnouncementsIndexRoute: AuthenticatedAnnouncementsIndexRoute,
+  AuthenticatedAssetLibraryIndexRoute: AuthenticatedAssetLibraryIndexRoute,
+  AuthenticatedCanvasIndexRoute: AuthenticatedCanvasIndexRoute,
+  AuthenticatedChangelogIndexRoute: AuthenticatedChangelogIndexRoute,
+  AuthenticatedChannelMonitorIndexRoute: AuthenticatedChannelMonitorIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  AuthenticatedErrorReportsIndexRoute: AuthenticatedErrorReportsIndexRoute,
+  AuthenticatedFinanceIndexRoute: AuthenticatedFinanceIndexRoute,
+  AuthenticatedImageGenerationIndexRoute:
+    AuthenticatedImageGenerationIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
+  AuthenticatedRebateIndexRoute: AuthenticatedRebateIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
   AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
+  AuthenticatedTicketsIndexRoute: AuthenticatedTicketsIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
+  AuthenticatedUserRankingIndexRoute: AuthenticatedUserRankingIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+  AuthenticatedVideoGenerationIndexRoute:
+    AuthenticatedVideoGenerationIndexRoute,
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
+  AuthenticatedWorkbenchIndexRoute: AuthenticatedWorkbenchIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1314,8 +2038,11 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  ConsoleLogRoute: ConsoleLogRoute,
+  ConsoleTopupRoute: ConsoleTopupRoute,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
+  DocsIndexRoute: DocsIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
   SetupIndexRoute: SetupIndexRoute,

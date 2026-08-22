@@ -296,7 +296,9 @@ func TaskGetAllTasks(startIdx int, num int, queryParams SyncTaskQueryParams) []*
 
 func GetTimedOutUnfinishedTasks(cutoffUnix int64, limit int) []*Task {
 	var tasks []*Task
-	err := DB.Where("progress != ?", "100%").
+	// 未完成任务以状态为准；不能再叠加 progress != '100%'，否则非终态但进度已是 100%
+	// 的任务会被永久排除在轮询与超时扫描之外，卡死在 in_progress + 100%。
+	err := DB.
 		Where("status NOT IN ?", []string{TaskStatusFailure, TaskStatusSuccess}).
 		Where("submit_time < ?", cutoffUnix).
 		Order("submit_time").
@@ -311,8 +313,8 @@ func GetTimedOutUnfinishedTasks(cutoffUnix int64, limit int) []*Task {
 func GetAllUnFinishSyncTasks(limit int) []*Task {
 	var tasks []*Task
 	var err error
-	// get all tasks progress is not 100%
-	err = DB.Where("progress != ?", "100%").Where("status != ?", TaskStatusFailure).Where("status != ?", TaskStatusSuccess).Limit(limit).Order("id").Find(&tasks).Error
+	// 未完成任务以状态为准，不能用 progress != '100%' 过滤，否则非终态但进度 100% 的任务会被永久漏轮询。
+	err = DB.Where("status != ?", TaskStatusFailure).Where("status != ?", TaskStatusSuccess).Limit(limit).Order("id").Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -326,7 +328,6 @@ func GetAllUnFinishSyncTasks(limit int) []*Task {
 func HasUnfinishedSyncTasks() bool {
 	var id int64
 	err := DB.Model(&Task{}).
-		Where("progress != ?", "100%").
 		Where("status != ?", TaskStatusFailure).
 		Where("status != ?", TaskStatusSuccess).
 		Limit(1).
@@ -407,8 +408,10 @@ func (Task *Task) Update() error {
 	return err
 }
 
-func (t *Task) UpdateQuota() error {
-	return DB.Model(t).Update("quota", t.Quota).Error
+// UpdateQuota 仅持久化 quota 列（差额结算后回写实际扣费额度），
+// 不触碰状态等其它字段，避免与状态流转产生竞争。
+func (Task *Task) UpdateQuota() error {
+	return DB.Model(Task).Where("id = ?", Task.ID).Update("quota", Task.Quota).Error
 }
 
 // UpdateWithStatus performs a conditional UPDATE guarded by fromStatus (CAS).

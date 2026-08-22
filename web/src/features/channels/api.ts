@@ -531,6 +531,7 @@ export async function fetchModels(data: {
   type: number
   key?: string
   channel_id?: number
+  use_fallback?: boolean
   advanced_custom?: string
   header_override?: string
   proxy?: string

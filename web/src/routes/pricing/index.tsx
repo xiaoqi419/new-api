@@ -31,15 +31,16 @@ const pricingSearchSchema = z.object({
   quotaType: z.string().optional(),
   endpointType: z.string().optional(),
   tag: z.string().optional(),
+  modality: z.string().optional(),
   tokenUnit: z.enum(['M', 'K']).optional(),
-  view: z.enum(['card', 'table']).optional().catch(undefined),
+  view: z.enum(['card', 'table', 'group']).optional().catch(undefined),
   rechargePrice: z.boolean().optional(),
 })
 
 export const Route = createFileRoute('/pricing/')({
   validateSearch: pricingSearchSchema,
-  beforeLoad: async ({ location }) => {
-    const access = await getFreshModuleAccess('pricing')
+  beforeLoad: async ({ location, context }) => {
+    const access = await getFreshModuleAccess(context.queryClient, 'pricing')
     if (!access.enabled) {
       throw redirect({ to: '/' })
     }

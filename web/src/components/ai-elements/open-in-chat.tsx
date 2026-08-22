@@ -1,3 +1,6 @@
+import { type ComponentProps, createContext, useContext } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -20,10 +23,7 @@ import {
   ChevronDownIcon,
   ExternalLinkIcon,
   MessageCircleIcon,
-} from 'lucide-react'
-import { type ComponentProps, createContext, useContext } from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

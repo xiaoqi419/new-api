@@ -12,24 +12,42 @@ import (
 )
 
 type Token struct {
-	Id                 int            `json:"id"`
-	UserId             int            `json:"user_id" gorm:"index"`
-	Key                string         `json:"key" gorm:"type:varchar(128);uniqueIndex"`
-	Status             int            `json:"status" gorm:"default:1"`
-	Name               string         `json:"name" gorm:"index" `
-	CreatedTime        int64          `json:"created_time" gorm:"bigint"`
-	AccessedTime       int64          `json:"accessed_time" gorm:"bigint"`
-	ExpiredTime        int64          `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
-	RemainQuota        int            `json:"remain_quota" gorm:"default:0"`
-	UnlimitedQuota     bool           `json:"unlimited_quota"`
-	ModelLimitsEnabled bool           `json:"model_limits_enabled"`
-	ModelLimits        string         `json:"model_limits" gorm:"type:text"`
-	AllowIps           *string        `json:"allow_ips" gorm:"default:''"`
-	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
-	Group              string         `json:"group" gorm:"default:''"`
-	CrossGroupRetry    bool           `json:"cross_group_retry"` // 跨分组重试，仅auto分组有效
-	AutoGroups         string         `json:"-" gorm:"type:text"`
-	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	Id                   int            `json:"id"`
+	UserId               int            `json:"user_id" gorm:"index"`
+	Key                  string         `json:"key" gorm:"type:varchar(128);uniqueIndex"`
+	Status               int            `json:"status" gorm:"default:1"`
+	Name                 string         `json:"name" gorm:"index" `
+	CreatedTime          int64          `json:"created_time" gorm:"bigint"`
+	AccessedTime         int64          `json:"accessed_time" gorm:"bigint"`
+	ExpiredTime          int64          `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
+	RemainQuota          int            `json:"remain_quota" gorm:"default:0"`
+	UnlimitedQuota       bool           `json:"unlimited_quota"`
+	ModelLimitsEnabled   bool           `json:"model_limits_enabled"`
+	ModelLimits          string         `json:"model_limits" gorm:"type:text"`
+	AllowIps             *string        `json:"allow_ips" gorm:"default:''"`
+	UsedQuota            int            `json:"used_quota" gorm:"default:0"` // used quota
+	Group                string         `json:"group" gorm:"default:''"`
+	CrossGroupRetry      bool           `json:"cross_group_retry"`                         // Deprecated: 旧版 auto 路由跨分组重试，保留列以兼容历史数据
+	GroupSwitchEnabled   bool           `json:"group_switch_enabled"`                      // 分组自动切换模式（令牌级候选分组）
+	GroupSwitchGroups    string         `json:"group_switch_groups" gorm:"type:text"`      // 候选分组 JSON 数组，如 ["grp1","grp2"]
+	GroupSwitchThreshold int            `json:"group_switch_threshold" gorm:"default:2"`   // 每组可重试上游失败阈值 1-5
+	GroupSwitchCooldown  int            `json:"group_switch_cooldown" gorm:"default:10"`   // 升档冷却分钟 5/10/30
+	MaxConcurrency       int            `json:"max_concurrency" gorm:"type:int;default:0"` // 令牌级最大并发，0=不限
+	AutoGroups           string         `json:"-" gorm:"type:text"`                        // 上游 auto 分组候选快照，见 GetAutoGroups
+	DeletedAt            gorm.DeletedAt `gorm:"index"`
+}
+
+// GetGroupSwitchGroups parses the token's candidate group list. Returns an
+// empty slice when unset or malformed.
+func (token *Token) GetGroupSwitchGroups() []string {
+	groups := make([]string, 0)
+	if strings.TrimSpace(token.GroupSwitchGroups) == "" {
+		return groups
+	}
+	if err := common.Unmarshal([]byte(token.GroupSwitchGroups), &groups); err != nil {
+		return make([]string, 0)
+	}
+	return groups
 }
 
 func (token *Token) GetAutoGroups() ([]string, error) {
@@ -312,8 +330,11 @@ func (token *Token) Update() (err error) {
 	if cacheErr := invalidateTokenCacheForMutation(token.Key); cacheErr != nil {
 		common.SysLog("failed to invalidate token cache before update: " + cacheErr.Error())
 	}
-	return DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "auto_groups").Updates(token).Error
+	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "max_concurrency",
+		"group_switch_enabled", "group_switch_groups", "group_switch_threshold", "group_switch_cooldown",
+		"auto_groups").Updates(token).Error
+	return err
 }
 
 func (token *Token) SelectUpdate() (err error) {
@@ -432,6 +453,41 @@ func decreaseTokenQuota(id int, quota int) (err error) {
 		},
 	).Error
 	return err
+}
+
+// DecreaseTokenQuotaIfEnough atomically deducts token quota only when remain_quota
+// can still cover it, returning ok=false (without error) on insufficient balance.
+// The conditional UPDATE closes the check-then-act race in token pre-consume.
+// Unlimited tokens have no balance floor and must keep using DecreaseTokenQuota,
+// which also tracks usage without rejecting.
+func DecreaseTokenQuotaIfEnough(id int, key string, quota int) (ok bool, err error) {
+	if quota < 0 {
+		return false, errors.New("quota 不能为负数！")
+	}
+	if quota == 0 {
+		return true, nil
+	}
+	result := DB.Model(&Token{}).Where("id = ? AND remain_quota >= ?", id, quota).Updates(
+		map[string]interface{}{
+			"remain_quota":  gorm.Expr("remain_quota - ?", quota),
+			"used_quota":    gorm.Expr("used_quota + ?", quota),
+			"accessed_time": common.GetTimestamp(),
+		},
+	)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
+	}
+	if common.RedisEnabled {
+		gopool.Go(func() {
+			if _, cacheErr := cacheApplyTokenQuotaDelta(id, key, -int64(quota)); cacheErr != nil {
+				common.SysLog("failed to decrease token quota: " + cacheErr.Error())
+			}
+		})
+	}
+	return true, nil
 }
 
 // CountUserTokens returns total number of tokens for the given user, used for pagination

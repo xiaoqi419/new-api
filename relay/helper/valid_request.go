@@ -250,6 +250,12 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 			return nil, fmt.Errorf("n must be an integer between 1 and %d", dto.MaxImageN)
 		}
 
+		if opts := imageRequest.SequentialImageGenerationOptions; opts != nil && opts.MaxImages != nil {
+			if *opts.MaxImages < 1 || *opts.MaxImages > dto.MaxSequentialImages {
+				return nil, fmt.Errorf("sequential_image_generation_options.max_images must be an integer between 1 and %d", dto.MaxSequentialImages)
+			}
+		}
+
 		// Not "256x256", "512x512", or "1024x1024"
 		if imageRequest.Model == "dall-e-2" || imageRequest.Model == "dall-e" {
 			if imageRequest.Size != "" && imageRequest.Size != "256x256" && imageRequest.Size != "512x512" && imageRequest.Size != "1024x1024" {

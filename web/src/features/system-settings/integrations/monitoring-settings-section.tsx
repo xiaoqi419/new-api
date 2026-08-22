@@ -17,12 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -42,6 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { api } from '@/lib/api'
 
 import {
   SettingsForm,
@@ -68,6 +70,15 @@ const monitoringSchema = z.object({
     bucket_time: z.enum(['minute', '5min', 'hour']),
     retention_days: z.coerce.number().min(0),
   }),
+  error_alert_setting: z.object({
+    enabled: z.boolean(),
+    wecom_webhook_url: z.string(),
+    interval_seconds: z.coerce.number().min(30),
+    min_count: z.coerce.number().min(1),
+    top_n: z.coerce.number().min(1),
+    model_filter: z.string(),
+    channel_filter: z.string(),
+  }),
 })
 
 type MonitoringFormInput = z.input<typeof monitoringSchema>
@@ -79,6 +90,13 @@ type FlatMonitoringDefaults = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'minute' | '5min' | 'hour'
   'perf_metrics_setting.retention_days': number
+  'error_alert_setting.enabled': boolean
+  'error_alert_setting.wecom_webhook_url': string
+  'error_alert_setting.interval_seconds': number
+  'error_alert_setting.min_count': number
+  'error_alert_setting.top_n': number
+  'error_alert_setting.model_filter': string
+  'error_alert_setting.channel_filter': string
 }
 
 type MonitoringSettingsSectionProps = {
@@ -95,6 +113,15 @@ const buildFormDefaults = (
     bucket_time: defaults['perf_metrics_setting.bucket_time'],
     retention_days: defaults['perf_metrics_setting.retention_days'],
   },
+  error_alert_setting: {
+    enabled: defaults['error_alert_setting.enabled'],
+    wecom_webhook_url: defaults['error_alert_setting.wecom_webhook_url'],
+    interval_seconds: defaults['error_alert_setting.interval_seconds'],
+    min_count: defaults['error_alert_setting.min_count'],
+    top_n: defaults['error_alert_setting.top_n'],
+    model_filter: defaults['error_alert_setting.model_filter'],
+    channel_filter: defaults['error_alert_setting.channel_filter'],
+  },
 })
 
 const normalizeDefaults = (
@@ -108,6 +135,20 @@ const normalizeDefaults = (
     defaults['perf_metrics_setting.bucket_time'],
   'perf_metrics_setting.retention_days':
     defaults['perf_metrics_setting.retention_days'],
+  'error_alert_setting.enabled': defaults['error_alert_setting.enabled'],
+  'error_alert_setting.wecom_webhook_url': (
+    defaults['error_alert_setting.wecom_webhook_url'] ?? ''
+  ).trim(),
+  'error_alert_setting.interval_seconds':
+    defaults['error_alert_setting.interval_seconds'],
+  'error_alert_setting.min_count': defaults['error_alert_setting.min_count'],
+  'error_alert_setting.top_n': defaults['error_alert_setting.top_n'],
+  'error_alert_setting.model_filter': (
+    defaults['error_alert_setting.model_filter'] ?? ''
+  ).trim(),
+  'error_alert_setting.channel_filter': (
+    defaults['error_alert_setting.channel_filter'] ?? ''
+  ).trim(),
 })
 
 const normalizeFormValues = (
@@ -120,6 +161,17 @@ const normalizeFormValues = (
   'perf_metrics_setting.bucket_time': values.perf_metrics_setting.bucket_time,
   'perf_metrics_setting.retention_days':
     values.perf_metrics_setting.retention_days,
+  'error_alert_setting.enabled': values.error_alert_setting.enabled,
+  'error_alert_setting.wecom_webhook_url':
+    values.error_alert_setting.wecom_webhook_url.trim(),
+  'error_alert_setting.interval_seconds':
+    values.error_alert_setting.interval_seconds,
+  'error_alert_setting.min_count': values.error_alert_setting.min_count,
+  'error_alert_setting.top_n': values.error_alert_setting.top_n,
+  'error_alert_setting.model_filter':
+    values.error_alert_setting.model_filter.trim(),
+  'error_alert_setting.channel_filter':
+    values.error_alert_setting.channel_filter.trim(),
 })
 
 export function MonitoringSettingsSection({
@@ -155,6 +207,30 @@ export function MonitoringSettingsSection({
   }, [defaultValues])
 
   const perfMetricsEnabled = form.watch('perf_metrics_setting.enabled')
+  const errorAlertEnabled = form.watch('error_alert_setting.enabled')
+  const webhookUrl = form.watch('error_alert_setting.wecom_webhook_url')
+  const [testingWecom, setTestingWecom] = useState(false)
+
+  const handleTestWecom = async () => {
+    const url = (webhookUrl ?? '').trim()
+    if (!url) {
+      toast.error(t('Please enter the WeCom bot webhook URL first'))
+      return
+    }
+    setTestingWecom(true)
+    try {
+      const res = await api.post('/api/log/error_alert_test', {
+        webhook_url: url,
+      })
+      if (res.data?.success) {
+        toast.success(t('Test message sent, please check WeCom'))
+      }
+    } catch {
+      // errors are surfaced by the global response interceptor
+    } finally {
+      setTestingWecom(false)
+    }
+  }
 
   const onSubmit = async (values: MonitoringFormValues) => {
     const normalized = normalizeFormValues(values)
@@ -307,6 +383,180 @@ export function MonitoringSettingsSection({
                   </FormControl>
                   <FormDescription>
                     {t('0 means data is kept permanently')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div>
+            <h4 className='font-medium'>{t('Error alerts (WeCom bot)')}</h4>
+            <p className='text-muted-foreground mt-1 text-xs'>
+              {t(
+                'Periodically aggregate request-level errors and push them to a WeCom group bot.'
+              )}
+            </p>
+          </div>
+
+          <FormField
+            control={form.control}
+            name='error_alert_setting.enabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable error alerts')}</FormLabel>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='error_alert_setting.wecom_webhook_url'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('WeCom bot webhook URL')}</FormLabel>
+                <div className='flex items-center gap-2'>
+                  <FormControl>
+                    <Input
+                      type='url'
+                      placeholder='https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...'
+                      value={field.value}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={handleTestWecom}
+                    disabled={
+                      !errorAlertEnabled ||
+                      testingWecom ||
+                      !(field.value ?? '').trim()
+                    }
+                  >
+                    {testingWecom ? t('Sending...') : t('Send test')}
+                  </Button>
+                </div>
+                <FormDescription>
+                  {t(
+                    'Group bot address from WeCom: Group settings -> Group robots -> Add.'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+            <FormField
+              control={form.control}
+              name='error_alert_setting.interval_seconds'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Aggregation interval (seconds)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={30}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('Minimum 30 seconds')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='error_alert_setting.min_count'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Minimum errors to alert')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='error_alert_setting.top_n'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Top error types shown')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='error_alert_setting.model_filter'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Model filter (optional)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('Comma-separated, empty means all')}
+                      value={field.value}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Only alert errors whose model name contains these.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='error_alert_setting.channel_filter'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Channel filter (optional)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t(
+                        'Comma-separated channel IDs, empty means all'
+                      )}
+                      value={field.value}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      disabled={!errorAlertEnabled}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Only alert errors from these channel IDs.')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -18,13 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
+import { Loader2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -94,7 +94,7 @@ export function VendorMutateDialog({
     setIsSaving(true)
     try {
       const response = isEdit
-        ? await updateVendor({ ...values, id: currentVendor!.id })
+        ? await updateVendor({ ...values, id: currentVendor?.id ?? 0 })
         : await createVendor(values)
 
       if (response.success) {
@@ -112,6 +112,13 @@ export function VendorMutateDialog({
     } finally {
       setIsSaving(false)
     }
+  }
+
+  let submitLabel = t('Create')
+  if (isSaving) {
+    submitLabel = t('Saving...')
+  } else if (isEdit) {
+    submitLabel = t('Update')
   }
 
   return (
@@ -146,7 +153,7 @@ export function VendorMutateDialog({
             {isSaving ? (
               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
             ) : null}
-            {isSaving ? t('Saving...') : isEdit ? t('Update') : t('Create')}
+            {submitLabel}
           </Button>
         </>
       }

@@ -21,7 +21,9 @@ import { parseCurrencyDisplayType } from '@/lib/currency'
 import { CheckinSettingsSection } from '../general/checkin-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
+import { AlipaySettingsSection } from '../integrations/alipay-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
+import { WechatPaySettingsSection } from '../integrations/wechat-pay-settings-section'
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -38,6 +40,8 @@ const getModelDefaults = (settings: BillingSettings) => ({
   ExposeRatioEnabled: settings.ExposeRatioEnabled,
   BillingMode: settings['billing_setting.billing_mode'],
   BillingExpr: settings['billing_setting.billing_expr'],
+  VideoPriceTiers: settings.VideoPriceTiers,
+  ImagePriceTiers: settings.ImagePriceTiers,
 })
 
 const getGroupDefaults = (settings: BillingSettings) => ({
@@ -184,6 +188,45 @@ const BILLING_SECTIONS = [
             settings['payment_setting.compliance_terms_version'] ?? '',
           confirmedAt: settings['payment_setting.compliance_confirmed_at'] ?? 0,
           confirmedBy: settings['payment_setting.compliance_confirmed_by'] ?? 0,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'wechat-pay',
+    titleKey: 'WeChat Pay',
+    build: (settings: BillingSettings) => (
+      <WechatPaySettingsSection
+        defaultValues={{
+          WechatPayEnabled: settings.WechatPayEnabled,
+          WechatPayAppId: settings.WechatPayAppId,
+          WechatPayAppSecret: settings.WechatPayAppSecret,
+          WechatPayMchId: settings.WechatPayMchId,
+          WechatPayApiV3Key: settings.WechatPayApiV3Key,
+          WechatPayCert: settings.WechatPayCert,
+          WechatPayCertSerialNo: settings.WechatPayCertSerialNo,
+          WechatPayPrivateKey: settings.WechatPayPrivateKey,
+          WechatPayNotifyUrl: settings.WechatPayNotifyUrl,
+          WechatPayNative: settings.WechatPayNative,
+          WechatPayH5: settings.WechatPayH5,
+          WechatPayJSAPI: settings.WechatPayJSAPI,
+          WechatPayMinTopUp: settings.WechatPayMinTopUp,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'alipay',
+    titleKey: 'Alipay',
+    build: (settings: BillingSettings) => (
+      <AlipaySettingsSection
+        defaultValues={{
+          AlipayEnabled: settings.AlipayEnabled,
+          AlipayAppId: settings.AlipayAppId,
+          AlipayPrivateKey: settings.AlipayPrivateKey,
+          AlipayPublicKey: settings.AlipayPublicKey,
+          AlipayProduction: settings.AlipayProduction,
+          AlipayMinTopUp: settings.AlipayMinTopUp,
         }}
       />
     ),

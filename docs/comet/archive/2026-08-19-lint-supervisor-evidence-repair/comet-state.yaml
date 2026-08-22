@@ -1,0 +1,172 @@
+schema: comet.native.v4
+name: lint-supervisor-evidence-repair
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-supervisor-evidence-repair
+  target_branch: codex/p1-lint-debt
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：维护状态不再把 `lint-final-gates` 写成未合入 Supervisor，并精确区分 child
+      merge、Supervisor merge、远端和部署状态。
+    result: passed
+    reason:
+      text: Maintenance status correctly records lint-final-gates Verify/Archive and
+        local merge commit 7741f2004 into codex/p1-lint-debt, while keeping the
+        Supervisor target merge, push, PR, release, and deployment pending.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：归档产物记录最多五个子代理的政策、宿主硬上限及依赖波次证据，并明确遥测限制。
+    result: passed
+    reason:
+      text: The audit records the five-subagent project policy, no nested spawning,
+        the host hard limit of six total slots including the primary agent,
+        accurate dependency waves, and the explicit absence of per-second
+        telemetry.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：除维护状态和本 child 正式审计/Comet 产物外没有其他文件变化，既有门禁与风险结论保持不变。
+    result: passed
+    reason:
+      text: Only maintenance status and this child audit/Comet artifacts changed;
+        prior gates and the warning, payment, WeChat-login, and iframe
+        residual-risk conclusions remain intact.
+      truncated: false
+builder_handoff:
+  candidate_id: 06671788-ac52-46ad-ac6a-64ef9b820e5a
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:df6e69a1-6695-472e-9018-94a8354deff4
+  iteration: 1
+  summary:
+    text: "Corrected stale maintenance status to record lint-final-gates
+      Verify/Archive and local merge commit 7741f2004 into codex/p1-lint-debt,
+      while keeping the Supervisor target merge, remote, release, and deployment
+      pending. Added an honest concurrency audit: project policy forbids more
+      than five execution subagents and nested spawning, while the host hard
+      limit of six total slots including the primary agent enforces a maximum of
+      five subagents; dependency waves and the lack of per-second telemetry are
+      explicitly recorded."
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+    - name:
+        text: exact file-scope review
+        truncated: false
+      result: passed
+      note:
+        text: Only maintenance status and this child Comet/audit artifacts changed.
+        truncated: false
+    - name:
+        text: merge and dependency evidence review
+        truncated: false
+      result: passed
+      note:
+        text: Merge commit 7741f2004, archived final-gates state, children.yaml
+          dependency waves, and target branch ancestry were verified.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Per-second historical active-agent telemetry was not retained; the audit
+        relies on the host-enforced concurrency ceiling, no-nested-agent policy,
+        dependency graph, archives, and Git history.
+      truncated: false
+    - text: Expensive frontend gates were not rerun because the archived final-gates
+        Runtime evidence already passed and no code changed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-19T03:03:03.325Z
+blockers: []
+verification:
+  candidate_id: 06671788-ac52-46ad-ac6a-64ef9b820e5a
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:14987de5-2981-4b0c-82c7-d73b354d6970
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: diff-check
+      name:
+        text: documentation diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 41
+  summary:
+    text: Independent Terra/xhigh verification passed A1-A3. Merge status,
+      concurrency evidence, dependency waves, telemetry limits, and exact
+      documentation scope are accurate.
+    truncated: false
+  risks:
+    - text: Historical second-by-second active-agent telemetry was not retained; the
+        audit proves the enforced upper bound rather than reconstructing a
+        precise timeline.
+      truncated: false
+    - text: The child and parent Supervisor remain unarchived and unmerged into the
+        target until later workflow stages complete.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-19T03:09:14.127Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent Terra/xhigh verification passed A1-A3. Merge status,
+        concurrency evidence, dependency waves, telemetry limits, and exact
+        documentation scope are accurate.
+      truncated: false
+    completed_at: 2026-08-19T03:09:14.127Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-19T02:53:26.576Z

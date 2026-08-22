@@ -164,12 +164,18 @@ func UpdateProgress(id int, progress string) error {
 func (midjourney *Midjourney) Insert() error {
 	var err error
 	err = DB.Create(midjourney).Error
+	if err == nil {
+		AsyncUpsertDrawingLogFromMj(midjourney)
+	}
 	return err
 }
 
 func (midjourney *Midjourney) Update() error {
 	var err error
 	err = DB.Save(midjourney).Error
+	if err == nil {
+		AsyncUpsertDrawingLogFromMj(midjourney)
+	}
 	return err
 }
 
@@ -195,6 +201,9 @@ func (midjourney *Midjourney) UpdateWithStatus(fromStatus string) (bool, error) 
 	result := DB.Model(midjourney).Where("status = ?", fromStatus).Select("*").Updates(midjourney)
 	if result.Error != nil {
 		return false, result.Error
+	}
+	if result.RowsAffected > 0 {
+		AsyncUpsertDrawingLogFromMj(midjourney)
 	}
 	return result.RowsAffected > 0, nil
 }

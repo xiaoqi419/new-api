@@ -1,3 +1,6 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Activity, AlertCircle, CheckCircle2 } from '@/components/icons'
 import {
   Tooltip,
   TooltipContent,
@@ -156,30 +156,22 @@ export function UptimeStatusRow(props: {
     return 'major'
   }, [summary.uptime_pct])
 
-  const StatusIcon =
-    status === 'operational'
-      ? CheckCircle2
-      : status === 'minor'
-        ? Activity
-        : AlertCircle
-
-  const statusColour =
-    status === 'operational'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : status === 'minor'
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : status === 'degraded'
-          ? 'text-amber-600 dark:text-amber-400'
-          : 'text-rose-600 dark:text-rose-400'
-
-  const statusLabel =
-    status === 'operational'
-      ? t('All systems operational')
-      : status === 'minor'
-        ? t('Minor blips in the last 30 days')
-        : status === 'degraded'
-          ? t('Degraded performance recently')
-          : t('Significant outages detected')
+  let StatusIcon = AlertCircle
+  let statusColour = 'text-destructive'
+  let statusLabelKey = 'Significant outages detected'
+  if (status === 'operational') {
+    StatusIcon = CheckCircle2
+    statusColour = 'text-success'
+    statusLabelKey = 'All systems operational'
+  } else if (status === 'minor') {
+    StatusIcon = Activity
+    statusColour = 'text-success'
+    statusLabelKey = 'Minor blips in the last 30 days'
+  } else if (status === 'degraded') {
+    statusColour = 'text-warning'
+    statusLabelKey = 'Degraded performance recently'
+  }
+  const statusLabel = t(statusLabelKey)
 
   return (
     <div

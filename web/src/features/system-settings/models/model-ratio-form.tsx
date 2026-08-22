@@ -17,12 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Code2, Eye, RotateCcw, Save } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Code2, Eye, RotateCcw, Save } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,6 +59,8 @@ type ModelFormValues = {
   ExposeRatioEnabled: boolean
   BillingMode: string
   BillingExpr: string
+  VideoPriceTiers: string
+  ImagePriceTiers: string
 }
 
 type ModelRatioFormProps = {
@@ -80,6 +82,8 @@ type ModelJsonFieldName =
   | 'ImageRatio'
   | 'AudioRatio'
   | 'AudioCompletionRatio'
+  | 'VideoPriceTiers'
+  | 'ImagePriceTiers'
 
 const modelJsonFields: Array<{
   name: ModelJsonFieldName
@@ -129,6 +133,18 @@ const modelJsonFields: Array<{
     name: 'AudioCompletionRatio',
     labelKey: 'Audio completion ratio',
     descriptionKey: 'Ratio applied to audio completions for streaming models.',
+  },
+  {
+    name: 'VideoPriceTiers',
+    labelKey: 'Video tier pricing',
+    descriptionKey:
+      'JSON map of model → the model input price it is anchored to, plus the final unit price of each resolution / video input / audio output combination.',
+  },
+  {
+    name: 'ImagePriceTiers',
+    labelKey: 'Image tier pricing',
+    descriptionKey:
+      'JSON map of model → the base tier size and fixed price it is anchored to, plus the final unit price of each output size / quality combination.',
   },
 ]
 
@@ -275,6 +291,8 @@ export const ModelRatioForm = memo(function ModelRatioForm({
               savedAudioCompletionRatio={savedValues.AudioCompletionRatio}
               savedBillingMode={savedValues.BillingMode}
               savedBillingExpr={savedValues.BillingExpr}
+              savedVideoPriceTiers={savedValues.VideoPriceTiers}
+              savedImagePriceTiers={savedValues.ImagePriceTiers}
               modelPrice={form.watch('ModelPrice')}
               modelRatio={form.watch('ModelRatio')}
               cacheRatio={form.watch('CacheRatio')}
@@ -285,6 +303,8 @@ export const ModelRatioForm = memo(function ModelRatioForm({
               audioCompletionRatio={form.watch('AudioCompletionRatio')}
               billingMode={form.watch('BillingMode')}
               billingExpr={form.watch('BillingExpr')}
+              videoPriceTiers={form.watch('VideoPriceTiers')}
+              imagePriceTiers={form.watch('ImagePriceTiers')}
               candidateModelNames={
                 isUnsetVariant ? enabledModelsQuery.data?.data : undefined
               }

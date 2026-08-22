@@ -98,7 +98,8 @@ const DEFAULT_FLOW_SANKEY_LABELS: FlowSankeyLabels = {
   share: 'Share',
 }
 
-const DEFAULT_FLOW_CHART_COLOR = '#1664FF'
+// 兜底色跟随仪表盘序列色的第一档,不再是一抹脱离主题的蓝。
+const DEFAULT_FLOW_CHART_COLOR = getDashboardChartColors(1)[0]
 
 const FLOW_NODE_KINDS: readonly FlowNodeKind[] = [
   'user',
@@ -1210,7 +1211,8 @@ export function buildFlowSankeySpec(
       limit: 220,
       interactive: false,
       style: {
-        fill: '#475569',
+        /* Leave fill to VChart so labels remain readable on both registered
+         * light and dark business themes. */
         fontSize: 11,
         fontWeight: 600,
       },

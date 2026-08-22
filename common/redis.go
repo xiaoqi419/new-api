@@ -238,35 +238,34 @@ func RedisHGetObj(key string, obj interface{}) error {
 	return nil
 }
 
+// redisIncrIfTTLScript 原子地为带 TTL 的 key 增量并保留原剩余 TTL。
+// TTL 读取、INCRBY、EXPIRE 在同一脚本内执行，消除 TTL 检查与写入之间的 TOCTOU：
+// key 不存在(TTL=-2)或无过期(TTL=-1)时不做任何写入，避免生成无过期的幽灵计数。
+var redisIncrIfTTLScript = redis.NewScript(`
+local ttl = redis.call('TTL', KEYS[1])
+if ttl > 0 then
+	redis.call('INCRBY', KEYS[1], ARGV[1])
+	redis.call('EXPIRE', KEYS[1], ttl)
+end
+return ttl
+`)
+
+var redisHIncrByIfTTLScript = redis.NewScript(`
+local ttl = redis.call('TTL', KEYS[1])
+if ttl > 0 then
+	redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2])
+	redis.call('EXPIRE', KEYS[1], ttl)
+end
+return ttl
+`)
+
 // RedisIncr Add this function to handle atomic increments
 func RedisIncr(key string, delta int64) error {
 	if DebugEnabled {
 		SysLog(fmt.Sprintf("Redis INCR: key=%s, delta=%d", key, delta))
 	}
-	// 检查键的剩余生存时间
-	ttlCmd := RDB.TTL(context.Background(), key)
-	ttl, err := ttlCmd.Result()
+	err := redisIncrIfTTLScript.Run(context.Background(), RDB, []string{key}, delta).Err()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		return fmt.Errorf("failed to get TTL: %w", err)
-	}
-
-	// 只有在 key 存在且有 TTL 时才需要特殊处理
-	if ttl > 0 {
-		ctx := context.Background()
-		// 开始一个Redis事务
-		txn := RDB.TxPipeline()
-
-		// 减少余额
-		decrCmd := txn.IncrBy(ctx, key, delta)
-		if err := decrCmd.Err(); err != nil {
-			return err // 如果减少失败，则直接返回错误
-		}
-
-		// 重新设置过期时间，使用原来的过期时间
-		txn.Expire(ctx, key, ttl)
-
-		// 执行事务
-		_, err = txn.Exec(ctx)
 		return err
 	}
 	return nil
@@ -276,24 +275,8 @@ func RedisHIncrBy(key, field string, delta int64) error {
 	if DebugEnabled {
 		SysLog(fmt.Sprintf("Redis HINCRBY: key=%s, field=%s, delta=%d", key, field, delta))
 	}
-	ttlCmd := RDB.TTL(context.Background(), key)
-	ttl, err := ttlCmd.Result()
+	err := redisHIncrByIfTTLScript.Run(context.Background(), RDB, []string{key}, field, delta).Err()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		return fmt.Errorf("failed to get TTL: %w", err)
-	}
-
-	if ttl > 0 {
-		ctx := context.Background()
-		txn := RDB.TxPipeline()
-
-		incrCmd := txn.HIncrBy(ctx, key, field, delta)
-		if err := incrCmd.Err(); err != nil {
-			return err
-		}
-
-		txn.Expire(ctx, key, ttl)
-
-		_, err = txn.Exec(ctx)
 		return err
 	}
 	return nil

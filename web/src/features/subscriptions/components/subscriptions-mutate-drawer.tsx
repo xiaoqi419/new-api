@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CalendarClock, CreditCard, RefreshCw, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +30,12 @@ import {
   sideDrawerHeaderClassName,
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
+import {
+  CalendarClock,
+  CreditCard,
+  RefreshCw,
+  Settings2,
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -501,6 +506,55 @@ export function SubscriptionsMutateDrawer({
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name='scope_group'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Scope Group')}</FormLabel>
+                    <Select
+                      items={[
+                        {
+                          value: '__none__',
+                          label: t('Any group (no restriction)'),
+                        },
+                        ...groupOptions.map((g) => ({ value: g, label: g })),
+                      ]}
+                      onValueChange={(v) =>
+                        field.onChange(v === '__none__' ? '' : v)
+                      }
+                      value={field.value || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={t('Any group (no restriction)')}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent alignItemWithTrigger={false}>
+                        <SelectGroup>
+                          <SelectItem value='__none__'>
+                            {t('Any group (no restriction)')}
+                          </SelectItem>
+                          {groupOptions.map((g) => (
+                            <SelectItem key={g} value={g}>
+                              {g}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t(
+                        'Confine this subscription quota to a group without changing the user base group: it only pays for requests made in this group (e.g. codex).'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

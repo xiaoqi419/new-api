@@ -64,6 +64,7 @@ export async function searchUsers(
     group = '',
     role = '',
     status = '',
+    balance = '',
     p = 1,
     page_size = 10,
     sort_by,
@@ -74,6 +75,7 @@ export async function searchUsers(
   queryParams.set('group', group)
   if (role) queryParams.set('role', role)
   if (status) queryParams.set('status', status)
+  if (balance) queryParams.set('balance', balance)
   queryParams.set('p', String(p))
   queryParams.set('page_size', String(page_size))
   if (sort_by) queryParams.set('sort_by', sort_by)
@@ -152,6 +154,22 @@ export async function resetUserPasskey(id: number): Promise<ApiResponse> {
  */
 export async function resetUserTwoFA(id: number): Promise<ApiResponse> {
   const res = await api.delete(`/api/user/${id}/2fa`)
+  return res.data
+}
+
+export interface UserIpRecord {
+  ip: string
+  count: number
+  last_time?: number
+}
+
+/**
+ * Get a user's IP records (admin), de-duplicated and sorted by most recent
+ */
+export async function getUserIps(
+  id: number
+): Promise<ApiResponse<UserIpRecord[]>> {
+  const res = await api.get(`/api/user/ips?id=${id}`)
   return res.data
 }
 

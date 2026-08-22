@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { KeyRound, Loader2, RefreshCw } from 'lucide-react'
+import { KeyRound, Loader2, RefreshCw } from '@/components/icons'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

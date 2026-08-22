@@ -39,6 +39,11 @@ export type UpdateOptionResponse = {
   message: string
 }
 
+export type SendTestEmailResponse = {
+  success: boolean
+  message: string
+}
+
 export type ConfirmPaymentComplianceResponse = {
   success: boolean
   message: string
@@ -107,17 +112,20 @@ export type SystemTaskListResponse = {
 }
 
 export type SiteSettings = {
-  Notice: string
   SystemName: string
   Logo: string
   Footer: string
   About: string
   HomePageContent: string
+  HomePageConfig: string
+  LoginPageConfig: string
+  PromoBannerConfig: string
   ServerAddress: string
   'legal.user_agreement': string
   'legal.privacy_policy': string
   HeaderNavModules: string
   SidebarModulesAdmin: string
+  CommunityLinks: string
 }
 
 export type AuthSettings = {
@@ -151,9 +159,12 @@ export type AuthSettings = {
   LinuxDOClientSecret: string
   LinuxDOMinimumTrustLevel: string
   WeChatAuthEnabled: boolean
-  WeChatServerAddress: string
-  WeChatServerToken: string
+  WeChatMpToken: string
+  WeChatMpName: string
+  WeChatMpAppId: string
+  WeChatMpAppSecret: string
   WeChatAccountQRCodeImageURL: string
+  ClickCaptchaEnabled: boolean
   TurnstileCheckEnabled: boolean
   TurnstileSiteKey: string
   TurnstileSecretKey: string
@@ -168,11 +179,9 @@ export type AuthSettings = {
 
 export type ContentSettings = {
   'console_setting.api_info': string
-  'console_setting.announcements': string
   'console_setting.faq': string
   'console_setting.uptime_kuma_groups': string
   'console_setting.api_info_enabled': boolean
-  'console_setting.announcements_enabled': boolean
   'console_setting.faq_enabled': boolean
   'console_setting.uptime_kuma_enabled': boolean
   DataExportEnabled: boolean
@@ -215,6 +224,8 @@ export type ModelSettings = {
   AudioRatio: string
   AudioCompletionRatio: string
   ExposeRatioEnabled: boolean
+  VideoPriceTiers: string
+  ImagePriceTiers: string
   'billing_setting.billing_mode': string
   'billing_setting.billing_expr': string
   'tool_price_setting.prices': string
@@ -240,6 +251,11 @@ export type ModelSettings = {
     | 'scheduled_all'
     | 'auto_ban_only'
     | 'passive_recovery'
+  'health_probe_setting.enabled': boolean
+  'health_probe_setting.interval_minutes': number
+  'health_probe_setting.concurrency': number
+  'health_probe_setting.max_targets_per_round': number
+  'health_probe_setting.authenticity_enabled': boolean
   'channel_affinity_setting.enabled': boolean
   'channel_affinity_setting.switch_on_success': boolean
   'channel_affinity_setting.keep_on_channel_disabled': boolean
@@ -274,6 +290,8 @@ export type BillingSettings = {
   AudioRatio: string
   AudioCompletionRatio: string
   ExposeRatioEnabled: boolean
+  VideoPriceTiers: string
+  ImagePriceTiers: string
   'billing_setting.billing_mode': string
   'billing_setting.billing_expr': string
   'tool_price_setting.prices': string
@@ -282,6 +300,7 @@ export type BillingSettings = {
   UserUsableGroups: string
   GroupGroupRatio: string
   AutoGroups: string
+  AutoGroupRoutes: string
   MaxTokenAutoGroups: number
   DefaultUseAutoGroup: boolean
   'group_ratio_setting.group_special_usable_group': string
@@ -309,6 +328,25 @@ export type BillingSettings = {
   CreemWebhookSecret: string
   CreemTestMode: boolean
   CreemProducts: string
+  AlipayEnabled: boolean
+  AlipayAppId: string
+  AlipayPrivateKey: string
+  AlipayPublicKey: string
+  AlipayProduction: boolean
+  AlipayMinTopUp: number
+  WechatPayEnabled: boolean
+  WechatPayAppId: string
+  WechatPayAppSecret: string
+  WechatPayMchId: string
+  WechatPayApiV3Key: string
+  WechatPayCert: string
+  WechatPayCertSerialNo: string
+  WechatPayPrivateKey: string
+  WechatPayNotifyUrl: string
+  WechatPayNative: boolean
+  WechatPayH5: boolean
+  WechatPayJSAPI: boolean
+  WechatPayMinTopUp: number
   WaffoEnabled: boolean
   WaffoApiKey: string
   WaffoPrivateKey: string
@@ -366,6 +404,13 @@ export type OperationsSettings = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'hour' | 'minute' | '5min'
   'perf_metrics_setting.retention_days': number
+  'error_alert_setting.enabled': boolean
+  'error_alert_setting.wecom_webhook_url': string
+  'error_alert_setting.interval_seconds': number
+  'error_alert_setting.min_count': number
+  'error_alert_setting.top_n': number
+  'error_alert_setting.model_filter': string
+  'error_alert_setting.channel_filter': string
 }
 
 export type SecuritySettings = {

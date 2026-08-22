@@ -69,6 +69,7 @@ type Log struct {
 	PromptTokens      int    `json:"prompt_tokens" gorm:"default:0"`
 	CompletionTokens  int    `json:"completion_tokens" gorm:"default:0"`
 	UseTime           int    `json:"use_time" gorm:"default:0"`
+	FirstTokenMs      int    `json:"first_token_ms" gorm:"default:0"`
 	IsStream          bool   `json:"is_stream"`
 	ChannelId         int    `json:"channel" gorm:"index"`
 	ChannelName       string `json:"channel_name" gorm:"->"`
@@ -78,6 +79,8 @@ type Log struct {
 	RequestId         string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
 	UpstreamRequestId string `json:"upstream_request_id,omitempty" gorm:"type:varchar(128);index:idx_logs_upstream_request_id;default:''"`
 	Other             string `json:"other"`
+	IsImage           bool   `json:"is_image" gorm:"index"`
+	LogMode           string `json:"log_mode" gorm:"type:varchar(32);index;default:''"`
 }
 
 // don't use iota, avoid change log type value
@@ -141,6 +144,29 @@ func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	return logs, err
 }
 
+type UserIpStat struct {
+	Ip       string `json:"ip"`
+	Count    int64  `json:"count"`
+	LastTime int64  `json:"last_time"`
+}
+
+// GetUserDistinctIps 聚合某用户在日志中出现过的去重 IP（含登录日志与请求日志），
+// 返回每个 IP 的出现次数与最近时间，按最近时间倒序。
+func GetUserDistinctIps(userId int, limit int) ([]UserIpStat, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var stats []UserIpStat
+	err := LOG_DB.Model(&Log{}).
+		Select("ip, count(*) as count, max(created_at) as last_time").
+		Where("user_id = ? and ip <> ''", userId).
+		Group("ip").
+		Order("last_time desc").
+		Limit(limit).
+		Scan(&stats).Error
+	return stats, err
+}
+
 func RecordLog(userId int, logType int, content string) {
 	if logType == LogTypeConsume && !common.LogConsumeEnabled {
 		return
@@ -198,7 +224,7 @@ func buildOpField(action string, params map[string]interface{}) map[string]inter
 
 // RecordLoginLog 记录用户登录成功的审计日志（type=LogTypeLogin）。
 // username 由调用方传入（登录流程已持有用户对象），避免额外的数据库查询。
-// content 为英文兜底文本（用于导出）；action+params 供前端本地化渲染。
+// content 为英文兜底文本（用于导出/经典前端）；action+params 供前端本地化渲染。
 // extra 可携带 login_method、user_agent 等附加信息（普通用户可见）。
 func RecordLoginLog(userId int, username string, content string, ip string, action string, params map[string]interface{}, extra map[string]interface{}) {
 	other := map[string]interface{}{}
@@ -222,7 +248,7 @@ func RecordLoginLog(userId int, username string, content string, ip string, acti
 
 // RecordOperationAuditLog 记录管理/高危操作审计日志（type=LogTypeManage）。
 // logUserId 为日志归属者，管理审计日志应归属实际操作者；目标资源/用户放入
-// action params。username 内部按 logUserId 查询。content 为英文兜底文本（供导出使用）。
+// action params。username 内部按 logUserId 查询。content 为英文兜底文本（导出/经典前端用）。
 // action+params 写入 Other.op，供前端本地化渲染（普通用户可见，不含敏感信息）。
 // adminInfo 存放操作者身份（写入 Other.admin_info，普通用户查询时剥离）；
 // auditInfo 存放路由/方法/结果等中间件兜底信息（写入 Other.audit_info，普通用户查询时剥离）。
@@ -325,6 +351,35 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	}
 }
 
+// firstTokenMsFromOther extracts the first-token latency (ms) recorded under
+// other["frt"] and clamps it to a sane range, returning 0 when absent or out of
+// range. Promoting it to a dedicated column lets the channel monitor average it
+// with a portable SUM across SQLite, MySQL and PostgreSQL.
+func firstTokenMsFromOther(other map[string]interface{}) int {
+	if other == nil {
+		return 0
+	}
+	v, ok := other["frt"]
+	if !ok {
+		return 0
+	}
+	var ms float64
+	switch n := v.(type) {
+	case float64:
+		ms = n
+	case int:
+		ms = float64(n)
+	case int64:
+		ms = float64(n)
+	default:
+		return 0
+	}
+	if ms <= 0 || ms > 3600000 {
+		return 0
+	}
+	return int(ms)
+}
+
 type RecordConsumeLogParams struct {
 	ChannelId        int                    `json:"channel_id"`
 	PromptTokens     int                    `json:"prompt_tokens"`
@@ -338,6 +393,8 @@ type RecordConsumeLogParams struct {
 	IsStream         bool                   `json:"is_stream"`
 	Group            string                 `json:"group"`
 	Other            map[string]interface{} `json:"other"`
+	IsImage          bool                   `json:"is_image"`
+	LogMode          string                 `json:"log_mode"`
 }
 
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
@@ -350,6 +407,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
 	createdAt := common.GetTimestamp()
 	otherStr := common.MapToJsonStr(params.Other)
+	firstTokenMs := firstTokenMsFromOther(params.Other)
 	// 判断是否需要记录 IP
 	needRecordIp := false
 	if settingMap, err := GetUserSetting(userId, false); err == nil {
@@ -371,6 +429,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		ChannelId:        params.ChannelId,
 		TokenId:          params.TokenId,
 		UseTime:          params.UseTimeSeconds,
+		FirstTokenMs:     firstTokenMs,
 		IsStream:         params.IsStream,
 		Group:            params.Group,
 		Ip: func() string {
@@ -382,10 +441,15 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		RequestId:         requestId,
 		UpstreamRequestId: upstreamRequestId,
 		Other:             otherStr,
+		IsImage:           params.IsImage,
+		LogMode:           params.LogMode,
 	}
 	err := createLog(log)
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
+	}
+	if params.IsImage {
+		recordImageDrawingLog(c, log)
 	}
 	if common.DataExportEnabled {
 		LogQuotaData(QuotaDataLogParams{
@@ -465,7 +529,7 @@ func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
 	}
 }
 
-func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
+func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int, group string, requestId string, upstreamRequestId string, quotaStatus string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
 		tx = LOG_DB
@@ -499,6 +563,14 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 	}
 	if group != "" {
 		tx = tx.Where("logs."+logGroupCol+" = ?", group)
+	}
+	switch quotaStatus {
+	case "negative":
+		tx = tx.Where("logs.quota < ?", 0)
+	case "zero":
+		tx = tx.Where("logs.quota = ?", 0)
+	case "positive":
+		tx = tx.Where("logs.quota > ?", 0)
 	}
 	err = tx.Model(&Log{}).Count(&total).Error
 	if err != nil {
@@ -561,7 +633,7 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 
 const logSearchCountLimit = 10000
 
-func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
+func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string, quotaStatus string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
 		tx = LOG_DB.Where("logs.user_id = ?", userId)
@@ -590,6 +662,14 @@ func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int
 	if group != "" {
 		tx = tx.Where("logs."+logGroupCol+" = ?", group)
 	}
+	switch quotaStatus {
+	case "negative":
+		tx = tx.Where("logs.quota < ?", 0)
+	case "zero":
+		tx = tx.Where("logs.quota = ?", 0)
+	case "positive":
+		tx = tx.Where("logs.quota > ?", 0)
+	}
 	err = tx.Model(&Log{}).Limit(logSearchCountLimit).Count(&total).Error
 	if err != nil {
 		common.SysError("failed to count user logs: " + err.Error())
@@ -615,7 +695,7 @@ type Stat struct {
 	Tpm   int `json:"tpm"`
 }
 
-func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
+func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string, quotaStatus string) (stat Stat, err error) {
 	tx := LOG_DB.Table("logs").Select("COALESCE(sum(quota), 0) quota")
 
 	// 为rpm和tpm创建单独的查询
@@ -650,6 +730,17 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	if group != "" {
 		tx = tx.Where(logGroupCol+" = ?", group)
 		rpmTpmQuery = rpmTpmQuery.Where(logGroupCol+" = ?", group)
+	}
+	switch quotaStatus {
+	case "negative":
+		tx = tx.Where("quota < ?", 0)
+		rpmTpmQuery = rpmTpmQuery.Where("quota < ?", 0)
+	case "zero":
+		tx = tx.Where("quota = ?", 0)
+		rpmTpmQuery = rpmTpmQuery.Where("quota = ?", 0)
+	case "positive":
+		tx = tx.Where("quota > ?", 0)
+		rpmTpmQuery = rpmTpmQuery.Where("quota > ?", 0)
 	}
 
 	tx = tx.Where("type = ?", LogTypeConsume)
@@ -734,4 +825,182 @@ func DeleteOldLogBatch(ctx context.Context, targetTimestamp int64, limit int) (i
 		return 0, result.Error
 	}
 	return result.RowsAffected, nil
+}
+
+func DeleteOldLog(ctx context.Context, targetTimestamp int64, limit int) (int64, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	var total int64 = 0
+
+	for {
+		if nil != ctx.Err() {
+			return total, ctx.Err()
+		}
+
+		rowsAffected, err := DeleteOldLogBatch(ctx, targetTimestamp, limit)
+		if nil != err {
+			return total, err
+		}
+
+		total += rowsAffected
+
+		if rowsAffected < int64(limit) {
+			break
+		}
+	}
+
+	return total, nil
+}
+
+// GetErrorLogsSince 返回 id 大于 afterId 的错误日志(type=5)，按 id 升序，
+// 供站点级错误告警任务做增量扫描。
+func GetErrorLogsSince(afterId int, limit int) ([]*Log, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	var logs []*Log
+	err := LOG_DB.Model(&Log{}).
+		Where("type = ? AND id > ?", LogTypeError, afterId).
+		Order("id asc").
+		Limit(limit).
+		Find(&logs).Error
+	return logs, err
+}
+
+// GetMaxErrorLogId 返回当前最大的错误日志(type=5) id，用于告警首轮建立基线。
+func GetMaxErrorLogId() (int, error) {
+	var maxId int
+	err := LOG_DB.Model(&Log{}).
+		Where("type = ?", LogTypeError).
+		Select("COALESCE(MAX(id), 0)").
+		Scan(&maxId).Error
+	return maxId, err
+}
+
+// ErrorStatRow 错误聚合统计的通用行（按名称维度分组）。
+type ErrorStatRow struct {
+	Name  string `json:"name"`
+	Count int64  `json:"count"`
+}
+
+// ErrorStatChannelRow 按渠道 id 聚合的错误统计。
+type ErrorStatChannelRow struct {
+	Channel int   `json:"channel"`
+	Count   int64 `json:"count"`
+}
+
+// ErrorTrendPoint 错误数量时间序列的一个桶。
+type ErrorTrendPoint struct {
+	Bucket int64 `json:"bucket"` // 桶起始 unix 秒
+	Count  int64 `json:"count"`
+}
+
+func errorStatBaseQuery(start, end int64) *gorm.DB {
+	return LOG_DB.Model(&Log{}).
+		Where("type = ? AND created_at >= ? AND created_at <= ?", LogTypeError, start, end)
+}
+
+// GetErrorTotal 返回时间范围内错误日志(type=5)总数。
+func GetErrorTotal(start, end int64) (int64, error) {
+	var total int64
+	err := errorStatBaseQuery(start, end).Count(&total).Error
+	return total, err
+}
+
+// GetErrorStatByModel 按模型名聚合错误数量，倒序取前 limit 项。
+func GetErrorStatByModel(start, end int64, limit int) ([]ErrorStatRow, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []ErrorStatRow
+	err := errorStatBaseQuery(start, end).
+		Select("model_name as name, count(*) as count").
+		Group("model_name").
+		Order("count desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+// GetErrorStatByChannel 按渠道 id 聚合错误数量，倒序取前 limit 项。
+func GetErrorStatByChannel(start, end int64, limit int) ([]ErrorStatChannelRow, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []ErrorStatChannelRow
+	err := errorStatBaseQuery(start, end).
+		Select("channel_id as channel, count(*) as count").
+		Group("channel_id").
+		Order("count desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+// GetErrorStatByContent 按错误内容聚合（近似错误类型），倒序取前 limit 项。
+func GetErrorStatByContent(start, end int64, limit int) ([]ErrorStatRow, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []ErrorStatRow
+	err := errorStatBaseQuery(start, end).
+		Select("content as name, count(*) as count").
+		Group("content").
+		Order("count desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+// GetUserErrorTotal 返回某个用户在时间范围内的失败请求数。
+func GetUserErrorTotal(userId int, start, end int64) (int64, error) {
+	var total int64
+	err := errorStatBaseQuery(start, end).Where("user_id = ?", userId).Count(&total).Error
+	return total, err
+}
+
+// GetUserErrorStatByContent 按错误内容聚合某个用户的失败请求，倒序取前 limit 项。
+// 分组直接用 content 原文：错误文本里可能带请求 id 等变量，同一类错误会被拆成多行，
+// 这里先保留原文以免归一化规则误合并语义不同的错误。
+func GetUserErrorStatByContent(userId int, start, end int64, limit int) ([]ErrorStatRow, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []ErrorStatRow
+	err := errorStatBaseQuery(start, end).
+		Where("user_id = ?", userId).
+		Select("content as name, count(*) as count").
+		Group("content").
+		Order("count desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+func errorTrendBucketExpr(bucketSeconds int64) string {
+	if common.UsingLogDatabase(common.DatabaseTypeMySQL) {
+		return fmt.Sprintf("(created_at DIV %d) * %d", bucketSeconds, bucketSeconds)
+	}
+	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
+		return fmt.Sprintf("intDiv(created_at, %d) * %d", bucketSeconds, bucketSeconds)
+	}
+	// SQLite / PostgreSQL: 整数列的 / 即整数除法
+	return fmt.Sprintf("(created_at / %d) * %d", bucketSeconds, bucketSeconds)
+}
+
+// GetErrorTrend 返回时间范围内错误数量的时间序列，按 bucketSeconds 分桶。
+func GetErrorTrend(start, end, bucketSeconds int64) ([]ErrorTrendPoint, error) {
+	if bucketSeconds < 1 {
+		bucketSeconds = 3600
+	}
+	expr := errorTrendBucketExpr(bucketSeconds)
+	var points []ErrorTrendPoint
+	err := errorStatBaseQuery(start, end).
+		Select(expr + " as bucket, count(*) as count").
+		Group(expr).
+		Order("bucket asc").
+		Scan(&points).Error
+	return points, err
 }

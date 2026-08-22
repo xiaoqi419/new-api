@@ -16,7 +16,7 @@ version: '3.4' # For compatibility with older Docker versions
 
 services:
   new-api:
-    image: calciumion/new-api:latest
+    image: registry.cn-shanghai.aliyuncs.com/gongyong1/torchai:latest
     container_name: new-api
     restart: always
     command: --log-dir /app/logs
@@ -64,6 +64,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Watchtower：自动在线更新 new-api。每 5 分钟检查一次镜像仓库，
+  # 发现 torchai:latest 有新镜像就自动拉取并重建 new-api 容器，无需登录服务器。
+  # 发布流程：本地 ./build-push.sh 推送镜像 -> Watchtower 自动更新。
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup new-api
+    networks:
+      - new-api-network
 
   redis:
     image: redis:latest

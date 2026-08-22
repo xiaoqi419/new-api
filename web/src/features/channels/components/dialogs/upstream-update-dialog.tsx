@@ -1,3 +1,8 @@
+import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,12 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Search } from 'lucide-react'
-import { useState, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Dialog } from '@/components/dialog'
+import { Search } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -97,8 +97,8 @@ export function UpstreamUpdateDialog(props: UpstreamUpdateDialogProps) {
   const handleConfirm = () => {
     const hasAdd = props.addModels.length > 0
     const hasRemove = props.removeModels.length > 0
-    const selectedAddArr = Array.from(selectedAdd)
-    const selectedRemoveArr = Array.from(selectedRemove)
+    const selectedAddArr = [...selectedAdd]
+    const selectedRemoveArr = [...selectedRemove]
     const anyAdd = selectedAddArr.length > 0
     const anyRemove = selectedRemoveArr.length > 0
 
@@ -282,8 +282,8 @@ export function UpstreamUpdateDialog(props: UpstreamUpdateDialogProps) {
         handleConfirm={() => {
           setPartialConfirmOpen(false)
           props.onConfirm({
-            addModels: Array.from(selectedAdd),
-            removeModels: Array.from(selectedRemove),
+            addModels: [...selectedAdd],
+            removeModels: [...selectedRemove],
           })
         }}
       />

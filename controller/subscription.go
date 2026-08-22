@@ -199,6 +199,13 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
+	req.Plan.ScopeGroup = strings.TrimSpace(req.Plan.ScopeGroup)
+	if req.Plan.ScopeGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.ScopeGroup]; !ok {
+			common.ApiErrorMsg(c, "指定分组不存在")
+			return
+		}
+	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
 	if req.Plan.QuotaResetPeriod == model.SubscriptionResetCustom && req.Plan.QuotaResetCustomSeconds <= 0 {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
@@ -273,6 +280,13 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			return
 		}
 	}
+	req.Plan.ScopeGroup = strings.TrimSpace(req.Plan.ScopeGroup)
+	if req.Plan.ScopeGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.ScopeGroup]; !ok {
+			common.ApiErrorMsg(c, "指定分组不存在")
+			return
+		}
+	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
 	if req.Plan.QuotaResetPeriod == model.SubscriptionResetCustom && req.Plan.QuotaResetCustomSeconds <= 0 {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
@@ -298,6 +312,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"total_amount":               req.Plan.TotalAmount,
 			"upgrade_group":              req.Plan.UpgradeGroup,
 			"downgrade_group":            req.Plan.DowngradeGroup,
+			"scope_group":                req.Plan.ScopeGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
 			"updated_at":                 common.GetTimestamp(),

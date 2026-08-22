@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
 import { useNavigate, getRouteApi } from '@tanstack/react-router'
-import { type Table } from '@tanstack/react-table'
+import type { Table } from '@tanstack/react-table'
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -48,7 +48,7 @@ function getFilterValue(
   logCategory: TaskLikeLogCategory
 ): string {
   if (logCategory === 'drawing') {
-    return (filters as DrawingLogFilters).mjId || ''
+    return (filters as DrawingLogFilters).model || ''
   }
   return (filters as TaskLogFilters).taskId || ''
 }
@@ -59,7 +59,7 @@ function setFilterValue(
   value: string
 ): TaskLogsFilters {
   if (logCategory === 'drawing') {
-    return { ...filters, mjId: value }
+    return { ...filters, model: value }
   }
   return { ...filters, taskId: value }
 }
@@ -92,7 +92,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
       props.logCategory === 'drawing'
         ? {
             ...baseFilters,
-            ...(searchParams.filter ? { mjId: searchParams.filter } : {}),
+            ...(searchParams.model ? { model: searchParams.model } : {}),
           }
         : {
             ...baseFilters,
@@ -106,6 +106,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     searchParams.endTime,
     searchParams.channel,
     searchParams.filter,
+    searchParams.model,
   ])
 
   const handleChange = useCallback(
@@ -162,7 +163,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const filterValue = getFilterValue(filters, props.logCategory)
   const placeholder =
     props.logCategory === 'drawing'
-      ? t('Filter by MjProxy task ID')
+      ? t('Filter by model')
       : t('Filter by task ID')
   const hasAdditionalFilters = !!filterValue || !!filters.channel
   const dateRangeFilter = (

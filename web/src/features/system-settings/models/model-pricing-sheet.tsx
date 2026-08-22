@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertTriangle, Save } from 'lucide-react'
 import {
   forwardRef,
   useCallback,
@@ -30,6 +29,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { sideDrawerContentClassName } from '@/components/drawer-layout'
+import { AlertTriangle, Save } from '@/components/icons'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,25 +63,37 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
+import { ImagePriceTierEditor } from './image-price-tier-editor'
 import {
   EMPTY_LANE_ENABLED,
   EMPTY_LANE_PRICES,
+  createEmptyImagePriceTiers,
+  createEmptyVideoPriceMatrix,
   buildPreviewRows,
   createInitialLaneState,
   createModelPricingSchema,
+  getImagePriceTiersError,
+  getVideoPriceMatrixError,
   hasValue,
   laneConfigs,
   numericDraftRegex,
+  parseImagePriceTiers,
+  parseVideoPriceMatrix,
   ratioFieldByLane,
+  serializeImagePriceTiers,
+  serializeVideoPriceMatrix,
   toNumberOrNull,
+  type ImagePriceTiersDraft,
   type LaneKey,
   type ModelPricingFormValues,
   type ModelRatioData,
   type PricingMode,
+  type VideoPriceMatrixDraft,
 } from './model-pricing-core'
 import { PriceInput, PriceLane } from './model-pricing-inputs'
 import { formatPricingNumber } from './pricing-format'
 import { TieredPricingEditor } from './tiered-pricing-editor'
+import { VideoPriceTierEditor } from './video-price-tier-editor'
 
 export type { ModelRatioData } from './model-pricing-core'
 
@@ -153,6 +165,12 @@ export const ModelPricingEditorPanel = forwardRef<
   const [laneEnabled, setLaneEnabled] = useState<Record<LaneKey, boolean>>({
     ...EMPTY_LANE_ENABLED,
   })
+  const [videoPriceDraft, setVideoPriceDraft] = useState<VideoPriceMatrixDraft>(
+    createEmptyVideoPriceMatrix
+  )
+  const [imagePriceDraft, setImagePriceDraft] = useState<ImagePriceTiersDraft>(
+    createEmptyImagePriceTiers
+  )
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
   const [editorReloadToken, setEditorReloadToken] = useState(0)
@@ -175,6 +193,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
   useEffect(() => {
     const nextLaneState = createInitialLaneState(editData)
+    let nextPricingMode: PricingMode = 'per-token'
 
     if (editData) {
       form.reset({
@@ -188,13 +207,11 @@ export const ModelPricingEditorPanel = forwardRef<
         audioRatio: editData.audioRatio || '',
         audioCompletionRatio: editData.audioCompletionRatio || '',
       })
-      setPricingMode(
-        editData.billingMode === 'tiered_expr'
-          ? 'tiered_expr'
-          : editData.price
-            ? 'per-request'
-            : 'per-token'
-      )
+      if (editData.billingMode === 'tiered_expr') {
+        nextPricingMode = 'tiered_expr'
+      } else if (editData.price) {
+        nextPricingMode = 'per-request'
+      }
       setBillingExpr(editData.billingExpr || '')
       setRequestRuleExpr(editData.requestRuleExpr || '')
     } else {
@@ -209,11 +226,21 @@ export const ModelPricingEditorPanel = forwardRef<
         audioRatio: '',
         audioCompletionRatio: '',
       })
-      setPricingMode('per-token')
       setBillingExpr('')
       setRequestRuleExpr('')
     }
 
+    setPricingMode(nextPricingMode)
+
+    setVideoPriceDraft(
+      parseVideoPriceMatrix(
+        editData?.videoPriceTiers,
+        nextLaneState.promptPrice
+      )
+    )
+    setImagePriceDraft(
+      parseImagePriceTiers(editData?.imagePriceTiers, editData?.price)
+    )
     setPromptPrice(nextLaneState.promptPrice)
     setLanePrices(nextLaneState.prices)
     setLaneEnabled(nextLaneState.enabled)
@@ -351,19 +378,38 @@ export const ModelPricingEditorPanel = forwardRef<
         promptPrice,
         lanePrices,
         laneEnabled,
+        videoPriceDraft,
+        imagePriceDraft,
         t
       ),
     [
       billingExpr,
+      imagePriceDraft,
       laneEnabled,
       lanePrices,
       pricingMode,
       promptPrice,
       requestRuleExpr,
       t,
+      videoPriceDraft,
       watchedValues,
     ]
   )
+
+  const videoPriceError = useMemo(() => {
+    if (pricingMode !== 'per-token') return null
+    const errorKey = getVideoPriceMatrixError(videoPriceDraft, promptPrice)
+    return errorKey ? t(errorKey) : null
+  }, [pricingMode, promptPrice, t, videoPriceDraft])
+
+  const imagePriceError = useMemo(() => {
+    if (pricingMode !== 'per-request') return null
+    const errorKey = getImagePriceTiersError(
+      imagePriceDraft,
+      watchedValues.price
+    )
+    return errorKey ? t(errorKey) : null
+  }, [imagePriceDraft, pricingMode, t, watchedValues.price])
 
   const warnings = useMemo(() => {
     const nextWarnings: string[] = []
@@ -407,8 +453,20 @@ export const ModelPricingEditorPanel = forwardRef<
       nextWarnings.push(t('Audio output price requires an audio input price.'))
     }
 
+    if (videoPriceError) nextWarnings.push(videoPriceError)
+    if (imagePriceError) nextWarnings.push(imagePriceError)
+
     return nextWarnings
-  }, [editData, laneEnabled, lanePrices, pricingMode, promptPrice, t])
+  }, [
+    editData,
+    imagePriceError,
+    laneEnabled,
+    lanePrices,
+    pricingMode,
+    promptPrice,
+    t,
+    videoPriceError,
+  ])
 
   const validatePricingValues = useCallback(() => {
     if (
@@ -435,8 +493,20 @@ export const ModelPricingEditorPanel = forwardRef<
       return false
     }
 
+    if (videoPriceError) return false
+    if (imagePriceError) return false
+
     return true
-  }, [form, laneEnabled, lanePrices, pricingMode, promptPrice, t])
+  }, [
+    form,
+    imagePriceError,
+    laneEnabled,
+    lanePrices,
+    pricingMode,
+    promptPrice,
+    t,
+    videoPriceError,
+  ])
 
   const buildSubmitData = useCallback(
     (values: ModelPricingFormValues) => {
@@ -451,6 +521,14 @@ export const ModelPricingEditorPanel = forwardRef<
         imageRatio: values.imageRatio || '',
         audioRatio: values.audioRatio || '',
         audioCompletionRatio: values.audioCompletionRatio || '',
+        videoPriceTiers:
+          pricingMode === 'per-token'
+            ? serializeVideoPriceMatrix(videoPriceDraft, promptPrice)
+            : '',
+        imagePriceTiers:
+          pricingMode === 'per-request'
+            ? serializeImagePriceTiers(imagePriceDraft, values.price)
+            : '',
       }
 
       if (pricingMode === 'tiered_expr') {
@@ -460,7 +538,14 @@ export const ModelPricingEditorPanel = forwardRef<
 
       return data
     },
-    [billingExpr, pricingMode, requestRuleExpr]
+    [
+      billingExpr,
+      imagePriceDraft,
+      pricingMode,
+      promptPrice,
+      requestRuleExpr,
+      videoPriceDraft,
+    ]
   )
 
   useImperativeHandle(
@@ -595,6 +680,13 @@ export const ModelPricingEditorPanel = forwardRef<
                           )
                         })}
                       </div>
+
+                      <VideoPriceTierEditor
+                        draft={videoPriceDraft}
+                        errorMessage={videoPriceError}
+                        promptPrice={promptPrice}
+                        onChange={setVideoPriceDraft}
+                      />
                     </FieldGroup>
                   </TabsContent>
 
@@ -635,6 +727,13 @@ export const ModelPricingEditorPanel = forwardRef<
                             </Field>
                           </FormItem>
                         )}
+                      />
+
+                      <ImagePriceTierEditor
+                        draft={imagePriceDraft}
+                        errorMessage={imagePriceError}
+                        basePrice={watchedValues.price || ''}
+                        onChange={setImagePriceDraft}
                       />
                     </FieldGroup>
                   </TabsContent>

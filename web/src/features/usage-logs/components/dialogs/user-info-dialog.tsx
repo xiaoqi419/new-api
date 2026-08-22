@@ -1,3 +1,8 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Dialog } from '@/components/dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,22 +21,63 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { Dialog } from '@/components/dialog'
+import { Loader2 } from '@/components/icons'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import { formatQuota, formatCompactNumber } from '@/lib/format'
 
-import { getUserInfo } from '../../api'
-import type { UserInfo } from '../../types'
+import { getUserInfo, getUserStat } from '../../api'
+import type { UserErrorStatRow, UserInfo, UserStat } from '../../types'
 
 interface UserInfoDialogProps {
   userId: number | null
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+interface WindowStats {
+  quota: number
+  requests: number
+  failures: number
+}
+
+const emptyWindowStats: WindowStats = { quota: 0, requests: 0, failures: 0 }
+
+function toWindowStats(data: UserStat | undefined): WindowStats {
+  if (!data) return emptyWindowStats
+  return {
+    quota: data.quota || 0,
+    requests: data.requests || 0,
+    failures: data.failures || 0,
+  }
+}
+
+// 日/月边界按查看者本地时区算，与日志列表里显示的时间保持同一口径。
+function localDayStart(): number {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function localMonthStart(): number {
+  const d = new Date()
+  d.setDate(1)
+  d.setHours(0, 0, 0, 0)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function InfoItem(props: { label: string; value: string | number }) {
+  return (
+    <div className='space-y-1.5'>
+      <Label className='text-muted-foreground text-xs'>{props.label}</Label>
+      <div className='text-sm font-semibold'>{props.value}</div>
+    </div>
+  )
 }
 
 export function UserInfoDialog({
@@ -42,6 +88,10 @@ export function UserInfoDialog({
   const { t } = useTranslation()
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [today, setToday] = useState<WindowStats>(emptyWindowStats)
+  const [month, setMonth] = useState<WindowStats>(emptyWindowStats)
+  const [failureReasons, setFailureReasons] = useState<UserErrorStatRow[]>([])
+  const [isLoadingStats, setIsLoadingStats] = useState(false)
 
   const fetchUserInfo = useCallback(
     async (id: number) => {
@@ -64,24 +114,58 @@ export function UserInfoDialog({
     [t]
   )
 
+  const fetchStats = useCallback(
+    async (id: number) => {
+      setIsLoadingStats(true)
+      const now = Math.floor(Date.now() / 1000)
+
+      try {
+        const [dayStat, monthStat] = await Promise.all([
+          getUserStat({
+            user_id: id,
+            start_timestamp: localDayStart(),
+            end_timestamp: now,
+          }),
+          getUserStat({
+            user_id: id,
+            start_timestamp: localMonthStart(),
+            end_timestamp: now,
+          }),
+        ])
+
+        setToday(toWindowStats(dayStat.data))
+        setMonth(toWindowStats(monthStat.data))
+        setFailureReasons(monthStat.data?.by_content || [])
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch user usage statistics:', error)
+        toast.error(t('Failed to fetch usage statistics'))
+      } finally {
+        setIsLoadingStats(false)
+      }
+    },
+    [t]
+  )
+
   useEffect(() => {
     if (open && userId) {
       fetchUserInfo(userId)
     }
   }, [open, userId, fetchUserInfo])
 
-  const InfoItem = ({
-    label,
-    value,
-  }: {
-    label: string
-    value: string | number
-  }) => (
-    <div className='space-y-1.5'>
-      <Label className='text-muted-foreground text-xs'>{label}</Label>
-      <div className='text-sm font-semibold'>{value}</div>
-    </div>
-  )
+  useEffect(() => {
+    if (!open) {
+      setToday(emptyWindowStats)
+      setMonth(emptyWindowStats)
+      setFailureReasons([])
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (open && userId) {
+      fetchStats(userId)
+    }
+  }, [open, userId, fetchStats])
 
   return (
     <Dialog
@@ -95,11 +179,12 @@ export function UserInfoDialog({
       contentHeight='auto'
       bodyClassName='space-y-4'
     >
-      {isLoading ? (
+      {isLoading && (
         <div className='flex items-center justify-center py-8'>
           <Loader2 className='text-muted-foreground size-6 animate-spin' />
         </div>
-      ) : userInfo ? (
+      )}
+      {!isLoading && userInfo && (
         <div className='space-y-4 py-4'>
           {/* Basic Info */}
           <div className='grid grid-cols-2 gap-4'>
@@ -134,6 +219,76 @@ export function UserInfoDialog({
               <InfoItem label={t('User Group')} value={userInfo.group} />
             )}
           </div>
+
+          <Separator />
+
+          {/* Windowed usage */}
+          {isLoadingStats && (
+            <div className='flex items-center justify-center py-4'>
+              <Loader2 className='text-muted-foreground size-5 animate-spin' />
+            </div>
+          )}
+          {!isLoadingStats && (
+            <div className='space-y-4'>
+              <div className='grid grid-cols-2 gap-4'>
+                <InfoItem
+                  label={t("Today's Usage")}
+                  value={formatQuota(today.quota)}
+                />
+                <InfoItem
+                  label={t("Today's Requests")}
+                  value={formatCompactNumber(today.requests)}
+                />
+              </div>
+              <div className='grid grid-cols-2 gap-4'>
+                <InfoItem
+                  label={t("This Month's Usage")}
+                  value={formatQuota(month.quota)}
+                />
+                <InfoItem
+                  label={t("This Month's Requests")}
+                  value={formatCompactNumber(month.requests)}
+                />
+              </div>
+              <div className='grid grid-cols-2 gap-4'>
+                <InfoItem
+                  label={t("Today's Failures")}
+                  value={formatCompactNumber(today.failures)}
+                />
+                <InfoItem
+                  label={t("This Month's Failures")}
+                  value={formatCompactNumber(month.failures)}
+                />
+              </div>
+
+              {failureReasons.length > 0 && (
+                <Collapsible className='rounded-lg border p-3'>
+                  <CollapsibleTrigger className='cursor-pointer text-sm font-medium'>
+                    {t('Failure Reasons This Month')}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className='mt-3 max-h-[240px] space-y-2 overflow-auto'>
+                      {failureReasons.map((reason) => (
+                        <div
+                          key={reason.name}
+                          className='flex items-start justify-between gap-3 text-xs'
+                        >
+                          <span className='text-muted-foreground break-all'>
+                            {reason.name || t('Unknown error')}
+                          </span>
+                          <span className='shrink-0 font-semibold'>
+                            {formatCompactNumber(reason.count)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          )}
+
+          <Separator />
 
           {/* Invitation Info */}
           {(userInfo.aff_code ||
@@ -176,7 +331,8 @@ export function UserInfoDialog({
             </div>
           )}
         </div>
-      ) : (
+      )}
+      {!isLoading && !userInfo && (
         <div className='text-muted-foreground py-8 text-center text-sm'>
           {t('No user information available')}
         </div>

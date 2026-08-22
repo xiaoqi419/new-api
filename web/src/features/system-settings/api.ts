@@ -22,6 +22,7 @@ import type {
   ConfirmPaymentComplianceResponse,
   FetchUpstreamRatiosRequest,
   LogCleanupTask,
+  SendTestEmailResponse,
   SystemOptionsResponse,
   SystemTaskListResponse,
   SystemTaskResponse,
@@ -38,6 +39,14 @@ export async function getSystemOptions() {
 
 export async function updateSystemOption(request: UpdateOptionRequest) {
   const res = await api.put<UpdateOptionResponse>('/api/option/', request)
+  return res.data
+}
+
+/** Ask the server to send a test message with the SMTP settings already saved. */
+export async function sendTestEmail(to: string) {
+  const res = await api.post<SendTestEmailResponse>('/api/option/test_email', {
+    to,
+  })
   return res.data
 }
 

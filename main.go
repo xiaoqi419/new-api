@@ -45,6 +45,18 @@ var buildFS embed.FS
 //go:embed web/dist/index.html
 var indexPage []byte
 
+//go:embed web/classic/dist
+var classicBuildFS embed.FS
+
+//go:embed web/classic/dist/index.html
+var classicIndexPage []byte
+
+//go:embed web/canvas/dist
+var canvasBuildFS embed.FS
+
+//go:embed web/canvas/dist/index.html
+var canvasIndexPage []byte
+
 func main() {
 	startTime := time.Now()
 	kitutil.SetLogging(common.SysLog, func(message string) {
@@ -128,6 +140,16 @@ func main() {
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
 
+	// 站点级错误告警：定时聚合请求错误(type=5)并推送企业微信机器人
+	go service.StartErrorAlertTask()
+
+	// 拼团过期 sweeper：定期将未成团的拼团置为失败并退款
+	controller.StartGroupBuyExpiryTask()
+
+	// 绘图日志：历史一次性回填 + 定期清理过期缩略图
+	go model.BackfillDrawingLogsOnce()
+	service.StartDrawingImageCleanupTask()
+
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
 	service.StartSystemInstanceReporter()
@@ -150,6 +172,9 @@ func main() {
 	// switch are enforced inside the runner and each handler's Enabled().
 	controller.RegisterScheduledSystemTasks()
 	service.StartSystemTaskRunner()
+
+	// 模型健康探测：定时对各分组 chat 模型发起最小请求，点亮模型广场健康条与渠道监控可用率。
+	controller.StartHealthProbe()
 
 	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
 		common.BatchUpdateEnabled = true
@@ -190,14 +215,19 @@ func main() {
 	server.Use(middleware.RequestId())
 	server.Use(middleware.Version())
 	server.Use(middleware.I18n())
+	server.Use(middleware.ResolveTenant())
 	middleware.SetUpLogger(server)
 	InjectUmamiAnalytics()
 	InjectGoogleAnalytics()
 
 	// 设置路由
-	router.SetRouter(server, router.WebAssets{
-		BuildFS:   buildFS,
-		IndexPage: indexPage,
+	router.SetRouter(server, router.ThemeAssets{
+		DefaultBuildFS:   buildFS,
+		DefaultIndexPage: indexPage,
+		ClassicBuildFS:   classicBuildFS,
+		ClassicIndexPage: classicIndexPage,
+		CanvasBuildFS:    canvasBuildFS,
+		CanvasIndexPage:  canvasIndexPage,
 	})
 	var port = os.Getenv("PORT")
 	if port == "" {
@@ -256,6 +286,7 @@ func InjectUmamiAnalytics() {
 	analyticsInject := []byte(analyticsInjectBuilder.String())
 	placeholder := []byte("<!--umami-->\n")
 	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
+	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
 }
 
 func InjectGoogleAnalytics() {
@@ -279,6 +310,7 @@ func InjectGoogleAnalytics() {
 	analyticsInject := []byte(analyticsInjectBuilder.String())
 	placeholder := []byte("<!--Google Analytics-->\n")
 	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
+	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
 }
 
 func InitResources() error {
@@ -363,6 +395,9 @@ func InitResources() error {
 	}
 
 	service.StartAuthArtifactCleanup()
+
+	// 充值成功后推送企业微信通知（model 通过钩子回调 service，避免 model -> service 循环依赖）
+	model.OnTopUpSuccess = service.NotifyTopUpSuccess
 
 	return nil
 }

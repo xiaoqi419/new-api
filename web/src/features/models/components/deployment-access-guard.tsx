@@ -17,6 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
 import {
   AlertCircle,
   CheckCircle2,
@@ -25,10 +28,7 @@ import {
   Server,
   Settings,
   WifiOff,
-} from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -74,16 +74,16 @@ function LoadingStep({
       {status === 'loading' && (
         <Loader2 className='text-primary h-5 w-5 animate-spin' />
       )}
-      {status === 'done' && <CheckCircle2 className='h-5 w-5 text-green-500' />}
+      {status === 'done' && <CheckCircle2 className='text-success h-5 w-5' />}
       {status === 'pending' && (
-        <Circle className='text-muted-foreground/40 h-5 w-5' />
+        <Circle className='text-muted-foreground h-5 w-5' />
       )}
       <span
         className={cn(
           'text-sm',
           status === 'loading' && 'text-foreground font-medium',
           status === 'done' && 'text-muted-foreground',
-          status === 'pending' && 'text-muted-foreground/60'
+          status === 'pending' && 'text-muted-foreground'
         )}
       >
         {label}
@@ -141,8 +141,8 @@ export function DeploymentAccessGuard({
     return (
       <div className='mx-auto mt-8 max-w-md'>
         <div className='text-center'>
-          <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/20'>
-            <Server className='h-8 w-8 text-amber-600 dark:text-amber-400' />
+          <div className='bg-warning/15 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl'>
+            <Server className='text-warning h-8 w-8' />
           </div>
           <h3 className='mb-6 text-xl font-semibold'>
             {t('Model deployment service is disabled')}
@@ -172,8 +172,8 @@ export function DeploymentAccessGuard({
     return (
       <div className='mx-auto mt-8 max-w-md'>
         <div className='text-center'>
-          <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-900/20'>
-            <WifiOff className='h-8 w-8 text-red-600 dark:text-red-400' />
+          <div className='bg-destructive/15 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl'>
+            <WifiOff className='text-destructive h-8 w-8' />
           </div>
           <h3 className='mb-6 text-xl font-semibold'>
             {t('Connection failed')}
@@ -199,5 +199,5 @@ export function DeploymentAccessGuard({
     )
   }
 
-  return <>{children}</>
+  return children
 }

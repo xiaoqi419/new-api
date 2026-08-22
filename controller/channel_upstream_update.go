@@ -333,6 +333,9 @@ func sanitizeAdvancedCustomRequestError(err error, key string, requestURL string
 }
 
 func getFetchModelsResponseBody(method string, requestURL string, channel *model.Channel, headers http.Header) ([]byte, error) {
+	if err := service.ValidateSSRFProtectedFetchURL(requestURL); err != nil {
+		return nil, err
+	}
 	request, err := http.NewRequest(method, requestURL, nil)
 	if err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/performance_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/QuantumNous/new-api/setting/ui_setting"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +45,9 @@ func InitOptionMap() {
 	common.OptionMap["TelegramOAuthEnabled"] = strconv.FormatBool(common.TelegramOAuthEnabled)
 	common.OptionMap["WeChatAuthEnabled"] = strconv.FormatBool(common.WeChatAuthEnabled)
 	common.OptionMap["TurnstileCheckEnabled"] = strconv.FormatBool(common.TurnstileCheckEnabled)
+	common.OptionMap["ClickCaptchaEnabled"] = strconv.FormatBool(common.ClickCaptchaEnabled)
 	common.OptionMap["RegisterEnabled"] = strconv.FormatBool(common.RegisterEnabled)
+	common.OptionMap["AgentAutoApproveEnabled"] = strconv.FormatBool(common.AgentAutoApproveEnabled)
 	common.OptionMap["AutomaticDisableChannelEnabled"] = strconv.FormatBool(common.AutomaticDisableChannelEnabled)
 	common.OptionMap["AutomaticEnableChannelEnabled"] = strconv.FormatBool(common.AutomaticEnableChannelEnabled)
 	common.OptionMap["LogConsumeEnabled"] = strconv.FormatBool(common.LogConsumeEnabled)
@@ -69,9 +72,15 @@ func InitOptionMap() {
 	common.OptionMap["Notice"] = ""
 	common.OptionMap["About"] = ""
 	common.OptionMap["HomePageContent"] = ""
+	common.OptionMap["HomePageConfig"] = ""
+	common.OptionMap["LoginPageConfig"] = ""
+	common.OptionMap["PromoBannerConfig"] = ""
+	common.OptionMap["CommunityLinks"] = ""
 	common.OptionMap["Footer"] = common.Footer
 	common.OptionMap["SystemName"] = common.SystemName
 	common.OptionMap["Logo"] = common.Logo
+	common.OptionMap["ui_setting.appearance"] = ui_setting.AppearanceJSONString()
+	common.OptionMap["ui_setting.apimart_home"] = ui_setting.ApimartHomeJSONString()
 	common.OptionMap["ServerAddress"] = ""
 	common.OptionMap["WorkerUrl"] = system_setting.WorkerUrl
 	common.OptionMap["WorkerValidKey"] = system_setting.WorkerValidKey
@@ -93,6 +102,25 @@ func InitOptionMap() {
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
 	common.OptionMap["CreemWebhookSecret"] = setting.CreemWebhookSecret
+	common.OptionMap["WechatPayEnabled"] = strconv.FormatBool(setting.WechatPayEnabled)
+	common.OptionMap["WechatPayAppId"] = setting.WechatPayAppId
+	common.OptionMap["WechatPayAppSecret"] = setting.WechatPayAppSecret
+	common.OptionMap["WechatPayMchId"] = setting.WechatPayMchId
+	common.OptionMap["WechatPayApiV3Key"] = setting.WechatPayApiV3Key
+	common.OptionMap["WechatPayCert"] = setting.WechatPayCert
+	common.OptionMap["WechatPayCertSerialNo"] = setting.WechatPayCertSerialNo
+	common.OptionMap["WechatPayPrivateKey"] = setting.WechatPayPrivateKey
+	common.OptionMap["WechatPayNotifyUrl"] = setting.WechatPayNotifyUrl
+	common.OptionMap["WechatPayNative"] = strconv.FormatBool(setting.WechatPayNative)
+	common.OptionMap["WechatPayH5"] = strconv.FormatBool(setting.WechatPayH5)
+	common.OptionMap["WechatPayJSAPI"] = strconv.FormatBool(setting.WechatPayJSAPI)
+	common.OptionMap["WechatPayMinTopUp"] = strconv.Itoa(setting.WechatPayMinTopUp)
+	common.OptionMap["AlipayEnabled"] = strconv.FormatBool(setting.AlipayEnabled)
+	common.OptionMap["AlipayAppId"] = setting.AlipayAppId
+	common.OptionMap["AlipayPrivateKey"] = setting.AlipayPrivateKey
+	common.OptionMap["AlipayPublicKey"] = setting.AlipayPublicKey
+	common.OptionMap["AlipayProduction"] = strconv.FormatBool(setting.AlipayProduction)
+	common.OptionMap["AlipayMinTopUp"] = strconv.Itoa(setting.AlipayMinTopUp)
 	common.OptionMap["WaffoEnabled"] = strconv.FormatBool(setting.WaffoEnabled)
 	common.OptionMap["WaffoApiKey"] = setting.WaffoApiKey
 	common.OptionMap["WaffoPrivateKey"] = setting.WaffoPrivateKey
@@ -119,6 +147,7 @@ func InitOptionMap() {
 	common.OptionMap["TopupGroupRatio"] = common.TopupGroupRatio2JSONString()
 	common.OptionMap["Chats"] = setting.Chats2JsonString()
 	common.OptionMap["AutoGroups"] = setting.AutoGroups2JsonString()
+	common.OptionMap["AutoGroupRoutes"] = setting.AutoGroupRoutes2JsonString()
 	common.OptionMap["DefaultUseAutoGroup"] = strconv.FormatBool(setting.DefaultUseAutoGroup)
 	common.OptionMap["MaxTokenAutoGroups"] = strconv.Itoa(setting.GetMaxTokenAutoGroups())
 	common.OptionMap["PayMethods"] = operation_setting.PayMethods2JsonString()
@@ -129,11 +158,18 @@ func InitOptionMap() {
 	common.OptionMap["WeChatServerAddress"] = ""
 	common.OptionMap["WeChatServerToken"] = ""
 	common.OptionMap["WeChatAccountQRCodeImageURL"] = ""
+	common.OptionMap["WeChatMpToken"] = ""
+	common.OptionMap["WeChatMpName"] = ""
+	common.OptionMap["WeChatMpAppId"] = ""
+	common.OptionMap["WeChatMpAppSecret"] = ""
 	common.OptionMap["TurnstileSiteKey"] = ""
 	common.OptionMap["TurnstileSecretKey"] = ""
 	common.OptionMap["QuotaForNewUser"] = strconv.Itoa(common.QuotaForNewUser)
 	common.OptionMap["QuotaForInviter"] = strconv.Itoa(common.QuotaForInviter)
 	common.OptionMap["QuotaForInvitee"] = strconv.Itoa(common.QuotaForInvitee)
+	common.OptionMap["RebateEnabled"] = strconv.FormatBool(common.RebateEnabled)
+	common.OptionMap["RebateRatio"] = strconv.FormatFloat(common.RebateRatio, 'f', -1, 64)
+	common.OptionMap["GroupBuyEnabled"] = strconv.FormatBool(common.GroupBuyEnabled)
 	common.OptionMap["QuotaRemindThreshold"] = strconv.Itoa(common.QuotaRemindThreshold)
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
 	common.OptionMap["ModelRequestRateLimitCount"] = strconv.Itoa(setting.ModelRequestRateLimitCount)
@@ -151,6 +187,8 @@ func InitOptionMap() {
 	common.OptionMap["ImageRatio"] = ratio_setting.ImageRatio2JSONString()
 	common.OptionMap["AudioRatio"] = ratio_setting.AudioRatio2JSONString()
 	common.OptionMap["AudioCompletionRatio"] = ratio_setting.AudioCompletionRatio2JSONString()
+	common.OptionMap["VideoPriceTiers"] = ratio_setting.VideoPrice2JSONString()
+	common.OptionMap["ImagePriceTiers"] = ratio_setting.ImagePrice2JSONString()
 	common.OptionMap["TopUpLink"] = common.TopUpLink
 	//common.OptionMap["ChatLink"] = common.ChatLink
 	//common.OptionMap["ChatLink2"] = common.ChatLink2
@@ -324,8 +362,12 @@ func updateOptionMap(key string, value string) (err error) {
 			common.TelegramOAuthEnabled = boolValue
 		case "TurnstileCheckEnabled":
 			common.TurnstileCheckEnabled = boolValue
+		case "ClickCaptchaEnabled":
+			common.ClickCaptchaEnabled = boolValue
 		case "RegisterEnabled":
 			common.RegisterEnabled = boolValue
+		case "AgentAutoApproveEnabled":
+			common.AgentAutoApproveEnabled = boolValue
 		case "EmailDomainRestrictionEnabled":
 			common.EmailDomainRestrictionEnabled = boolValue
 		case "EmailAliasRestrictionEnabled":
@@ -354,6 +396,10 @@ func updateOptionMap(key string, value string) (err error) {
 			common.TaskEnabled = boolValue
 		case "DataExportEnabled":
 			common.DataExportEnabled = boolValue
+		case "RebateEnabled":
+			common.RebateEnabled = boolValue
+		case "GroupBuyEnabled":
+			common.GroupBuyEnabled = boolValue
 		case "DefaultCollapseSidebar":
 			common.DefaultCollapseSidebar = boolValue
 		case "MjNotifyEnabled":
@@ -420,6 +466,8 @@ func updateOptionMap(key string, value string) (err error) {
 		err = setting.UpdateChatsByJsonString(value)
 	case "AutoGroups":
 		err = setting.UpdateAutoGroupsByJsonString(value)
+	case "AutoGroupRoutes":
+		err = setting.UpdateAutoGroupRoutesByJsonString(value)
 	case "MaxTokenAutoGroups":
 		err = setting.UpdateMaxTokenAutoGroups(value)
 	case "CustomCallbackAddress":
@@ -454,6 +502,44 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.CreemTestMode = value == "true"
 	case "CreemWebhookSecret":
 		setting.CreemWebhookSecret = value
+	case "WechatPayEnabled":
+		setting.WechatPayEnabled = value == "true"
+	case "WechatPayAppId":
+		setting.WechatPayAppId = value
+	case "WechatPayAppSecret":
+		setting.WechatPayAppSecret = value
+	case "WechatPayMchId":
+		setting.WechatPayMchId = value
+	case "WechatPayApiV3Key":
+		setting.WechatPayApiV3Key = value
+	case "WechatPayCert":
+		setting.WechatPayCert = value
+	case "WechatPayCertSerialNo":
+		setting.WechatPayCertSerialNo = value
+	case "WechatPayPrivateKey":
+		setting.WechatPayPrivateKey = value
+	case "WechatPayNotifyUrl":
+		setting.WechatPayNotifyUrl = value
+	case "WechatPayNative":
+		setting.WechatPayNative = value == "true"
+	case "WechatPayH5":
+		setting.WechatPayH5 = value == "true"
+	case "WechatPayJSAPI":
+		setting.WechatPayJSAPI = value == "true"
+	case "WechatPayMinTopUp":
+		setting.WechatPayMinTopUp, _ = strconv.Atoi(value)
+	case "AlipayEnabled":
+		setting.AlipayEnabled = value == "true"
+	case "AlipayAppId":
+		setting.AlipayAppId = value
+	case "AlipayPrivateKey":
+		setting.AlipayPrivateKey = value
+	case "AlipayPublicKey":
+		setting.AlipayPublicKey = value
+	case "AlipayProduction":
+		setting.AlipayProduction = value == "true"
+	case "AlipayMinTopUp":
+		setting.AlipayMinTopUp, _ = strconv.Atoi(value)
 	case "WaffoEnabled":
 		setting.WaffoEnabled = value == "true"
 	case "WaffoApiKey":
@@ -522,6 +608,14 @@ func updateOptionMap(key string, value string) (err error) {
 		common.WeChatServerToken = value
 	case "WeChatAccountQRCodeImageURL":
 		common.WeChatAccountQRCodeImageURL = value
+	case "WeChatMpToken":
+		common.WeChatMpToken = value
+	case "WeChatMpName":
+		common.WeChatMpName = value
+	case "WeChatMpAppId":
+		common.WeChatMpAppId = value
+	case "WeChatMpAppSecret":
+		common.WeChatMpAppSecret = value
 	case "TelegramBotToken":
 		common.TelegramBotToken = value
 	case "TelegramBotName":
@@ -536,6 +630,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.QuotaForInviter, _ = strconv.Atoi(value)
 	case "QuotaForInvitee":
 		common.QuotaForInvitee, _ = strconv.Atoi(value)
+	case "RebateRatio":
+		common.RebateRatio, _ = strconv.ParseFloat(value, 64)
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
 	case "PreConsumedQuota":
@@ -576,6 +672,10 @@ func updateOptionMap(key string, value string) (err error) {
 		err = ratio_setting.UpdateAudioRatioByJSONString(value)
 	case "AudioCompletionRatio":
 		err = ratio_setting.UpdateAudioCompletionRatioByJSONString(value)
+	case "VideoPriceTiers":
+		err = ratio_setting.UpdateVideoPriceByJSONString(value)
+	case "ImagePriceTiers":
+		err = ratio_setting.UpdateImagePriceByJSONString(value)
 	case "TopUpLink":
 		common.TopUpLink = value
 	//case "ChatLink":

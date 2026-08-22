@@ -35,6 +35,14 @@ export const apiKeySchema = z.object({
   accessed_time: z.number(),
   group: z.string().nullish().default(''),
   auto_groups: z.array(z.string()).nullish().default(null),
+  group_switch_enabled: z
+    .preprocess((v) => {
+      if (v === 1) return true
+      if (v === 0) return false
+      return v
+    }, z.boolean())
+    .optional()
+    .default(false),
   cross_group_retry: z
     .preprocess((v) => {
       if (v === 1) return true
@@ -43,9 +51,13 @@ export const apiKeySchema = z.object({
     }, z.boolean())
     .optional()
     .default(false),
+  group_switch_groups: z.string().nullish().default(''),
+  group_switch_threshold: z.number().catch(2),
+  group_switch_cooldown: z.number().catch(10),
   model_limits_enabled: z.boolean(),
   model_limits: z.string().nullish().default(''),
   allow_ips: z.string().nullish().default(''),
+  max_concurrency: z.number().catch(0),
 })
 
 export type ApiKey = z.infer<typeof apiKeySchema>
@@ -92,6 +104,11 @@ export interface ApiKeyFormData {
   model_limits: string
   allow_ips: string
   group: string
+  group_switch_enabled: boolean
+  group_switch_groups: string
+  group_switch_threshold: number
+  group_switch_cooldown: number
+  max_concurrency: number
   auto_groups: string[]
   cross_group_retry: boolean
 }

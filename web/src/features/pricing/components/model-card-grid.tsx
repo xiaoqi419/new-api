@@ -17,10 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ChevronLeft, ChevronRight } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
 
@@ -72,8 +72,8 @@ export function ModelCardGrid(props: ModelCardGridProps) {
   }
 
   return (
-    <div className='space-y-4 sm:space-y-5'>
-      <div className='grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3'>
+    <div className='space-y-5'>
+      <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 xl:gap-[18px]'>
         {pagedModels.map((model) => (
           <ModelCard
             key={model.id ?? model.model_name}
@@ -90,8 +90,8 @@ export function ModelCardGrid(props: ModelCardGridProps) {
       </div>
 
       {totalPages > 1 && (
-        <div className='text-muted-foreground flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row'>
-          <p className='text-muted-foreground'>
+        <div className='flex flex-col items-center justify-between gap-3 border-t border-[#eef1f4] px-1 pt-4 text-sm sm:flex-row dark:border-white/12'>
+          <p className='text-[#626262] dark:text-[#a8a8a8]'>
             {t('Page {{current}} of {{total}}', {
               current: currentPage,
               total: totalPages,
@@ -104,7 +104,7 @@ export function ModelCardGrid(props: ModelCardGridProps) {
               size='sm'
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={currentPage <= 1}
-              className='gap-1.5'
+              className='h-9 gap-1.5 rounded-full border-[#e2e2de] dark:border-white/15'
             >
               <ChevronLeft className='size-4' />
               {t('Previous page')}
@@ -117,7 +117,7 @@ export function ModelCardGrid(props: ModelCardGridProps) {
                 setPage((current) => Math.min(totalPages, current + 1))
               }
               disabled={currentPage >= totalPages}
-              className='gap-1.5'
+              className='h-9 gap-1.5 rounded-full border-[#e2e2de] dark:border-white/15'
             >
               {t('Next page')}
               <ChevronRight className='size-4' />

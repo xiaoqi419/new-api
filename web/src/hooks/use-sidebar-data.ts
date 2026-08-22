@@ -17,27 +17,39 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import {
-  Activity,
+  BadgeCheck,
   Box,
+  Building2,
   CreditCard,
+  Dices,
   FileText,
   FlaskConical,
+  Gauge,
+  Gift,
+  HandCoins,
+  History,
   Key,
   LayoutDashboard,
-  ListTodo,
-  MessageSquare,
+  LifeBuoy,
+  Megaphone,
   Radio,
+  ReceiptText,
+  Rocket,
   ServerCog,
   Settings,
+  Share2,
   Ticket,
+  TriangleAlert,
+  Trophy,
   User,
   Users,
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { type SidebarData } from '@/components/layout/types'
+import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -47,22 +59,40 @@ import { ROLE } from '@/lib/roles'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const isAgent = useAuthStore((s) => s.auth.user?.is_agent)
 
   return {
     navGroups: [
+      ...(isAgent
+        ? [
+            {
+              id: 'agent',
+              title: t('Agent'),
+              items: [
+                {
+                  title: t('Agent Console'),
+                  url: '/agent-console',
+                  icon: Share2,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         id: 'chat',
         title: t('Chat'),
         items: [
           {
-            title: t('Playground'),
-            url: '/playground',
-            icon: FlaskConical,
+            title: t('Workbench'),
+            url: '/workbench',
+            icon: Rocket,
           },
           {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
+            title: t('Playground'),
+            url: '/playground/chat',
+            activeUrls: ['/playground/image', '/playground/video'],
+            configUrls: ['/playground'],
+            icon: FlaskConical,
           },
         ],
       },
@@ -71,13 +101,13 @@ export function useSidebarData(): SidebarData {
         title: t('General'),
         items: [
           {
-            title: t('Overview'),
+            title: t('Analytics'),
             url: '/dashboard/overview',
-            icon: Activity,
-          },
-          {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
+            activeUrls: [
+              '/dashboard/models',
+              '/dashboard/flow',
+              '/dashboard/users',
+            ],
             icon: LayoutDashboard,
           },
           {
@@ -86,16 +116,69 @@ export function useSidebarData(): SidebarData {
             icon: Key,
           },
           {
-            title: t('Usage Logs'),
+            title: t('Consumption Logs'),
             url: '/usage-logs/common',
+            activeUrls: ['/usage-logs/drawing', '/usage-logs/task'],
+            configUrls: [
+              '/usage-logs/common',
+              '/usage-logs/drawing',
+              '/usage-logs/task',
+            ],
             icon: FileText,
           },
           {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
+            title: t('Channel Monitor'),
+            url: '/channel-monitor',
+            activeUrls: ['/channel-monitor/detail'],
+            icon: Gauge,
+          },
+          {
+            title: t('Announcements'),
+            url: '/announcements',
+            icon: Megaphone,
+          },
+        ],
+      },
+      {
+        id: 'billing',
+        title: t('Billing'),
+        items: [
+          {
+            title: t('Finance Center'),
+            url: '/finance/wallet',
+            configUrls: ['/finance/wallet'],
+            icon: Wallet,
+          },
+          {
+            title: t('Invoices'),
+            url: '/finance/invoices',
+            configUrls: ['/finance/wallet'],
+            icon: ReceiptText,
+          },
+        ],
+      },
+      {
+        id: 'growth',
+        title: t('Growth'),
+        items: [
+          {
+            title: t('Group Buy Hall'),
+            url: '/finance/groupbuy',
+            activeUrls: ['/groupbuy/detail'],
+            configUrls: ['/finance/groupbuy'],
+            icon: HandCoins,
+          },
+          {
+            title: t('Lucky Draw'),
+            url: '/finance/lottery',
+            configUrls: ['/finance/groupbuy'],
+            icon: Dices,
+          },
+          {
+            title: t('Invitation'),
+            url: '/account/invitation',
+            configUrls: ['/account/profile'],
+            icon: Gift,
           },
         ],
       },
@@ -104,14 +187,22 @@ export function useSidebarData(): SidebarData {
         title: t('Personal'),
         items: [
           {
-            title: t('Wallet'),
-            url: '/wallet',
-            icon: Wallet,
+            title: t('Profile'),
+            url: '/account/profile',
+            configUrls: ['/account/profile'],
+            icon: User,
           },
           {
-            title: t('Profile'),
-            url: '/profile',
-            icon: User,
+            title: t('Identity Verification'),
+            url: '/account/identity-verification',
+            configUrls: ['/account/profile'],
+            icon: BadgeCheck,
+          },
+          {
+            title: t('Tickets'),
+            url: '/tickets',
+            activeUrls: ['/tickets/detail'],
+            icon: LifeBuoy,
           },
         ],
       },
@@ -135,6 +226,21 @@ export function useSidebarData(): SidebarData {
             icon: Users,
           },
           {
+            title: t('Agent Management'),
+            url: '/agents',
+            icon: Building2,
+          },
+          {
+            title: t('User Ranking'),
+            url: '/user-ranking',
+            icon: Trophy,
+          },
+          {
+            title: t('Error Reports'),
+            url: '/error-reports',
+            icon: TriangleAlert,
+          },
+          {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
@@ -143,6 +249,47 @@ export function useSidebarData(): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Group Buy'),
+            url: '/groupbuy/admin',
+            icon: HandCoins,
+          },
+          {
+            title: t('Rebate'),
+            url: '/rebate',
+            icon: Gift,
+          },
+          {
+            title: t('Invoice Management'),
+            url: '/invoices/admin',
+            icon: ReceiptText,
+          },
+          {
+            title: t('Identity Verification Management'),
+            url: '/identity-verification/admin',
+            icon: BadgeCheck,
+          },
+          {
+            title: t('Lottery Management'),
+            url: '/lottery/admin',
+            icon: Dices,
+          },
+          {
+            title: t('Ticket Management'),
+            url: '/tickets/admin',
+            activeUrls: ['/tickets/admin-detail'],
+            icon: LifeBuoy,
+          },
+          {
+            title: t('Announcement Management'),
+            url: '/announcements/admin',
+            icon: Megaphone,
+          },
+          {
+            title: t('Changelog'),
+            url: '/changelog',
+            icon: History,
           },
           {
             title: t('System Info'),

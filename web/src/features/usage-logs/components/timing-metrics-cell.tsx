@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { CircleAlert } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { CircleAlert } from '@/components/icons'
 import {
   dotColorMap,
   textColorMap,
@@ -203,7 +203,7 @@ export function StreamTpsCell(props: StreamTpsCellProps) {
           </TooltipProvider>
         )}
       </span>
-      <span className='text-muted-foreground/60 px-0.5 tabular-nums'>
+      <span className='text-muted-foreground px-0.5 tabular-nums'>
         {tpsLabel}
       </span>
     </div>

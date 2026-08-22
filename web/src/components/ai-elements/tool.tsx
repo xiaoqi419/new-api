@@ -19,6 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 'use client'
 
 import type { ToolUIPart } from 'ai'
+import { type ComponentProps, isValidElement, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -26,10 +29,7 @@ import {
   ClockIcon,
   WrenchIcon,
   XCircleIcon,
-} from 'lucide-react'
-import { type ComponentProps, isValidElement, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
+} from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import {
   Collapsible,

@@ -1,0 +1,244 @@
+schema: comet.native.v4
+name: lint-default-dashboard-models-settings
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: codex/lint-default-dashboard-models-settings
+  target_branch: codex/p1-lint-debt
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：权威 oxlint 对四个 owned feature 目录返回 0 errors。
+    result: passed
+    reason:
+      text: Independent gpt-5.6-terra/xhigh verification reran authoritative oxlint on
+        all four owned feature directories with 0 errors and 34 warning-only
+        findings; frontend typecheck also passed.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：Hooks、Promise、array key、component export 与 import-type
+      修复保持请求/保存时机、错误传播、列表 identity 和模块副作用；相关既有测试通过，或明确报告无测试。
+    result: passed
+    reason:
+      text: Independent diff review traced tier, tier-condition, and request-rule
+        stable identities through add/edit/remove and serialization; pricing
+        initialization, request/save timing, error propagation, and rendered
+        labels remain behaviorally equivalent. Six focused existing test files
+        passed 85 assertions with 0 failures.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：Git diff 只包含批准目录与本 child 正式产物，不含 lint 配置、package/lock、依赖或 disable 变化。
+    result: passed
+    reason:
+      text: The candidate diff is limited to formal child artifacts and the four
+        approved owned feature directories; no lint config, package/lock,
+        dependency, disable/ignore, shared-feature, backend, i18n, changelog, or
+        test changes were introduced. git diff --check passed.
+      truncated: false
+builder_handoff:
+  candidate_id: bc0d1816-276f-4edc-bd6d-a3818d8c1797
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:58870e54-15b2-4b4a-909b-1f427d5e7c54
+  iteration: 1
+  summary:
+    text: Cleared all owned dashboard, home, models, and system-settings oxlint
+      errors with behavior-preserving structural fixes and stable list
+      identities; request, save, pricing, and module contracts remain unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+  checks:
+    - name:
+        text: owned-path oxlint
+        truncated: false
+      result: passed
+      note:
+        text: oxlint 1.74.0 returned 0 errors and 34 warning-only findings across the
+          four owned feature directories.
+        truncated: false
+    - name:
+        text: relevant existing tests
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun test passed 85 assertions across six existing dashboard and
+          model-pricing test files.
+        truncated: false
+    - name:
+        text: frontend typecheck
+        truncated: false
+      result: passed
+      note:
+        text: npx --yes bun run typecheck completed successfully.
+        truncated: false
+    - name:
+        text: scope and whitespace review
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed; all 32 source changes remain under the four
+          approved owned feature directories.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Existing focused tests do not directly exercise DOM identity for the
+        tiered-pricing editor; the stable-ID add, edit, and remove paths were
+        reviewed manually and are covered by typecheck and final integration
+        gates.
+      truncated: false
+    - text: The 34 warning-only findings remain intentionally outside the approved
+        errors-only scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-18T11:00:51.283Z
+blockers: []
+verification:
+  candidate_id: bc0d1816-276f-4edc-bd6d-a3818d8c1797
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:4f0a9319-20bb-4426-a4f8-e4bedb91b2fa
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: owned-oxlint
+      name:
+        text: Dashboard, home, models, and settings oxlint
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/dashboard
+          truncated: false
+        - text: src/features/home
+          truncated: false
+        - text: src/features/models
+          truncated: false
+        - text: src/features/system-settings
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 420
+    - id: frontend-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: bun
+          truncated: false
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 7429
+    - id: focused-tests
+      name:
+        text: Dashboard and pricing-editor existing tests
+        truncated: false
+      argv_display:
+        - text: --yes
+          truncated: false
+        - text: bun
+          truncated: false
+        - text: test
+          truncated: false
+        - text: src/features/dashboard/lib/flow.test.ts
+          truncated: false
+        - text: src/features/dashboard/lib/flow-selection.test.ts
+          truncated: false
+        - text: src/features/system-settings/models/__tests__/video-price-validation.test.ts
+          truncated: false
+        - text: src/features/system-settings/models/__tests__/image-price-validation.test.ts
+          truncated: false
+        - text: src/features/system-settings/models/__tests__/tool-price-validation.test.tsx
+          truncated: false
+        - text: src/features/system-settings/models/__tests__/group-auto-limit-validation.test.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4927
+    - id: candidate-diff-check
+      name:
+        text: Candidate whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: codex/p1-lint-debt...HEAD
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 39
+  summary:
+    text: Independent gpt-5.6-terra/xhigh Verifier passed A1-A3 for candidate
+      bc0d1816-276f-4edc-bd6d-a3818d8c1797.
+    truncated: false
+  risks:
+    - text: There is no direct DOM reconciliation regression test for the new stable
+        identities; lifecycle tracing, focused tests, typecheck, and lint
+        provide the available evidence.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-18T11:14:52.032Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent gpt-5.6-terra/xhigh Verifier passed A1-A3 for candidate
+        bc0d1816-276f-4edc-bd6d-a3818d8c1797.
+      truncated: false
+    completed_at: 2026-08-18T11:14:52.032Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-18T10:06:40.240Z

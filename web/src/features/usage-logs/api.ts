@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 
-import { buildQueryParams } from './lib/utils'
+import { buildQueryParams } from './lib/query-params'
 import type {
   GetLogsParams,
   GetLogsResponse,
@@ -27,6 +27,8 @@ import type {
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
   UserInfo,
+  UserRankingResponse,
+  UserStat,
 } from './types'
 
 // ============================================================================
@@ -91,6 +93,35 @@ export async function getUserInfo(
   return res.data
 }
 
+export async function getUserStat(params: {
+  user_id: number
+  start_timestamp: number
+  end_timestamp: number
+  limit?: number
+}): Promise<{
+  success: boolean
+  message?: string
+  data?: UserStat
+}> {
+  const res = await api.get('/api/log/user_stat', { params })
+  return res.data
+}
+
+// ============================================================================
+// User Token Ranking API (admin)
+// ============================================================================
+
+export async function getUserTokenRanking(
+  start: number,
+  end: number,
+  limit = 20
+): Promise<UserRankingResponse> {
+  const res = await api.get(
+    `/api/user_ranking/?dimension=tokens&start=${start}&end=${end}&limit=${limit}`
+  )
+  return res.data
+}
+
 // ============================================================================
 // MjProxy (Drawing) Logs API
 // ============================================================================
@@ -100,6 +131,16 @@ export const getAllMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
 
 export const getUserMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, false)
+
+// ============================================================================
+// Drawing Logs (unified materialized view) API
+// ============================================================================
+
+export const getAllDrawingLogs = (params: GetLogsParams = {}) =>
+  fetchLogs('/api/drawing_logs', params, true)
+
+export const getUserDrawingLogs = (params: GetLogsParams = {}) =>
+  fetchLogs('/api/drawing_logs', params, false)
 
 // ============================================================================
 // Task Logs API

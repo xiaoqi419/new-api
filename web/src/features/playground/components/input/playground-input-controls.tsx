@@ -1,3 +1,7 @@
+import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { PromptInputButton } from '@/components/ai-elements/prompt-input'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { SendIcon, SquareIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { PromptInputButton } from '@/components/ai-elements/prompt-input'
+import { SendIcon, SquareIcon } from '@/components/icons'
 import { ModelGroupSelector } from '@/components/model-group-selector'
 
 import { getInputControlState } from '../../lib'

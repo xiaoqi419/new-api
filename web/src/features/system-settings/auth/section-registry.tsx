@@ -72,8 +72,10 @@ const AUTH_SECTIONS = [
           LinuxDOClientSecret: settings.LinuxDOClientSecret,
           LinuxDOMinimumTrustLevel: settings.LinuxDOMinimumTrustLevel,
           WeChatAuthEnabled: settings.WeChatAuthEnabled,
-          WeChatServerAddress: settings.WeChatServerAddress,
-          WeChatServerToken: settings.WeChatServerToken,
+          WeChatMpToken: settings.WeChatMpToken,
+          WeChatMpName: settings.WeChatMpName,
+          WeChatMpAppId: settings.WeChatMpAppId,
+          WeChatMpAppSecret: settings.WeChatMpAppSecret,
           WeChatAccountQRCodeImageURL: settings.WeChatAccountQRCodeImageURL,
         }}
       />
@@ -107,6 +109,7 @@ const AUTH_SECTIONS = [
     build: (settings: AuthSettings) => (
       <BotProtectionSection
         defaultValues={{
+          ClickCaptchaEnabled: settings.ClickCaptchaEnabled,
           TurnstileCheckEnabled: settings.TurnstileCheckEnabled,
           TurnstileSiteKey: settings.TurnstileSiteKey,
           TurnstileSecretKey: settings.TurnstileSecretKey,

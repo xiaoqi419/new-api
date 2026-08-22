@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,18 +18,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronDown, RotateCcw } from 'lucide-react'
-import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { Badge } from '@/components/ui/badge'
+import { ChevronDown, RotateCcw } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { getLobeIcon } from '@/lib/lobe-icon'
+import { getGroupRatioClassName } from '@/lib/colors'
 import { cn } from '@/lib/utils'
 
 import {
@@ -35,9 +33,11 @@ import {
   FILTER_ALL,
   QUOTA_TYPES,
   getEndpointTypeLabels,
+  getModalityFilterLabels,
   getQuotaTypeLabels,
 } from '../constants'
 import { parseTags } from '../lib/filters'
+import { formatGroupRatioLabel } from '../lib/model-helpers'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -45,7 +45,7 @@ type FilterOption = {
   label: string
   count?: number
   suffix?: string
-  icon?: ReactNode
+  suffixClassName?: string
 }
 
 type FilterSectionProps = {
@@ -61,11 +61,13 @@ export interface PricingSidebarProps {
   vendorFilter: string
   groupFilter: string
   tagFilter: string
+  modalityFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
   onTagChange: (value: string) => void
+  onModalityChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
@@ -83,43 +85,34 @@ function countBy(
   return models.reduce((count, model) => count + (predicate(model) ? 1 : 0), 0)
 }
 
-function formatGroupRatio(ratio: number | undefined): string | undefined {
-  if (ratio == null) return undefined
-  const formatted = Number.isInteger(ratio)
-    ? ratio.toString()
-    : ratio.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
-  return `x${formatted}`
-}
-
 function FilterChip(props: {
   option: FilterOption
   active: boolean
   onClick: () => void
 }) {
+  let suffixClass = props.active
+    ? 'bg-background text-foreground'
+    : 'bg-muted text-muted-foreground'
+  if (props.option.suffixClassName) {
+    suffixClass = props.option.suffixClassName
+  }
+
   return (
     <button
       type='button'
       onClick={props.onClick}
       className={cn(
-        'group inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-all',
+        'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111]',
         props.active
-          ? 'border-foreground/30 bg-foreground/5 text-foreground shadow-sm'
-          : 'border-border/70 bg-background text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'
+          ? 'border-[#111] bg-[#111] text-white dark:border-[#f6f6f4] dark:bg-[#f6f6f4] dark:text-[#111]'
+          : 'border-transparent bg-[#f3f4f6] text-[#525252] hover:border-[#e2e2de] hover:bg-white hover:text-[#111] dark:bg-white/8 dark:text-[#a8a8a8] dark:hover:border-white/15 dark:hover:bg-white/12 dark:hover:text-white'
       )}
       title={props.option.label}
     >
-      {props.option.icon && (
-        <span className='shrink-0'>{props.option.icon}</span>
-      )}
       <span className='truncate'>{props.option.label}</span>
       {(props.option.suffix || props.option.count != null) && (
         <span
-          className={cn(
-            'rounded-md px-1.5 py-0.5 text-[12px]',
-            props.active
-              ? 'bg-background text-foreground'
-              : 'bg-muted text-muted-foreground'
-          )}
+          className={cn('rounded-md px-1.5 py-0.5 text-[12px]', suffixClass)}
         >
           {props.option.suffix ?? props.option.count}
         </span>
@@ -132,16 +125,16 @@ function FilterSection(props: FilterSectionProps) {
   return (
     <Collapsible
       defaultOpen
-      className='border-border/70 border-b pb-3 last:border-b-0'
+      className='border-b border-[#eef1f4] py-1 last:border-b-0 dark:border-white/12'
     >
-      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2.5 text-left'>
-        <span className='text-foreground text-sm font-semibold'>
+      <CollapsibleTrigger className='group flex w-full items-center justify-between py-2 text-left focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-[#111]'>
+        <span className='text-foreground text-[13px] font-semibold'>
           {props.title}
         </span>
         <ChevronDown className='text-muted-foreground size-4 transition-transform group-data-[panel-open]:rotate-180' />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className='flex flex-wrap gap-1.5'>
+        <div className='flex flex-wrap gap-1.5 pb-2.5'>
           {props.options.map((option) => (
             <FilterChip
               key={option.value}
@@ -160,6 +153,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
   const { t } = useTranslation()
   const quotaTypeLabels = getQuotaTypeLabels(t)
   const endpointTypeLabels = getEndpointTypeLabels(t)
+  const modalityLabels = getModalityFilterLabels(t)
 
   const vendorOptions: FilterOption[] = [
     {
@@ -175,7 +169,6 @@ export function PricingSidebar(props: PricingSidebarProps) {
           props.models,
           (model) => model.vendor_name === vendor.name
         ),
-        icon: vendor.icon ? getLobeIcon(vendor.icon, 14) : undefined,
       }))
       .filter((vendor) => vendor.count > 0),
   ]
@@ -185,11 +178,16 @@ export function PricingSidebar(props: PricingSidebarProps) {
       value: FILTER_ALL,
       label: t('All Groups'),
     },
-    ...props.groups.map((group) => ({
-      value: group,
-      label: group,
-      suffix: formatGroupRatio(props.groupRatios?.[group]),
-    })),
+    ...props.groups.map((group) => {
+      const ratio = props.groupRatios?.[group]
+      return {
+        value: group,
+        label: group,
+        suffix: formatGroupRatioLabel(ratio),
+        suffixClassName:
+          ratio == null ? undefined : getGroupRatioClassName(ratio),
+      }
+    }),
   ]
 
   const quotaOptions: FilterOption[] = [
@@ -242,36 +240,41 @@ export function PricingSidebar(props: PricingSidebarProps) {
           props.models,
           (model) => model.supported_endpoint_types?.includes(value) ?? false
         ),
-      })),
+      }))
+      // 同厂商列表:一个端点类型站上没有任何模型支持时不列出来。此前这里漏了过滤,
+      // 只挂 chat 模型的站点会看到七八个恒为 0、点了也没反应的死选项。
+      .filter((option) => option.count > 0),
   ]
 
-  return (
-    <aside className={cn('rounded-xl border p-3', props.className)}>
-      <div className='mb-2.5 flex items-center justify-between gap-2'>
-        <div>
-          <h2 className='text-foreground text-sm font-bold'>{t('Filter')}</h2>
-          <p className='text-muted-foreground mt-1 text-xs'>
-            {t('Refine models by provider, group, type, and tags.')}
-          </p>
-        </div>
-        <Button
-          type='button'
-          variant='ghost'
-          size='sm'
-          onClick={props.onClearFilters}
-          disabled={!props.hasActiveFilters}
-          className='h-7 gap-1.5 px-2 text-xs'
-        >
-          <RotateCcw className='size-3.5' />
-          {t('Reset')}
-        </Button>
-      </div>
+  const modalityOptions: FilterOption[] = Object.entries(modalityLabels).map(
+    ([value, label]) => ({
+      value,
+      label,
+    })
+  )
 
-      {props.hasActiveFilters && (
-        <Badge variant='secondary' className='mb-3'>
-          {t('Filters active')}
-        </Badge>
+  return (
+    <aside
+      className={cn(
+        'hover-scrollbar overflow-y-auto rounded-[24px] border border-[#eef1f4] bg-white p-5 shadow-[0_18px_40px_rgba(0,0,0,0.12)] dark:border-white/12 dark:bg-[#111] xl:p-6',
+        props.className
       )}
+    >
+      <div className='mb-2 flex items-center justify-between gap-2'>
+        <h2 className='text-foreground text-base font-bold'>{t('Filter')}</h2>
+        {props.hasActiveFilters && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={props.onClearFilters}
+            className='text-muted-foreground h-7 gap-1 rounded-full px-2 text-xs'
+          >
+            <RotateCcw className='size-3' />
+            {t('Reset')}
+          </Button>
+        )}
+      </div>
 
       <div className='space-y-1'>
         <FilterSection
@@ -281,7 +284,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
           onChange={props.onGroupChange}
         />
         <FilterSection
-          title={t('All Vendors')}
+          title={t('Providers')}
           value={props.vendorFilter}
           options={vendorOptions}
           onChange={props.onVendorChange}
@@ -303,6 +306,12 @@ export function PricingSidebar(props: PricingSidebarProps) {
           value={props.endpointTypeFilter}
           options={endpointOptions}
           onChange={props.onEndpointTypeChange}
+        />
+        <FilterSection
+          title={t('Modalities')}
+          value={props.modalityFilter}
+          options={modalityOptions}
+          onChange={props.onModalityChange}
         />
       </div>
     </aside>

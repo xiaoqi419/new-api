@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { CodeBlockEditor } from '../code-block'
@@ -40,15 +40,22 @@ function editorTree(value: string) {
 }
 
 describe('CodeBlockEditor', () => {
-  test('keeps the same editor instance when value and onKeyDown change on rerender', () => {
+  test('keeps the same editor instance when value and onKeyDown change on rerender', async () => {
     const { rerender } = render(editorTree('h'))
 
-    const contentBefore = document.querySelector('.cm-content')
-    expect(contentBefore).not.toBeNull()
+    const contentBefore = await waitFor(() => {
+      const content = document.querySelector('.cm-content')
+      expect(content).not.toBeNull()
+      return content
+    })
 
     rerender(editorTree('hi'))
 
-    const contentAfter = document.querySelector('.cm-content')
+    const contentAfter = await waitFor(() => {
+      const content = document.querySelector('.cm-content')
+      expect(content?.textContent).toContain('hi')
+      return content
+    })
     // If the EditorView were torn down and rebuilt, the content node would be
     // replaced and the cursor would reset to the document start, making typed
     // characters pile up at the beginning (text appears right-to-left).

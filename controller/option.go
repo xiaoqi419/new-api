@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -15,6 +16,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/QuantumNous/new-api/setting/ui_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -195,7 +197,7 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	case "WeChatAuthEnabled":
-		if option.Value == "true" && common.WeChatServerAddress == "" {
+		if option.Value == "true" && common.WeChatServerAddress == "" && common.WeChatMpToken == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "无法启用微信登录，请先填入微信登录相关配置信息！",
@@ -362,6 +364,37 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ui_setting.appearance":
+		normalized, validateErr := ui_setting.ValidateAppearanceJSONString(option.Value.(string))
+		if validateErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": validateErr.Error(),
+			})
+			return
+		}
+		option.Value = normalized
+	case "ui_setting.apimart_home":
+		normalized, validateErr := ui_setting.ValidateApimartHomeJSONString(option.Value.(string))
+		if validateErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": validateErr.Error(),
+			})
+			return
+		}
+		option.Value = normalized
+	case "CommunityLinks":
+		if strings.TrimSpace(option.Value.(string)) != "" {
+			var probe []map[string]any
+			if jsonErr := common.Unmarshal([]byte(option.Value.(string)), &probe); jsonErr != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "官方社群配置必须是合法的 JSON 数组",
+				})
+				return
+			}
+		}
 	}
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {
@@ -371,6 +404,53 @@ func UpdateOption(c *gin.Context) {
 	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
 	recordManageAudit(c, "option.update", map[string]interface{}{
 		"key": option.Key,
+	})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+// SendTestEmail 用当前生效的 SMTP 配置发一封测试邮件，让管理员保存后立刻知道配置是否可用。
+// 收件人留空时寄给操作者本人，省去手打邮箱。
+func SendTestEmail(c *gin.Context) {
+	var req struct {
+		To string `json:"to"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+
+	receiver := strings.TrimSpace(req.To)
+	if receiver == "" {
+		user, err := model.GetUserById(c.GetInt("id"), false)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		receiver = strings.TrimSpace(user.Email)
+	}
+	if receiver == "" {
+		common.ApiErrorMsg(c, "请填写收件邮箱，或先为当前账号绑定邮箱")
+		return
+	}
+	if !common.IsValidEmail(receiver) {
+		common.ApiErrorMsg(c, "收件邮箱格式不正确")
+		return
+	}
+
+	subject := fmt.Sprintf("%s SMTP 测试邮件", common.SystemName)
+	content := fmt.Sprintf("<p>这是一封来自 %s 的测试邮件。</p>"+
+		"<p>您能收到它，说明当前保存的 SMTP 配置可以正常发信。</p>"+
+		"<p>发送时间：%s</p>", common.SystemName, time.Now().Format("2006-01-02 15:04:05"))
+	if err := common.SendEmail(subject, receiver, content); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	recordManageAudit(c, "option.test_email", map[string]interface{}{
+		"receiver": receiver,
 	})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

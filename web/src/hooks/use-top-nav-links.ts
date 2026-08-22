@@ -20,12 +20,14 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useStatus } from '@/hooks/use-status'
+import { navIconNameFor } from '@/lib/nav-icons'
 import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { useAuthStore } from '@/stores/auth-store'
 
 export type TopNavLink = {
   title: string
   href: string
+  icon?: string
   disabled?: boolean
   requiresAuth?: boolean
   external?: boolean
@@ -55,49 +57,70 @@ export function useTopNavLinks(): TopNavLink[] {
     )
   }, [status])
 
-  // Documentation link (may be external)
-  const docsLink: string | undefined = status?.docs_link as string | undefined
-
   const isAuthed = !!auth?.user
 
   const links: TopNavLink[] = []
 
+  const icons = modules?.icons
+
   // Home
   if (modules?.home !== false) {
-    links.push({ title: t('Home'), href: '/' })
+    links.push({
+      title: t('Home'),
+      href: '/',
+      icon: navIconNameFor(icons, 'home'),
+    })
   }
 
   // Console -> /dashboard (new console path)
   if (modules?.console !== false) {
-    links.push({ title: t('Console'), href: '/dashboard' })
+    links.push({
+      title: t('Console'),
+      href: '/dashboard',
+      icon: navIconNameFor(icons, 'console'),
+    })
   }
 
   // Pricing
   const pricing = modules?.pricing
   if (pricing && typeof pricing === 'object' && pricing.enabled) {
     const requiresAuth = pricing.requireAuth && !isAuthed
-    links.push({ title: t('Model Square'), href: '/pricing', requiresAuth })
+    links.push({
+      title: t('Model Square'),
+      href: '/pricing',
+      requiresAuth,
+      icon: navIconNameFor(icons, 'pricing'),
+    })
   }
 
   // Rankings
   const rankings = modules?.rankings
   if (rankings && typeof rankings === 'object' && rankings.enabled) {
     const requiresAuth = rankings.requireAuth && !isAuthed
-    links.push({ title: t('Rankings'), href: '/rankings', requiresAuth })
+    links.push({
+      title: t('Rankings'),
+      href: '/rankings',
+      requiresAuth,
+      icon: navIconNameFor(icons, 'rankings'),
+    })
   }
 
-  // Docs (supports external links)
+  // Docs: built-in in-app developer docs (controlled by `docs`)
   if (modules?.docs !== false) {
-    if (docsLink) {
-      links.push({ title: t('Docs'), href: docsLink, external: true })
-    } else {
-      links.push({ title: t('Docs'), href: '/docs' })
-    }
+    links.push({
+      title: t('API Documentation'),
+      href: '/docs',
+      icon: navIconNameFor(icons, 'docs'),
+    })
   }
 
   // About
   if (modules?.about !== false) {
-    links.push({ title: t('About'), href: '/about' })
+    links.push({
+      title: t('About'),
+      href: '/about',
+      icon: navIconNameFor(icons, 'about'),
+    })
   }
 
   return links

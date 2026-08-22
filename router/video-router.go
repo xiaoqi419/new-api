@@ -49,4 +49,24 @@ func SetVideoRouter(router *gin.Engine) {
 		// Maps to: /?Action=CVSync2AsyncSubmitTask&Version=2022-08-31 and /?Action=CVSync2AsyncGetResult&Version=2022-08-31
 		jimengOfficialGroup.POST("/", controller.RelayTask)
 	}
+
+	// 火山私域素材库（虚拟人像 AIGC）：下游用 Bearer sk-xxx 调 /ark/?Action=..&Version=..
+	// 经 ArkAssetRequestConvert 注入 sentinel 模型路由到与视频共用的 DoubaoVideo 渠道，
+	// 由 ArkAssetProxy 取渠道 AK/SK 做 V4 签名转发到 open.volcengineapi.com。
+	arkAssetGroup := router.Group("/ark")
+	arkAssetGroup.Use(middleware.RouteTag("relay"))
+	arkAssetGroup.Use(middleware.ArkAssetRequestConvert(), middleware.TokenAuth(), middleware.Distribute())
+	{
+		arkAssetGroup.POST("/", controller.ArkAssetProxy)
+	}
+
+	// 火山官方 Ark 视频格式（Seedance 2.0）：下游用 Bearer sk-xxx 调官方端点，
+	// 经 ArkVideoRequestConvert 转成内部统一格式并复用视频中转管线，响应以 Ark 原生格式输出。
+	arkVideoGroup := router.Group("/ark/api/v3/contents/generations")
+	arkVideoGroup.Use(middleware.RouteTag("relay"))
+	arkVideoGroup.Use(middleware.ArkVideoRequestConvert(), middleware.TokenAuth(), middleware.Distribute())
+	{
+		arkVideoGroup.POST("/tasks", controller.RelayTask)
+		arkVideoGroup.GET("/tasks/:id", controller.RelayTaskFetch)
+	}
 }

@@ -1,3 +1,6 @@
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,10 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Code, Plus, Table, Trash2 } from 'lucide-react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
+import { Code, Plus, Table, Trash2 } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -56,7 +56,7 @@ function getDuplicateSources(rows: MappingRow[]): string[] {
     }
   }
 
-  return Array.from(duplicates)
+  return [...duplicates]
 }
 
 export function ModelMappingEditor(props: ModelMappingEditorProps) {
@@ -68,14 +68,15 @@ export function ModelMappingEditor(props: ModelMappingEditorProps) {
   const [jsonValue, setJsonValue] = useState(props.value)
   const [jsonError, setJsonError] = useState<string | null>(null)
   const nextRowIdRef = useRef(0)
+  const parseJsonToRowsRef = useRef<(json: string) => boolean>(() => false)
   const duplicateSources = useMemo(() => getDuplicateSources(rows), [rows])
 
-  const createRowId = () => {
+  const createRowId = useCallback(() => {
     nextRowIdRef.current += 1
     return `mapping-${nextRowIdRef.current}`
-  }
+  }, [])
 
-  const parseJsonToRows = (json: string): boolean => {
+  const parseJsonToRows = useCallback((json: string): boolean => {
     try {
       if (!json.trim()) {
         setRows([])
@@ -120,17 +121,21 @@ export function ModelMappingEditor(props: ModelMappingEditorProps) {
       })
       setJsonError(null)
       return true
-    } catch (_error) {
+    } catch {
       setJsonError(t('Model mapping must be valid JSON format'))
       return false
     }
-  }
+  }, [createRowId, t])
+
+  useEffect(() => {
+    parseJsonToRowsRef.current = parseJsonToRows
+  }, [parseJsonToRows])
 
   // Parse JSON to rows when value changes externally
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setJsonValue(props.value)
-    parseJsonToRows(props.value)
+    parseJsonToRowsRef.current(props.value)
   }, [props.value])
 
   const convertRowsToJson = (updatedRows: MappingRow[]): string => {

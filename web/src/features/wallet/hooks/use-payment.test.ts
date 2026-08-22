@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import assert from 'node:assert/strict'
 import { describe, expect, test } from 'vitest'
 
 import { PAYMENT_TYPES } from '../constants'
@@ -45,5 +46,30 @@ describe('payment amount routing', () => {
 
     expect(amount).toBe(18.75)
     expect(calls).toEqual(['waffo:120'])
+  })
+
+  test('prices direct Alipay with the shared /api/user/amount calculator', async () => {
+    const calls: string[] = []
+    const amount = await requestPaymentAmount(50, PAYMENT_TYPES.ALIPAY_DIRECT, {
+      regular: async (request) => {
+        calls.push(`regular:${request.amount}`)
+        return { success: true, data: '7.00' }
+      },
+      stripe: async () => {
+        calls.push('stripe')
+        return { success: true, data: '2' }
+      },
+      waffo: async () => {
+        calls.push('waffo')
+        return { success: true, data: '3' }
+      },
+      waffoPancake: async () => {
+        calls.push('pancake')
+        return { success: true, data: '4' }
+      },
+    })
+
+    assert.equal(amount, 7)
+    assert.deepEqual(calls, ['regular:50'])
   })
 })

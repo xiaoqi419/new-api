@@ -1,3 +1,7 @@
+import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { BadgeCell } from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,11 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Check, Copy, Loader2 } from 'lucide-react'
-import { useState, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { BadgeCell } from '@/components/data-table'
+import { Check, Copy, Loader2 } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -79,7 +79,7 @@ export function ApiKeyCell({ apiKey }: { apiKey: ApiKey }) {
     copyIcon = <Loader2 className='size-3.5 animate-spin' />
     copyTooltip = t('Loading...')
   } else if (isCopied) {
-    copyIcon = <Check className='size-3.5 text-green-600' />
+    copyIcon = <Check className='text-success size-3.5' />
     copyTooltip = t('Copied!')
   }
 

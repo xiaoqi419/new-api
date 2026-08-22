@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Grid2X2, Table2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
-
+import { Grid2X2, Table2 } from '@/components/icons'
 import {
   Tooltip,
   TooltipContent,

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 
 import type { TokenUnit } from './types'
 
@@ -27,8 +27,10 @@ import type { TokenUnit } from './types'
 /** Sort options for pricing models */
 export const SORT_OPTIONS = {
   NAME: 'name',
+  NEWEST: 'newest',
   PRICE_LOW: 'price-low',
   PRICE_HIGH: 'price-high',
+  CONTEXT_HIGH: 'context-high',
 } as const
 
 export type SortOption = (typeof SORT_OPTIONS)[keyof typeof SORT_OPTIONS]
@@ -36,13 +38,39 @@ export type SortOption = (typeof SORT_OPTIONS)[keyof typeof SORT_OPTIONS]
 export function getSortLabels(t: TFunction): Record<SortOption, string> {
   return {
     [SORT_OPTIONS.NAME]: t('Name'),
+    [SORT_OPTIONS.NEWEST]: t('Newest'),
     [SORT_OPTIONS.PRICE_LOW]: t('Price: Low to High'),
     [SORT_OPTIONS.PRICE_HIGH]: t('Price: High to Low'),
+    [SORT_OPTIONS.CONTEXT_HIGH]: t('Context: Large to Small'),
   }
 }
 
 /** Filter values */
 export const FILTER_ALL = 'all'
+
+/** Modality category filter options (ephone-style top tabs) */
+export const MODALITY_FILTERS = {
+  ALL: 'all',
+  TEXT: 'text',
+  IMAGE: 'image',
+  AUDIO: 'audio',
+  VIDEO: 'video',
+} as const
+
+export type ModalityFilterOption =
+  (typeof MODALITY_FILTERS)[keyof typeof MODALITY_FILTERS]
+
+export function getModalityFilterLabels(
+  t: TFunction
+): Record<ModalityFilterOption, string> {
+  return {
+    [MODALITY_FILTERS.ALL]: t('All'),
+    [MODALITY_FILTERS.TEXT]: t('Text'),
+    [MODALITY_FILTERS.IMAGE]: t('Image'),
+    [MODALITY_FILTERS.AUDIO]: t('Audio'),
+    [MODALITY_FILTERS.VIDEO]: t('Video'),
+  }
+}
 
 /** Quota type options */
 export const QUOTA_TYPES = {
@@ -137,9 +165,17 @@ export const DEFAULT_TOKEN_UNIT: TokenUnit = 'M'
 export const VIEW_MODES = {
   CARD: 'card',
   TABLE: 'table',
+  GROUP: 'group',
 } as const
 
 export type ViewMode = (typeof VIEW_MODES)[keyof typeof VIEW_MODES]
+
+/**
+ * Chips shown per group row before collapsing. A reseller group can hold
+ * hundreds of models, which would turn one row into a full-page wall and
+ * defeat the point of comparing groups side by side.
+ */
+export const MAX_GROUP_VIEW_CHIPS = 24
 
 /** Default page size for pricing table */
 export const DEFAULT_PRICING_PAGE_SIZE = 20

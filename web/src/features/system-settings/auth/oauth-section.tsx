@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
-import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +25,7 @@ import { toast } from 'sonner'
 import * as z from 'zod'
 
 import { CopyButton } from '@/components/copy-button'
+import { ExternalLink } from '@/components/icons'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Form,
@@ -52,8 +52,10 @@ import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import {
   buildOAuthCallbackUrl,
+  buildWeChatMpCallbackUrl,
   resolveOAuthSiteUrl,
 } from './oauth-callback-url'
+import { WeChatQrCodeField } from './wechat-qr-code-field'
 
 /**
  * react-hook-form 7 treats dotted `name` strings as nested paths. To keep
@@ -88,8 +90,10 @@ const oauthSchema = z.object({
   LinuxDOClientSecret: z.string(),
   LinuxDOMinimumTrustLevel: z.string(),
   WeChatAuthEnabled: z.boolean(),
-  WeChatServerAddress: z.string(),
-  WeChatServerToken: z.string(),
+  WeChatMpToken: z.string(),
+  WeChatMpName: z.string(),
+  WeChatMpAppId: z.string(),
+  WeChatMpAppSecret: z.string(),
   WeChatAccountQRCodeImageURL: z.string(),
 })
 
@@ -118,8 +122,10 @@ type FlatOAuthDefaults = {
   LinuxDOClientSecret: string
   LinuxDOMinimumTrustLevel: string
   WeChatAuthEnabled: boolean
-  WeChatServerAddress: string
-  WeChatServerToken: string
+  WeChatMpToken: string
+  WeChatMpName: string
+  WeChatMpAppId: string
+  WeChatMpAppSecret: string
   WeChatAccountQRCodeImageURL: string
 }
 
@@ -202,8 +208,10 @@ const buildFormDefaults = (defaults: FlatOAuthDefaults): OAuthFormValues => ({
   LinuxDOClientSecret: defaults.LinuxDOClientSecret ?? '',
   LinuxDOMinimumTrustLevel: defaults.LinuxDOMinimumTrustLevel ?? '',
   WeChatAuthEnabled: defaults.WeChatAuthEnabled,
-  WeChatServerAddress: defaults.WeChatServerAddress ?? '',
-  WeChatServerToken: defaults.WeChatServerToken ?? '',
+  WeChatMpToken: defaults.WeChatMpToken ?? '',
+  WeChatMpName: defaults.WeChatMpName ?? '',
+  WeChatMpAppId: defaults.WeChatMpAppId ?? '',
+  WeChatMpAppSecret: defaults.WeChatMpAppSecret ?? '',
   WeChatAccountQRCodeImageURL: defaults.WeChatAccountQRCodeImageURL ?? '',
 })
 
@@ -229,10 +237,15 @@ const normalizeFormValues = (values: OAuthFormValues): FlatOAuthDefaults => ({
   LinuxDOClientId: values.LinuxDOClientId,
   LinuxDOClientSecret: values.LinuxDOClientSecret,
   LinuxDOMinimumTrustLevel: values.LinuxDOMinimumTrustLevel,
-  WeChatAuthEnabled: values.WeChatAuthEnabled,
-  WeChatServerAddress: values.WeChatServerAddress,
-  WeChatServerToken: values.WeChatServerToken,
+  WeChatMpToken: values.WeChatMpToken,
+  WeChatMpName: values.WeChatMpName,
+  WeChatMpAppId: values.WeChatMpAppId,
+  WeChatMpAppSecret: values.WeChatMpAppSecret,
   WeChatAccountQRCodeImageURL: values.WeChatAccountQRCodeImageURL,
+  // Persisted last on purpose: the backend rejects WeChatAuthEnabled=true
+  // while no WeChatMpToken (or legacy WeChatServerAddress) is stored yet, and
+  // onSubmit writes the changed keys sequentially in this declaration order.
+  WeChatAuthEnabled: values.WeChatAuthEnabled,
 })
 
 type OAuthSectionProps = {
@@ -263,6 +276,10 @@ export function OAuthSection(props: OAuthSectionProps) {
   const linuxDOCallbackUrl = buildOAuthCallbackUrl(
     props.serverAddress,
     'linuxdo',
+    t('Site URL')
+  )
+  const wechatMpCallbackUrl = buildWeChatMpCallbackUrl(
+    props.serverAddress,
     t('Site URL')
   )
 
@@ -1002,36 +1019,65 @@ export function OAuthSection(props: OAuthSectionProps) {
               </TabsContent>
 
               <TabsContent value='wechat' className={oauthTabContentClassName}>
+                <OAuthSetupGuide
+                  title={t('WeChat Official Account setup')}
+                  description={t(
+                    'In the Official Account console open Settings & Development → Basic configuration → Server configuration, switch it to developer mode and plain text (明文) message mode, then fill in the values below. Users follow the account, send the code shown on the sign-in page, and are logged in automatically.'
+                  )}
+                  rows={[
+                    {
+                      label: t('Server URL'),
+                      value: wechatMpCallbackUrl,
+                      copyLabel: t('Copy server URL'),
+                    },
+                  ]}
+                >
+                  <div className='text-muted-foreground'>
+                    {t(
+                      'The token below must match the one configured in the Official Account console, and the message encryption mode must be plain text.'
+                    )}
+                  </div>
+                </OAuthSetupGuide>
+
                 <FormField
                   control={form.control}
-                  name='WeChatAuthEnabled'
+                  name='WeChatMpToken'
                   render={({ field }) => (
-                    <SettingsSwitchItem>
-                      <SettingsSwitchContent>
-                        <FormLabel>{t('Enable WeChat Auth')}</FormLabel>
-                        <FormDescription>
-                          {t('Allow users to sign in with WeChat')}
-                        </FormDescription>
-                      </SettingsSwitchContent>
+                    <FormItem>
+                      <FormLabel>{t('Message verification token')}</FormLabel>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                        <Input
+                          type='password'
+                          placeholder={t('Leave blank to keep the saved token')}
+                          autoComplete='new-password'
+                          value={field.value ?? ''}
+                          onChange={(event) =>
+                            field.onChange(event.target.value)
+                          }
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
                         />
                       </FormControl>
-                    </SettingsSwitchItem>
+                      <FormDescription>
+                        {t(
+                          'Required before WeChat sign-in can be enabled. Stored tokens are never sent back to the browser.'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
 
                 <FormField
                   control={form.control}
-                  name='WeChatServerAddress'
+                  name='WeChatMpName'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Server Address')}</FormLabel>
+                      <FormLabel>{t('Official Account name')}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder={t('https://wechat-server.example.com')}
+                          placeholder={t('Shown to users, e.g. My Assistant')}
                           autoComplete='off'
                           value={field.value ?? ''}
                           onChange={(event) =>
@@ -1049,14 +1095,40 @@ export function OAuthSection(props: OAuthSectionProps) {
 
                 <FormField
                   control={form.control}
-                  name='WeChatServerToken'
+                  name='WeChatMpAppId'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Server Token')}</FormLabel>
+                      <FormLabel>{t('AppID')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={t('Optional, e.g. wx1234567890abcdef')}
+                          autoComplete='off'
+                          value={field.value ?? ''}
+                          onChange={(event) =>
+                            field.onChange(event.target.value)
+                          }
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='WeChatMpAppSecret'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('AppSecret')}</FormLabel>
                       <FormControl>
                         <Input
                           type='password'
-                          placeholder={t('Server Token')}
+                          placeholder={t(
+                            'Optional, leave blank to keep the saved value'
+                          )}
                           autoComplete='new-password'
                           value={field.value ?? ''}
                           onChange={(event) =>
@@ -1076,23 +1148,42 @@ export function OAuthSection(props: OAuthSectionProps) {
                   control={form.control}
                   name='WeChatAccountQRCodeImageURL'
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('QR Code Image URL')}</FormLabel>
+                    <FormItem className='lg:col-span-2'>
+                      <FormLabel>{t('Follow QR code')}</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={t('https://example.com/qr-code.png')}
-                          autoComplete='off'
+                        <WeChatQrCodeField
                           value={field.value ?? ''}
-                          onChange={(event) =>
-                            field.onChange(event.target.value)
-                          }
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
+                          onChange={field.onChange}
                         />
                       </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Shown on the sign-in dialog. Paste an image URL or upload the Official Account QR code (PNG/JPG, 256 KB max).'
+                        )}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='WeChatAuthEnabled'
+                  render={({ field }) => (
+                    <SettingsSwitchItem>
+                      <SettingsSwitchContent>
+                        <FormLabel>{t('Enable WeChat Auth')}</FormLabel>
+                        <FormDescription>
+                          {t('Allow users to sign in with WeChat')}
+                        </FormDescription>
+                      </SettingsSwitchContent>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </SettingsSwitchItem>
                   )}
                 />
               </TabsContent>
