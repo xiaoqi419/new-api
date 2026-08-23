@@ -18,6 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useMemo } from 'react'
 
+import {
+  filterHiddenAuthenticatedEntries,
+  isAuthenticatedEntryHidden,
+} from '@/components/layout/lib/authenticated-entrypoint-visibility'
 import type { NavGroup, NavItem } from '@/components/layout/types'
 import { useStatus } from '@/hooks/use-status'
 import { useAuthStore } from '@/stores/auth-store'
@@ -299,7 +303,7 @@ export function useSidebarConfig(navGroups: NavGroup[]): NavGroup[] {
 
   const filteredNavGroups = useMemo(
     () =>
-      navGroups
+      filterHiddenAuthenticatedEntries(navGroups)
         .map((group) => ({
           ...group,
           items: filterNavItems(group.items, adminConfig, userConfig),
@@ -319,6 +323,8 @@ export function useSidebarConfig(navGroups: NavGroup[]): NavGroup[] {
 export function useIsSidebarModuleVisible(url: string): boolean {
   const { status } = useStatus()
   const { auth } = useAuthStore()
+
+  if (isAuthenticatedEntryHidden(url)) return false
 
   const adminConfig = parseSidebarConfig(
     status?.SidebarModulesAdmin as string | null | undefined

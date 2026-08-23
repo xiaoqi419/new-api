@@ -47,32 +47,17 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { filterHiddenAuthenticatedEntries } from '@/components/layout/lib/authenticated-entrypoint-visibility'
 import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
-
-const HIDDEN_SIDEBAR_ENTRY_URLS = new Set([
-  '/finance/groupbuy',
-  '/user-ranking',
-  '/redemption-codes',
-  '/subscriptions',
-  '/groupbuy/admin',
-  '/rebate',
-  '/identity-verification/admin',
-])
 
 export function filterHiddenSidebarEntries(
   sidebarData: SidebarData
 ): SidebarData {
   return {
     ...sidebarData,
-    navGroups: sidebarData.navGroups.map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) =>
-          item.url === undefined || !HIDDEN_SIDEBAR_ENTRY_URLS.has(item.url)
-      ),
-    })),
+    navGroups: filterHiddenAuthenticatedEntries(sidebarData.navGroups),
   }
 }
 

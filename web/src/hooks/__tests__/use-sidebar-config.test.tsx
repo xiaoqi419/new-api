@@ -200,6 +200,23 @@ after(() => {
 })
 
 describe('sidebar configuration for split personal navigation', () => {
+  test('product visibility policy hides group buy from finance tabs while preserving unmarked entries', async () => {
+    const titles = await renderFilteredTitles({
+      adminPersonal: { topup: true, personal: true },
+      userPersonal: { topup: true, personal: true },
+    })
+
+    assert.deepEqual(titles, [
+      'Finance Center',
+      'Invoices',
+      'Lucky Draw',
+      'Invitation',
+      'Profile',
+      'Identity Verification',
+      'Tickets',
+    ])
+  })
+
   test('admin topup disablement removes all finance entries while tickets remain', async () => {
     const titles = await renderFilteredTitles({
       adminPersonal: { topup: false, personal: true },
@@ -223,7 +240,6 @@ describe('sidebar configuration for split personal navigation', () => {
     assert.deepEqual(titles, [
       'Finance Center',
       'Invoices',
-      'Group Buy Hall',
       'Lucky Draw',
       'Tickets',
     ])
