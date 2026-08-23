@@ -16,8 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import assert from 'node:assert/strict'
-import { describe, test } from 'node:test'
+import { describe, expect, test } from 'vitest'
 
 import type { SidebarData } from '@/components/layout/types'
 
@@ -59,12 +58,11 @@ describe('root navigation visibility', () => {
 
     const filtered = filterHiddenSidebarEntries(sidebarData)
 
-    assert.deepEqual(
-      filtered.navGroups.map((group) => group.items.map((item) => item.url)),
-      [
-        ['/invoices/admin', '/lottery/admin', '/invite-ranking'],
-        ['/finance/lottery', '/account/invitation'],
-      ]
-    )
+    expect(
+      filtered.navGroups.map((group) => group.items.map((item) => item.url))
+    ).toEqual([
+      ['/invoices/admin', '/lottery/admin', '/invite-ranking'],
+      ['/finance/lottery', '/account/invitation'],
+    ])
   })
 })

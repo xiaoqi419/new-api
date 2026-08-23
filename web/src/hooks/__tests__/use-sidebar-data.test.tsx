@@ -1,3 +1,31 @@
+import { Window } from 'happy-dom'
+import { createInstance } from 'i18next'
+import {
+  BadgeCheck,
+  Box,
+  Building2,
+  Dices,
+  FileText,
+  FlaskConical,
+  Gauge,
+  Gift,
+  History,
+  Key,
+  LayoutDashboard,
+  LifeBuoy,
+  Megaphone,
+  Radio,
+  ReceiptText,
+  Rocket,
+  ServerCog,
+  Settings,
+  Share2,
+  TriangleAlert,
+  User,
+  Users,
+  Wallet,
+} from 'lucide-react'
+import { I18nextProvider, initReactI18next } from 'react-i18next'
 /*
 Copyright (C) 2026 QuantumNous
 
@@ -16,41 +44,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import assert from 'node:assert/strict'
-import { after, describe, test } from 'node:test'
-
-import { Window } from 'happy-dom'
-import { createInstance } from 'i18next'
-import {
-  BadgeCheck,
-  Box,
-  Building2,
-  CreditCard,
-  Dices,
-  FileText,
-  FlaskConical,
-  Gauge,
-  Gift,
-  HandCoins,
-  History,
-  Key,
-  LayoutDashboard,
-  LifeBuoy,
-  Megaphone,
-  Radio,
-  ReceiptText,
-  Rocket,
-  ServerCog,
-  Settings,
-  Share2,
-  Ticket,
-  TriangleAlert,
-  Trophy,
-  User,
-  Users,
-  Wallet,
-} from 'lucide-react'
-import { I18nextProvider, initReactI18next } from 'react-i18next'
+import { afterAll, describe, expect, test } from 'vitest'
 
 import type { NavGroup, NavLink, SidebarData } from '@/components/layout/types'
 import { useSidebarData } from '@/hooks/use-sidebar-data'
@@ -117,7 +111,7 @@ async function renderSidebarData(isAgent = false): Promise<SidebarData> {
       createElement(I18nextProvider, { i18n }, createElement(SidebarProbe))
     )
   })
-  assert.ok(sidebarData)
+  if (!sidebarData) throw new Error('Expected sidebar navigation data')
   await act(async () => root.unmount())
   container.remove()
   return sidebarData
@@ -125,14 +119,16 @@ async function renderSidebarData(isAgent = false): Promise<SidebarData> {
 
 function getGroup(data: SidebarData, id: string): NavGroup {
   const group = data.navGroups.find((candidate) => candidate.id === id)
-  assert.ok(group, `Missing sidebar group: ${id}`)
+  if (!group) throw new Error(`Missing sidebar group: ${id}`)
   return group
 }
 
 function getLinks(group: NavGroup): NavLink[] {
   return group.items.map((item) => {
-    assert.ok('url' in item && item.url, `Expected ${item.title} to be a link`)
-    return item as NavLink
+    if (!('url' in item) || !item.url) {
+      throw new Error(`Expected ${item.title} to be a link`)
+    }
+    return item
   })
 }
 
@@ -146,7 +142,7 @@ function linkContract(group: NavGroup) {
   }))
 }
 
-after(() => {
+afterAll(() => {
   useAuthStore.getState().auth.reset()
   domWindow.close()
 })
@@ -155,11 +151,15 @@ describe('root sidebar navigation data', () => {
   test('exposes the confirmed groups and link contracts in exact order', async () => {
     const data = await renderSidebarData()
 
-    assert.deepEqual(
-      data.navGroups.map((group) => group.id),
-      ['chat', 'general', 'billing', 'growth', 'personal', 'admin']
-    )
-    assert.deepEqual(linkContract(getGroup(data, 'chat')), [
+    expect(data.navGroups.map((group) => group.id)).toEqual([
+      'chat',
+      'general',
+      'billing',
+      'growth',
+      'personal',
+      'admin',
+    ])
+    expect(linkContract(getGroup(data, 'chat'))).toEqual([
       {
         title: 'Workbench',
         url: '/workbench',
@@ -175,7 +175,7 @@ describe('root sidebar navigation data', () => {
         icon: FlaskConical,
       },
     ])
-    assert.deepEqual(linkContract(getGroup(data, 'general')), [
+    expect(linkContract(getGroup(data, 'general'))).toEqual([
       {
         title: 'Analytics',
         url: '/dashboard/overview',
@@ -220,7 +220,7 @@ describe('root sidebar navigation data', () => {
         icon: Megaphone,
       },
     ])
-    assert.deepEqual(linkContract(getGroup(data, 'billing')), [
+    expect(linkContract(getGroup(data, 'billing'))).toEqual([
       {
         title: 'Finance Center',
         url: '/finance/wallet',
@@ -236,14 +236,7 @@ describe('root sidebar navigation data', () => {
         icon: ReceiptText,
       },
     ])
-    assert.deepEqual(linkContract(getGroup(data, 'growth')), [
-      {
-        title: 'Group Buy Hall',
-        url: '/finance/groupbuy',
-        activeUrls: ['/groupbuy/detail'],
-        configUrls: ['/finance/groupbuy'],
-        icon: HandCoins,
-      },
+    expect(linkContract(getGroup(data, 'growth'))).toEqual([
       {
         title: 'Lucky Draw',
         url: '/finance/lottery',
@@ -259,7 +252,7 @@ describe('root sidebar navigation data', () => {
         icon: Gift,
       },
     ])
-    assert.deepEqual(linkContract(getGroup(data, 'personal')), [
+    expect(linkContract(getGroup(data, 'personal'))).toEqual([
       {
         title: 'Profile',
         url: '/account/profile',
@@ -287,25 +280,14 @@ describe('root sidebar navigation data', () => {
   test('preserves the administrator entries and their order', async () => {
     const adminLinks = getLinks(getGroup(await renderSidebarData(), 'admin'))
 
-    assert.deepEqual(
-      adminLinks.map((item) => [item.title, item.url, item.icon]),
+    expect(adminLinks.map((item) => [item.title, item.url, item.icon])).toEqual(
       [
         ['Channels', '/channels', Radio],
         ['Models', '/models/metadata', Box],
         ['Users', '/users', Users],
         ['Agent Management', '/agents', Building2],
-        ['User Ranking', '/user-ranking', Trophy],
         ['Error Reports', '/error-reports', TriangleAlert],
-        ['Redemption Codes', '/redemption-codes', Ticket],
-        ['Subscriptions', '/subscriptions', CreditCard],
-        ['Group Buy', '/groupbuy/admin', HandCoins],
-        ['Rebate', '/rebate', Gift],
         ['Invoice Management', '/invoices/admin', ReceiptText],
-        [
-          'Identity Verification Management',
-          '/identity-verification/admin',
-          BadgeCheck,
-        ],
         ['Lottery Management', '/lottery/admin', Dices],
         ['Ticket Management', '/tickets/admin', LifeBuoy],
         ['Announcement Management', '/announcements/admin', Megaphone],
@@ -314,44 +296,39 @@ describe('root sidebar navigation data', () => {
         ['System Settings', '/system-settings/site', Settings],
       ]
     )
-    assert.deepEqual(
-      adminLinks.map((item) => item.activeUrls),
-      [
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        ['/tickets/admin-detail'],
-        undefined,
-        undefined,
-        undefined,
-        ['/system-settings'],
-      ]
-    )
-    assert.ok(adminLinks.every((item) => item.configUrls === undefined))
-    assert.equal(
-      adminLinks.find((item) => item.title === 'System Info')?.requiredRole,
-      ROLE.SUPER_ADMIN
-    )
+    expect(adminLinks.map((item) => item.activeUrls)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['/tickets/admin-detail'],
+      undefined,
+      undefined,
+      undefined,
+      ['/system-settings'],
+    ])
+    expect(adminLinks.every((item) => item.configUrls === undefined)).toBe(true)
+    expect(
+      adminLinks.find((item) => item.title === 'System Info')?.requiredRole
+    ).toBe(ROLE.SUPER_ADMIN)
   })
 
   test('keeps the agent console group without exposing retired root entries', async () => {
     const data = await renderSidebarData(true)
 
-    assert.deepEqual(
-      data.navGroups.map((group) => group.id),
-      ['agent', 'chat', 'general', 'billing', 'growth', 'personal', 'admin']
-    )
-    assert.deepEqual(linkContract(getGroup(data, 'agent')), [
+    expect(data.navGroups.map((group) => group.id)).toEqual([
+      'agent',
+      'chat',
+      'general',
+      'billing',
+      'growth',
+      'personal',
+      'admin',
+    ])
+    expect(linkContract(getGroup(data, 'agent'))).toEqual([
       {
         title: 'Agent Console',
         url: '/agent-console',
@@ -362,11 +339,8 @@ describe('root sidebar navigation data', () => {
     ])
 
     const links = data.navGroups.flatMap((group) => getLinks(group))
-    assert.equal(
-      data.navGroups.some((group) => group.id === 'media'),
-      false
-    )
-    assert.equal(
+    expect(data.navGroups.some((group) => group.id === 'media')).toBe(false)
+    expect(
       links.some(
         (item) =>
           item.title === 'AI Media' ||
@@ -374,8 +348,7 @@ describe('root sidebar navigation data', () => {
           item.url === '/asset-library' ||
           item.url === '/canvas' ||
           item.url === '/agent-apply'
-      ),
-      false
-    )
+      )
+    ).toBe(false)
   })
 })

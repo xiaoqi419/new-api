@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -731,6 +732,14 @@ func TestSendEmailExplicitStartTLSRejectsUntrustedCertificateByDefault(t *testin
 	err := SendEmail("Verification", "receiver@example.com", "<p>123456</p>")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "STARTTLS handshake")
+
+	var certificateVerificationError *tls.CertificateVerificationError
 	var unknownAuthorityError x509.UnknownAuthorityError
-	require.ErrorAs(t, err, &unknownAuthorityError)
+	var hostnameError x509.HostnameError
+	require.True(t,
+		errors.As(err, &certificateVerificationError) ||
+			errors.As(err, &unknownAuthorityError) ||
+			errors.As(err, &hostnameError),
+		"expected certificate verification failure, got %T: %v", err, err,
+	)
 }

@@ -1,3 +1,13 @@
+import type { TFunction } from 'i18next'
+import {
+  Box,
+  CreditCard,
+  Layout,
+  Settings,
+  Shield,
+  ShieldAlert,
+  Wrench,
+} from 'lucide-react'
 /*
 Copyright (C) 2026 QuantumNous
 
@@ -16,41 +26,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import assert from 'node:assert/strict'
-import { describe, mock, test } from 'node:test'
+import { describe, expect, test, vi } from 'vitest'
 
-import type { TFunction } from 'i18next'
-import {
-  Box,
-  CreditCard,
-  Layout,
-  Settings,
-  Shield,
-  ShieldAlert,
-  Wrench,
-} from 'lucide-react'
-
-mock.module('@/features/system-settings/auth/section-registry.tsx', {
-  namedExports: { getAuthSectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/billing/section-registry.tsx', {
-  namedExports: { getBillingSectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/content/section-registry.tsx', {
-  namedExports: { getContentSectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/models/section-registry.tsx', {
-  namedExports: { getModelsSectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/operations/section-registry.tsx', {
-  namedExports: { getOperationsSectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/security/section-registry.tsx', {
-  namedExports: { getSecuritySectionNavItems: () => [] },
-})
-mock.module('@/features/system-settings/site/section-registry.tsx', {
-  namedExports: { getSiteSectionNavItems: () => [] },
-})
+vi.mock('@/features/system-settings/auth/section-registry.tsx', () => ({
+  getAuthSectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/billing/section-registry.tsx', () => ({
+  getBillingSectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/content/section-registry.tsx', () => ({
+  getContentSectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/models/section-registry.tsx', () => ({
+  getModelsSectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/operations/section-registry.tsx', () => ({
+  getOperationsSectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/security/section-registry.tsx', () => ({
+  getSecuritySectionNavItems: () => [],
+}))
+vi.mock('@/features/system-settings/site/section-registry.tsx', () => ({
+  getSiteSectionNavItems: () => [],
+}))
 
 const { SYSTEM_SETTINGS_VIEW } = await import('../system-settings.config')
 
@@ -63,7 +61,7 @@ describe('system settings sidebar navigation', () => {
       group.items.map((item) => item.icon)
     )
 
-    assert.deepEqual(icons, [
+    expect(icons).toEqual([
       Settings,
       Shield,
       CreditCard,
