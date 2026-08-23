@@ -90,22 +90,21 @@ function FilterChip(props: {
   active: boolean
   onClick: () => void
 }) {
-  let suffixClass = props.active
-    ? 'bg-background text-foreground'
-    : 'bg-muted text-muted-foreground'
-  if (props.option.suffixClassName) {
-    suffixClass = props.option.suffixClassName
-  }
+  const suffixClass = props.active
+    ? 'bg-white/18 text-white dark:bg-[#111]/12 dark:text-[#111]'
+    : props.option.suffixClassName ||
+      'bg-[#e7eaf0] text-[#3f4650] dark:bg-white/10 dark:text-[#c9c9c9]'
 
   return (
     <button
       type='button'
       onClick={props.onClick}
+      aria-pressed={props.active}
       className={cn(
         'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111]',
         props.active
-          ? 'border-[#111] bg-[#111] text-white dark:border-[#f6f6f4] dark:bg-[#f6f6f4] dark:text-[#111]'
-          : 'border-transparent bg-[#f3f4f6] text-[#525252] hover:border-[#e2e2de] hover:bg-white hover:text-[#111] dark:bg-white/8 dark:text-[#a8a8a8] dark:hover:border-white/15 dark:hover:bg-white/12 dark:hover:text-white'
+          ? 'border-[#2f00e5] bg-[#2f00e5] text-white dark:border-[#d4ff1f] dark:bg-[#d4ff1f] dark:text-[#111]'
+          : 'border-[#d7dce2] bg-white text-[#30343a] hover:border-[#2f00e5] hover:text-[#2f00e5] dark:border-white/18 dark:bg-white/8 dark:text-[#d7d7d7] dark:hover:border-[#d4ff1f] dark:hover:text-[#d4ff1f]'
       )}
       title={props.option.label}
     >

@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260823-7a85ed4e4',
+    date: '2026-08-23',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '提高模型广场筛选标签在亮色和暗色主题下的选中、未选中及倍率徽标对比度，并同步补充可访问的按下状态。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260823-71bc7e15e',
     date: '2026-08-23',
     changes: [
