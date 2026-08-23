@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260823-2ce9a8829',
+    date: '2026-08-23',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '精简登录后的导航入口：现代版与经典版统一隐藏拼团大厅、用户排行、兑换码、订阅、拼团、返现和身份认证管理菜单，同时保留对应页面、路由、权限与直接访问能力。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260822-d8a93d360',
     date: '2026-08-22',
     changes: [
