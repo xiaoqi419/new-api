@@ -104,7 +104,7 @@ function FilterChip(props: {
         'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2f00e5] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111]',
         props.active
           ? 'border-[#2f00e5] bg-[#2f00e5] text-white dark:border-[#d4ff1f] dark:bg-[#d4ff1f] dark:text-[#111]'
-          : 'border-[#d7dce2] bg-white text-[#30343a] hover:border-[#2f00e5] hover:text-[#2f00e5] dark:border-white/18 dark:bg-white/8 dark:text-[#d7d7d7] dark:hover:border-[#d4ff1f] dark:hover:text-[#d4ff1f]'
+          : 'border-[#b8c0ca] bg-[#f4f6f8] text-[#252a31] hover:border-[#2f00e5] hover:text-[#2f00e5] dark:border-white/18 dark:bg-white/8 dark:text-[#d7d7d7] dark:hover:border-[#d4ff1f] dark:hover:text-[#d4ff1f]'
       )}
       title={props.option.label}
     >

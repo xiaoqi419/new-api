@@ -96,14 +96,18 @@ export function PricingTable(props: PricingTableProps) {
         emptyDescription={t('No models match your current filters.')}
         skeletonKeyPrefix='pricing-skeleton'
         applyHeaderSize
+        tableClassName='!table-fixed'
         getColumnClassName={(_columnId, kind) =>
           kind === 'header' ? 'text-muted-foreground font-medium' : undefined
         }
-        renderRow={(row: Row<PricingModel>) => (
+        renderRow={(row: Row<PricingModel>, helpers) => (
           <DataTableRow
             key={row.id}
             row={row}
             className='hover:bg-muted/30 cursor-pointer transition-colors'
+            getColumnClassName={(columnId, kind) =>
+              kind === 'cell' ? helpers.getCellClassName(columnId) : undefined
+            }
             onClick={() => handleRowClick(row.original)}
           />
         )}

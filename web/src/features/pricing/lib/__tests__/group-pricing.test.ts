@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
+
 import { describe, test } from 'vitest'
 
-import type { PricingModel } from '../../types'
 import { getGroupRatioClassName } from '../../../../lib/colors'
+import type { PricingModel } from '../../types'
 import { formatGroupRatioLabel } from '../model-helpers'
 import { formatGroupChipPrice, formatGroupPrice } from '../price'
 
@@ -172,7 +173,10 @@ describe('group ratio badge', () => {
 
   test('colors a ratio by whether it is cheaper than base', () => {
     // 分组视图、侧栏筛选、详情分组卡三处共用这一个判定,避免同屏出现两套语义色。
-    assert.match(getGroupRatioClassName(0.9), /text-success/)
+    assert.match(getGroupRatioClassName(0.9), /bg-info\/10/)
+    assert.match(getGroupRatioClassName(0.9), /text-foreground/)
+    assert.match(getGroupRatioClassName(0.9), /dark:bg-success\/15/)
+    assert.match(getGroupRatioClassName(0.9), /dark:text-success/)
     assert.match(getGroupRatioClassName(1.5), /text-warning/)
     assert.match(getGroupRatioClassName(1), /text-muted-foreground/)
   })

@@ -153,7 +153,7 @@ export function getGroupRatioClassName(ratio: number): string {
     return 'bg-warning/10 text-warning'
   }
   if (ratio < 1) {
-    return 'bg-success/10 text-success'
+    return 'bg-info/10 text-foreground dark:bg-success/15 dark:text-success'
   }
   return 'bg-muted text-muted-foreground'
 }
