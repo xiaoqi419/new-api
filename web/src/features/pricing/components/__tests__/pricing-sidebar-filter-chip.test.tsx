@@ -84,9 +84,9 @@ describe('PricingSidebar filter chips', () => {
     )
     expect(unselected).toHaveAttribute('aria-pressed', 'false')
     expect(unselected).toHaveClass(
-      'border-[#d7dce2]',
-      'bg-white',
-      'text-[#30343a]',
+      'border-[#b8c0ca]',
+      'bg-[#f4f6f8]',
+      'text-[#252a31]',
       'dark:border-white/18',
       'dark:bg-white/8',
       'dark:text-[#d7d7d7]'

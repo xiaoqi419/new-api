@@ -79,7 +79,7 @@ export function usePricingColumns(
     // Model column
     {
       accessorKey: 'model_name',
-      meta: { label: t('Model') },
+      meta: { label: t('Model'), pinned: 'left' },
       header: t('Model'),
       cell: ({ row }) => {
         const model = row.original
@@ -93,7 +93,7 @@ export function usePricingColumns(
               {model.model_name}
             </span>
             {isRecentRelease(model) && (
-              <span className='bg-success/15 text-success shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase'>
+              <span className='bg-info/10 text-foreground dark:bg-success/15 dark:text-success shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase'>
                 {t('New')}
               </span>
             )}
@@ -125,7 +125,7 @@ export function usePricingColumns(
         }
         return <ModelBillingModeBadge model={model} className='-ml-1.5' />
       },
-      size: 130,
+      size: 120,
       enableSorting: false,
     },
 
@@ -252,7 +252,7 @@ export function usePricingColumns(
           </div>
         )
       },
-      size: 170,
+      size: 160,
       enableSorting: false,
     },
 
@@ -271,7 +271,7 @@ export function usePricingColumns(
           </span>
         )
       },
-      size: 120,
+      size: 110,
       enableSorting: false,
     },
 
@@ -290,7 +290,7 @@ export function usePricingColumns(
           </span>
         )
       },
-      size: 120,
+      size: 110,
       enableSorting: false,
     },
 
@@ -309,7 +309,7 @@ export function usePricingColumns(
           />
         )
       },
-      size: 150,
+      size: 140,
       enableSorting: false,
     },
   ]

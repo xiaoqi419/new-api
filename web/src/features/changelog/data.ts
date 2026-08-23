@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260824-pricing-layout',
+    date: '2026-08-24',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '模型广场工作区现在悬浮于 Hero 底部,桌面端内容区域加宽,模型表格横向查看时固定显示模型名称列,并提升亮色模式未选中分组标签的可读性。',
+          '模型广场的新增标识在亮色模式改用低饱和信息色,保持清晰但不再被荧光黄抢走注意力。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260823-7a85ed4e4',
     date: '2026-08-23',
     changes: [

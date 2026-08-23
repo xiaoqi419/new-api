@@ -246,7 +246,7 @@ export function Pricing() {
 
           <section
             data-testid='pricing-results-workspace'
-            className='relative z-10 mx-auto mt-[-48px] w-full max-w-[1132px] px-4 pb-12 sm:px-6 xl:mt-0 xl:grid xl:h-[552px] xl:grid-cols-[356px_742px] xl:gap-[34px] xl:px-0 xl:pb-0'
+            className='relative z-10 mx-auto mt-[-48px] w-full max-w-[1280px] px-4 pb-12 sm:px-6 xl:mt-[-64px] xl:grid xl:h-[552px] xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-8 xl:px-0 xl:pb-0'
           >
             <aside className='hidden h-[552px] xl:block'>
               <PricingSidebar {...filterPanelProps} className='h-full' />
