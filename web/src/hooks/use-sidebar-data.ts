@@ -51,6 +51,31 @@ import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
+const HIDDEN_SIDEBAR_ENTRY_URLS = new Set([
+  '/finance/groupbuy',
+  '/user-ranking',
+  '/redemption-codes',
+  '/subscriptions',
+  '/groupbuy/admin',
+  '/rebate',
+  '/identity-verification/admin',
+])
+
+export function filterHiddenSidebarEntries(
+  sidebarData: SidebarData
+): SidebarData {
+  return {
+    ...sidebarData,
+    navGroups: sidebarData.navGroups.map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          item.url === undefined || !HIDDEN_SIDEBAR_ENTRY_URLS.has(item.url)
+      ),
+    })),
+  }
+}
+
 /**
  * Root navigation groups for the application sidebar.
  *
@@ -61,7 +86,7 @@ export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
   const isAgent = useAuthStore((s) => s.auth.user?.is_agent)
 
-  return {
+  const sidebarData: SidebarData = {
     navGroups: [
       ...(isAgent
         ? [
@@ -307,4 +332,6 @@ export function useSidebarData(): SidebarData {
       },
     ],
   }
+
+  return filterHiddenSidebarEntries(sidebarData)
 }

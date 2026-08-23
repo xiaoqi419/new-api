@@ -24,6 +24,19 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isAdmin, isRoot } from '../../helpers';
 import { useSidebar } from '../../hooks/common/useSidebar';
 
+const HIDDEN_CONSOLE_SUBNAV_ITEM_KEYS = new Set([
+  'groupbuy_hall',
+  'user_ranking',
+  'redemption',
+  'subscription',
+  'groupbuy',
+  'rebate',
+  'identity_verification',
+]);
+
+export const filterHiddenConsoleSubNavItems = (items) =>
+  items.filter((item) => !HIDDEN_CONSOLE_SUBNAV_ITEM_KEYS.has(item.key));
+
 // 顶部导航的二级菜单：与侧边栏（SiderBar）共用 useSidebar 的可见性逻辑，
 // 确保自定义功能（邀请返现、拼团、排行榜等）在顶栏布局下同样可见。
 const ConsoleSubNav = () => {
@@ -75,7 +88,7 @@ const ConsoleSubNav = () => {
         alwaysVisible: true,
       },
     ];
-    consoleItems.forEach((item) => {
+    filterHiddenConsoleSubNavItems(consoleItems).forEach((item) => {
       if (
         item.enabled &&
         (item.alwaysVisible || isModuleVisible('console', item.key))
@@ -102,7 +115,7 @@ const ConsoleSubNav = () => {
       { key: 'invitation', text: t('邀请中心'), to: '/console/invitation' },
       { key: 'personal', text: t('个人设置'), to: '/console/personal' },
     ];
-    personalItems.forEach((item) => {
+    filterHiddenConsoleSubNavItems(personalItems).forEach((item) => {
       if (isModuleVisible('personal', item.key)) {
         links.push({ key: item.key, text: item.text, to: item.to });
       }
@@ -168,7 +181,7 @@ const ConsoleSubNav = () => {
         allowed: isRoot(),
       },
     ];
-    adminItems.forEach((item) => {
+    filterHiddenConsoleSubNavItems(adminItems).forEach((item) => {
       if (item.allowed && isModuleVisible('admin', item.key)) {
         links.push({ key: item.key, text: item.text, to: item.to });
       }

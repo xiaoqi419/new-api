@@ -61,6 +61,19 @@ const routerMap = {
   personal: '/console/personal',
 };
 
+const HIDDEN_SIDEBAR_ITEM_KEYS = new Set([
+  'groupbuy_hall',
+  'user_ranking',
+  'redemption',
+  'subscription',
+  'groupbuy',
+  'rebate',
+  'identity_verification',
+]);
+
+export const filterHiddenSidebarItems = (items) =>
+  items.filter((item) => !HIDDEN_SIDEBAR_ITEM_KEYS.has(item.itemKey));
+
 const SiderBar = ({ onNavigate = () => {} }) => {
   const { t } = useTranslation();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
@@ -135,7 +148,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     ];
 
     // 根据配置过滤项目
-    const filteredItems = items.filter((item) => {
+    const filteredItems = filterHiddenSidebarItems(items).filter((item) => {
       if (item.alwaysVisible) return true;
       const configVisible = isModuleVisible('console', item.itemKey);
       return configVisible;
@@ -175,7 +188,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     ];
 
     // 根据配置过滤项目
-    const filteredItems = items.filter((item) => {
+    const filteredItems = filterHiddenSidebarItems(items).filter((item) => {
       const configVisible = isModuleVisible('personal', item.itemKey);
       return configVisible;
     });
@@ -260,7 +273,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     ];
 
     // 根据配置过滤项目
-    const filteredItems = items.filter((item) => {
+    const filteredItems = filterHiddenSidebarItems(items).filter((item) => {
       const configVisible = isModuleVisible('admin', item.itemKey);
       return configVisible;
     });
@@ -283,7 +296,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     ];
 
     // 根据配置过滤项目
-    const filteredItems = items.filter((item) => {
+    const filteredItems = filterHiddenSidebarItems(items).filter((item) => {
       const configVisible = isModuleVisible('chat', item.itemKey);
       return configVisible;
     });
