@@ -1,3 +1,5 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Window } from 'happy-dom'
 /*
 Copyright (C) 2026 QuantumNous
 
@@ -16,11 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import assert from 'node:assert/strict'
-import { after, describe, test } from 'node:test'
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Window } from 'happy-dom'
+import { afterAll, describe, expect, test } from 'vitest'
 
 import type { NavGroup } from '@/components/layout/types'
 
@@ -186,7 +184,7 @@ async function renderFilteredTitles(
       )
     )
   })
-  assert.ok(filtered)
+  if (!filtered) throw new Error('Expected configured navigation groups')
   await act(async () => root.unmount())
   container.remove()
   queryClient.clear()
@@ -194,19 +192,36 @@ async function renderFilteredTitles(
   return filtered.flatMap((group) => group.items.map((item) => item.title))
 }
 
-after(() => {
+afterAll(() => {
   useAuthStore.getState().auth.reset()
   domWindow.close()
 })
 
 describe('sidebar configuration for split personal navigation', () => {
+  test('product visibility policy hides group buy from finance tabs while preserving unmarked entries', async () => {
+    const titles = await renderFilteredTitles({
+      adminPersonal: { topup: true, personal: true },
+      userPersonal: { topup: true, personal: true },
+    })
+
+    expect(titles).toEqual([
+      'Finance Center',
+      'Invoices',
+      'Lucky Draw',
+      'Invitation',
+      'Profile',
+      'Identity Verification',
+      'Tickets',
+    ])
+  })
+
   test('admin topup disablement removes all finance entries while tickets remain', async () => {
     const titles = await renderFilteredTitles({
       adminPersonal: { topup: false, personal: true },
       userPersonal: { topup: true, personal: true },
     })
 
-    assert.deepEqual(titles, [
+    expect(titles).toEqual([
       'Invitation',
       'Profile',
       'Identity Verification',
@@ -220,10 +235,9 @@ describe('sidebar configuration for split personal navigation', () => {
       userPersonal: { topup: true, personal: true },
     })
 
-    assert.deepEqual(titles, [
+    expect(titles).toEqual([
       'Finance Center',
       'Invoices',
-      'Group Buy Hall',
       'Lucky Draw',
       'Tickets',
     ])
@@ -235,6 +249,6 @@ describe('sidebar configuration for split personal navigation', () => {
       userPersonal: { topup: false, personal: false },
     })
 
-    assert.deepEqual(titles, ['Tickets'])
+    expect(titles).toEqual(['Tickets'])
   })
 })

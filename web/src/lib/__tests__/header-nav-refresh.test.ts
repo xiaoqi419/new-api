@@ -1,3 +1,12 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
+import { createElement, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 /*
 Copyright (C) 2026 QuantumNous
 
@@ -16,18 +25,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import assert from 'node:assert/strict'
-import { describe, mock, test } from 'node:test'
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRouter,
-  RouterProvider,
-} from '@tanstack/react-router'
-import { createElement, type ReactNode } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, test, vi } from 'vitest'
 
 import { statusQueryOptions } from '../api'
 
@@ -39,70 +37,50 @@ function TestButton(props: { children?: ReactNode }) {
   return createElement('button', null, props.children)
 }
 
-mock.module('@/components/dialog', {
-  namedExports: { Dialog: EmptyComponent },
-})
-mock.module('@/components/language-switcher', {
-  namedExports: { LanguageSwitcher: EmptyComponent },
-})
-mock.module('@/components/notification-popover', {
-  namedExports: { NotificationPopover: EmptyComponent },
-})
-mock.module('@/components/profile-dropdown', {
-  namedExports: { ProfileDropdown: EmptyComponent },
-})
-mock.module('@/components/promo-banner', {
-  namedExports: { PromoBanner: EmptyComponent },
-})
-mock.module('@/components/theme-switch', {
-  namedExports: { ThemeSwitch: EmptyComponent },
-})
-mock.module('@/components/ui/button', {
-  namedExports: { Button: TestButton },
-})
-mock.module('@/components/ui/skeleton', {
-  namedExports: { Skeleton: EmptyComponent },
-})
-mock.module('@/features/community', {
-  namedExports: { CommunityMenu: EmptyComponent },
-})
-mock.module('@/hooks/use-notifications', {
-  namedExports: {
-    useNotifications: () => ({
-      announcements: [],
-      versions: [],
-      loading: false,
-      unreadCount: 0,
-      popoverOpen: false,
-      setPopoverOpen: () => undefined,
-      activeTab: 'announcements',
-      setActiveTab: () => undefined,
-    }),
-  },
-})
-mock.module('@/hooks/use-system-config', {
-  namedExports: {
-    mapStatusDataToConfig: () => ({}),
-    useSystemConfig: () => ({
-      systemName: 'New API',
-      logo: '',
-      loading: false,
-      logoLoaded: false,
-    }),
-  },
-})
-mock.module('@/components/layout/components/header-logo', {
-  namedExports: { HeaderLogo: EmptyComponent },
-})
-mock.module('@/features/pricing', {
-  namedExports: { Pricing: EmptyComponent },
-})
-mock.module('@/features/pricing/components/model-details', {
-  namedExports: { ModelDetails: EmptyComponent },
-})
-mock.module('@/features/rankings', {
-  namedExports: { Rankings: EmptyComponent },
-})
+vi.mock('@/components/dialog', () => ({ Dialog: EmptyComponent }))
+vi.mock('@/components/language-switcher', () => ({
+  LanguageSwitcher: EmptyComponent,
+}))
+vi.mock('@/components/notification-popover', () => ({
+  NotificationPopover: EmptyComponent,
+}))
+vi.mock('@/components/profile-dropdown', () => ({
+  ProfileDropdown: EmptyComponent,
+}))
+vi.mock('@/components/promo-banner', () => ({ PromoBanner: EmptyComponent }))
+vi.mock('@/components/theme-switch', () => ({ ThemeSwitch: EmptyComponent }))
+vi.mock('@/components/ui/button', () => ({ Button: TestButton }))
+vi.mock('@/components/ui/skeleton', () => ({ Skeleton: EmptyComponent }))
+vi.mock('@/features/community', () => ({ CommunityMenu: EmptyComponent }))
+vi.mock('@/hooks/use-notifications', () => ({
+  useNotifications: () => ({
+    announcements: [],
+    versions: [],
+    loading: false,
+    unreadCount: 0,
+    popoverOpen: false,
+    setPopoverOpen: () => undefined,
+    activeTab: 'announcements',
+    setActiveTab: () => undefined,
+  }),
+}))
+vi.mock('@/hooks/use-system-config', () => ({
+  mapStatusDataToConfig: () => ({}),
+  useSystemConfig: () => ({
+    systemName: 'New API',
+    logo: '',
+    loading: false,
+    logoLoaded: false,
+  }),
+}))
+vi.mock('@/components/layout/components/header-logo', () => ({
+  HeaderLogo: EmptyComponent,
+}))
+vi.mock('@/features/pricing', () => ({ Pricing: EmptyComponent }))
+vi.mock('@/features/pricing/components/model-details', () => ({
+  ModelDetails: EmptyComponent,
+}))
+vi.mock('@/features/rankings', () => ({ Rankings: EmptyComponent }))
 
 const { createInstance } = await import('i18next')
 const { I18nextProvider, initReactI18next } = await import('react-i18next')
@@ -204,51 +182,45 @@ async function renderPublicHeader(queryClient: QueryClient): Promise<string> {
 
 describe('header navigation refresh', () => {
   for (const publicRoute of publicRoutes) {
-    test(
-      `refreshes the public Header before ${publicRoute.name} renders`,
-      { concurrency: false },
-      async () => {
-        const queryClient = new QueryClient({
-          defaultOptions: { queries: { retry: false } },
-        })
-        const staleStatus = createHeaderStatus(false, false)
-        const freshStatus = createHeaderStatus(
-          publicRoute.pricingEnabled,
-          publicRoute.rankingsEnabled
-        )
-        const originalQueryFn = statusQueryOptions.queryFn
-        let requestCount = 0
+    test(`refreshes the public Header before ${publicRoute.name} renders`, async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+      const staleStatus = createHeaderStatus(false, false)
+      const freshStatus = createHeaderStatus(
+        publicRoute.pricingEnabled,
+        publicRoute.rankingsEnabled
+      )
+      const originalQueryFn = statusQueryOptions.queryFn
+      let requestCount = 0
 
-        queryClient.setQueryData(statusQueryOptions.queryKey, staleStatus, {
-          updatedAt: 1,
-        })
-        statusQueryOptions.queryFn = async () => {
-          requestCount += 1
-          return freshStatus
-        }
-
-        try {
-          await publicRoute.guard({
-            context: { queryClient },
-            location: { href: publicRoute.href },
-          })
-          const markup = await renderPublicHeader(queryClient)
-
-          assert.equal(requestCount, 1)
-          assert.deepEqual(
-            queryClient.getQueryData(statusQueryOptions.queryKey),
-            freshStatus
-          )
-          assert.match(markup, new RegExp(`href="${publicRoute.enabledHref}"`))
-          assert.doesNotMatch(
-            markup,
-            new RegExp(`href="${publicRoute.disabledHref}"`)
-          )
-        } finally {
-          statusQueryOptions.queryFn = originalQueryFn
-          queryClient.clear()
-        }
+      queryClient.setQueryData(statusQueryOptions.queryKey, staleStatus, {
+        updatedAt: 1,
+      })
+      statusQueryOptions.queryFn = async () => {
+        requestCount += 1
+        return freshStatus
       }
-    )
+
+      try {
+        await publicRoute.guard({
+          context: { queryClient },
+          location: { href: publicRoute.href },
+        })
+        const markup = await renderPublicHeader(queryClient)
+
+        expect(requestCount).toBe(1)
+        expect(queryClient.getQueryData(statusQueryOptions.queryKey)).toEqual(
+          freshStatus
+        )
+        expect(markup).toMatch(new RegExp(`href="${publicRoute.enabledHref}"`))
+        expect(markup).not.toMatch(
+          new RegExp(`href="${publicRoute.disabledHref}"`)
+        )
+      } finally {
+        statusQueryOptions.queryFn = originalQueryFn
+        queryClient.clear()
+      }
+    })
   }
 })

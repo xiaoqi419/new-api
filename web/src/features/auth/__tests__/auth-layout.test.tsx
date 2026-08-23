@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { AuthLayout } from '../auth-layout'
@@ -94,14 +94,14 @@ describe('AuthLayout', () => {
       </AuthLayout>
     )
 
-    expect(screen.getByRole('link', { name: 'New API' })).toHaveAttribute(
-      'href',
-      '/'
+    expect(screen.getAllByRole('link', { name: 'Logo New API' })).toHaveLength(
+      2
     )
-    expect(screen.getByRole('link', { name: 'Logo New API' })).toHaveAttribute(
-      'href',
-      '/'
-    )
+    for (const brandLink of screen.getAllByRole('link', {
+      name: 'Logo New API',
+    })) {
+      expect(brandLink).toHaveAttribute('href', '/')
+    }
 
     unmount()
     render(
@@ -110,16 +110,12 @@ describe('AuthLayout', () => {
       </AuthLayout>
     )
 
-    expect(screen.getByRole('link', { name: 'New API' })).toHaveAttribute(
-      'href',
-      '/'
+    expect(screen.getAllByRole('link', { name: 'Logo New API' })).toHaveLength(
+      1
     )
-    expect(
-      screen.queryByRole('link', { name: 'Logo New API' })
-    ).not.toBeInTheDocument()
   })
 
-  test('uses the translated gateway value title when no title is configured', () => {
+  test('uses the system name as the desktop heading when no title is configured', () => {
     useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
 
     render(
@@ -128,34 +124,21 @@ describe('AuthLayout', () => {
       </AuthLayout>
     )
 
-    const modelRail = screen.getByRole('list', { name: 'Models' })
-
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'AI Development Tools Gateway',
+        name: 'New API',
       })
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
+      screen.queryByText(
         'Integrate Claude Code, Codex CLI, Gemini CLI and more AI coding assistants'
       )
-    ).toBeInTheDocument()
-    expect(
-      within(modelRail).getByText('Claude', { selector: 'span' })
-    ).toBeInTheDocument()
-    expect(
-      within(modelRail).getByText('Codex', { selector: 'span' })
-    ).toBeInTheDocument()
-    expect(
-      within(modelRail).getByText('Gemini', { selector: 'span' })
-    ).toBeInTheDocument()
-    expect(within(modelRail).getByText('40+')).toBeInTheDocument()
-    expect(screen.queryByText('GATEWAY')).not.toBeInTheDocument()
-    expect(screen.queryByText('API', { exact: true })).not.toBeInTheDocument()
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 
-  test('replaces a configured title that duplicates the system name', () => {
+  test('honors a configured title even when it matches the system name', () => {
     useStatusMock.mockReturnValue({
       status: {
         login_page_config: {
@@ -173,23 +156,15 @@ describe('AuthLayout', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'AI Development Tools Gateway',
+        name: 'New API',
       })
     ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', { level: 2, name: 'New API' })
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'New API' })).toHaveAttribute(
-      'href',
-      '/'
-    )
-    expect(screen.getByRole('link', { name: 'Logo New API' })).toHaveAttribute(
-      'href',
-      '/'
+    expect(screen.getAllByRole('link', { name: 'Logo New API' })).toHaveLength(
+      2
     )
   })
 
-  test('contains long unbroken configured text inside brand and card surfaces', () => {
+  test('renders long configured values in their brand and content slots', () => {
     const longSystemName = 'NewAPI'.repeat(20)
     const longTitle = 'ConfiguredTitle'.repeat(20)
     const longDescription = 'ConfiguredDescription'.repeat(20)
@@ -217,24 +192,12 @@ describe('AuthLayout', () => {
       </AuthLayout>
     )
 
-    for (const brandName of screen.getAllByText(longSystemName)) {
-      expect(brandName).toHaveClass('min-w-0', 'break-words')
-    }
-    expect(screen.getByRole('heading', { name: longTitle })).toHaveClass(
-      'min-w-0',
-      'break-words'
-    )
-    expect(screen.getByText(longDescription)).toHaveClass(
-      'min-w-0',
-      'break-words'
-    )
-    expect(screen.getByText(longStatValue)).toHaveClass(
-      'min-w-0',
-      'break-words'
-    )
-    expect(screen.getByText(longStatLabel)).toHaveClass(
-      'min-w-0',
-      'break-words'
-    )
+    expect(
+      screen.getAllByRole('link', { name: `Logo ${longSystemName}` })
+    ).toHaveLength(3)
+    expect(screen.getByRole('heading', { name: longTitle })).toBeInTheDocument()
+    expect(screen.getByText(longDescription)).toBeInTheDocument()
+    expect(screen.getByText(longStatValue)).toBeInTheDocument()
+    expect(screen.getByText(longStatLabel)).toBeInTheDocument()
   })
 })

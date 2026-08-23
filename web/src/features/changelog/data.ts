@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260823-71bc7e15e',
+    date: '2026-08-23',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '财务中心同步隐藏“拼团大厅”标签，并让登录后主导航与聚合页面复用同一套入口可见性规则；页面、路由、权限和支付能力继续保留，可按原路径直接访问。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260823-2ce9a8829',
     date: '2026-08-23',
     changes: [
