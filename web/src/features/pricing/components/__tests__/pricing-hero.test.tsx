@@ -17,11 +17,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { render, screen } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { PricingHero } from '../pricing-hero'
 
+const useSystemConfigMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/hooks/use-system-config', () => ({
+  useSystemConfig: useSystemConfigMock,
+}))
+
 describe('PricingHero', () => {
+  beforeEach(() => {
+    useSystemConfigMock.mockReturnValue({ systemName: 'New API' })
+  })
+
   test('keeps the desktop description and search structure stable while loading', () => {
     render(
       <PricingHero
@@ -167,5 +177,46 @@ describe('PricingHero', () => {
     expect(cards[0]).toHaveClass('h-[473.067px]', 'w-[300px]', '-rotate-[8deg]')
     expect(cards[1]).toHaveClass('h-[523.903px]', 'w-[330px]', 'rotate-[9deg]')
     expect(cards[2]).toHaveClass('h-[441.629px]', 'w-[285px]', 'rotate-[13deg]')
+  })
+
+  test('uses the configured site name as every card brand without hiding project attribution', () => {
+    const longSystemName = 'ConfiguredModelWorkspace'.repeat(8)
+    useSystemConfigMock.mockReturnValue({ systemName: longSystemName })
+
+    render(
+      <PricingHero
+        searchValue=''
+        onSearchChange={() => undefined}
+        onClearSearch={() => undefined}
+      />
+    )
+
+    const cardBrands = screen.getAllByTestId('pricing-decoration-brand')
+    expect(cardBrands).toHaveLength(3)
+    for (const brand of cardBrands) {
+      expect(brand).toHaveTextContent(longSystemName)
+      expect(brand).toHaveClass('right-[100px]', 'truncate')
+    }
+
+    expect(
+      screen.getAllByTestId('pricing-decoration-attribution')
+    ).toHaveLength(3)
+    expect(screen.getAllByText('New API')).toHaveLength(3)
+  })
+
+  test('uses the default project name when the configured site name is blank', () => {
+    useSystemConfigMock.mockReturnValue({ systemName: '   ' })
+
+    render(
+      <PricingHero
+        searchValue=''
+        onSearchChange={() => undefined}
+        onClearSearch={() => undefined}
+      />
+    )
+
+    for (const brand of screen.getAllByTestId('pricing-decoration-brand')) {
+      expect(brand).toHaveTextContent('New API')
+    }
   })
 })

@@ -18,6 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useTranslation } from 'react-i18next'
 
+import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
+
 import { SearchBar } from './search-bar'
 
 export interface PricingHeroProps {
@@ -32,6 +35,7 @@ function DecorationCard(props: {
   cardClassName: string
   label: string
   labelTop: string
+  systemName: string
 }) {
   return (
     <div
@@ -43,9 +47,18 @@ function DecorationCard(props: {
         data-pricing-decoration-card
         className={`motion-safe:animate-in motion-safe:fade-in-0 relative flex-none rounded-[24px] text-[#0e0e0e] shadow-[0_20px_38px_rgba(0,0,0,0.28)] motion-safe:duration-700 motion-safe:ease-out motion-reduce:animate-none ${props.cardClassName}`}
       >
-        <div className='absolute top-7 left-[30px] text-[26px] leading-[29px] font-bold'>
-          <span>New API</span>
+        <div
+          data-testid='pricing-decoration-brand'
+          className='absolute top-7 right-[100px] left-[30px] truncate text-[26px] leading-[29px] font-bold'
+        >
+          {props.systemName}
         </div>
+        <span
+          data-testid='pricing-decoration-attribution'
+          className='absolute top-[58px] left-[30px] text-[11px] leading-3 font-semibold tracking-wide text-black/55'
+        >
+          New API
+        </span>
         <span className='absolute top-7 right-[34px] h-9 w-12 rounded-lg bg-[linear-gradient(143.13010235415598deg,#f7f7f7_0%,#cfcfcf_50%)]' />
         <div className='absolute top-[78px] left-[30px] text-[26px] leading-[29px] font-bold'>
           )))
@@ -62,6 +75,8 @@ function DecorationCard(props: {
 
 export function PricingHero(props: PricingHeroProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
+  const cardBrand = systemName?.trim() || DEFAULT_SYSTEM_NAME
 
   return (
     <section
@@ -129,18 +144,21 @@ export function PricingHero(props: PricingHeroProps) {
             labelTop='top-[146px]'
             frameClassName='top-[16px] left-[263.02px] z-10 h-[510.215px] w-[362.919px]'
             cardClassName='h-[473.067px] w-[300px] -rotate-[8deg] bg-[linear-gradient(122.38121533446842deg,#fff195_0%,#ffc4ab_29%,#fff6ec_50%)]'
+            systemName={cardBrand}
           />
           <DecorationCard
             label={t('OpenAI · Claude · Gemini')}
             labelTop='top-[170px]'
             frameClassName='top-0 left-[389.79px] z-30 h-[569.076px] w-[407.894px]'
             cardClassName='h-[523.903px] w-[330px] rotate-[9deg] bg-[linear-gradient(122.20633430499932deg,#fff1d0_0%,#ff4e93_22.5%,#7c4dff_50%)]'
+            systemName={cardBrand}
           />
           <DecorationCard
             label={t('Intelligent Routing')}
             labelTop='top-[138px]'
             frameClassName='top-[102px] left-[603.02px] z-20 h-[494.422px] w-[377.04px]'
             cardClassName='h-[441.629px] w-[285px] rotate-[13deg] bg-[linear-gradient(147.16433007803062deg,#2bffd0_10.299%,#dbfff4_40.299%,#f0ff4a_60.299%)]'
+            systemName={cardBrand}
           />
         </div>
       </div>

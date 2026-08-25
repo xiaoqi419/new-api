@@ -25,6 +25,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { Footer } from '../footer'
 
 let mockFooterHtml = ''
+let mockSystemName = 'New API'
 let mockStatus = {
   user_agreement_enabled: false,
   privacy_policy_enabled: false,
@@ -45,7 +46,7 @@ vi.mock('@/hooks/use-status', () => ({
 
 vi.mock('@/hooks/use-system-config', () => ({
   useSystemConfig: () => ({
-    systemName: 'New API',
+    systemName: mockSystemName,
     logo: '/logo.png',
     footerHtml: mockFooterHtml,
     demoSiteEnabled: false,
@@ -59,6 +60,7 @@ vi.mock('@/stores/auth-store', () => ({
 describe('Footer', () => {
   afterEach(() => {
     mockFooterHtml = ''
+    mockSystemName = 'New API'
     mockStatus = {
       user_agreement_enabled: false,
       privacy_policy_enabled: false,
@@ -142,5 +144,43 @@ describe('Footer', () => {
     expect(mobileFooterStyles).toMatch(
       /\.footer-home-privacy\s*\{[^}]*grid-column:\s*2/
     )
+  })
+
+  test('keeps the homepage CTA readable while legal links retain their accent interaction', () => {
+    const stylesheet = readFileSync(
+      resolve(process.cwd(), 'src/styles/theme-presets.css'),
+      'utf8'
+    )
+
+    expect(stylesheet).toMatch(
+      /\.public-footer\[data-footer-variant='default'\][\s\S]*?:is\(\.footer-home-cta:hover, \.footer-home-cta:focus-visible\)\s*\{[^}]*background:\s*#050505;[^}]*color:\s*#fff/
+    )
+    expect(stylesheet).toMatch(
+      /\.dark[\s\S]*?\.public-footer\[data-footer-variant='default'\][\s\S]*?:is\(\.footer-home-cta:hover, \.footer-home-cta:focus-visible\)\s*\{[^}]*background:\s*var\(--home-lime\);[^}]*color:\s*#0e0e0e/
+    )
+    expect(stylesheet).toMatch(
+      /\.public-footer\[data-footer-variant='default'\][\s\S]*?:is\(a:hover, a:focus-visible\)\s*\{[^}]*color:\s*var\(--home-lime\)/
+    )
+  })
+
+  test('truncates a configured unbroken system name at every homepage footer boundary', () => {
+    mockSystemName =
+      'PlatformNameWithoutBreaksThatMustRemainReadableAcrossTheEntireHomepageFooter'
+
+    const { container } = render(<Footer />)
+    const heading = container.querySelector('.footer-home-heading')
+    const headingBrand = heading?.querySelector('span:last-child')
+    const cta = within(container).getByRole('link', {
+      name: mockSystemName,
+    })
+    const ctaBrand = cta.querySelector('span')
+    const copyright = container.querySelector('.footer-home-copyright')
+
+    expect(heading).toHaveTextContent(`with ${mockSystemName}`)
+    expect(headingBrand).toHaveClass('w-full', 'truncate')
+    expect(cta).toHaveClass('max-w-[calc(100%-3rem)]')
+    expect(ctaBrand).toHaveClass('min-w-0', 'max-w-full', 'truncate')
+    expect(copyright).toHaveTextContent(mockSystemName)
+    expect(copyright).toHaveClass('min-w-0', 'max-w-full', 'truncate')
   })
 })

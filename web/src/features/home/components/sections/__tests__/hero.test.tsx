@@ -23,9 +23,9 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import type { HeroContent } from '../../../types'
 import { Hero } from '../hero'
@@ -34,17 +34,29 @@ vi.mock('@lobehub/icons', () => ({
   CherryStudio: { Color: () => null },
 }))
 
-const useStatusMock = vi.hoisted(() =>
-  vi.fn(() => ({
+const { useStatusMock, useSystemConfigMock } = vi.hoisted(() => ({
+  useStatusMock: vi.fn(() => ({
     status: { docs_link: 'https://external.example/docs' },
-  }))
-)
+  })),
+  useSystemConfigMock: vi.fn(),
+}))
 
 vi.mock('@/hooks/use-status', () => ({
   useStatus: useStatusMock,
 }))
 
+vi.mock('@/hooks/use-system-config', () => ({
+  useSystemConfig: useSystemConfigMock,
+}))
+
 vi.stubGlobal('scrollTo', vi.fn())
+
+beforeEach(() => {
+  useSystemConfigMock.mockReturnValue({
+    systemName: 'New API',
+    loading: false,
+  })
+})
 
 function renderHeroRouter(
   isAuthenticated: boolean,
@@ -139,5 +151,38 @@ describe('Hero supported applications layout', () => {
     expect(screen.getByTestId('home-hero-card-art')).not.toHaveClass(
       'translate-x-[210px]'
     )
+  })
+})
+
+describe('Hero decorative card branding', () => {
+  test('renders the configured name once in each gradient card without a fixed subtitle', async () => {
+    const longSystemName = 'ConfiguredGateway'.repeat(16)
+    useSystemConfigMock.mockReturnValue({
+      systemName: longSystemName,
+      loading: false,
+    })
+
+    renderHeroRouter(false)
+
+    const cardArt = await screen.findByTestId('home-hero-card-art')
+    const cardLabels = within(cardArt).getAllByText(longSystemName)
+
+    expect(cardLabels).toHaveLength(3)
+    cardLabels.forEach((label) => {
+      expect(label).toHaveClass('truncate')
+    })
+    expect(within(cardArt).queryByText('New API')).not.toBeInTheDocument()
+  })
+
+  test('renders the default system name once in each gradient card while configuration is blank', async () => {
+    useSystemConfigMock.mockReturnValue({
+      systemName: '   ',
+      loading: true,
+    })
+
+    renderHeroRouter(false)
+
+    const cardArt = await screen.findByTestId('home-hero-card-art')
+    expect(within(cardArt).getAllByText('New API')).toHaveLength(3)
   })
 })

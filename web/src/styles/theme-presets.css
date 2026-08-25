@@ -579,6 +579,13 @@ For commercial licensing, please contact support@quantumnous.com
   color: var(--home-lime);
 }
 
+[data-public-surface='home']
+  .public-footer[data-footer-variant='default']
+  :is(.footer-home-cta:hover, .footer-home-cta:focus-visible) {
+  background: #050505;
+  color: #fff;
+}
+
 .dark
   [data-public-surface='home']
   .public-footer[data-footer-variant='default'] {
@@ -597,6 +604,14 @@ For commercial licensing, please contact support@quantumnous.com
 
 .dark [data-public-surface='home'] .footer-home-cta {
   border-color: transparent;
+  background: var(--home-lime);
+  color: #0e0e0e;
+}
+
+.dark
+  [data-public-surface='home']
+  .public-footer[data-footer-variant='default']
+  :is(.footer-home-cta:hover, .footer-home-cta:focus-visible) {
   background: var(--home-lime);
   color: #0e0e0e;
 }
