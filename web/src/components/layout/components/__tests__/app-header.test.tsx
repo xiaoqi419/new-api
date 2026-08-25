@@ -111,12 +111,12 @@ vi.mock('../top-nav', () => ({
 }))
 
 describe('AppHeader responsive layout', () => {
-  test('keeps the brand and action clusters shrink-safe on narrow screens', () => {
+  test('keeps the brand and action clusters shrink-safe through constrained desktop widths', () => {
     const { container } = render(<AppHeader />)
 
     expect(
       container.querySelector('[data-slot="app-header-brand"]')
-    ).toHaveClass('min-w-0', 'shrink-0', 'max-sm:[&_a>span]:hidden')
+    ).toHaveClass('min-w-0', 'shrink-0', 'max-2xl:[&_a>span]:hidden')
     expect(
       container.querySelector('[data-slot="app-header-actions"]')
     ).toHaveClass(

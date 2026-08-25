@@ -116,7 +116,7 @@ export function AppHeader({
     <Header banner={<PromoBanner />}>
       <div
         data-slot='app-header-brand'
-        className='min-w-0 shrink-0 max-sm:[&_a]:gap-0 max-sm:[&_a]:px-1 max-sm:[&_a>span]:hidden'
+        className='min-w-0 shrink-0 max-sm:[&_a]:gap-0 max-sm:[&_a]:px-1 max-2xl:[&_a>span]:hidden'
       >
         <SystemBrand variant='inline' />
       </div>
