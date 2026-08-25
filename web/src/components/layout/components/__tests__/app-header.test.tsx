@@ -111,7 +111,7 @@ vi.mock('../top-nav', () => ({
 }))
 
 describe('AppHeader responsive layout', () => {
-  test('keeps the brand and action clusters shrink-safe through constrained desktop widths', () => {
+  test('uses compact action spacing on constrained desktops and restores it on wide screens', () => {
     const { container } = render(<AppHeader />)
 
     expect(
@@ -124,7 +124,8 @@ describe('AppHeader responsive layout', () => {
       'shrink-0',
       'gap-0',
       'max-sm:[&_[data-slot=button]]:size-8',
-      'sm:gap-2'
+      'sm:gap-1',
+      '2xl:gap-2'
     )
     expect(screen.getByTestId('header-search')).toHaveClass(
       'max-sm:size-8',

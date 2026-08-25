@@ -128,7 +128,7 @@ export function AppHeader({
       {rightContent ?? (
         <div
           data-slot='app-header-actions'
-          className='ms-auto flex min-w-0 shrink-0 items-center gap-0 sm:gap-2 max-sm:[&_[data-slot=button]]:size-8'
+          className='ms-auto flex min-w-0 shrink-0 items-center gap-0 sm:gap-1 2xl:gap-2 max-sm:[&_[data-slot=button]]:size-8'
         >
           {showTopNav && (
             <div className='me-1 hidden items-center lg:flex'>
