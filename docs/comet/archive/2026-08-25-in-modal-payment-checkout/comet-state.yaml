@@ -1,0 +1,689 @@
+schema: comet.native.v4
+name: in-modal-payment-checkout
+language: zh-CN
+phase: archive
+status: done
+state_version: 38
+brief: brief.md
+spec_changes:
+  - capability: epay-in-site-checkout
+    operation: modify
+    source: specs/epay-in-site-checkout/spec.md
+workspace:
+  isolation: current
+  change_branch: codex/p0-wallet-wechatpay
+  target_branch: codex/p0-wallet-wechatpay
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 6
+  attempt: 1
+  retry_epoch: 3
+  failed_iteration_count: 2
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：钱包选择任一 Epay 聚合支付方式并确认后，当前页面打开支付 Modal，Modal 内展示二维码，浏览器不打开新标签页也不离开当前页面。
+    result: passed
+    reason:
+      text: The default wallet Epay entry opens the in-site checkout dialog and the
+        focused regressions prove that the Epay path does not open a popup,
+        submit a form, or navigate away.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：订阅选择 Epay 并确认后，当前订阅购买上下文切换到支付 Modal，浏览器不发生外部导航。
+    result: passed
+    reason:
+      text: The subscription Epay entry normalizes checkout state in the current
+        subscription context without external navigation.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：拼团创建或参团选择 Epay 后，当前页面打开支付 Modal；即使响应为兼容的 `pay_url` 形态，也只将其编码为 Modal
+      二维码，不自动外跳。
+    result: passed
+    reason:
+      text: Default and classic group-buy create and join flows normalize compatible
+        pay_url responses into modal checkout data rather than navigating to
+        them.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：default 与 classic 两套仍发布的用户界面在 A1-A3 行为上保持一致，相关 Epay 发起分支不存在
+      `window.open`、`window.location` 或自动表单提交。
+    result: passed
+    reason:
+      text: Both published frontend implementations use dedicated Epay checkout
+        normalizers and dialogs; remaining window navigation is confined to
+        explicitly non-Epay providers.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：支付成功、失败、过期、轮询超时、手动刷新、重试和关闭行为保持可用；关闭未支付拼团仍释放预占名额。
+    result: passed
+    reason:
+      text: Default and classic dialogs implement success, failure, expiry, timeout,
+        manual refresh, retry, close, timer cleanup, and unpaid group
+        reservation release.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：无可安全展示的 checkout 值时，界面显示本地化错误并停留当前页面，不以外部导航作为降级方案。
+    result: passed
+    reason:
+      text: Unsafe or incomplete checkout data is rejected with a localized error
+        while the user stays on the current page.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：受影响的定向前端测试、类型检查、涉及文件 lint 和生产构建通过；后端契约若有改动，其定向 Go 测试通过。
+    result: passed
+    reason:
+      text: Runtime evidence records passing focused default/classic tests, TypeScript
+        typecheck, targeted lint, production build, backend payment tests,
+        static no-navigation review, and diff validation.
+      truncated: false
+  - id: A8
+    source: specs/epay-in-site-checkout/spec.md
+    text: 普通用户侧所有由彩虹易支付（Epay）处理的钱包充值、订阅购买、拼团创建和参团入口，发起付款后必须留在当前业务页面，在 Modal
+      中直接展示二维码、金额、支付方式、站内订单号和支付状态。发起动作不得自动打开新标签页、替换当前页面、提交外部表单或通过链接导航到网关页面。
+    result: passed
+    reason:
+      text: The shared checkout dialog renders QR content, amount, payment method,
+        trade number, and observed status in the current page without external
+        navigation.
+      truncated: false
+  - id: A9
+    source: specs/epay-in-site-checkout/spec.md
+    text: default 与 classic 两套仍发布的前端必须保持一致。当前至少覆盖 Epay 的 `alipay` 与
+      `wxpay`；支付宝官方商户直连、微信官方商户直连、Stripe、Creem、Waffo 和代理控制台预充值保持各自既有行为。
+    result: passed
+    reason:
+      text: Epay methods remain separated from direct Alipay, direct WeChat, Stripe,
+        Creem, Waffo, and agent prepayment behavior.
+      truncated: false
+  - id: A10
+    source: specs/epay-in-site-checkout/spec.md
+    text: 服务端标准成功响应继续使用 `trade_no`、可选
+      `gateway_trade_no`、`checkout_type`、`checkout_value`、`payment_method` 和
+      `money`。`checkout_type` 只允许 `qrcode`、`payurl` 或支付方式白名单允许的 `urlscheme`。
+    result: passed
+    reason:
+      text: The backend returns the normalized checkout fields and constrains
+        checkout_type to qrcode, payurl, or an allowed payment-method URL
+        scheme.
+      truncated: false
+  - id: A11
+    source: specs/epay-in-site-checkout/spec.md
+    text: 前端收到标准 checkout 数据时，将 `checkout_value` 作为二维码内容。为兼容尚未升级或历史路径返回的 Epay
+      `pay_url`/`qr_code`，只在能够确认订单号、支付方式、金额和安全 checkout 值时规范化为同一 Modal 数据；不得把
+      `pay_url` 当作自动导航回退。缺少必要字段或值不安全时，显示本地化的支付请求失败提示并停留当前页面。
+    result: passed
+    reason:
+      text: Standard and legacy Epay checkout values are normalized only when order,
+        method, amount, and target safety checks pass; pay_url is never an
+        automatic redirect fallback.
+      truncated: false
+  - id: A12
+    source: specs/epay-in-site-checkout/spec.md
+    text: Modal 使用现有 `qrcode.react` 生成二维码，不注入原始 HTML。桌面二维码约 240px，390px 窄屏约
+      208px。Modal 打开后每 3 秒轮询本人订单状态，最长 5 分钟，并提供手动刷新：
+    result: passed
+    reason:
+      text: Both dialogs use qrcode.react, display payment metadata, poll immediately
+        and every three seconds within the bounded window, and support manual
+        refresh.
+      truncated: false
+  - id: A13
+    source: specs/epay-in-site-checkout/spec.md
+    text: "`pending` 保持等待；"
+    result: passed
+    reason:
+      text: Pending responses keep the dialog in the waiting state.
+      truncated: false
+  - id: A14
+    source: specs/epay-in-site-checkout/spec.md
+    text: "`success` 停止轮询并刷新相应余额、订阅或拼团详情；"
+    result: passed
+    reason:
+      text: Success stops polling and refreshes the corresponding wallet,
+        subscription, or group-buy state.
+      truncated: false
+  - id: A15
+    source: specs/epay-in-site-checkout/spec.md
+    text: "`failed`/`expired` 停止轮询并允许返回或重试；"
+    result: passed
+    reason:
+      text: Failed and expired results stop polling and retain return or retry
+        actions.
+      truncated: false
+  - id: A16
+    source: specs/epay-in-site-checkout/spec.md
+    text: 临时网络错误继续等待；
+    result: passed
+    reason:
+      text: Temporary observation errors do not create a terminal payment state and
+        polling continues within the configured limit.
+      truncated: false
+  - id: A17
+    source: specs/epay-in-site-checkout/spec.md
+    text: 观察超时仅停止自动轮询，不修改服务端订单状态。
+    result: passed
+    reason:
+      text: Observation timeout stops only automatic polling, does not mutate server
+        settlement state, and leaves manual refresh available.
+      truncated: false
+  - id: A18
+    source: specs/epay-in-site-checkout/spec.md
+    text: 组件卸载、主动关闭或订单更换时清理旧定时器。关闭未支付拼团 checkout
+      时调用现有取消接口释放预占名额；取消保持幂等且不能影响已经由异步通知完成的订单。
+    result: passed
+    reason:
+      text: Unmount, close, checkout replacement, and terminal results clear
+        intervals; unpaid group checkout close uses the existing idempotent
+        release path.
+      truncated: false
+  - id: A19
+    source: specs/epay-in-site-checkout/spec.md
+    text: 唯一结算入口仍是现有钱包、订阅和拼团 Epay 异步通知。前端响应、二维码、轮询结果、MAPI 成功响应和 return URL
+      均不能自行入账、开通订阅或完成拼团。
+    result: passed
+    reason:
+      text: Frontend checkout and polling remain observational; settlement remains
+        exclusively in the existing verified Epay asynchronous notification
+        handlers.
+      truncated: false
+  - id: A20
+    source: specs/epay-in-site-checkout/spec.md
+    text: "`payurl` 仅允许带有效主机名的绝对 `http/https` URL；`urlscheme` 只允许与支付方式匹配的明确白名单。禁止
+      `javascript:`、`data:`、相对 URL、未知 scheme、空值和自动拉起 App。密钥、签名和敏感 checkout token
+      不得进入浏览器响应或日志。"
+    result: passed
+    reason:
+      text: Only absolute HTTP(S) payurl values with hosts and payment-method-matched
+        URL schemes are allowed; javascript, data, relative, empty, and
+        mismatched values are rejected.
+      truncated: false
+  - id: A21
+    source: specs/epay-in-site-checkout/spec.md
+    text: 本能力不新增数据库表、列或迁移，并保持 SQLite、MySQL 5.7.8+ 与 PostgreSQL 9.6+ 兼容。
+    result: passed
+    reason:
+      text: The implementation adds no database table, column, migration, or
+        dialect-specific database dependency.
+      truncated: false
+  - id: A22
+    source: specs/epay-in-site-checkout/spec.md
+    text: 前端定向测试必须覆盖钱包、订阅、拼团创建和参团在 default/classic 中打开 Modal，并断言发起 Epay 的代码路径没有调用
+      `window.open`、`window.location.assign`/`href`
+      或自动表单提交。继续覆盖二维码、轮询成功/失败/过期/超时、手动刷新、重试、返回、定时器清理与拼团取消。
+    result: passed
+    reason:
+      text: Runtime evidence covers wallet, subscription, group-buy create/join,
+        dialog, classic entry, status lifecycle, cleanup, cancellation, and no
+        automatic Epay navigation.
+      truncated: false
+  - id: A23
+    source: specs/epay-in-site-checkout/spec.md
+    text: 运行受影响测试、TypeScript 类型检查、涉及文件 lint 和生产构建。若服务端兼容响应契约发生变化，补充并运行对应 Go
+      定向测试。真实商户扫码扣款、异步通知公网可达、验签、到账和退款仍需在测试环境使用真实商户配置验收，不得用模拟结果替代。
+    result: passed
+    reason:
+      text: Automated validation gates passed. The user explicitly reported successful
+        real payment and explicitly waived refund verification; Runtime recorded
+        that waiver while resolving the prior A23 blocker. This acceptance
+        relies on that authorized scope decision and does not claim that a
+        refund was executed or verified.
+      truncated: false
+builder_handoff:
+  candidate_id: 6d300017-b838-47d3-958a-547dd888caff
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4c32dad2-4f30-4f35-8472-ba16f4a38222
+  iteration: 6
+  summary:
+    text: No runtime or product code changed. The deployed in-modal Epay
+      implementation remains unchanged and is already contained in origin/main.
+      This fresh candidate exists only to discard duplicate Runtime checks whose
+      bare executable names could not be resolved and to use the equivalent
+      resolved-runtime checks that already passed. The user's recorded
+      real-payment acceptance and explicit refund-verification waiver remain
+      governing evidence.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+  checks:
+    - name:
+        text: Resolved-runtime default and classic checkout regression suites
+        truncated: false
+      result: passed
+      note:
+        text: The previously completed checks passed 32 default tests and 15 classic
+          tests through C:\nvm4w\nodejs\npx.cmd.
+        truncated: false
+    - name:
+        text: Resolved-runtime frontend typecheck and production build
+        truncated: false
+      result: passed
+      note:
+        text: The previously completed checks passed TypeScript typecheck and Rsbuild
+          production build through C:\nvm4w\nodejs\node.exe.
+        truncated: false
+    - name:
+        text: Payment whitespace, static navigation, and backend regressions
+        truncated: false
+      result: passed
+      note:
+        text: The previously completed git diff --check, focused rg review, and Go Epay
+          regression checks passed.
+        truncated: false
+    - name:
+        text: Real merchant payment acceptance
+        truncated: false
+      result: passed
+      note:
+        text: The user explicitly reported that the real payment succeeded.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Refund verification was explicitly waived by the user; no refund test is
+        claimed and refund behavior is unchanged.
+      truncated: false
+    - text: The unrelated web/src/context/search-provider.tsx change and existing
+        Comet JSON artifacts are preserved and excluded.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-25T11:48:39.983Z
+blockers: []
+verification:
+  candidate_id: 6d300017-b838-47d3-958a-547dd888caff
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:8787b19d-d325-4161-9cc5-dee25b223f71
+  iteration: 6
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: default-epay-checkout-tests-resolved-runtime
+      name:
+        text: Default Epay checkout and entry regressions with resolved Node runtime
+        truncated: false
+      argv_display:
+        - text: vitest
+          truncated: false
+        - text: run
+          truncated: false
+        - text: src/features/wallet/components/dialogs/epay-checkout-dialog.test.tsx
+          truncated: false
+        - text: src/features/wallet/lib/__tests__/epay-entry.test.ts
+          truncated: false
+        - text: src/features/wallet/hooks/__tests__/epay-entry.test.ts
+          truncated: false
+        - text: src/features/subscriptions/components/dialogs/__tests__/epay-entry.test.tsx
+          truncated: false
+        - text: src/features/groupbuy/hooks/__tests__/epay-entry.test.ts
+          truncated: false
+        - text: src/features/groupbuy/hooks/__tests__/payment-selection.test.tsx
+          truncated: false
+        - text: src/features/groupbuy/hooks/use-group-buy-payment.test.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 75949
+    - id: classic-epay-checkout-tests-resolved-runtime
+      name:
+        text: Classic Epay checkout and entry regressions with resolved Node runtime
+        truncated: false
+      argv_display:
+        - text: vitest
+          truncated: false
+        - text: run
+          truncated: false
+        - text: --config
+          truncated: false
+        - text: vitest.classic-payment.config.ts
+          truncated: false
+        - text: classic/src/components/topup/modals/EpayCheckoutModal.test.jsx
+          truncated: false
+        - text: classic/src/components/topup/__tests__/epay-entry.test.jsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 46036
+    - id: payment-frontend-typecheck-resolved-runtime
+      name:
+        text: Frontend TypeScript typecheck with resolved Node runtime
+        truncated: false
+      argv_display:
+        - text: node_modules/@typescript/native-preview/bin/tsgo
+          truncated: false
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 19229
+    - id: payment-frontend-build-resolved-runtime
+      name:
+        text: Frontend production build with resolved Node runtime
+        truncated: false
+      argv_display:
+        - text: node_modules/@rsbuild/core/bin/rsbuild.js
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 32091
+    - id: payment-diff-whitespace
+      name:
+        text: Payment candidate whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: 19a9f3c01^
+          truncated: false
+        - text: --
+          truncated: false
+        - text: controller
+          truncated: false
+        - text: model
+          truncated: false
+        - text: router
+          truncated: false
+        - text: service
+          truncated: false
+        - text: web
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 102
+    - id: payment-focused-static-review
+      name:
+        text: Focused no-external-navigation static review
+        truncated: false
+      argv_display:
+        - text: -n
+          truncated: false
+        - text: window\.open|window\.location|location\.assign|\.submit\(
+          truncated: false
+        - text: web/src/features/wallet
+          truncated: false
+        - text: web/src/features/subscriptions
+          truncated: false
+        - text: web/src/features/groupbuy
+          truncated: false
+        - text: web/classic/src/components/topup
+          truncated: false
+        - text: web/classic/src/pages/GroupBuy
+          truncated: false
+        - text: -g
+          truncated: false
+        - text: "*.ts"
+          truncated: false
+        - text: -g
+          truncated: false
+        - text: "*.tsx"
+          truncated: false
+        - text: -g
+          truncated: false
+        - text: "*.js"
+          truncated: false
+        - text: -g
+          truncated: false
+        - text: "*.jsx"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 36
+    - id: payment-backend-regressions
+      name:
+        text: Focused Epay backend regressions
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: Epay|EpayCheckout|SubscriptionEpay|CallbackAmount|GroupBuy
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 10091
+  summary:
+    text: "A1-A22 remain supported by the reviewed implementation and completed
+      Runtime evidence. A23 passes under the recorded user decision: real
+      payment was reported successful, refund verification was explicitly
+      waived, and no refund behavior was changed."
+    truncated: false
+  risks:
+    - text: Refund behavior was intentionally not re-tested. It remains outside this
+        change's runtime modifications and is accepted only because the user
+        explicitly waived refund verification.
+      truncated: false
+    - text: Real merchant acceptance is user-provided acceptance evidence, not an
+        independently reproducible verifier log; no fabricated gateway,
+        callback, signature, credited-balance, or refund evidence is asserted.
+      truncated: false
+    - text: The formal Markdown retains the historical refund-validation wording;
+        Runtime's recorded blocker resolution and this result preserve the
+        governing explicit user waiver without claiming a refund test occurred.
+      truncated: false
+    - text: The committed payment implementation is already contained in origin/main,
+        so this historical branch must not be merged as runtime code.
+      truncated: false
+    - text: The unrelated unstaged web/src/context/search-provider.tsx change and
+        existing Comet artifacts must remain preserved.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-25T11:59:04.565Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 独立核对发现经典阶梯拼团兼容 pay_url 的金额上下文应使用页面计算后的套餐价格；已修正实现，当前候选需失效并返回 Build 后重新提交。
+      truncated: false
+    completed_at: 2026-08-21T07:37:48.384Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+      - A7
+      - A15
+      - A22
+      - A23
+    summary:
+      text: 核心站内 checkout 正确，但需补 classic 重试、入口级测试和 lint 修复后重新验收。
+      truncated: false
+    completed_at: 2026-08-21T07:44:25.483Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A22
+      - A23
+    summary:
+      text: Code behavior and automated gates are coherent, but production-entry tests
+        are incomplete and real-merchant validation remains pending. Return to
+        Build for actual entry tests before deployment acceptance.
+      truncated: false
+    completed_at: 2026-08-21T08:51:13.258Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A23
+    summary:
+      text: A1-A22 通过，未发现新的代码缺陷；A23 因缺少真实商户端到端证据而 blocked。
+      truncated: false
+    completed_at: 2026-08-21T09:38:22.118Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 独立审查后补充了拼团真实 hook 的 scene 参数断言、六种语言的 Epay 收银台翻译，并移除重复 changelog；候选实现已变化，返回
+        Build 重新提交候选。
+      truncated: false
+    completed_at: 2026-08-21T11:08:00.504Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier repeatedly
+        requested only equivalent checks"
+      truncated: false
+    completed_at: 2026-08-22T05:07:39.799Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-22T05:13:17.878Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 3
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-22T05:35:37.463Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 4
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-22T05:53:30.760Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 5
+    outcome: blocked
+    unresolved_ids:
+      - A23
+    summary:
+      text: A1-A22 pass. A23 is blocked solely because the formal contract still
+        mandates refund verification despite the user's explicit waiver; update
+        the formal acceptance contract without changing runtime payment
+        behavior, then verify again.
+      truncated: false
+    completed_at: 2026-08-25T11:36:40.003Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 6
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier verdict is invalid"
+      truncated: false
+    completed_at: 2026-08-25T11:44:33.749Z
+  - goal_cycle: 1
+    iteration: 5
+    attempt: 6
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Return to Build only to create a fresh no-code candidate with a corrected
+        Runtime check plan. The payment implementation is unchanged and already
+        contained in origin/main. The previous attempt was rejected solely
+        because four duplicate checks used unresolved executable names even
+        though their exact resolved-runtime replacements passed. Preserve the
+        recorded user refund-verification waiver and all unrelated dirty files.
+      truncated: false
+    completed_at: 2026-08-25T11:48:10.347Z
+  - goal_cycle: 1
+    iteration: 6
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "A1-A22 remain supported by the reviewed implementation and completed
+        Runtime evidence. A23 passes under the recorded user decision: real
+        payment was reported successful, refund verification was explicitly
+        waived, and no refund behavior was changed."
+      truncated: false
+    completed_at: 2026-08-25T11:59:04.565Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-21T07:00:55.396Z
