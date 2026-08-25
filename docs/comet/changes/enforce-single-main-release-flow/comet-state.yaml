@@ -1,0 +1,346 @@
+schema: comet.native.v4
+name: enforce-single-main-release-flow
+language: zh-CN
+phase: archive
+status: active
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: single-main-release-flow
+    operation: create
+    source: specs/single-main-release-flow/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/enforce-single-main-release-flow
+  target_branch: codex/production-source
+  finish: pull-request
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: `AGENTS.md` explicitly identifies `origin/main` as the sole
+      production source of truth and forbids deploying from `secondary-dev`,
+      stale local branches, dirty worktrees, or unmerged commits."
+    result: passed
+    reason:
+      text: AGENTS.md states origin/main is the sole production source and forbids
+        deployment from dirty worktrees, unmerged feature commits, stale
+        branches, and secondary-dev.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: `AGENTS.md` requires a new task to begin from a freshly fetched
+      `origin/main` and limits one user request to one active implementation
+      branch/worktree unless explicitly approved otherwise."
+    result: passed
+    reason:
+      text: AGENTS.md requires fetching origin/main and creating the task
+        branch/worktree from that exact commit, with one implementation owner
+        per user-visible request unless explicitly authorized.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: The documented release path is local validation, scoped commit,
+      GitHub PR, CI, merge to `main`, build from the exact merge SHA, then
+      application-only deployment."
+    result: passed
+    reason:
+      text: AGENTS.md documents local validation, scoped commit, push, GitHub PR,
+        required CI, merge to main, exact-merge-SHA build, then application-only
+        deployment.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: The documented finish path deletes the merged remote feature branch
+      and synchronizes `codex/production-source` to `origin/main` without
+      deleting dirty user worktrees."
+    result: passed
+    reason:
+      text: AGENTS.md requires deleting the merged remote feature branch, safely
+        synchronizing codex/production-source, and preserving dirty user
+        worktrees.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: When local, GitHub, and production disagree, the documented procedure
+      compares exact Git commit SHAs, image tags/digests, and public application
+      versions before any new deployment."
+    result: passed
+    reason:
+      text: AGENTS.md requires comparing exact Git SHA, image tag/digest, and public
+        application version before choosing a baseline when states differ.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: Existing protected project information and Comet requirements remain
+      intact; no application or deployment file changes are included."
+    result: passed
+    reason:
+      text: Protected-information and Comet blocks remain present; scope contains only
+        AGENTS.md and this change's Comet artifacts.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: The resulting Markdown passes `git diff --check`, and exact `rg`
+      checks find all required branch and release invariants."
+    result: passed
+    reason:
+      text: git diff --check passed and exact rg checks found every required
+        governance invariant.
+      truncated: false
+  - id: A8
+    source: specs/single-main-release-flow/spec.md
+    text: The repository has one deterministic development and production release
+      flow. GitHub `origin/main` is the sole production source of truth; local
+      worktrees and deployed containers are verifiable consumers of that source,
+      never competing canonical versions.
+    result: passed
+    reason:
+      text: The dedicated governance section and formal spec define origin/main as the
+        only canonical production source.
+      truncated: false
+  - id: A9
+    source: specs/single-main-release-flow/spec.md
+    text: Every new implementation task starts only after fetching `origin/main`,
+      and its branch or worktree is created from that fetched commit.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md require fetching origin/main before creating
+        a task branch/worktree from that commit.
+      truncated: false
+  - id: A10
+    source: specs/single-main-release-flow/spec.md
+    text: One user-visible requirement uses one active implementation
+      branch/worktree. Multiple agents may investigate independently, but
+      duplicate implementation branches for the same requirement require
+      explicit user authorization.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md constrain one user-visible requirement to
+        one implementation branch/worktree while allowing read-only
+        investigation.
+      truncated: false
+  - id: A11
+    source: specs/single-main-release-flow/spec.md
+    text: "A production release follows this order: local implementation and
+      validation, scoped commit, push, GitHub PR, required CI, merge to `main`,
+      immutable build from the exact merge commit SHA, and application-only
+      deployment."
+    result: passed
+    reason:
+      text: The formal spec documents the complete
+        PR/CI/main/exact-merge-SHA/application-only release sequence.
+      truncated: false
+  - id: A12
+    source: specs/single-main-release-flow/spec.md
+    text: Production must not be built or deployed from `secondary-dev`, another
+      local convenience branch, a stale worktree, an uncommitted working tree,
+      or a feature commit that has not been merged into GitHub `main`.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md prohibit builds or deployments from
+        secondary-dev, stale worktrees, uncommitted trees, convenience branches,
+        and unmerged commits.
+      truncated: false
+  - id: A13
+    source: specs/single-main-release-flow/spec.md
+    text: After a PR is merged, its remote feature branch is deleted. The local
+      `codex/production-source` reference is then fast-forwarded or reset only
+      when it has no unique commits so it exactly tracks `origin/main`.
+    result: passed
+    reason:
+      text: The formal spec requires remote feature-branch deletion and safe
+        codex/production-source synchronization after merge.
+      truncated: false
+  - id: A14
+    source: specs/single-main-release-flow/spec.md
+    text: Dirty user worktrees and branches are preserved until their ownership and
+      changes are reviewed. Cleanup must never discard uncommitted work merely
+      to reduce branch count.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md preserve dirty user worktrees and prohibit
+        cleanup that discards uncommitted work.
+      truncated: false
+  - id: A15
+    source: specs/single-main-release-flow/spec.md
+    text: When local, GitHub, and production appear inconsistent, release work
+      pauses until exact Git SHAs, container image tags/digests, and public
+      application versions are compared. The selected baseline and discrepancy
+      are reported explicitly.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md require comparing Git SHA, image tag/digest,
+        and public version and reporting the selected baseline.
+      truncated: false
+  - id: A16
+    source: specs/single-main-release-flow/spec.md
+    text: Upstream New API updates enter the production fork only through a
+      deliberate merge into `origin/main`; upstream repositories and remotes are
+      never direct production build sources.
+    result: passed
+    reason:
+      text: The formal spec and AGENTS.md restrict upstream repositories to deliberate
+        update inputs and prohibit direct upstream production builds.
+      truncated: false
+  - id: A17
+    source: specs/single-main-release-flow/spec.md
+    text: These rules do not weaken Comet workflow, protected project attribution,
+      testing, verification, database safety, or deployment approval
+      requirements.
+    result: passed
+    reason:
+      text: The formal spec preserves Comet, protected attribution, testing,
+        verification, database safety, and deployment approval requirements.
+      truncated: false
+  - id: A18
+    source: specs/single-main-release-flow/spec.md
+    text: "`AGENTS.md` contains all requirements in a dedicated governance section."
+    result: passed
+    reason:
+      text: All requirements are in the dedicated Production source and branch
+        discipline section.
+      truncated: false
+  - id: A19
+    source: specs/single-main-release-flow/spec.md
+    text: The protected project information section remains complete and unchanged.
+    result: passed
+    reason:
+      text: Protected new-api and QuantumNous identifier bullets and the no-exceptions
+        instruction remain complete; the AGENTS.md diff removes no content
+        lines.
+      truncated: false
+  - id: A20
+    source: specs/single-main-release-flow/spec.md
+    text: The change contains no application, dependency, deployment, database, or
+      Redis modifications.
+    result: passed
+    reason:
+      text: Candidate scope is limited to AGENTS.md, brief.md, comet-state.yaml, and
+        the release-flow spec; no runtime or data files are present.
+      truncated: false
+  - id: A21
+    source: specs/single-main-release-flow/spec.md
+    text: Markdown whitespace validation and exact text searches pass.
+    result: passed
+    reason:
+      text: git diff --check exits 0 and exact rg searches confirm all required text
+        without conflict markers.
+      truncated: false
+builder_handoff:
+  candidate_id: 89d7b40d-5996-4085-afde-1e54cf50da4c
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:0a6c080c-7b0d-4cff-9365-e0e2d0cbb8eb
+  iteration: 1
+  summary:
+    text: Added repository governance making origin/main the sole production source,
+      requiring one implementation branch per user-visible request, PR/CI/merge
+      before exact-SHA application deployment, merged-branch cleanup, safe
+      production-source synchronization, and explicit version comparison without
+      weakening protected attribution or Comet rules.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+  checks:
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: Completed with no output.
+        truncated: false
+    - name:
+        text: exact rg governance checks
+        truncated: false
+      result: passed
+      note:
+        text: Confirmed origin/main, one implementation branch, exact merge SHA
+          deployment, remote branch deletion, version comparison, and upstream
+          restriction.
+        truncated: false
+    - name:
+        text: scope and protected attribution review
+        truncated: false
+      result: passed
+      note:
+        text: AGENTS.md protected project information section remains complete; no
+          application, dependency, deployment, database, or Redis files changed.
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-08-25T11:06:20.877Z
+blockers: []
+verification:
+  candidate_id: 89d7b40d-5996-4085-afde-1e54cf50da4c
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:1161a5c6-42d6-4974-8f41-bed395a11c80
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Independent read-only verification passes A1-A21 for iteration 1, attempt
+      1 using fast-context, exact rg, complete diff review, scope inventory,
+      protected-attribution comparison, and whitespace validation.
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-08-25T11:15:30.228Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passes A1-A21 for iteration 1, attempt
+        1 using fast-context, exact rg, complete diff review, scope inventory,
+        protected-attribution comparison, and whitespace validation.
+      truncated: false
+    completed_at: 2026-08-25T11:15:30.228Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-25T11:01:28.495Z
