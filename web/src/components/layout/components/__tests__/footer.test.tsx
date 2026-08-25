@@ -20,9 +20,15 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { render, within } from '@testing-library/react'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { Footer } from '../footer'
+
+let mockFooterHtml = ''
+let mockStatus = {
+  user_agreement_enabled: false,
+  privacy_policy_enabled: false,
+}
 
 vi.mock('@tanstack/react-router', () => ({
   Link: (props: React.ComponentProps<'a'> & { to: string }) => {
@@ -33,10 +39,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@/hooks/use-status', () => ({
   useStatus: () => ({
-    status: {
-      user_agreement_enabled: false,
-      privacy_policy_enabled: false,
-    },
+    status: mockStatus,
   }),
 }))
 
@@ -44,7 +47,7 @@ vi.mock('@/hooks/use-system-config', () => ({
   useSystemConfig: () => ({
     systemName: 'New API',
     logo: '/logo.png',
-    footerHtml: '',
+    footerHtml: mockFooterHtml,
     demoSiteEnabled: false,
   }),
 }))
@@ -54,6 +57,14 @@ vi.mock('@/stores/auth-store', () => ({
 }))
 
 describe('Footer', () => {
+  afterEach(() => {
+    mockFooterHtml = ''
+    mockStatus = {
+      user_agreement_enabled: false,
+      privacy_policy_enabled: false,
+    }
+  })
+
   test('always renders the three-slot Figma legal row on the homepage', () => {
     const { container } = render(<Footer />)
     const homeLegal = container.querySelector('.footer-home-legal')
@@ -81,6 +92,35 @@ describe('Footer', () => {
 
     expect(defaultMeta?.querySelector('a[href="/user-agreement"]')).toBeNull()
     expect(defaultMeta?.querySelector('a[href="/privacy-policy"]')).toBeNull()
+    expect(container.querySelector('.footer-custom-strip')).toBeNull()
+  })
+
+  test('keeps the brand footer and appends the configured custom strip', () => {
+    mockFooterHtml = '<span>联系春风QQ：3541256324</span>'
+    mockStatus = {
+      user_agreement_enabled: true,
+      privacy_policy_enabled: true,
+    }
+
+    const { container } = render(<Footer />)
+    const brandFooter = container.querySelector(
+      'footer[data-footer-variant="default"]'
+    )
+    const customStrip = container.querySelector('.footer-custom-strip')
+
+    expect(brandFooter).not.toBeNull()
+    expect(brandFooter?.querySelector('img[alt="New API"]')).not.toBeNull()
+    expect(customStrip).not.toBeNull()
+    expect(customStrip?.textContent).toContain('联系春风QQ：3541256324')
+    expect(
+      customStrip?.querySelector('a[href="/user-agreement"]')
+    ).not.toBeNull()
+    expect(
+      customStrip?.querySelector('a[href="/privacy-policy"]')
+    ).not.toBeNull()
+    expect(brandFooter?.compareDocumentPosition(customStrip as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
   })
 
   test('uses two explicit mobile link columns with copyright spanning both', () => {

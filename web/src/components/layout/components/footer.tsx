@@ -174,6 +174,23 @@ function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
   )
 }
 
+function CustomFooterStrip(props: { html: string; currentYear: number }) {
+  return (
+    <footer className='footer-custom-strip border-border/40 relative z-10 border-t'>
+      <div className='footer-custom-strip-inner mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-3 sm:flex-row sm:gap-5'>
+        <div
+          className='custom-footer text-muted-foreground max-w-full min-w-0 text-center text-xs leading-relaxed break-words sm:text-left'
+          dangerouslySetInnerHTML={{ __html: props.html }}
+        />
+        <div className='border-border/60 text-muted-foreground flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t pt-2 text-xs sm:w-auto sm:justify-end sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5'>
+          <LegalLinks />
+          <ProjectAttribution currentYear={props.currentYear} inline />
+        </div>
+      </div>
+    </footer>
+  )
+}
+
 export function Footer(props: FooterProps) {
   const { t } = useTranslation()
   const { auth } = useAuthStore()
@@ -249,110 +266,91 @@ export function Footer(props: FooterProps) {
 
   const displayColumns = props.columns ?? fallbackColumns
 
-  if (footerHtml) {
-    return (
+  return (
+    <>
       <footer
+        data-footer-variant='default'
         className={cn(
           'public-footer border-border/40 relative z-10 border-t',
           props.className
         )}
       >
-        <div className='mx-auto w-full max-w-6xl px-6 py-5'>
-          <div className='bg-muted/20 border-border/50 flex flex-col items-center justify-between gap-4 rounded-2xl border px-4 py-4 backdrop-blur-sm sm:flex-row sm:px-5'>
-            <div
-              className='custom-footer text-muted-foreground min-w-0 text-center text-sm sm:text-left'
-              dangerouslySetInnerHTML={{ __html: footerHtml }}
-            />
-            <div className='border-border/60 text-muted-foreground flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t pt-4 text-xs sm:w-auto sm:justify-end sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5'>
-              <LegalLinks />
-              <ProjectAttribution currentYear={currentYear} inline />
+        <div className='footer-default-content mx-auto max-w-6xl px-6 py-12 md:py-16'>
+          <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
+            {/* Brand column */}
+            <div className='shrink-0'>
+              <Link to='/' className='group flex items-center gap-2.5'>
+                <img
+                  src={displayLogo}
+                  alt={displayName}
+                  className='size-7 rounded-lg object-contain'
+                />
+                <span className='text-sm font-semibold tracking-tight'>
+                  {displayName}
+                </span>
+              </Link>
+              <p className='text-muted-foreground mt-3 max-w-[200px] text-xs leading-relaxed'>
+                {t('Powerful API Management Platform')}
+              </p>
             </div>
-          </div>
-        </div>
-      </footer>
-    )
-  }
 
-  return (
-    <footer
-      data-footer-variant='default'
-      className={cn(
-        'public-footer border-border/40 relative z-10 border-t',
-        props.className
-      )}
-    >
-      <div className='footer-default-content mx-auto max-w-6xl px-6 py-12 md:py-16'>
-        <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
-          {/* Brand column */}
-          <div className='shrink-0'>
-            <Link to='/' className='group flex items-center gap-2.5'>
-              <img
-                src={displayLogo}
-                alt={displayName}
-                className='size-7 rounded-lg object-contain'
-              />
-              <span className='text-sm font-semibold tracking-tight'>
-                {displayName}
+            {/* Links columns */}
+            {isDemoSiteMode && (
+              <div className='grid grid-cols-3 gap-8 md:gap-16'>
+                {displayColumns.map((column) => (
+                  <div key={column.title}>
+                    <p className='text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase'>
+                      {t(column.title)}
+                    </p>
+                    <ul className='space-y-2.5'>
+                      {column.links.map((link) => (
+                        <li key={`${link.text}-${link.href}`}>
+                          <FooterLinkItem link={link} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Copyright + optional legal links inline on the left, project
+              attribution on the right; wraps on narrow screens. */}
+          <div className='footer-default-meta border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
+            <div className='text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
+              <span>
+                &copy; {currentYear} {displayName}.{' '}
+                {props.copyright ?? t('footer.defaultCopyright')}
               </span>
-            </Link>
-            <p className='text-muted-foreground mt-3 max-w-[200px] text-xs leading-relaxed'>
-              {t('Powerful API Management Platform')}
-            </p>
-          </div>
-
-          {/* Links columns */}
-          {isDemoSiteMode && (
-            <div className='grid grid-cols-3 gap-8 md:gap-16'>
-              {displayColumns.map((column) => (
-                <div key={column.title}>
-                  <p className='text-muted-foreground mb-3 text-xs font-medium tracking-wider uppercase'>
-                    {t(column.title)}
-                  </p>
-                  <ul className='space-y-2.5'>
-                    {column.links.map((link) => (
-                      <li key={`${link.text}-${link.href}`}>
-                        <FooterLinkItem link={link} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <LegalLinks leadingSeparator />
             </div>
-          )}
+            <ProjectAttribution currentYear={currentYear} />
+          </div>
         </div>
-
-        {/* Copyright + optional legal links inline on the left, project
-            attribution on the right; wraps on narrow screens. */}
-        <div className='footer-default-meta border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
-          <div className='text-muted-foreground flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
-            <span>
+        <div className='footer-home-content'>
+          <h2 className='footer-home-heading'>
+            <span>{t('Connect your models')}</span>
+            <span>{t('with {{siteName}}', { siteName: displayName })}</span>
+          </h2>
+          <Link
+            to={isAuthenticated ? '/dashboard' : '/sign-in'}
+            className='footer-home-cta'
+          >
+            {displayName}
+          </Link>
+          <div className='footer-home-legal'>
+            <LegalLinks variant='home' />
+            <span className='footer-home-copyright'>
               &copy; {currentYear} {displayName}.{' '}
               {props.copyright ?? t('footer.defaultCopyright')}
             </span>
-            <LegalLinks leadingSeparator />
           </div>
-          <ProjectAttribution currentYear={currentYear} />
         </div>
-      </div>
-      <div className='footer-home-content'>
-        <h2 className='footer-home-heading'>
-          <span>{t('Connect your models')}</span>
-          <span>{t('with {{siteName}}', { siteName: displayName })}</span>
-        </h2>
-        <Link
-          to={isAuthenticated ? '/dashboard' : '/sign-in'}
-          className='footer-home-cta'
-        >
-          {displayName}
-        </Link>
-        <div className='footer-home-legal'>
-          <LegalLinks variant='home' />
-          <span className='footer-home-copyright'>
-            &copy; {currentYear} {displayName}.{' '}
-            {props.copyright ?? t('footer.defaultCopyright')}
-          </span>
-        </div>
-      </div>
-    </footer>
+      </footer>
+      {footerHtml && (
+        <CustomFooterStrip html={footerHtml} currentYear={currentYear} />
+      )}
+    </>
   )
 }
