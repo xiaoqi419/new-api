@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260825-docs-i18n-local',
+    date: '2026-08-25',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '接入文档现在按界面语言完整切换导航、正文、参数说明、提示与 Markdown 下载内容；中文保持原文，英文及其它非中文界面统一使用完整英文文档，接口路径、请求示例与协议字段不变。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260824-pricing-layout',
     date: '2026-08-24',
     changes: [

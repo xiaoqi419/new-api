@@ -1,0 +1,867 @@
+schema: comet.native.v4
+name: docs-content-i18n-completeness
+language: zh-CN
+phase: archive
+status: active
+state_version: 10
+brief: brief.md
+spec_changes:
+  - capability: docs-content-i18n-completeness
+    operation: create
+    source: specs/docs-content-i18n-completeness/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/docs-content-i18n-completeness
+  target_branch: secondary-dev
+  finish: keep
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：界面语言为 `en` 时，`/docs` 的 tab、侧栏组名、分类、条目标题、正文、提示、参数说明、通用表格和代码块展示标签均为英文；排除
+      raw code 示例后，用户可见文档内容不含意外汉字。
+    result: passed
+    reason:
+      text: Recursive tests find no Han in resolved English visible fields.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：界面语言为 `zh` 或 `zh-TW` 时，`/docs` 保持完整中文导航和正文，既有内容层级、含义与动态 `baseUrl` 不丢失。
+    result: passed
+    reason:
+      text: zh-prefixed locales retain Chinese labels and prose for all eight groups.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：法语、日语、俄语和越南语界面进入 `/docs` 时使用完整英文文档 fallback，不显示简体中文硬编码或原始翻译 key。
+    result: passed
+    reason:
+      text: Every non-Chinese locale uses the tested English fallback.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：切换语言后，顶部 tab、侧栏和当前正文在同一次渲染中同步切换；无需刷新页面，路由仍为 `/docs`，hash 指向的 section ID
+      保持稳定。
+    result: passed
+    reason:
+      text: "Live language switching updates tab, sidebar, and body while retaining
+        #overview."
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：API 方法、endpoint path、HTTP Header、JSON 字段、参数名/类型/默认值、模型名、协议字面量、动态
+      `baseUrl` 和代码示例在中英文构建结果中保持协议等价。
+    result: passed
+    reason:
+      text: Protocol values remain identical across zh and en trees.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：英文参数表显示 `Parameter / Type / Required / Default / Description` 与 `Yes /
+      No`；中文参数表显示对应中文。Markdown 下载使用当前文档语言的表头、必填值、卡片标点和代码块展示标签。
+    result: passed
+    reason:
+      text: Markdown headers, Yes/No, labels, and punctuation follow DocLang.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：英文代码块标签仍能正确识别 JSON、bash、Python、JavaScript 和 HTTP fence
+      language；下载结果不因标签翻译失去语法标记。
+    result: passed
+    reason:
+      text: Request/response/success/failure and existing language labels resolve to
+        correct code fences; both repaired Request cases pass.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: A8：`buildDocGroups(baseUrl, 'en')` 的全部用户文案都有英文值；递归回归测试排除技术字面量和 raw code
+      后不发现汉字。`buildDocGroups(baseUrl, 'zh')` 保持代表性中文内容。
+    result: passed
+    reason:
+      text: English visible fields contain no Han and Chinese representative content
+        remains complete.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: A9：桌面和移动视口下，英文与中文 `/docs` 均无页面级横向溢出；侧栏/内容可访问，横向滚动仅限既有代码块和表格容器。
+    result: passed
+    reason:
+      text: Recorded zh/en desktop/mobile checks show no page-level horizontal
+        overflow.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: A10：现有 `/docs` tab、折叠、分类/条目选择、hash、复制、Markdown 下载及动态 server address 行为保持可用。
+    result: passed
+    reason:
+      text: Existing Docs selection, hash, copy, download, and server-address flows
+        remain intact.
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: A11：新增/更新相关 Vitest，并通过涉及文件 format/lint、前端 TypeScript typecheck、`bun run
+      i18n:sync`、生产 Rsbuild build 和 `git diff --check`。
+    result: passed
+    reason:
+      text: Runtime passes focused tests, sync, typecheck, build, format, lint, and
+        whitespace checks.
+      truncated: false
+  - id: A12
+    source: brief.md
+    text: A12：用户本地验收前不提交、推送、合并或部署，不触碰生产数据库与生产配置。
+    result: passed
+    reason:
+      text: Only local docs/frontend/test/changelog/Comet files changed; no commit or
+        deployment action occurred.
+      truncated: false
+  - id: A13
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: The public `/docs` capability exposes the gateway's developer
+      documentation as a stable, data-driven hierarchy of tabs, groups,
+      categories, endpoint sections, explanatory blocks, and downloadable
+      Markdown. The rendered and downloaded documentation follows the active
+      interface language while preserving all protocol identifiers and examples.
+    result: passed
+    reason:
+      text: Rendered and downloaded documentation share the localized data hierarchy.
+      truncated: false
+  - id: A14
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`DocLang` supports the existing documentation modes `zh` and `en`."
+    result: passed
+    reason:
+      text: DocLang remains the explicit zh or en union.
+      truncated: false
+  - id: A15
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Interface locales whose resolved language starts with `zh` select the `zh`
+      document tree.
+    result: passed
+    reason:
+      text: Locales beginning with zh select the Chinese tree.
+      truncated: false
+  - id: A16
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: All other supported interface locales select the complete `en` document
+      tree as the stable fallback.
+    result: passed
+    reason:
+      text: All other locales select the English tree.
+      truncated: false
+  - id: A17
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Every user-visible content value in the document data tree has a Chinese
+      and English form unless it is a technical literal that must remain
+      identical.
+    result: passed
+    reason:
+      text: All visible hierarchy and block fields are projected; technical literals
+        are excluded.
+      truncated: false
+  - id: A18
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: The tab bar, sidebar hierarchy, active page, section headings, blocks, and
+      Markdown download all consume the same resolved document language.
+    result: passed
+    reason:
+      text: Tabs, sidebar, body, and Markdown use the same resolved language.
+      truncated: false
+  - id: A19
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "The complete documentation tree retains these stable groups and IDs:"
+    result: passed
+    reason:
+      text: All eight stable group IDs and their order remain present.
+      truncated: false
+  - id: A20
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`start`: overview, authentication/base URL, and common
+      conventions/errors."
+    result: passed
+    reason:
+      text: The start group remains structurally intact.
+      truncated: false
+  - id: A21
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`guides`: quick start, groups/routing, rate limits, and error-code
+      guidance."
+    result: passed
+    reason:
+      text: The bilingual guides group remains intact.
+      truncated: false
+  - id: A22
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`tools`: supported CLI, editor/IDE, chat-client, and browser-extension
+      integrations."
+    result: passed
+    reason:
+      text: The bilingual tools group remains intact.
+      truncated: false
+  - id: A23
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`ai`: models, chat formats, completions, embeddings, reranking,
+      moderation, audio, realtime, and unsupported endpoint reference."
+    result: passed
+    reason:
+      text: The AI API hierarchy remains structurally intact.
+      truncated: false
+  - id: A24
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`images`: Gemini, OpenAI, Qwen, and Midjourney image APIs."
+    result: passed
+    reason:
+      text: The image API hierarchy remains structurally intact.
+      truncated: false
+  - id: A25
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`video`: Seedance, asset library, Sora, Kling, and Seedance reference
+      APIs."
+    result: passed
+    reason:
+      text: The video API hierarchy remains structurally intact.
+      truncated: false
+  - id: A26
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`reference`: SDK quick start, billing/quota, and rate-limit reference."
+    result: passed
+    reason:
+      text: The SDK, billing, and rate-limit reference hierarchy remains intact.
+      truncated: false
+  - id: A27
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`faq`: account, verification, balance, invoice, and compliance guidance."
+    result: passed
+    reason:
+      text: The bilingual FAQ group remains intact.
+      truncated: false
+  - id: A28
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Group IDs, category IDs, item IDs, `/docs` route behavior, URL hashes, tab
+      membership, ordering, and collapsible behavior remain
+      language-independent.
+    result: passed
+    reason:
+      text: Localization does not change IDs, routes, hashes, ordering, or collapse
+        state.
+      truncated: false
+  - id: A29
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "The following data is user-facing and switches between Chinese and
+      English:"
+    result: passed
+    reason:
+      text: The projection covers every specified user-facing data class.
+      truncated: false
+  - id: A30
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: group, category, and item labels;
+    result: passed
+    reason:
+      text: Group, category, and item labels are localized.
+      truncated: false
+  - id: A31
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: paragraphs, section headings, notes, and list items;
+    result: passed
+    reason:
+      text: Paragraphs, headings, notes, and list items are localized.
+      truncated: false
+  - id: A32
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: card titles and descriptions;
+    result: passed
+    reason:
+      text: Card titles and descriptions are localized.
+      truncated: false
+  - id: A33
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: parameter descriptions;
+    result: passed
+    reason:
+      text: Parameter descriptions are localized without changing metadata.
+      truncated: false
+  - id: A34
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: generic table headings and explanatory cells;
+    result: passed
+    reason:
+      text: Generic table headings and explanatory cells are localized.
+      truncated: false
+  - id: A35
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: code block presentation labels such as request, response, success, and
+      failure;
+    result: passed
+    reason:
+      text: Code presentation labels are localized and correctly classified.
+      truncated: false
+  - id: A36
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Markdown-generated parameter-table headings, required-state values, and
+      prose punctuation.
+    result: passed
+    reason:
+      text: Markdown metadata and prose punctuation follow the selected language.
+      truncated: false
+  - id: A37
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: English content must be complete and meaningful rather than
+      transliterated, abbreviated into raw keys, or replaced with empty text.
+      Chinese content retains the current meaning and coverage.
+    result: passed
+    reason:
+      text: English prose is complete and meaningful; Chinese coverage is retained.
+      truncated: false
+  - id: A38
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "The following values are protocol data and remain unchanged across
+      languages:"
+    result: passed
+    reason:
+      text: Protocol-bearing data is excluded from localization.
+      truncated: false
+  - id: A39
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: HTTP methods and endpoint paths;
+    result: passed
+    reason:
+      text: HTTP methods and endpoint paths are unchanged.
+      truncated: false
+  - id: A40
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: HTTP Header names and wire values;
+    result: passed
+    reason:
+      text: HTTP header names and wire values are unchanged.
+      truncated: false
+  - id: A41
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: JSON keys and parameter identifiers;
+    result: passed
+    reason:
+      text: JSON keys and parameter identifiers are unchanged.
+      truncated: false
+  - id: A42
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: parameter types and defaults;
+    result: passed
+    reason:
+      text: Parameter types and defaults are unchanged.
+      truncated: false
+  - id: A43
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: status codes, URL schemes, query keys, shell flags, environment variables,
+      and SDK identifiers;
+    result: passed
+    reason:
+      text: Status, URL, query, flag, environment, and SDK literals are unchanged.
+      truncated: false
+  - id: A44
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: model IDs, provider/product names, protocol names, and dynamic `baseUrl`
+      values;
+    result: passed
+    reason:
+      text: Model/provider/protocol names and dynamic baseUrl remain unchanged.
+      truncated: false
+  - id: A45
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: raw code block payloads, including example prompts and responses.
+    result: passed
+    reason:
+      text: Raw code payloads remain identical across languages.
+      truncated: false
+  - id: A46
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Localization must not change request semantics, response semantics,
+      copy-button values, endpoint display, or the server address derived from
+      `/api/status.server_address`.
+    result: passed
+    reason:
+      text: Request semantics, copy values, endpoint display, and status-derived
+        server address are preserved.
+      truncated: false
+  - id: A47
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`/docs` remains a public TanStack Router route inside `PublicLayout`."
+    result: passed
+    reason:
+      text: Docs remains a public route inside PublicLayout.
+      truncated: false
+  - id: A48
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Changing the interface language causes the tab bar, sidebar, active
+      section headings, and content blocks to update in one render without a
+      full page reload.
+    result: passed
+    reason:
+      text: A single rerender synchronizes all visible documentation surfaces.
+      truncated: false
+  - id: A49
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: The selected tab/category/section is identified by stable IDs, so changing
+      languages does not create language-specific routes or hashes.
+    result: passed
+    reason:
+      text: Stable IDs preserve selection and hash across language changes.
+      truncated: false
+  - id: A50
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Parameter tables use existing i18next UI labels for column headings and
+      required-state values.
+    result: passed
+    reason:
+      text: Rendered parameter tables retain existing i18next labels.
+      truncated: false
+  - id: A51
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Code blocks and tables may retain their own local horizontal scroll
+      containers; the document page itself must not gain horizontal overflow on
+      supported desktop or mobile viewports.
+    result: passed
+    reason:
+      text: Page overflow remains absent and code/table overflow stays local.
+      truncated: false
+  - id: A52
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Existing copy, download, sidebar collapse, category selection, item
+      selection, intersection tracking, hash update, and dynamic server-address
+      behavior remain intact.
+    result: passed
+    reason:
+      text: All existing Docs interactions remain available.
+      truncated: false
+  - id: A53
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: "`buildCategoryMarkdown` builds from the same localized tree as the
+      rendered page."
+    result: passed
+    reason:
+      text: buildCategoryMarkdown derives from buildDocGroups(baseUrl, lang).
+      truncated: false
+  - id: A54
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Category/item headings, prose, notes, list items, cards, table
+      explanations, and code block presentation labels use the selected document
+      language.
+    result: passed
+    reason:
+      text: Markdown serializes localized hierarchy and block content.
+      truncated: false
+  - id: A55
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Parameter-table headers and required-state values use the selected
+      document language.
+    result: passed
+    reason:
+      text: Markdown parameter headers and required values are localized.
+      truncated: false
+  - id: A56
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: English presentation labels continue to produce the correct fenced-code
+      language for JSON, bash, Python, JavaScript, and HTTP examples.
+    result: passed
+    reason:
+      text: The repaired Request labels produce json fences in both video-asset and
+        video-sora.
+      truncated: false
+  - id: A57
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Raw fenced code, endpoint paths, `base_url`, parameter identifiers, model
+      IDs, and other protocol literals remain unchanged.
+    result: passed
+    reason:
+      text: Raw code and all protocol literals remain identical.
+      truncated: false
+  - id: A58
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: English is the documentation fallback for all non-Chinese interface
+      locales.
+    result: passed
+    reason:
+      text: English is the fallback for every non-Chinese locale.
+      truncated: false
+  - id: A59
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: A missing status response uses the existing browser-origin fallback for
+      `baseUrl`; localization does not alter that behavior.
+    result: passed
+    reason:
+      text: The existing browser-origin baseUrl fallback is unchanged.
+      truncated: false
+  - id: A60
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Document localization must not expose raw translation keys, `undefined`,
+      empty labels, or partially Chinese English content.
+    result: passed
+    reason:
+      text: No raw keys, undefined, empty labels, or unintended Chinese visible
+        content were found.
+      truncated: false
+  - id: A61
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Raw code samples may intentionally contain Chinese prompt or response data
+      and are excluded from the no-Han user-prose invariant.
+    result: passed
+    reason:
+      text: Intentional Chinese raw examples are excluded and preserved.
+      truncated: false
+  - id: A62
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Existing semantic headings, buttons, navigation order, visible focus, and
+      accessible button behavior remain unchanged.
+    result: passed
+    reason:
+      text: Semantic markup, controls, navigation order, and focus behavior are
+        unchanged.
+      truncated: false
+  - id: A63
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Localized labels may wrap or truncate only within existing constrained
+      navigation areas; they must not overlap adjacent controls.
+    result: passed
+    reason:
+      text: Localized labels remain constrained without overlap in recorded browser
+        checks.
+      truncated: false
+  - id: A64
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: At desktop and mobile widths, no page-level horizontal overflow is
+      introduced. Existing code/table overflow remains contained locally.
+    result: passed
+    reason:
+      text: Recorded desktop/mobile checks show no document-level horizontal overflow.
+      truncated: false
+  - id: A65
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Recursively test the complete `buildDocGroups(baseUrl, 'en')` data tree
+      and reject Han characters in user-visible fields while excluding raw code
+      and explicit technical literals.
+    result: passed
+    reason:
+      text: Recursive tests reject Han in all English visible fields while excluding
+        raw code.
+      truncated: false
+  - id: A66
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Test representative Chinese labels and prose from every main group.
+    result: passed
+    reason:
+      text: Tests assert stable labels and representative Chinese prose for all eight
+        main groups.
+      truncated: false
+  - id: A67
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Test protocol invariants across `zh` and `en` trees.
+    result: passed
+    reason:
+      text: Exact zh/en protocol invariants are tested.
+      truncated: false
+  - id: A68
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Test localized Markdown metadata, fenced-language detection, and raw code
+      stability.
+    result: passed
+    reason:
+      text: Tests cover localized Markdown metadata, raw-code stability, and repaired
+        Request fence detection.
+      truncated: false
+  - id: A69
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Test live `/docs` language changes for synchronized tab/sidebar/body
+      updates and stable dynamic `baseUrl`.
+    result: passed
+    reason:
+      text: Tests cover synchronized live language changes, stable hash, and
+        server-address data flow.
+      truncated: false
+  - id: A70
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Run related Vitest, frontend typecheck, i18n synchronization, production
+      build, scoped format/lint, and Git whitespace checks.
+    result: passed
+    reason:
+      text: All seven required Runtime checks pass.
+      truncated: false
+  - id: A71
+    source: specs/docs-content-i18n-completeness/spec.md
+    text: Browser-check English and Chinese at desktop and mobile sizes for
+      sidebar/content language, overflow, download behavior, and console errors.
+    result: passed
+    reason:
+      text: Recorded zh/en desktop/mobile browser evidence covers language, overflow,
+        download, and console behavior.
+      truncated: false
+builder_handoff:
+  candidate_id: 38bbb90e-8033-41c5-a163-74869b8e1d76
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:657691c9-f862-4cf4-b04c-6addf806d869
+  iteration: 2
+  summary:
+    text: "Repaired the four failed acceptance items: English Request presentation
+      labels now retain JSON Markdown fences, focused tests cover Request fences
+      in both video-asset and video-sora, and Chinese regression coverage now
+      validates stable labels plus representative prose for all eight main
+      document groups."
+    truncated: false
+  addressed_acceptance_ids:
+    - A7
+    - A56
+    - A66
+    - A68
+  checks:
+    - name:
+        text: TDD red check for English Request JSON fences
+        truncated: false
+      result: passed
+      note:
+        text: Before the production fix, the new regression failed with an untyped fence
+          for video/video-asset; the same test covers video/video-sora.
+        truncated: false
+    - name:
+        text: Focused docs localization Vitest
+        truncated: false
+      result: passed
+      note:
+        text: 2 files passed; 7 tests passed.
+        truncated: false
+    - name:
+        text: Frontend i18n synchronization
+        truncated: false
+      result: passed
+      note:
+        text: node scripts/sync-i18n.mjs completed without locale changes.
+        truncated: false
+    - name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b exited 0.
+        truncated: false
+    - name:
+        text: Rsbuild production build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild v2.1.6 completed successfully.
+        truncated: false
+    - name:
+        text: Scoped oxfmt and oxlint
+        truncated: false
+      result: passed
+      note:
+        text: All four changed frontend files passed format and lint checks.
+        truncated: false
+    - name:
+        text: Git whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check exited 0.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Bun is not available on PATH, so installed Node package entry points were
+        used.
+      truncated: false
+    - text: No commit, push, merge, deployment, backend, database, production
+        configuration, or locale JSON change was made.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-25T04:44:23.962Z
+blockers: []
+verification:
+  candidate_id: 38bbb90e-8033-41c5-a163-74869b8e1d76
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:2dcfc8be-0ec1-4c78-9bfc-97d420638c34
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: docs-i18n-focused-tests
+      name:
+        text: Docs localization data and live switching tests
+        truncated: false
+      argv_display:
+        - text: node_modules/vitest/vitest.mjs
+          truncated: false
+        - text: run
+          truncated: false
+        - text: src/features/docs/__tests__/doc-data-i18n.test.ts
+          truncated: false
+        - text: src/features/docs/__tests__/docs-language-switch.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1376
+    - id: docs-i18n-sync
+      name:
+        text: Frontend i18n synchronization
+        truncated: false
+      argv_display:
+        - text: scripts/sync-i18n.mjs
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 137
+    - id: docs-i18n-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: node_modules/@typescript/native-preview/bin/tsgo
+          truncated: false
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2273
+    - id: docs-i18n-production-build
+      name:
+        text: Frontend Rsbuild production build
+        truncated: false
+      argv_display:
+        - text: node_modules/@rsbuild/core/bin/rsbuild.js
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 10226
+    - id: docs-i18n-format
+      name:
+        text: Changed docs frontend files format check
+        truncated: false
+      argv_display:
+        - text: node_modules/oxfmt/bin/oxfmt
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/docs/doc-data.ts
+          truncated: false
+        - text: src/features/docs/__tests__/doc-data-i18n.test.ts
+          truncated: false
+        - text: src/features/docs/__tests__/docs-language-switch.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 278
+    - id: docs-i18n-lint
+      name:
+        text: Changed docs frontend files lint check
+        truncated: false
+      argv_display:
+        - text: node_modules/oxlint/bin/oxlint
+          truncated: false
+        - text: -c
+          truncated: false
+        - text: .oxlintrc.json
+          truncated: false
+        - text: src/features/changelog/data.ts
+          truncated: false
+        - text: src/features/docs/doc-data.ts
+          truncated: false
+        - text: src/features/docs/__tests__/doc-data-i18n.test.ts
+          truncated: false
+        - text: src/features/docs/__tests__/docs-language-switch.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 245
+    - id: docs-i18n-diff-check
+      name:
+        text: Repository diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 82
+  summary:
+    text: Pass. Independent iteration-2 review confirms A1-A71, including repairs
+      for Request JSON fences and all-group Chinese prose coverage. No locale
+      JSON, backend, database, deployment, commit, push, or merge change exists.
+    truncated: false
+  risks:
+    - text: No browser service was started by the read-only Verifier; A9 and A71 rely
+        on the retained browser matrix evidence.
+      truncated: false
+    - text: Bun is unavailable on PATH; Runtime used installed Node package entry
+        points for equivalent checks.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-25T04:51:33.631Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+      - A56
+      - A66
+      - A68
+    summary:
+      text: Independent verification failed A7, A56, A66, and A68. The localization
+        projection is otherwise scoped correctly and all Runtime checks pass,
+        but Request-labelled JSON fences and Chinese regression coverage must be
+        fixed before user acceptance.
+      truncated: false
+    completed_at: 2026-08-25T04:39:18.599Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Pass. Independent iteration-2 review confirms A1-A71, including repairs
+        for Request JSON fences and all-group Chinese prose coverage. No locale
+        JSON, backend, database, deployment, commit, push, or merge change
+        exists.
+      truncated: false
+    completed_at: 2026-08-25T04:51:33.631Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-25T03:23:31.800Z
