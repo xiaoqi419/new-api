@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next'
 
 import { ArrowRight, BookOpen } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
 import type { HeroAppItem, HeroContent } from '../../types'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
@@ -72,7 +74,9 @@ function AppChip({
 
 export function Hero(props: HeroProps) {
   const { t, i18n } = useTranslation()
+  const { systemName } = useSystemConfig()
   const content = props.content
+  const displaySystemName = systemName?.trim() || DEFAULT_SYSTEM_NAME
   const compactEnglishDesktop = i18n.resolvedLanguage?.startsWith('en') ?? false
 
   return (
@@ -258,8 +262,8 @@ export function Hero(props: HeroProps) {
           <div data-testid='home-hero-card-art' className='absolute inset-0'>
             <div className='absolute top-[524px] left-[431px] z-10 flex h-[510.215px] w-[362.919px] items-center justify-center'>
               <div className='relative h-[473.067px] w-[300px] flex-none -rotate-[8deg] rounded-[24px] bg-[linear-gradient(122deg,#fff195_0%,#ffc4ab_29%,#fff6ec_50%)] px-[30px] pt-[28px] text-[#0e0e0e] shadow-[0_20px_38px_rgba(0,0,0,0.28)]'>
-                <p className='h-[34px] text-[26px] leading-[29px] font-bold'>
-                  New API
+                <p className='h-[34px] w-[170px] truncate text-[26px] leading-[29px] font-bold'>
+                  {displaySystemName}
                 </p>
                 <span className='absolute top-[28px] left-[218px] h-[36px] w-[48px] rounded-[8px] bg-gradient-to-br from-[#f7f7f7] to-[#cfcfcf]' />
                 <p className='mt-[16px] h-[32px] text-[26px] leading-[29px] font-bold'>
@@ -272,8 +276,8 @@ export function Hero(props: HeroProps) {
             </div>
             <div className='absolute top-[508px] left-[557.772px] z-30 flex h-[569.076px] w-[407.894px] items-center justify-center'>
               <div className='relative h-[523.903px] w-[330px] flex-none rotate-[9deg] rounded-[24px] bg-[linear-gradient(122deg,#fff1d0_0%,#ff4e93_22.5%,#7c4dff_50%)] px-[30px] pt-[28px] text-[#0e0e0e] shadow-[0_20px_38px_rgba(0,0,0,0.28)]'>
-                <p className='h-[34px] text-[26px] leading-[29px] font-bold'>
-                  New API
+                <p className='h-[34px] w-[200px] truncate text-[26px] leading-[29px] font-bold'>
+                  {displaySystemName}
                 </p>
                 <span className='absolute top-[28px] left-[248px] h-[36px] w-[48px] rounded-[8px] bg-gradient-to-br from-[#f7f7f7] to-[#cfcfcf]' />
                 <p className='mt-[16px] h-[32px] text-[26px] leading-[29px] font-bold'>
@@ -286,8 +290,8 @@ export function Hero(props: HeroProps) {
             </div>
             <div className='absolute top-[610px] left-[771px] z-20 flex h-[494.422px] w-[377.04px] items-center justify-center'>
               <div className='relative h-[441.629px] w-[285px] flex-none rotate-[13deg] rounded-[24px] bg-[linear-gradient(123deg,#2bffd0_0%,#dbfff4_30%,#f0ff4a_50%)] px-[30px] pt-[28px] text-[#0e0e0e] shadow-[0_20px_38px_rgba(0,0,0,0.28)]'>
-                <p className='h-[34px] text-[26px] leading-[29px] font-bold'>
-                  New API
+                <p className='h-[34px] w-[155px] truncate text-[26px] leading-[29px] font-bold'>
+                  {displaySystemName}
                 </p>
                 <span className='absolute top-[28px] left-[203px] h-[36px] w-[48px] rounded-[8px] bg-gradient-to-br from-[#f7f7f7] to-[#cfcfcf]' />
                 <p className='mt-[16px] h-[32px] text-[26px] leading-[29px] font-bold'>

@@ -331,17 +331,21 @@ export function Footer(props: FooterProps) {
         <div className='footer-home-content'>
           <h2 className='footer-home-heading'>
             <span>{t('Connect your models')}</span>
-            <span>{t('with {{siteName}}', { siteName: displayName })}</span>
+            <span className='block w-full truncate'>
+              {t('with {{siteName}}', { siteName: displayName })}
+            </span>
           </h2>
           <Link
             to={isAuthenticated ? '/dashboard' : '/sign-in'}
-            className='footer-home-cta'
+            className='footer-home-cta max-w-[calc(100%-3rem)] text-center'
           >
-            {displayName}
+            <span className='block max-w-full min-w-0 truncate'>
+              {displayName}
+            </span>
           </Link>
           <div className='footer-home-legal'>
             <LegalLinks variant='home' />
-            <span className='footer-home-copyright'>
+            <span className='footer-home-copyright max-w-full min-w-0 truncate'>
               &copy; {currentYear} {displayName}.{' '}
               {props.copyright ?? t('footer.defaultCopyright')}
             </span>

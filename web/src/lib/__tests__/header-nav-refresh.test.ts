@@ -140,11 +140,16 @@ const publicRoutes: PublicRoute[] = [
   },
 ]
 
-function createHeaderStatus(pricingEnabled: boolean, rankingsEnabled: boolean) {
+function createHeaderStatus(
+  pricingEnabled: boolean,
+  rankingsEnabled: boolean,
+  docsEnabled = true
+) {
   return {
     HeaderNavModules: JSON.stringify({
       pricing: { enabled: pricingEnabled, requireAuth: false },
       rankings: { enabled: rankingsEnabled, requireAuth: false },
+      docs: docsEnabled,
     }),
   }
 }
@@ -181,6 +186,35 @@ async function renderPublicHeader(queryClient: QueryClient): Promise<string> {
 }
 
 describe('header navigation refresh', () => {
+  test('keeps in-app docs in desktop and mobile navigation when status disables docs', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const status = createHeaderStatus(false, false, false)
+
+    queryClient.setQueryData(statusQueryOptions.queryKey, status)
+
+    try {
+      const markup = await renderPublicHeader(queryClient)
+      const desktopNavigationIndex = markup.indexOf(
+        'public-header-desktop public-header-links'
+      )
+      const mobileNavigationIndex = markup.indexOf(
+        'id="public-mobile-navigation"'
+      )
+
+      expect(markup.indexOf('href="/docs"')).toBeGreaterThan(
+        desktopNavigationIndex
+      )
+      expect(markup.indexOf('href="/docs"')).toBeLessThan(mobileNavigationIndex)
+      expect(
+        markup.indexOf('href="/docs"', mobileNavigationIndex)
+      ).toBeGreaterThan(mobileNavigationIndex)
+    } finally {
+      queryClient.clear()
+    }
+  })
+
   for (const publicRoute of publicRoutes) {
     test(`refreshes the public Header before ${publicRoute.name} renders`, async () => {
       const queryClient = new QueryClient({

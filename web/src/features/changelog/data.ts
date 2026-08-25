@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260825-dynamic-branding',
+    date: '2026-08-25',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '恢复首页与模型广场装饰卡片的动态站点品牌，固定保留桌面端和移动端接入文档入口，并修复首页底部行动按钮在悬停和键盘聚焦时文字不可见的问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260825-docs-i18n-local',
     date: '2026-08-25',
     changes: [

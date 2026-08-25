@@ -21,6 +21,8 @@ import { useTranslation } from 'react-i18next'
 
 import { AnimateInView } from '@/components/animate-in-view'
 import { Button } from '@/components/ui/button'
+import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
 interface CTAProps {
   className?: string
@@ -29,6 +31,8 @@ interface CTAProps {
 
 export function CTA(props: CTAProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
+  const displaySystemName = systemName?.trim() || DEFAULT_SYSTEM_NAME
 
   return (
     <section
@@ -39,10 +43,10 @@ export function CTA(props: CTAProps) {
         className='relative mx-auto max-w-[1288px] overflow-hidden rounded-[42px] border border-black/[0.08] bg-white px-8 py-14 shadow-[0_24px_50px_rgba(0,0,0,0.06)] md:h-[430px] md:rounded-[58px] md:px-[74px] md:py-[69px] dark:border-transparent dark:bg-[#0e0e0e] dark:shadow-[0_24px_50px_rgba(255,255,255,0.06)]'
       >
         <div className='relative z-10 max-w-[520px]'>
-          <h2 className='text-[clamp(2.2rem,4vw,3rem)] leading-[1.08] font-black tracking-normal md:text-[48px] md:leading-[52px]'>
+          <h2 className='text-[clamp(2.2rem,4vw,3rem)] leading-[1.08] font-black tracking-normal break-words md:text-[48px] md:leading-[52px]'>
             {t('Connect your models')}
             <br />
-            {t('with New API')}
+            {t('with {{siteName}}', { siteName: displaySystemName })}
           </h2>
           <p className='mt-6 max-w-[480px] text-[17px] leading-[1.55] text-[#575757] md:mt-6 md:min-h-[62px] md:text-[18px] md:leading-7 dark:text-[#b8b8b8]'>
             {t(
@@ -76,9 +80,12 @@ export function CTA(props: CTAProps) {
           />
 
           <div className='absolute top-[4px] left-[779px] flex h-[224px] w-[285px] items-center justify-center'>
-            <div className='relative h-[158px] w-[250px] rotate-[-17deg] overflow-hidden rounded-[24px] bg-[linear-gradient(147.707deg,#ff5f7e_0%,#f2d54c_28%,#6e6bff_50%)] shadow-[0_20px_38px_rgba(0,0,0,0.28)]'>
-              <p className='absolute top-7 left-[30px] text-[26px] leading-[29px] font-bold text-[#0e0e0e]'>
-                New API
+            <div
+              data-testid='home-cta-brand-card'
+              className='relative h-[158px] w-[250px] rotate-[-17deg] overflow-hidden rounded-[24px] bg-[linear-gradient(147.707deg,#ff5f7e_0%,#f2d54c_28%,#6e6bff_50%)] shadow-[0_20px_38px_rgba(0,0,0,0.28)]'
+            >
+              <p className='absolute top-7 left-[30px] w-[126px] truncate text-[26px] leading-[29px] font-bold text-[#0e0e0e]'>
+                {displaySystemName}
               </p>
               <div className='absolute top-7 left-[168px] h-9 w-12 rounded-lg bg-[linear-gradient(143.13deg,#f7f7f7_0%,#cfcfcf_50%)]' />
               <p className='absolute top-[78px] left-[30px] text-[26px] leading-[29px] font-bold text-[#0e0e0e]'>

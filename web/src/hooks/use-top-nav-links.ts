@@ -41,7 +41,6 @@ export type TopNavLink = {
  *   console: true,
  *   pricing: { enabled: true, requireAuth: false },
  *   rankings: { enabled: true, requireAuth: false },
- *   docs: true,
  *   about: true
  * }
  */
@@ -105,14 +104,12 @@ export function useTopNavLinks(): TopNavLink[] {
     })
   }
 
-  // Docs: built-in in-app developer docs (controlled by `docs`)
-  if (modules?.docs !== false) {
-    links.push({
-      title: t('API Documentation'),
-      href: '/docs',
-      icon: navIconNameFor(icons, 'docs'),
-    })
-  }
+  // Docs: built-in developer documentation is always a public entry point.
+  links.push({
+    title: t('API Documentation'),
+    href: '/docs',
+    icon: navIconNameFor(icons, 'docs'),
+  })
 
   // About
   if (modules?.about !== false) {
