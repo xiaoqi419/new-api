@@ -114,21 +114,31 @@ export function AppHeader({
 
   return (
     <Header banner={<PromoBanner />}>
-      <SystemBrand variant='inline' />
+      <div
+        data-slot='app-header-brand'
+        className='min-w-0 shrink-0 max-sm:[&_a]:gap-0 max-sm:[&_a]:px-1 max-sm:[&_a>span]:hidden'
+      >
+        <SystemBrand variant='inline' />
+      </div>
 
       {leftContent ? (
-        <div className='ms-2 flex items-center'>{leftContent}</div>
+        <div className='ms-2 flex min-w-0 items-center'>{leftContent}</div>
       ) : null}
 
       {rightContent ?? (
-        <div className='ms-auto flex items-center gap-1 sm:gap-2'>
+        <div
+          data-slot='app-header-actions'
+          className='ms-auto flex min-w-0 shrink-0 items-center gap-0 sm:gap-2 max-sm:[&_[data-slot=button]]:size-8'
+        >
           {showTopNav && (
             <div className='me-1 hidden items-center lg:flex'>
               <TopNav links={links} />
               <CommunityMenu variant='nav' />
             </div>
           )}
-          {showSearch && <Search />}
+          {showSearch && (
+            <Search className='max-sm:size-8 max-sm:flex-none max-sm:justify-center max-sm:p-0 max-sm:[&>span]:sr-only max-sm:[&>svg]:start-1/2 max-sm:[&>svg]:-translate-x-1/2' />
+          )}
           {showNotifications && (
             <NotificationPopover
               open={notifications.popoverOpen}

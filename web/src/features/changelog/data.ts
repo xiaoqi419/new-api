@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260825-navigation-quality',
+    date: '2026-08-25',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复命令菜单绕过侧栏可见性规则而显示受角色、管理员配置、用户配置或产品策略隐藏入口的问题，并修复英文界面在 320px 与 390px 窄屏下顶部控件撑宽页面的问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260825-dynamic-branding',
     date: '2026-08-25',
     changes: [
