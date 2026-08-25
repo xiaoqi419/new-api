@@ -3,7 +3,7 @@ name: restore-dynamic-public-branding
 language: zh-CN
 phase: archive
 status: active
-state_version: 20
+state_version: 21
 brief: brief.md
 spec_changes:
   - capability: public-dynamic-branding
