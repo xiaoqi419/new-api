@@ -1,0 +1,428 @@
+schema: comet.native.v4
+name: public-footer-brand-legal
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: public-footer-brand-legal
+    operation: create
+    source: specs/public-footer-brand-legal/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/public-footer-brand-legal
+  target_branch: secondary-dev
+  finish: push
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: When `footerHtml` is configured, the default public footer still
+      renders its brand area and also renders a distinct custom footer strip
+      containing the configured HTML and legal/attribution metadata."
+    result: passed
+    reason:
+      text: footerHtml no longer suppresses the default brand footer;
+        CustomFooterStrip renders configured HTML plus legal and attribution
+        metadata.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: On the homepage, the existing brand CTA footer remains visible and
+      the custom strip is rendered below it; the two regions do not replace or
+      overlap one another."
+    result: passed
+    reason:
+      text: The brand CTA region and custom strip render as siblings in document
+        order, and the existing home surface CSS leaves the CTA intact.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: On business/public pages such as `/docs`, the configured brand footer
+      area and custom strip are both visible in document order."
+    result: passed
+    reason:
+      text: Non-home surfaces retain the logo, site name, description, and optional
+        demo columns before the custom strip.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: Agreement/privacy links remain conditional on status for the custom
+      strip, while the existing homepage legal row behavior is unchanged."
+    result: passed
+    reason:
+      text: The custom strip uses LegalLinks gated by user_agreement_enabled and
+        privacy_policy_enabled; the homepage LegalLinks variant remains
+        unchanged.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: The custom strip wraps cleanly at narrow widths and does not
+      introduce page-level horizontal overflow."
+    result: passed
+    reason:
+      text: Responsive flex wrapping, max-width/min-width constraints, and
+        overflow-wrap:anywhere prevent fixed-width page overflow in the added
+        strip.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: Existing footer behavior when `footerHtml` is empty remains
+      unchanged."
+    result: passed
+    reason:
+      text: Empty footerHtml renders the existing default footer tree and the focused
+        test asserts that no custom strip is present.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: Focused footer tests and frontend typecheck/build pass."
+    result: passed
+    reason:
+      text: Independent focused Vitest passed; Comet runtime typecheck, production
+        build, formatting, lint, and diff checks all passed.
+      truncated: false
+  - id: A8
+    source: specs/public-footer-brand-legal/spec.md
+    text: "The public footer has two independently renderable regions:"
+    result: passed
+    reason:
+      text: The Footer composes two independently renderable regions through a
+        fragment and a conditional CustomFooterStrip.
+      truncated: false
+  - id: A9
+    source: specs/public-footer-brand-legal/spec.md
+    text: The existing brand region. On the home surface this is the branded CTA
+      section; on business/public surfaces this is the existing logo, site name,
+      description and optional demo links section.
+    result: passed
+    reason:
+      text: The existing home CTA versus public logo/name/description/demo-link
+        branches remain intact and are still selected by the existing surface
+        selectors.
+      truncated: false
+  - id: A10
+    source: specs/public-footer-brand-legal/spec.md
+    text: An optional custom bottom strip driven by `footerHtml`. It contains the
+      configured custom HTML plus the existing conditional agreement/privacy
+      links and project attribution.
+    result: passed
+    reason:
+      text: CustomFooterStrip is driven by footerHtml and contains the configured
+        HTML, conditional legal links, and project attribution.
+      truncated: false
+  - id: A11
+    source: specs/public-footer-brand-legal/spec.md
+    text: When `footerHtml` is empty, the current footer output remains unchanged.
+      When it is present, it must not suppress the brand region. The two regions
+      render in order, with the custom strip below the brand region.
+    result: passed
+    reason:
+      text: The conditional custom strip is rendered after the brand footer, and an
+        empty configuration omits it.
+      truncated: false
+  - id: A12
+    source: specs/public-footer-brand-legal/spec.md
+    text: The custom strip is full-width within the public footer, uses the existing
+      border/background language, and wraps its content on narrow viewports. It
+      must not create document-level horizontal overflow.
+    result: passed
+    reason:
+      text: The strip is full width with existing border/background classes and
+        responsive wrapping plus overflow-wrap CSS.
+      truncated: false
+  - id: A13
+    source: specs/public-footer-brand-legal/spec.md
+    text: Site name and logo continue to come from the existing system configuration
+      fallback chain.
+    result: passed
+    reason:
+      text: displayLogo and displayName continue using the existing system
+        configuration, prop, and fallback resolution chain.
+      truncated: false
+  - id: A14
+    source: specs/public-footer-brand-legal/spec.md
+    text: Legal links continue to follow `user_agreement_enabled` and
+      `privacy_policy_enabled` for the inline custom strip.
+    result: passed
+    reason:
+      text: The existing LegalLinks status gates are unchanged and are used by the
+        custom strip.
+      truncated: false
+  - id: A15
+    source: specs/public-footer-brand-legal/spec.md
+    text: Existing homepage CTA/legal layout and empty-`footerHtml` behavior remain
+      intact.
+    result: passed
+    reason:
+      text: Homepage CTA/legal markup remains present, and empty-configuration
+        behavior is covered by the focused test.
+      truncated: false
+  - id: A16
+    source: specs/public-footer-brand-legal/spec.md
+    text: No backend, database, migration, API, or production configuration behavior
+      changes.
+    result: passed
+    reason:
+      text: The diff contains only three frontend files; no backend, database,
+        migration, API, production configuration, deployment, or server changes
+        are present.
+      truncated: false
+builder_handoff:
+  candidate_id: 210be0e4-8759-422e-99b2-5554a8af10e1
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:236f6d69-c851-4f51-b0d8-557afce21643
+  iteration: 1
+  summary:
+    text: Replaced the footerHtml early return with a composable CustomFooterStrip.
+      The existing brand/default footer and homepage CTA remain rendered, and
+      the configured contact/legal strip is appended as a separate responsive
+      footer below it. Added focused regression coverage for configured and
+      empty footerHtml behavior plus legal-link presence and document order.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+  checks:
+    - name:
+        text: Focused Footer Vitest
+        truncated: false
+      result: passed
+      note:
+        text: "node node_modules/vitest/vitest.mjs run
+          src/components/layout/components/__tests__/footer.test.tsx: 1 file, 4
+          tests passed."
+        truncated: false
+    - name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      result: passed
+      note:
+        text: node node_modules/@typescript/native-preview/bin/tsgo -b passed.
+        truncated: false
+    - name:
+        text: Frontend production build
+        truncated: false
+      result: passed
+      note:
+        text: node node_modules/@rsbuild/core/bin/rsbuild.js build passed.
+        truncated: false
+    - name:
+        text: Scoped formatting
+        truncated: false
+      result: passed
+      note:
+        text: oxfmt write/check completed for changed TSX and CSS files.
+        truncated: false
+    - name:
+        text: Scoped lint
+        truncated: false
+      result: passed
+      note:
+        text: oxlint completed with the pre-existing react(no-danger) warning for the
+          existing configured HTML rendering.
+        truncated: false
+    - name:
+        text: Git diff whitespace
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check passed.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Bun is unavailable on PATH in this environment; equivalent Node package
+        entry points were used.
+      truncated: false
+    - text: No production or browser deployment verification was performed in this
+        local-only iteration.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-25T06:27:15.996Z
+blockers: []
+verification:
+  candidate_id: 210be0e4-8759-422e-99b2-5554a8af10e1
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:5e34c9ea-72cd-4991-bf60-c7c773c1c18e
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: footer-focused-vitest
+      name:
+        text: focused public footer tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\vitest.exe run
+            src/components/layout/components/__tests__/footer.test.tsx; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1711
+    - id: footer-typecheck
+      name:
+        text: frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\tsgo.exe -b; if ($LASTEXITCODE -ne 0) { exit
+            $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2788
+    - id: footer-production-build
+      name:
+        text: frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\rsbuild.exe build; if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 11058
+    - id: footer-format
+      name:
+        text: scoped frontend formatting
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\oxfmt.exe --check
+            src/components/layout/components/footer.tsx
+            src/components/layout/components/__tests__/footer.test.tsx
+            src/styles/theme-presets.css; if ($LASTEXITCODE -ne 0) { exit
+            $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 769
+    - id: footer-lint
+      name:
+        text: scoped frontend lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: "& .\\node_modules\\.bin\\oxlint.exe -c .oxlintrc.json
+            src/components/layout/components/footer.tsx
+            src/components/layout/components/__tests__/footer.test.tsx; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 411
+    - id: footer-diff-check
+      name:
+        text: repository diff whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 382
+  summary:
+    text: Independent read-only verification passes A1-A16. Code review, fresh
+      focused Vitest, Comet runtime checks, and diff scope satisfy the local
+      acceptance criteria. No archive, push, merge, or deployment authorization
+      is implied.
+    truncated: false
+  risks:
+    - text: Bun is unavailable; equivalent Node package entry points were used for the
+        recorded checks.
+      truncated: false
+    - text: No browser or deployed verification was performed because this is a local
+        frontend-only change.
+      truncated: false
+    - text: Configured arbitrary HTML continues to use the existing
+        dangerouslySetInnerHTML path and its pre-existing lint warning.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-25T06:36:28.941Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification passes A1-A16. Code review, fresh
+        focused Vitest, Comet runtime checks, and diff scope satisfy the local
+        acceptance criteria. No archive, push, merge, or deployment
+        authorization is implied.
+      truncated: false
+    completed_at: 2026-08-25T06:36:28.941Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-25T06:15:26.341Z
