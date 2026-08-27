@@ -22,6 +22,7 @@ import { MONITOR_HEALTH_COLORS } from '../constants'
 import { formatMonitorTs } from '../lib'
 import type { ChannelModelItem } from '../types'
 import { AuthenticityBadge } from './authenticity-badge'
+import { CachePredictionMetric } from './cache-prediction-metric'
 import { HealthHeatmap } from './health-heatmap'
 
 function MetricValue({
@@ -64,14 +65,14 @@ export function ModelHealthRow({
     item.availability >= 0 ? `${item.availability.toFixed(1)}%` : '-'
 
   return (
-    <div className='flex flex-col gap-1.5'>
-      <div className='flex items-center gap-2'>
+    <div className='flex min-w-0 flex-col gap-1.5'>
+      <div className='flex min-w-0 items-start gap-2'>
         <span
           className='size-2 shrink-0 rounded-full'
           style={{ backgroundColor: MONITOR_HEALTH_COLORS[item.status] }}
         />
         <span
-          className='text-foreground min-w-0 flex-1 truncate text-sm font-medium'
+          className='text-foreground min-w-0 flex-1 text-sm font-medium wrap-break-word'
           title={item.model}
         >
           {item.model}
@@ -102,6 +103,10 @@ export function ModelHealthRow({
               ? MONITOR_HEALTH_COLORS[item.status]
               : undefined
           }
+        />
+        <CachePredictionMetric
+          prediction={item.cache_prediction}
+          variant='inline'
         />
       </div>
     </div>

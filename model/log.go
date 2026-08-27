@@ -70,6 +70,9 @@ type Log struct {
 	CompletionTokens  int    `json:"completion_tokens" gorm:"default:0"`
 	UseTime           int    `json:"use_time" gorm:"default:0"`
 	FirstTokenMs      int    `json:"first_token_ms" gorm:"default:0"`
+	InputTokens       int64  `json:"input_tokens" gorm:"default:0"`
+	CacheReadTokens   int64  `json:"cache_read_tokens" gorm:"default:0"`
+	CacheWriteTokens  int64  `json:"cache_write_tokens" gorm:"default:0"`
 	IsStream          bool   `json:"is_stream"`
 	ChannelId         int    `json:"channel" gorm:"index"`
 	ChannelName       string `json:"channel_name" gorm:"->"`
@@ -384,6 +387,9 @@ type RecordConsumeLogParams struct {
 	ChannelId        int                    `json:"channel_id"`
 	PromptTokens     int                    `json:"prompt_tokens"`
 	CompletionTokens int                    `json:"completion_tokens"`
+	InputTokens      int64                  `json:"input_tokens"`
+	CacheReadTokens  int64                  `json:"cache_read_tokens"`
+	CacheWriteTokens int64                  `json:"cache_write_tokens"`
 	ModelName        string                 `json:"model_name"`
 	TokenName        string                 `json:"token_name"`
 	Quota            int                    `json:"quota"`
@@ -408,6 +414,15 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	createdAt := common.GetTimestamp()
 	otherStr := common.MapToJsonStr(params.Other)
 	firstTokenMs := firstTokenMsFromOther(params.Other)
+	if params.InputTokens != 0 || params.CacheReadTokens != 0 || params.CacheWriteTokens != 0 {
+		if params.InputTokens <= 0 || params.CacheReadTokens < 0 || params.CacheReadTokens > params.InputTokens ||
+			params.CacheWriteTokens < 0 || params.CacheWriteTokens > params.InputTokens-params.CacheReadTokens {
+			logger.LogWarn(c, fmt.Sprintf("discard invalid cache telemetry: input=%d read=%d write=%d", params.InputTokens, params.CacheReadTokens, params.CacheWriteTokens))
+			params.InputTokens = 0
+			params.CacheReadTokens = 0
+			params.CacheWriteTokens = 0
+		}
+	}
 	// 判断是否需要记录 IP
 	needRecordIp := false
 	if settingMap, err := GetUserSetting(userId, false); err == nil {
@@ -430,6 +445,9 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		TokenId:          params.TokenId,
 		UseTime:          params.UseTimeSeconds,
 		FirstTokenMs:     firstTokenMs,
+		InputTokens:      params.InputTokens,
+		CacheReadTokens:  params.CacheReadTokens,
+		CacheWriteTokens: params.CacheWriteTokens,
 		IsStream:         params.IsStream,
 		Group:            params.Group,
 		Ip: func() string {

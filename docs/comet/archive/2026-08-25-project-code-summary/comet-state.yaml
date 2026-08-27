@@ -1,0 +1,358 @@
+schema: comet.native.v4
+name: project-code-summary
+language: zh-CN
+phase: archive
+status: done
+state_version: 17
+brief: brief.md
+spec_changes:
+  - capability: project-code-summary
+    operation: create
+    source: specs/project-code-summary/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/project-code-summary
+  target_branch: secondary-dev
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: specs/project-code-summary/spec.md
+    text: 仓库必须提供 `docs/project-code-summary.md`。它是本 fork 二次开发的维护/交接入口，优先说明当前 main
+      已包含的二开能力、其状态和维护边界，而不是把上游 New API 的全仓概览作为主要交付物。
+    result: passed
+    reason:
+      text: The document is a second-development maintenance and handoff entry for
+        this fork, not an upstream-wide architecture manual.
+      truncated: false
+  - id: A2
+    source: specs/project-code-summary/spec.md
+    text: 调查快照、证据等级和排除项：记录 `origin/main` SHA、日期、检索降级情况，并说明不对生成物、依赖、二进制与 vendored
+      第三方代码作逐行承诺。
+    result: passed
+    reason:
+      text: It records date, origin/main SHA, evidence/status levels, fast-context
+        fallback, and review boundaries.
+      truncated: false
+  - id: A3
+    source: specs/project-code-summary/spec.md
+    text: 当前发布基线：明确 `origin/main` 是唯一生产真源，说明 SHA、镜像/容器版本不一致时的比较和停线原则。
+    result: passed
+    reason:
+      text: origin/main is the sole production source and deployment drift requires
+        stop-and-compare handling.
+      truncated: false
+  - id: A4
+    source: specs/project-code-summary/spec.md
+    text: 已完成二开能力：至少覆盖商业支付/运营、身份/访问/公共体验、模型/生成/扩展三类；每项给出路径、状态和维护注意事项。
+    result: passed
+    reason:
+      text: Commercial, identity/public experience, and model/generation capabilities
+        have status, paths, and maintenance cautions.
+      truncated: false
+  - id: A5
+    source: specs/project-code-summary/spec.md
+    text: 未完成与风险：分别列出待线上验收、保留但隐藏、搁置/未开始，以及支付/计费、数据库、缓存、双前端、i18n、上游整合和版本漂移风险。
+    result: passed
+    reason:
+      text: Online validation, hidden or shelved work, and the required risk
+        categories are separately documented.
+      truncated: false
+  - id: A6
+    source: specs/project-code-summary/spec.md
+    text: 后续 Agent 流程：从 main、Comet、fast-context/rg、Shape、Build、Verify、PR/CI、精确 SHA
+      构建、应用部署到清理分支的明确顺序。
+    result: passed
+    reason:
+      text: The document specifies main, Comet, Shape, Build, independent Verify,
+        PR/CI, exact-SHA build, deployment, and branch cleanup.
+      truncated: false
+  - id: A7
+    source: specs/project-code-summary/spec.md
+    text: 最小基础边界：只说明二开 Agent 需要跨越的
+      HTTP/业务、Relay/计费、RelayKit、数据/缓存、三套前端、Docker/Electron 边界，不复述上游全部实现。
+    result: passed
+    reason:
+      text: It describes only the necessary HTTP, Relay, billing, RelayKit,
+        data/cache, frontend, Docker, and Electron boundaries.
+      truncated: false
+  - id: A8
+    source: specs/project-code-summary/spec.md
+    text: 常用验证命令和“历史计划不等于现状”的说明。
+    result: passed
+    reason:
+      text: Focused verification commands and the historical-plan-versus-current-fact
+        distinction are present.
+      truncated: false
+  - id: A9
+    source: specs/project-code-summary/spec.md
+    text: “已合并”只表示代码位于 `origin/main`；真实支付、回调、生产迁移和生产部署必须另列为线上验收。
+    result: passed
+    reason:
+      text: Merged code is explicitly separated from payment, callback, migration, and
+        deployment acceptance.
+      truncated: false
+  - id: A10
+    source: specs/project-code-summary/spec.md
+    text: 历史计划、设计稿、旧 branch、旧容器和原目录脏改动不构成当前事实。结论优先级是当前 main 源码/测试，其次是归档 Comet
+      验证和提交历史。
+    result: passed
+    reason:
+      text: Current main source/tests take priority over old plans, designs, branches,
+        containers, and dirty worktrees.
+      truncated: false
+  - id: A11
+    source: specs/project-code-summary/spec.md
+    text: 技术断言必须指向真实文件、符号或 Git SHA；Markdown 链接应在本仓库工作树可解析。
+    result: passed
+    reason:
+      text: The document uses paths, symbols, and SHA evidence, and all local Markdown
+        links resolve.
+      truncated: false
+  - id: A12
+    source: specs/project-code-summary/spec.md
+    text: "`relaykit/` 仍是独立 Go module，不能暗示它依赖 root 模块；其修改必须经 `GOWORK=off go build
+      ./...` 验证。"
+    result: passed
+    reason:
+      text: RelayKit's independent module boundary and GOWORK=off build contract
+        remain documented.
+      truncated: false
+  - id: A13
+    source: specs/project-code-summary/spec.md
+    text: 不得改变受保护的 `new-api` 或 QuantumNous 项目归属。
+    result: passed
+    reason:
+      text: new-api and QuantumNous attribution remains intact and no protected
+        project material is changed.
+      truncated: false
+  - id: A14
+    source: specs/project-code-summary/spec.md
+    text: "`rg` 能找到文档中引用的二开模块和关键符号。"
+    result: passed
+    reason:
+      text: Origin/main Git checks resolved the cited SMTP, group-buy, agent-prepay,
+        fallback, 451, and dynamic-branding symbols.
+      truncated: false
+  - id: A15
+    source: specs/project-code-summary/spec.md
+    text: 文档内 Markdown 路径目标存在，不依赖随机本机目录。
+    result: passed
+    reason:
+      text: The prescribed Markdown relative-link validation passed without
+        local-machine-only targets.
+      truncated: false
+  - id: A16
+    source: specs/project-code-summary/spec.md
+    text: "`git diff --check` 通过，变更仅限 `docs/project-code-summary.md` 和
+      `docs/comet/changes/project-code-summary/`。"
+    result: passed
+    reason:
+      text: Both git diff --check and the explicit untracked-file whitespace gate are
+        clean; no candidate Markdown file has trailing whitespace and scope is
+        limited to the intended documentation.
+      truncated: false
+  - id: A17
+    source: specs/project-code-summary/spec.md
+    text: 独立 Verifier 对 A1-A34 逐项给出证据；依赖线上状态而没有证据的事项必须标为待线上验收而不是通过。
+    result: passed
+    reason:
+      text: A separate read-only verifier assessed every current Runtime acceptance
+        and external-state claims remain marked as online-only validation.
+      truncated: false
+builder_handoff:
+  candidate_id: 1fff440b-5edf-4fdd-93d0-3927bb0b5a1b
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:b4800723-be3c-4942-9ae6-0f3426ac3de6
+  iteration: 2
+  summary:
+    text: Addressed the only failed verifier finding by removing the two trailing
+      whitespace sequences from the primary document header. The
+      second-development maintenance and handoff content, its origin/main
+      evidence model, status taxonomy, release procedure, and formal brief/spec
+      are otherwise unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+  checks:
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors in tracked diff.
+        truncated: false
+    - name:
+        text: git diff --no-index --check -- /dev/null docs/project-code-summary.md
+        truncated: false
+      result: passed
+      note:
+        text: The explicit untracked-file whitespace gate is clean after the two-line
+          repair.
+        truncated: false
+    - name:
+        text: PowerShell Markdown relative-link validation for
+          docs/project-code-summary.md
+        truncated: false
+      result: passed
+      note:
+        text: All local Markdown links resolve.
+        truncated: false
+    - name:
+        text: rg trailing-whitespace scan
+        truncated: false
+      result: passed
+      note:
+        text: No trailing whitespace was found in the primary document or formal
+          artifacts.
+        truncated: false
+    - name:
+        text: candidate scope review
+        truncated: false
+      result: passed
+      note:
+        text: The only candidate documents are docs/project-code-summary.md and the
+          project-code-summary formal Comet artifacts.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: fast-context is unavailable in this environment after two attempts;
+        semantic lookup was downgraded to rg and Git and is disclosed in the
+        document.
+      truncated: false
+    - text: No application build, test, deployment, production service, database,
+        Redis, merchant, callback, or DNS action was run because this is a
+        documentation-only change.
+      truncated: false
+    - text: The local worktree predates the verified origin/main baseline; current
+        facts were validated through origin/main Git inspection, and historical
+        worktree or plan claims are explicitly marked non-authoritative.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-25T12:00:47.526Z
+blockers: []
+verification:
+  candidate_id: 1fff440b-5edf-4fdd-93d0-3927bb0b5a1b
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:fce4c053-2985-46d1-9b0e-8717c071069b
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: The previous untracked-file whitespace defect is resolved. All A1-A17 pass
+      with independently verified structure, links, whitespace, scope, protected
+      attribution, and representative origin/main second-development evidence.
+    truncated: false
+  risks:
+    - text: The local worktree predates the documented origin/main baseline, so
+        current implementation facts were validated against origin/main Git
+        objects.
+      truncated: false
+    - text: fast-context remains unavailable after two attempts; rg and Git are the
+        documented fallback.
+      truncated: false
+    - text: No build, runtime, database, Redis, merchant, callback, DNS, deployment,
+        or production check was run because this is documentation-only.
+      truncated: false
+    - text: The Comet change metadata has a historical secondary-dev target; any later
+        release must follow the documented main-target flow.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-25T12:03:44.422Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 通过。候选文档满足 A1-A34，路径、统计、架构/链路方向、实现与规划边界及 Git scope 均已核验；文档-only
+        情况下未运行构建可接受。
+      truncated: false
+    completed_at: 2026-08-17T15:59:12.983Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户拒绝当前候选：目标不是 new-api
+        上游全仓架构总结，而是本仓库二次开发的维护/交接文档，必须说明二开已完成内容、当前进度、未完成事项、风险以及后续如何让 Agent
+        继续实施。现有验收与候选范围失效，返回 Build 重新调查并修订正式规格。
+      truncated: false
+    completed_at: 2026-08-17T16:03:41.227Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-25T11:54:53.423Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A16
+    summary:
+      text: All content, fact-source, protected-identity, link, and scope checks pass
+        except the untracked-file whitespace gate. A normal git diff check is
+        insufficient for this untracked candidate.
+      truncated: false
+    completed_at: 2026-08-25T11:59:29.406Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: The previous untracked-file whitespace defect is resolved. All A1-A17 pass
+        with independently verified structure, links, whitespace, scope,
+        protected attribution, and representative origin/main second-development
+        evidence.
+      truncated: false
+    completed_at: 2026-08-25T12:03:44.422Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-17T14:55:13.948Z

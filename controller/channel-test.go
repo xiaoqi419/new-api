@@ -67,6 +67,9 @@ type channelTestOptions struct {
 	// probePrompt 非空时替换测试提问。健康探测借它把提问换成自我识别问题，
 	// 这样行为判据不需要额外发一次请求。
 	probePrompt string
+	// probeMaxOutputTokens bounds a health probe's completion without changing
+	// the established defaults used by ordinary manual and scheduled tests.
+	probeMaxOutputTokens uint
 }
 
 func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string) string {
@@ -260,7 +263,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 		}
 	}
 
-	request := buildTestRequest(testModel, endpointType, channel, isStream, opts.probePrompt)
+	request := buildTestRequest(testModel, endpointType, channel, isStream, opts.probePrompt, opts.probeMaxOutputTokens)
 
 	info, err := relaycommon.GenRelayInfo(c, relayFormat, request, nil)
 
@@ -762,13 +765,16 @@ func detectErrorMessageFromJSONBytes(jsonBytes []byte) string {
 	return message
 }
 
-func buildTestRequest(model string, endpointType string, channel *model.Channel, isStream bool, probePrompt string) dto.Request {
+func buildTestRequest(model string, endpointType string, channel *model.Channel, isStream bool, probePrompt string, probeMaxOutputTokens uint) dto.Request {
 	prompt := "hi"
 	// 自我识别的回答比 "hi" 的回答长，16 个 token 会把型号名截断。
 	replyMaxTokens := uint(16)
 	if probePrompt != "" {
 		prompt = probePrompt
 		replyMaxTokens = probeReplyMaxTokens
+	}
+	if probeMaxOutputTokens > 0 {
+		replyMaxTokens = probeMaxOutputTokens
 	}
 	testResponsesInput := json.RawMessage(`[{"role":"user","content":"hi"}]`)
 

@@ -85,14 +85,15 @@ type channelModelBucket struct {
 }
 
 type channelModelItem struct {
-	Model        string               `json:"model"`
-	Status       string               `json:"status"`
-	Availability float64              `json:"availability"` // -1 when no data
-	AvgTtft      float64              `json:"avg_ttft"`     // seconds, 0 when n/a
-	AvgLatency   float64              `json:"avg_latency"`  // seconds
-	Throughput   float64              `json:"throughput"`   // completion tokens / second
-	RequestCount int64                `json:"request_count"`
-	Buckets      []channelModelBucket `json:"buckets"`
+	Model           string                 `json:"model"`
+	Status          string                 `json:"status"`
+	Availability    float64                `json:"availability"` // -1 when no data
+	AvgTtft         float64                `json:"avg_ttft"`     // seconds, 0 when n/a
+	AvgLatency      float64                `json:"avg_latency"`  // seconds
+	Throughput      float64                `json:"throughput"`   // completion tokens / second
+	RequestCount    int64                  `json:"request_count"`
+	Buckets         []channelModelBucket   `json:"buckets"`
+	CachePrediction channelCachePrediction `json:"cache_prediction"`
 
 	// 以下来自探针最近一次探测，空 verdict 表示这个渠道/模型还没被探过。
 	Verdict       string          `json:"verdict"`
@@ -102,14 +103,15 @@ type channelModelItem struct {
 }
 
 type channelMonitorItem struct {
-	ChannelId    int                `json:"channel_id"`
-	Name         string             `json:"name"`
-	Type         int                `json:"type"`
-	Tag          string             `json:"tag"`
-	Status       string             `json:"status"`
-	Availability float64            `json:"availability"` // -1 when no data
-	RequestCount int64              `json:"request_count"`
-	Models       []channelModelItem `json:"models"`
+	ChannelId       int                    `json:"channel_id"`
+	Name            string                 `json:"name"`
+	Type            int                    `json:"type"`
+	Tag             string                 `json:"tag"`
+	Status          string                 `json:"status"`
+	Availability    float64                `json:"availability"` // -1 when no data
+	RequestCount    int64                  `json:"request_count"`
+	Models          []channelModelItem     `json:"models"`
+	CachePrediction channelCachePrediction `json:"cache_prediction"`
 	// SuspectCount 是这个渠道下被判为疑似与声称不一致的模型数，供列表直接打标。
 	SuspectCount int `json:"suspect_count"`
 }
@@ -127,6 +129,7 @@ type channelMonitorModelAgg struct {
 	totalTtft       int64
 	ttftCount       int64
 	buckets         map[int64]channelMonitorBucketCounts
+	cacheBuckets    []cachePredictionBucket
 }
 
 // GetChannelMonitor returns per-channel availability broken down by model, with
@@ -138,6 +141,16 @@ func GetChannelMonitor(c *gin.Context) {
 	now := time.Now().Unix()
 	endHour := now - now%3600
 	startHour := endHour - int64(days*24-1)*3600
+	observedWindow := cachePredictionWindow{
+		Start:   startHour,
+		End:     endHour + 3600,
+		Seconds: int64(days * 24 * 3600),
+	}
+	predictionWindow := cachePredictionWindow{
+		Start:   endHour - int64(cachePredictionDays*24-1)*3600,
+		End:     endHour + 3600,
+		Seconds: cachePredictionDays * 24 * 3600,
+	}
 
 	stats, err := getChannelMonitorStatsCached(days, startHour, now)
 	if err != nil {
@@ -165,6 +178,13 @@ func GetChannelMonitor(c *gin.Context) {
 		agg.totalTtft += s.TotalTtft
 		agg.ttftCount += s.TtftCount
 		agg.buckets[s.Bucket] = channelMonitorBucketCounts{success: s.SuccessCount, errCount: s.ErrorCount}
+		agg.cacheBuckets = append(agg.cacheBuckets, cachePredictionBucket{
+			Bucket:     s.Bucket,
+			Samples:    s.CacheSampleCount,
+			Input:      s.InputTokens,
+			CacheRead:  s.CacheReadTokens,
+			CacheWrite: s.CacheWriteTokens,
+		})
 	}
 
 	channelIds := make([]int, 0, len(perChannel))
@@ -213,6 +233,8 @@ func GetChannelMonitor(c *gin.Context) {
 		}
 
 		var chSuccess, chError int64
+		channelObservedCacheBuckets := make([]cachePredictionBucket, 0, len(models)*days*24)
+		channelPredictionCacheBuckets := make([]cachePredictionBucket, 0, len(models)*cachePredictionDays*24)
 		for modelName, agg := range models {
 			chSuccess += agg.success
 			chError += agg.errCount
@@ -230,6 +252,13 @@ func GetChannelMonitor(c *gin.Context) {
 			}
 			if agg.ttftCount > 0 {
 				mItem.AvgTtft = float64(agg.totalTtft) / float64(agg.ttftCount) / 1000.0
+			}
+			mItem.CachePrediction = calculateCachePrediction(agg.cacheBuckets, observedWindow, predictionWindow)
+			if mItem.CachePrediction.hasObservedCacheEvidence {
+				channelObservedCacheBuckets = append(channelObservedCacheBuckets, agg.cacheBuckets...)
+			}
+			if mItem.CachePrediction.hasPredictionCacheEvidence {
+				channelPredictionCacheBuckets = append(channelPredictionCacheBuckets, agg.cacheBuckets...)
 			}
 			for h := startHour; h <= endHour; h += 3600 {
 				bc := agg.buckets[h]
@@ -256,6 +285,12 @@ func GetChannelMonitor(c *gin.Context) {
 			}
 			item.Models = append(item.Models, mItem)
 		}
+		item.CachePrediction = calculateCachePredictionFromWindowBuckets(
+			combineCachePredictionBuckets(channelObservedCacheBuckets),
+			combineCachePredictionBuckets(channelPredictionCacheBuckets),
+			observedWindow,
+			predictionWindow,
+		)
 		sort.Slice(item.Models, func(i, j int) bool {
 			return item.Models[i].Model < item.Models[j].Model
 		})

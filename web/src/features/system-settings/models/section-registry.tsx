@@ -97,6 +97,8 @@ const MODELS_SECTIONS = [
             settings['health_probe_setting.max_targets_per_round'],
           'health_probe_setting.authenticity_enabled':
             settings['health_probe_setting.authenticity_enabled'],
+          'channel_failover_setting.pools':
+            settings['channel_failover_setting.pools'],
         }}
       />
     ),

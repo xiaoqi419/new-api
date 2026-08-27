@@ -440,6 +440,48 @@ func TestCacheWriteTokensTotal(t *testing.T) {
 	})
 }
 
+func TestCacheTelemetryFromTextUsageNormalizesProtocolInputs(t *testing.T) {
+	openAIUsage := &dto.Usage{
+		InputTokens: 120,
+		BillingUsage: dto.NewOpenAIChatBillingUsage(&dto.Usage{
+			InputTokens: 120,
+		}),
+	}
+	openAI := cacheTelemetryFromTextUsage(openAIUsage, textQuotaSummary{
+		PromptTokens:        100,
+		CacheTokens:         30,
+		CacheCreationTokens: 10,
+	})
+	assert.Equal(t, cacheTokenTelemetry{InputTokens: 120, CacheReadTokens: 30, CacheWriteTokens: 10, Valid: true}, openAI)
+
+	geminiUsage := effectiveBillingUsage(&dto.Usage{
+		BillingUsage: dto.NewGeminiChatBillingUsage(&dto.GeminiUsageMetadata{
+			PromptTokenCount:        100,
+			CachedContentTokenCount: 20,
+		}),
+	})
+	gemini := cacheTelemetryFromTextUsage(geminiUsage, textQuotaSummary{
+		PromptTokens: 100,
+		CacheTokens:  20,
+	})
+	assert.Equal(t, cacheTokenTelemetry{InputTokens: 100, CacheReadTokens: 20, Valid: true}, gemini)
+
+	anthropicUsage := effectiveBillingUsage(&dto.Usage{
+		BillingUsage: dto.NewClaudeMessagesBillingUsage(&dto.ClaudeUsage{
+			InputTokens:              70,
+			CacheReadInputTokens:     20,
+			CacheCreationInputTokens: 10,
+		}),
+	})
+	anthropic := cacheTelemetryFromTextUsage(anthropicUsage, textQuotaSummary{
+		PromptTokens:          70,
+		CacheTokens:           20,
+		CacheCreationTokens:   10,
+		IsClaudeUsageSemantic: true,
+	})
+	assert.Equal(t, cacheTokenTelemetry{InputTokens: 100, CacheReadTokens: 20, CacheWriteTokens: 10, Valid: true}, anthropic)
+}
+
 func TestCalculateTextQuotaSummaryHandlesLegacyClaudeDerivedOpenAIUsage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

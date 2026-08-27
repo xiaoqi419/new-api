@@ -69,7 +69,12 @@ func InitChannelCache() {
 	for group, model2channels := range newGroup2model2channels {
 		for model, channels := range model2channels {
 			sort.Slice(channels, func(i, j int) bool {
-				return newChannelId2channel[channels[i]].GetPriority() > newChannelId2channel[channels[j]].GetPriority()
+				left := newChannelId2channel[channels[i]]
+				right := newChannelId2channel[channels[j]]
+				if left.GetPriority() == right.GetPriority() {
+					return left.Id < right.Id
+				}
+				return left.GetPriority() > right.GetPriority()
 			})
 			newGroup2model2channels[group][model] = channels
 		}
@@ -111,9 +116,37 @@ func SyncChannelCache(frequency int) {
 }
 
 func GetRandomSatisfiedChannel(group string, model string, retry int, requestPath string) (*Channel, error) {
+	return getRandomSatisfiedChannel(group, model, retry, requestPath, ChannelSelectionFilter{})
+}
+
+// ChannelSelectionFilter applies the same request-local constraints to both
+// cache and database selection. A nil AllowedChannelIDs leaves normal routing
+// unrestricted, while a non-nil empty map intentionally fails closed.
+type ChannelSelectionFilter struct {
+	AllowedChannelIDs    map[int]struct{}
+	ExpectedChannelTypes map[int]int
+	ExcludedChannelIDs   map[int]struct{}
+	ChannelType          int
+	RequireChannelType   bool
+}
+
+// GetRandomSatisfiedChannelExcluding preserves the legacy selection API while
+// applying exclusions consistently even when the in-memory cache is disabled.
+func GetRandomSatisfiedChannelExcluding(group string, model string, retry int, requestPath string, excludedChannelIDs map[int]struct{}) (*Channel, error) {
+	return getRandomSatisfiedChannel(group, model, retry, requestPath, ChannelSelectionFilter{ExcludedChannelIDs: excludedChannelIDs})
+}
+
+// GetRandomSatisfiedChannelFiltered selects with an explicit positive allowlist
+// and request-local exclusions. Callers use retry zero after an exclusion so
+// each failover begins at the highest remaining priority tier.
+func GetRandomSatisfiedChannelFiltered(group string, model string, retry int, requestPath string, filter ChannelSelectionFilter) (*Channel, error) {
+	return getRandomSatisfiedChannel(group, model, retry, requestPath, filter)
+}
+
+func getRandomSatisfiedChannel(group string, model string, retry int, requestPath string, filter ChannelSelectionFilter) (*Channel, error) {
 	// if memory cache is disabled, get channel directly from database
 	if !common.MemoryCacheEnabled {
-		return GetChannel(group, model, retry, requestPath)
+		return GetChannelFiltered(group, model, retry, requestPath, filter)
 	}
 
 	channelSyncLock.RLock()
@@ -128,24 +161,19 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 		channels = filterChannelsByRequestPathAndModel(group2model2channels[group][normalizedModel], requestPath, model)
 	}
 
-	if len(channels) == 0 {
-		return nil, nil
-	}
-
-	if len(channels) == 1 {
-		if channel, ok := channelsIDM[channels[0]]; ok {
-			return channel, nil
-		}
-		return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channels[0])
-	}
-
 	candidates := make([]*Channel, 0, len(channels))
 	for _, channelId := range channels {
 		channel, ok := channelsIDM[channelId]
 		if !ok {
 			return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channelId)
 		}
+		if !filter.allows(channel, group) {
+			continue
+		}
 		candidates = append(candidates, channel)
+	}
+	if len(candidates) == 0 {
+		return nil, nil
 	}
 
 	selected := selectChannelByRetryTier(candidates, retry)
@@ -153,6 +181,59 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 		return nil, fmt.Errorf("no channel found, group: %s, model: %s", group, model)
 	}
 	return selected, nil
+}
+
+func (filter ChannelSelectionFilter) allows(channel *Channel, group string) bool {
+	if channel == nil || channel.Status != common.ChannelStatusEnabled {
+		return false
+	}
+	if filter.AllowedChannelIDs != nil {
+		if _, allowed := filter.AllowedChannelIDs[channel.Id]; !allowed {
+			return false
+		}
+	}
+	if _, excluded := filter.ExcludedChannelIDs[channel.Id]; excluded {
+		return false
+	}
+	if filter.RequireChannelType && channel.Type != filter.ChannelType {
+		return false
+	}
+	if filter.ExpectedChannelTypes != nil {
+		expectedType, found := filter.ExpectedChannelTypes[channel.Id]
+		if !found || channel.Type != expectedType {
+			return false
+		}
+	}
+	for _, channelGroup := range channel.GetGroups() {
+		if channelGroup == group {
+			return true
+		}
+	}
+	return false
+}
+
+// CachedChannelIDsForGroupModel returns the current in-memory candidates for a
+// group and model without querying the database. The result is a defensive
+// copy ordered by priority (descending) and channel ID (ascending).
+func CachedChannelIDsForGroupModel(group string, model string, requestPath string) []int {
+	if !common.MemoryCacheEnabled || group == "" || model == "" {
+		return nil
+	}
+
+	channelSyncLock.RLock()
+	defer channelSyncLock.RUnlock()
+
+	if group2model2channels == nil {
+		return nil
+	}
+	candidates := filterChannelsByRequestPathAndModel(group2model2channels[group][model], requestPath, model)
+	if len(candidates) == 0 {
+		normalizedModel := ratio_setting.FormatMatchingModelName(model)
+		if normalizedModel != "" && normalizedModel != model {
+			candidates = filterChannelsByRequestPathAndModel(group2model2channels[group][normalizedModel], requestPath, model)
+		}
+	}
+	return append([]int(nil), candidates...)
 }
 
 // selectChannelByRetryTier 按重试档位从候选渠道中挑选一个，兜底渠道(setting.fallback)作为
@@ -309,21 +390,68 @@ func CacheUpdateChannelStatus(id int, status int) {
 	}
 	channelSyncLock.Lock()
 	defer channelSyncLock.Unlock()
-	if channel, ok := channelsIDM[id]; ok {
+	channel, found := channelsIDM[id]
+	if found {
 		channel.Status = status
 	}
 	if status != common.ChannelStatusEnabled {
-		// delete the channel from group2model2channels
-		for group, model2channels := range group2model2channels {
-			for model, channels := range model2channels {
-				for i, channelId := range channels {
-					if channelId == id {
-						// remove the channel from the slice
-						group2model2channels[group][model] = append(channels[:i], channels[i+1:]...)
-						break
-					}
+		removeCachedChannelIDLocked(id)
+		return
+	}
+	if found {
+		insertCachedEnabledChannelLocked(channel)
+	}
+}
+
+func removeCachedChannelIDLocked(channelID int) {
+	for group, model2channels := range group2model2channels {
+		for model, channels := range model2channels {
+			filtered := channels[:0]
+			for _, cachedID := range channels {
+				if cachedID != channelID {
+					filtered = append(filtered, cachedID)
 				}
 			}
+			group2model2channels[group][model] = filtered
+		}
+	}
+}
+
+func insertCachedEnabledChannelLocked(channel *Channel) {
+	if channel == nil {
+		return
+	}
+	if group2model2channels == nil {
+		group2model2channels = make(map[string]map[string][]int)
+	}
+	removeCachedChannelIDLocked(channel.Id)
+
+	for _, group := range strings.Split(channel.Group, ",") {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			continue
+		}
+		if group2model2channels[group] == nil {
+			group2model2channels[group] = make(map[string][]int)
+		}
+		for _, model := range strings.Split(channel.Models, ",") {
+			model = strings.TrimSpace(model)
+			if model == "" {
+				continue
+			}
+			channels := append(group2model2channels[group][model], channel.Id)
+			sort.Slice(channels, func(i, j int) bool {
+				left := channelsIDM[channels[i]]
+				right := channelsIDM[channels[j]]
+				if left == nil || right == nil {
+					return channels[i] < channels[j]
+				}
+				if left.GetPriority() == right.GetPriority() {
+					return left.Id < right.Id
+				}
+				return left.GetPriority() > right.GetPriority()
+			})
+			group2model2channels[group][model] = channels
 		}
 	}
 }

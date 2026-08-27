@@ -185,6 +185,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 		return
 	}
+	service.SetChannelFailoverPoolTextRequestEligibility(c)
 
 	relayInfo, err := relaycommon.GenRelayInfo(c, relayFormat, request, ws)
 	if err != nil {
@@ -267,8 +268,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	// Group auto-switch needs enough retry budget to traverse each candidate
-	// group up to its per-group failure threshold before escalating.
+	// API-key candidate groups may require more attempts than the global
+	// per-channel retry budget. Managed channel pools remain bounded by the
+	// global budget because they never activate the group-switch context.
 	maxRetry := common.RetryTimes
 	if common.GetContextKeyBool(c, constant.ContextKeyTokenGroupSwitch) {
 		candidates := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroupSwitchCandidates)
@@ -286,7 +288,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
-			newAPIError = channelErr
+			newAPIError = poolExhaustionError(c, relayInfo.LastError, channelErr)
 			break
 		}
 		addUsedChannel(c, channel.Id)
@@ -328,15 +330,19 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		newAPIError = service.NormalizeViolationFeeError(newAPIError)
 		relayInfo.LastError = newAPIError
+		poolFailover := service.ShouldRetryChannelFailoverPool(c, newAPIError)
+		if poolFailover {
+			service.RecordChannelFailoverPoolFailure(c, channel.Id)
+		}
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 
 		if !shouldRetry(c, newAPIError, maxRetry-retryParam.GetRetry()) {
 			break
 		}
-		// Count this failed group attempt; escalate to the next candidate group
-		// once the per-group threshold is reached (no-op unless group switch is on).
-		service.RecordGroupSwitchFailure(c)
+		if !poolFailover {
+			service.RecordGroupSwitchFailure(c)
+		}
 	}
 
 	useChannel := c.GetStringSlice("use_channel")
@@ -349,6 +355,16 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			perfmetrics.RecordRelaySample(relayInfo, false, 0)
 		})
 	}
+}
+
+// poolExhaustionError keeps the upstream response that exhausted a locked
+// pool. Replacing it with a local "no channel" error would hide the actual
+// provider failure from the caller after the final eligible member fails.
+func poolExhaustionError(c *gin.Context, lastUpstreamError *types.NewAPIError, selectionError *types.NewAPIError) *types.NewAPIError {
+	if lastUpstreamError != nil && service.IsChannelFailoverPoolRequest(c) {
+		return lastUpstreamError
+	}
+	return selectionError
 }
 
 var upgrader = websocket.Upgrader{
@@ -430,6 +446,9 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 	}
 	if service.ShouldSkipRetryAfterChannelAffinityFailure(c) {
 		return false
+	}
+	if service.IsChannelFailoverPoolRequest(c) {
+		return retryTimes > 0 && service.ShouldRetryChannelFailoverPool(c, openaiErr)
 	}
 	if types.IsChannelError(openaiErr) {
 		return true

@@ -44,10 +44,15 @@ const (
 	ContextKeyAutoGroupRetryIndex ContextKey = "auto_group_retry_index"
 
 	/* token-level group auto-switch (per-API-Key candidate groups) */
-	ContextKeyTokenGroupSwitch           ContextKey = "token_group_switch"
-	ContextKeyTokenGroupSwitchCandidates ContextKey = "token_group_switch_candidates"
-	ContextKeyTokenGroupSwitchThreshold  ContextKey = "token_group_switch_threshold"
-	ContextKeyTokenGroupSwitchCooldown   ContextKey = "token_group_switch_cooldown"
+	ContextKeyTokenGroupSwitch               ContextKey = "token_group_switch"
+	ContextKeyTokenGroupSwitchCandidates     ContextKey = "token_group_switch_candidates"
+	ContextKeyTokenGroupSwitchThreshold      ContextKey = "token_group_switch_threshold"
+	ContextKeyTokenGroupSwitchCooldown       ContextKey = "token_group_switch_cooldown"
+	ContextKeyChannelFailoverPoolID          ContextKey = "channel_failover_pool_id"
+	ContextKeyChannelFailoverPoolType        ContextKey = "channel_failover_pool_type"
+	ContextKeyChannelFailoverPoolAllowedIDs  ContextKey = "channel_failover_pool_allowed_ids"
+	ContextKeyChannelFailoverPoolExcludedIDs ContextKey = "channel_failover_pool_excluded_ids"
+	ContextKeyChannelFailoverPoolTextRequest ContextKey = "channel_failover_pool_text_request"
 	// runtime state tracked across retries within a single request
 	ContextKeyGroupSwitchIndex ContextKey = "group_switch_index"
 	ContextKeyGroupSwitchFail  ContextKey = "group_switch_fail"
