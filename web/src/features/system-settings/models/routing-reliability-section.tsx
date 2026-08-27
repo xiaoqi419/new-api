@@ -21,7 +21,6 @@ import { useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import * as z from 'zod'
 
 import {
   Form,
@@ -56,100 +55,17 @@ import { SettingsSection } from '../components/settings-section'
 import { useResetForm } from '../hooks/use-reset-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
+import { ChannelFailoverPoolsSection } from './channel-failover-pools-section'
+import {
+  createRoutingReliabilitySchema,
+  MAX_CHANNEL_TEST_CONCURRENCY,
+  type ChannelTestMode,
+  type RoutingReliabilityFormInput,
+  type RoutingReliabilityFormValues,
+} from './routing-reliability-config'
 
-const numericString = z.string().refine((value) => {
-  const trimmed = value.trim()
-  if (!trimmed) return true
-  return !Number.isNaN(Number(trimmed)) && Number(trimmed) >= 0
-}, 'Enter a non-negative number or leave empty')
-
-const channelTestModes = [
-  'scheduled_all',
-  'auto_ban_only',
-  'passive_recovery',
-] as const
-type ChannelTestMode = (typeof channelTestModes)[number]
-const MAX_CHANNEL_TEST_CONCURRENCY = 32
-
-const createRoutingReliabilitySchema = (
-  t: (key: string, options?: Record<string, unknown>) => string
-) =>
-  z
-    .object({
-      RetryTimes: z.coerce.number().min(0).max(10),
-      ChannelDisableThreshold: numericString,
-      AutomaticDisableChannelEnabled: z.boolean(),
-      AutomaticEnableChannelEnabled: z.boolean(),
-      AutomaticDisableKeywords: z.string(),
-      AutomaticDisableStatusCodes: z.string(),
-      AutomaticRetryStatusCodes: z.string(),
-      monitor_setting: z.object({
-        auto_test_channel_enabled: z.boolean(),
-        auto_test_channel_minutes: z.coerce
-          .number()
-          .int()
-          .min(1, t('Interval must be at least 1 minute')),
-        channel_test_concurrency: z.coerce
-          .number()
-          .int(t('Enter a positive integer'))
-          .min(1, t('Channel test concurrency must be between 1 and 32'))
-          .max(
-            MAX_CHANNEL_TEST_CONCURRENCY,
-            t('Channel test concurrency must be between 1 and 32')
-          ),
-        channel_test_mode: z.enum(channelTestModes),
-      }),
-      health_probe_setting: z.object({
-        enabled: z.boolean(),
-        interval_minutes: z.coerce
-          .number()
-          .int()
-          .min(5, t('Interval must be at least 5 minutes')),
-        concurrency: z.coerce
-          .number()
-          .int(t('Enter a positive integer'))
-          .min(1, t('Concurrency must be between 1 and 32'))
-          .max(32, t('Concurrency must be between 1 and 32')),
-        max_targets_per_round: z.coerce
-          .number()
-          .int(t('Enter a positive integer'))
-          .min(1, t('Must probe at least 1 target per round')),
-        authenticity_enabled: z.boolean(),
-      }),
-    })
-    .superRefine((values, ctx) => {
-      const disableParsed = parseHttpStatusCodeRules(
-        values.AutomaticDisableStatusCodes
-      )
-      if (!disableParsed.ok) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['AutomaticDisableStatusCodes'],
-          message: t('Invalid status code rules: {{tokens}}', {
-            tokens: disableParsed.invalidTokens.join(', '),
-          }),
-        })
-      }
-
-      const retryParsed = parseHttpStatusCodeRules(
-        values.AutomaticRetryStatusCodes
-      )
-      if (!retryParsed.ok) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['AutomaticRetryStatusCodes'],
-          message: t('Invalid status code rules: {{tokens}}', {
-            tokens: retryParsed.invalidTokens.join(', '),
-          }),
-        })
-      }
-    })
-
-type RoutingReliabilitySchema = ReturnType<
-  typeof createRoutingReliabilitySchema
->
-type RoutingReliabilityFormValues = z.output<RoutingReliabilitySchema>
-type RoutingReliabilityFormInput = z.input<RoutingReliabilitySchema>
+const channelTestModeItemClassName =
+  'items-start py-2 pr-10 [&_[data-slot=select-item-text]]:min-w-0 [&_[data-slot=select-item-text]]:shrink [&_[data-slot=select-item-text]]:whitespace-normal [&_[data-slot=select-item-text]]:wrap-break-word'
 
 type RoutingReliabilitySectionProps = {
   defaultValues: {
@@ -169,6 +85,7 @@ type RoutingReliabilitySectionProps = {
     'health_probe_setting.concurrency': number
     'health_probe_setting.max_targets_per_round': number
     'health_probe_setting.authenticity_enabled': boolean
+    'channel_failover_setting.pools': string
   }
 }
 
@@ -309,7 +226,10 @@ export function RoutingReliabilitySection({
 }: RoutingReliabilitySectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
-  const routingReliabilitySchema = createRoutingReliabilitySchema(t)
+  const routingReliabilitySchema = useMemo(
+    () => createRoutingReliabilitySchema(t),
+    [t]
+  )
   const baselineRef = useRef<NormalizedRoutingReliabilityValues>(
     normalizeDefaults(defaultValues)
   )
@@ -451,6 +371,12 @@ export function RoutingReliabilitySection({
 
           <Separator />
 
+          <ChannelFailoverPoolsSection
+            defaultValue={defaultValues['channel_failover_setting.pools']}
+          />
+
+          <Separator />
+
           <div className='flex min-w-0 flex-col gap-4'>
             <div className='flex flex-col gap-1'>
               <h4 className='text-sm font-medium'>
@@ -512,15 +438,27 @@ export function RoutingReliabilitySection({
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent alignItemWithTrigger={false}>
+                      <SelectContent
+                        alignItemWithTrigger={false}
+                        className='max-w-[calc(100vw-2rem)] min-w-[min(30rem,calc(100vw-2rem))]'
+                      >
                         <SelectGroup>
-                          <SelectItem value='scheduled_all'>
+                          <SelectItem
+                            value='scheduled_all'
+                            className={channelTestModeItemClassName}
+                          >
                             {t('Actively check all channels')}
                           </SelectItem>
-                          <SelectItem value='auto_ban_only'>
+                          <SelectItem
+                            value='auto_ban_only'
+                            className={channelTestModeItemClassName}
+                          >
                             {t('Actively check auto-disable-enabled channels')}
                           </SelectItem>
-                          <SelectItem value='passive_recovery'>
+                          <SelectItem
+                            value='passive_recovery'
+                            className={channelTestModeItemClassName}
+                          >
                             {t('Check channels awaiting recovery only')}
                           </SelectItem>
                         </SelectGroup>

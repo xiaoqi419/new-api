@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260827-c59fd1bec',
+    date: '2026-08-27',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '新增固定分组渠道调度池：管理员可按实际分组和渠道类型显式选择渠道白名单；首选渠道在首字节前出现可切换的可用性错误时，会在同池内按既有重试预算切换到其他合格渠道，恢复后重新参与优先级与权重调度。',
+          '渠道监控新增缓存率预测：按渠道和模型展示观察值、未来 24 小时预测、样本量、输入 Token 与支持度；数据不足时说明原因，不将未知误显示为 0%。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260825-navigation-quality',
     date: '2026-08-25',
     changes: [

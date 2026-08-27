@@ -400,6 +400,7 @@ export function ModelMutateDrawer({
       'health_probe_setting.concurrency': 3,
       'health_probe_setting.max_targets_per_round': 500,
       'health_probe_setting.authenticity_enabled': true,
+      'channel_failover_setting.pools': '[]',
       'channel_affinity_setting.enabled': false,
       'channel_affinity_setting.switch_on_success': true,
       'channel_affinity_setting.keep_on_channel_disabled': false,

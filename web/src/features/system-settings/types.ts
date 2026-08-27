@@ -256,6 +256,7 @@ export type ModelSettings = {
   'health_probe_setting.concurrency': number
   'health_probe_setting.max_targets_per_round': number
   'health_probe_setting.authenticity_enabled': boolean
+  'channel_failover_setting.pools': string
   'channel_affinity_setting.enabled': boolean
   'channel_affinity_setting.switch_on_success': boolean
   'channel_affinity_setting.keep_on_channel_disabled': boolean

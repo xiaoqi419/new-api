@@ -58,6 +58,22 @@ func TestValidateChannelProxy(t *testing.T) {
 	}
 }
 
+func TestBuildTestRequestOpenAIHonorsProbeOutputTokens(t *testing.T) {
+	request := buildTestRequest(
+		"gpt-4o-mini",
+		string(constant.EndpointTypeOpenAI),
+		nil,
+		false,
+		"",
+		3,
+	)
+
+	openAIRequest, ok := request.(*dto.GeneralOpenAIRequest)
+	require.True(t, ok)
+	require.NotNil(t, openAIRequest.MaxTokens)
+	assert.Equal(t, uint(3), *openAIRequest.MaxTokens)
+}
+
 func TestValidateChannelRequiresNewAPIBaseURL(t *testing.T) {
 	tests := []struct {
 		name    string

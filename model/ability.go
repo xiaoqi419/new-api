@@ -61,12 +61,22 @@ func GetAllEnableAbilities() []Ability {
 }
 
 func GetChannel(group string, model string, retry int, requestPath string) (*Channel, error) {
+	return GetChannelFiltered(group, model, retry, requestPath, ChannelSelectionFilter{})
+}
+
+// GetChannelFiltered is the database counterpart of cached filtered channel
+// selection. It keeps an allowlist and failed-channel exclusion from widening
+// when memory cache is disabled.
+func GetChannelFiltered(group string, model string, retry int, requestPath string, filter ChannelSelectionFilter) (*Channel, error) {
 	var abilities []Ability
 	err := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).Find(&abilities).Error
 	if err != nil {
 		return nil, err
 	}
-	abilities = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
+	abilities, err = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
+	if err != nil {
+		return nil, err
+	}
 	if len(abilities) == 0 {
 		return nil, nil
 	}
@@ -85,9 +95,15 @@ func GetChannel(group string, model string, retry int, requestPath string) (*Cha
 	if err := DB.Where("id IN ?", channelIds).Find(&channels).Error; err != nil {
 		return nil, err
 	}
+	filteredChannels := make([]*Channel, 0, len(channels))
+	for _, channel := range channels {
+		if filter.allows(channel, group) {
+			filteredChannels = append(filteredChannels, channel)
+		}
+	}
 
 	// 复用与缓存路径一致的兜底分档选择逻辑（兜底渠道作为最低档）。
-	selected := selectChannelByRetryTier(channels, retry)
+	selected := selectChannelByRetryTier(filteredChannels, retry)
 	if selected == nil {
 		return nil, nil
 	}
@@ -99,9 +115,9 @@ func GetChannel(group string, model string, retry int, requestPath string) (*Cha
 // (type 58) channels are path-checked: kept only when one of their routes matches
 // requestPath and model; all other channel types always pass. When requestPath is
 // empty, filtering is skipped.
-func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath string, model string) []Ability {
+func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath string, model string) ([]Ability, error) {
 	if requestPath == "" || len(abilities) == 0 {
-		return abilities
+		return abilities, nil
 	}
 
 	channelIds := make([]int, 0, len(abilities))
@@ -116,8 +132,7 @@ func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath strin
 
 	var channels []*Channel
 	if err := DB.Where("id IN ?", channelIds).Find(&channels).Error; err != nil {
-		// On error, fall back to unfiltered candidates to avoid blocking selection
-		return abilities
+		return nil, err
 	}
 
 	advancedConfigs := make(map[int]*dto.AdvancedCustomConfig)
@@ -138,7 +153,7 @@ func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath strin
 			filtered = append(filtered, ability)
 		}
 	}
-	return filtered
+	return filtered, nil
 }
 
 func (channel *Channel) AddAbilities(tx *gorm.DB) error {

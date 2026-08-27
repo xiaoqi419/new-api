@@ -452,16 +452,23 @@ func migrateClickHouseLogDB() error {
 	if err := LOG_DB.Exec(clickHouseLogCreateTableSQL(ttlDays)).Error; err != nil {
 		return err
 	}
-	// Additive columns for the drawing-log feature on pre-existing ClickHouse tables.
-	for _, ddl := range []string{
-		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS is_image UInt8 DEFAULT 0",
-		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS log_mode String DEFAULT ''",
-	} {
+	for _, ddl := range clickHouseLogAddColumnDDLs() {
 		if err := LOG_DB.Exec(ddl).Error; err != nil {
 			return err
 		}
 	}
 	return syncClickHouseLogTTL(ttlDays)
+}
+
+func clickHouseLogAddColumnDDLs() []string {
+	return []string{
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS first_token_ms Int32 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS input_tokens Int64 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS cache_read_tokens Int64 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS cache_write_tokens Int64 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS is_image UInt8 DEFAULT 0",
+		"ALTER TABLE logs ADD COLUMN IF NOT EXISTS log_mode String DEFAULT ''",
+	}
 }
 
 func clickHouseLogTTLDays() int {
@@ -502,6 +509,10 @@ CREATE TABLE IF NOT EXISTS logs (
 	prompt_tokens Int32 DEFAULT 0,
 	completion_tokens Int32 DEFAULT 0,
 	use_time Int32 DEFAULT 0,
+	first_token_ms Int32 DEFAULT 0,
+	input_tokens Int64 DEFAULT 0,
+	cache_read_tokens Int64 DEFAULT 0,
+	cache_write_tokens Int64 DEFAULT 0,
 	is_stream UInt8 DEFAULT 0,
 	channel_id Int32 DEFAULT 0,
 	token_id Int32 DEFAULT 0,

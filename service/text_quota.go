@@ -87,6 +87,20 @@ func cacheWriteTokensTotal(summary textQuotaSummary) int {
 	return summary.CacheCreationTokens
 }
 
+func cacheTelemetryFromTextUsage(usage *dto.Usage, summary textQuotaSummary) cacheTokenTelemetry {
+	reliableInputTokens := int64(0)
+	if usage != nil && usage.BillingUsage != nil && usage.InputTokens > 0 {
+		reliableInputTokens = int64(usage.InputTokens)
+	}
+	return normalizeCacheTelemetry(cacheTelemetryInput{
+		ReliableInputTokens: reliableInputTokens,
+		PromptTokens:        int64(summary.PromptTokens),
+		CacheReadTokens:     int64(summary.CacheTokens),
+		CacheWriteTokens:    int64(cacheWriteTokensTotal(summary)),
+		IsAnthropic:         summary.IsClaudeUsageSemantic,
+	})
+}
+
 func isLegacyClaudeDerivedOpenAIUsage(relayInfo *relaycommon.RelayInfo, usage *dto.Usage) bool {
 	if relayInfo == nil || usage == nil {
 		return false
@@ -531,11 +545,19 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 			drawingLogMode = "image_generation_call"
 		}
 	}
+	cacheTelemetry := cacheTelemetryFromTextUsage(billingUsage, summary)
+	if !cacheTelemetry.Valid && (cacheTelemetry.InputTokens != 0 || cacheTelemetry.CacheReadTokens != 0 || cacheTelemetry.CacheWriteTokens != 0) {
+		logger.LogWarn(ctx, fmt.Sprintf("discard invalid text cache telemetry: input=%d read=%d write=%d", cacheTelemetry.InputTokens, cacheTelemetry.CacheReadTokens, cacheTelemetry.CacheWriteTokens))
+		cacheTelemetry = cacheTokenTelemetry{}
+	}
 
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
 		ChannelId:        relayInfo.ChannelId,
 		PromptTokens:     summary.PromptTokens,
 		CompletionTokens: summary.CompletionTokens,
+		InputTokens:      cacheTelemetry.InputTokens,
+		CacheReadTokens:  cacheTelemetry.CacheReadTokens,
+		CacheWriteTokens: cacheTelemetry.CacheWriteTokens,
 		ModelName:        logModel,
 		TokenName:        summary.TokenName,
 		Quota:            summary.Quota,

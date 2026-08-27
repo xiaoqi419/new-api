@@ -28,8 +28,9 @@ func TestCharacterPoolHasNoDuplicates(t *testing.T) {
 	assert.Greater(t, len(poolRunes), glyphCount*4)
 }
 
-// inkRatio measures how much dark ink sits inside a box. Rendering tests have to
-// assert on pixels: a blank box and a drawn glyph both "succeed" otherwise.
+// inkRatio measures how much dark ink sits inside a box with the given full
+// side length. Rendering tests have to assert on pixels: a blank box and a
+// drawn glyph both "succeed" otherwise.
 func inkRatio(img *image.RGBA, cx, cy, side int) float64 {
 	half := side / 2
 	dark, total := 0, 0
@@ -83,7 +84,9 @@ func TestRenderedGlyphsActuallyHaveInk(t *testing.T) {
 	background /= float64(samples)
 
 	for _, s := range spots {
-		ink := inkRatio(img, s.X, s.Y, s.Size/2)
+		// Size is the recorded glyph hit-box size. Sampling only its inner half
+		// misses perimeter strokes on hollow glyphs such as 门 and 口.
+		ink := inkRatio(img, s.X, s.Y, s.Size)
 		assert.Greater(t, ink, background+0.05,
 			"glyph %q at (%d,%d) has almost no ink (%.4f vs background %.4f) — the font subset probably lacks it",
 			s.Char, s.X, s.Y, ink, background)

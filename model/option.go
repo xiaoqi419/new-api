@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -244,6 +245,9 @@ func SyncOptions(frequency int) {
 }
 
 func validateOptionValue(key string, value string) error {
+	if key == operation_setting.ChannelRoutingPoolSettingConfigName+".pools" {
+		return validateChannelRoutingPoolOption(value)
+	}
 	if key == operation_setting.ToolPriceOptionKey {
 		return operation_setting.ValidateToolPricesJSON(value)
 	}
@@ -308,6 +312,64 @@ func UpdateOptionsBulk(values map[string]string) error {
 	for k, v := range values {
 		if err := updateOptionMap(k, v); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func validateChannelRoutingPoolOption(value string) error {
+	if strings.TrimSpace(value) == "null" {
+		return fmt.Errorf("channel failover pools must be a JSON array")
+	}
+	var pools []operation_setting.ChannelRoutingPool
+	if err := common.Unmarshal([]byte(value), &pools); err != nil {
+		return fmt.Errorf("channel failover pools must be a JSON array: %w", err)
+	}
+	if pools == nil {
+		return fmt.Errorf("channel failover pools must be a JSON array")
+	}
+	setting := operation_setting.ChannelRoutingPoolSetting{Pools: pools}
+	if err := operation_setting.ValidateChannelRoutingPoolSetting(setting); err != nil {
+		return err
+	}
+	return validateChannelRoutingPoolMembers(setting)
+}
+
+func validateChannelRoutingPoolMembers(setting operation_setting.ChannelRoutingPoolSetting) error {
+	channelIDs := make([]int, 0)
+	for _, pool := range setting.Pools {
+		channelIDs = append(channelIDs, pool.ChannelIDs...)
+	}
+	if len(channelIDs) == 0 {
+		return nil
+	}
+	var channels []Channel
+	if err := DB.Where("id IN ?", channelIDs).Find(&channels).Error; err != nil {
+		return fmt.Errorf("load channel failover pool members: %w", err)
+	}
+	channelsByID := make(map[int]*Channel, len(channels))
+	for i := range channels {
+		channelsByID[channels[i].Id] = &channels[i]
+	}
+	for _, pool := range setting.Pools {
+		for _, channelID := range pool.ChannelIDs {
+			channel := channelsByID[channelID]
+			if channel == nil {
+				return fmt.Errorf("channel failover pool %s references missing channel %d", pool.ID, channelID)
+			}
+			if channel.Type != pool.ChannelType {
+				return fmt.Errorf("channel failover pool %s channel %d type must equal %d", pool.ID, channelID, pool.ChannelType)
+			}
+			belongsToGroup := false
+			for _, group := range channel.GetGroups() {
+				if group == pool.Group {
+					belongsToGroup = true
+					break
+				}
+			}
+			if !belongsToGroup {
+				return fmt.Errorf("channel failover pool %s channel %d must belong to group %s", pool.ID, channelID, pool.Group)
+			}
 		}
 	}
 	return nil

@@ -24,6 +24,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { MONITOR_HEALTH_COLORS } from '../constants'
 import { monitorStatusMeta } from '../lib'
 import type { ChannelMonitorItem } from '../types'
+import { CachePredictionMetric } from './cache-prediction-metric'
 import { ModelHealthRow } from './model-health-row'
 
 interface ChannelSectionProps {
@@ -45,14 +46,20 @@ export function ChannelSection({
   const meta = monitorStatusMeta(item.status)
 
   return (
-    <div className='flex flex-col gap-3 rounded-2xl border p-4 shadow-sm'>
-      <div className='flex items-center justify-between gap-2'>
-        <div className='flex min-w-0 items-center gap-2'>
+    <div
+      data-testid='channel-section'
+      className='flex min-w-0 flex-col gap-3 rounded-2xl border p-4 shadow-sm'
+    >
+      <div className='flex min-w-0 flex-wrap items-start justify-between gap-2'>
+        <div className='flex min-w-0 flex-1 items-start gap-2'>
           <span
             className='size-2.5 shrink-0 rounded-full'
             style={{ backgroundColor: MONITOR_HEALTH_COLORS[item.status] }}
           />
-          <span className='truncate font-semibold' title={item.name}>
+          <span
+            className='min-w-0 font-semibold wrap-break-word'
+            title={item.name}
+          >
             {item.name}
           </span>
           {item.tag && (
@@ -61,7 +68,7 @@ export function ChannelSection({
             </span>
           )}
         </div>
-        <div className='flex shrink-0 items-center gap-3'>
+        <div className='flex max-w-full min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1'>
           {item.suspect_count > 0 && (
             <span
               className='text-destructive flex shrink-0 items-center gap-1 text-xs font-medium'
@@ -92,7 +99,12 @@ export function ChannelSection({
         </div>
       </div>
 
-      <div className='grid grid-cols-1 gap-x-8 gap-y-5 lg:grid-cols-2'>
+      <CachePredictionMetric
+        prediction={item.cache_prediction}
+        variant='summary'
+      />
+
+      <div className='grid min-w-0 grid-cols-1 gap-x-8 gap-y-5 lg:grid-cols-2'>
         {item.models.map((m) => (
           <ModelHealthRow
             key={m.model}

@@ -46,19 +46,22 @@ func (p *RetryParam) ResetRetryNextTry() {
 	p.resetNextTry = true
 }
 
-// CacheGetRandomSatisfiedChannel returns a channel satisfying the request.
-//
-// When the token has group auto-switch enabled (per-API-Key candidate groups),
-// it walks the candidate groups ordered by group ratio (low to high),
-// escalating to the next group when the current group has no channel for the
-// model or has reached the per-group failure threshold. See getGroupSwitchChannel.
-//
-// Otherwise it selects a channel from the token's fixed group.
+// CacheGetRandomSatisfiedChannel selects from a managed channel failover pool
+// before the original API-key group-switch path. Unmanaged groups retain their
+// pre-existing selection behavior unchanged.
 func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, error) {
+	if channel, managed, err := selectChannelFailoverPool(param); managed {
+		if err != nil {
+			return nil, param.TokenGroup, err
+		}
+		if channel == nil {
+			return nil, param.TokenGroup, fmt.Errorf("no eligible channel in managed failover pools for model %s", param.ModelName)
+		}
+		return channel, param.TokenGroup, nil
+	}
 	if common.GetContextKeyBool(param.Ctx, constant.ContextKeyTokenGroupSwitch) {
 		return getGroupSwitchChannel(param)
 	}
-
 	channel, err := model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath)
 	if err != nil {
 		return nil, param.TokenGroup, err
@@ -66,8 +69,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	return channel, param.TokenGroup, nil
 }
 
-// orderedSwitchCandidates returns the token's candidate groups filtered by the
-// user's usable groups and sorted ascending by group ratio (cheapest first).
+// orderedSwitchCandidates retains the original API-key candidate-group logic.
 func orderedSwitchCandidates(param *RetryParam, userGroup string) []string {
 	raw := common.GetContextKeyStringSlice(param.Ctx, constant.ContextKeyTokenGroupSwitchCandidates)
 	if len(raw) == 0 {
@@ -95,8 +97,6 @@ func orderedSwitchCandidates(param *RetryParam, userGroup string) []string {
 func getGroupSwitchChannel(param *RetryParam) (*model.Channel, string, error) {
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
 	candidates := orderedSwitchCandidates(param, userGroup)
-
-	// Not enough valid candidates after filtering: degrade to a fixed selection.
 	if len(candidates) < 2 {
 		fallbackGroup := param.TokenGroup
 		if len(candidates) == 1 {
@@ -113,17 +113,14 @@ func getGroupSwitchChannel(param *RetryParam) (*model.Channel, string, error) {
 		return channel, fallbackGroup, nil
 	}
 
-	tokenId := common.GetContextKeyInt(param.Ctx, constant.ContextKeyTokenId)
-	sticky := GetStickyGroupSwitch(tokenId, param.ModelName, userGroup)
-
+	tokenID := common.GetContextKeyInt(param.Ctx, constant.ContextKeyTokenId)
+	sticky := GetStickyGroupSwitch(tokenID, param.ModelName, userGroup)
 	startIndex := 0
 	if idx, exists := common.GetContextKey(param.Ctx, constant.ContextKeyGroupSwitchIndex); exists {
-		// Mid-request retry: continue from where the previous attempt left off.
-		if v, ok := idx.(int); ok {
-			startIndex = v
+		if value, ok := idx.(int); ok {
+			startIndex = value
 		}
 	} else if sticky != "" {
-		// First attempt of the request: honor the sticky cooldown group.
 		for i, group := range candidates {
 			if group == sticky {
 				startIndex = i
@@ -133,12 +130,10 @@ func getGroupSwitchChannel(param *RetryParam) (*model.Channel, string, error) {
 	}
 
 	failCount := common.GetContextKeyInt(param.Ctx, constant.ContextKeyGroupSwitchFail)
-
 	for i := startIndex; i < len(candidates); i++ {
 		group := candidates[i]
 		channel, _ := model.GetRandomSatisfiedChannel(group, param.ModelName, failCount, param.RequestPath)
 		if channel == nil {
-			// No channel for this model in this group -> escalate immediately.
 			logger.LogDebug(param.Ctx, "group switch: no channel in group %s for model %s, escalating", group, param.ModelName)
 			failCount = 0
 			continue
@@ -146,23 +141,17 @@ func getGroupSwitchChannel(param *RetryParam) (*model.Channel, string, error) {
 		common.SetContextKey(param.Ctx, constant.ContextKeyGroupSwitchIndex, i)
 		common.SetContextKey(param.Ctx, constant.ContextKeyGroupSwitchFail, failCount)
 		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, group)
-		// Remember a genuinely higher group so later requests skip cheaper groups
-		// during the cooldown window. Skip when reusing the current sticky group
-		// so its original expiry is preserved (no refresh on reuse).
 		if i > 0 && group != sticky {
 			cooldown := common.GetContextKeyInt(param.Ctx, constant.ContextKeyTokenGroupSwitchCooldown)
-			SetStickyGroupSwitch(tokenId, param.ModelName, userGroup, group, cooldown)
+			SetStickyGroupSwitch(tokenID, param.ModelName, userGroup, group, cooldown)
 		}
 		return channel, group, nil
 	}
-
 	return nil, param.TokenGroup, fmt.Errorf("no available channel across candidate groups for model %s", param.ModelName)
 }
 
-// RecordGroupSwitchFailure records a retryable upstream failure for the current
-// candidate group. When the per-group threshold is reached it advances to the
-// next candidate group (resetting the per-group counter) so the next retry
-// escalates. No-op when group auto-switch is not active for this request.
+// RecordGroupSwitchFailure is the untouched original candidate-group counter.
+// Channel failover pools never call it.
 func RecordGroupSwitchFailure(c *gin.Context) {
 	if !common.GetContextKeyBool(c, constant.ContextKeyTokenGroupSwitch) {
 		return

@@ -24,6 +24,38 @@ export interface ApiResponse<T> {
 
 export type MonitorStatus = 'normal' | 'degraded' | 'abnormal' | 'nodata'
 
+export type CachePredictionSupport = 'none' | 'low' | 'medium' | 'high'
+
+export type CachePredictionReason =
+  | ''
+  | 'no_eligible_requests'
+  | 'no_cache_evidence'
+  | 'too_few_samples'
+  | 'insufficient_history'
+
+export interface CachePredictionWindow {
+  start: number
+  end: number
+  seconds: number
+}
+
+/**
+ * Optional while older servers continue to return the pre-prediction monitor
+ * response. Current servers always return this object at channel and model level.
+ */
+export interface CachePrediction {
+  observed_rate: number | null
+  predicted_rate: number | null
+  sample_count: number
+  input_tokens: number
+  support: CachePredictionSupport
+  observed_window: CachePredictionWindow
+  prediction_window: CachePredictionWindow
+  forecast_horizon_seconds: number
+  insufficient_data: boolean
+  reason: CachePredictionReason
+}
+
 export interface ChannelModelBucket {
   ts: number
   health: MonitorStatus
@@ -53,6 +85,7 @@ export interface ChannelModelItem {
   reported_model: string
   probed_at: number // 0 when never probed
   evidence: ProbeEvidence[] | null
+  cache_prediction?: CachePrediction
 }
 
 export interface ChannelMonitorItem {
@@ -65,6 +98,7 @@ export interface ChannelMonitorItem {
   request_count: number
   models: ChannelModelItem[]
   suspect_count: number
+  cache_prediction?: CachePrediction
 }
 
 export interface ChannelMonitorData {
