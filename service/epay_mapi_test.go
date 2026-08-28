@@ -120,6 +120,38 @@ func TestEpayMAPIClientCreateCheckout(t *testing.T) {
 	}
 }
 
+func TestEpayMAPIClientFallsBackToEpaySubmitRedirect(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "/gateway/mapi.php", request.URL.Path)
+		writer.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	client := newEpayMAPIClientForTest(t, server.URL+"/gateway", nil)
+	checkout, err := client.CreateCheckout(context.Background(), epayMAPIRequestForTest())
+	require.NoError(t, err)
+	require.NotNil(t, checkout)
+	assert.Equal(t, "payurl", checkout.CheckoutType)
+	legacyURL, err := url.Parse(checkout.CheckoutValue)
+	require.NoError(t, err)
+	assert.Equal(t, "/gateway/submit.php", legacyURL.Path)
+	expected := epay.GenerateParams(map[string]string{
+		"pid":          "merchant-id",
+		"type":         "alipay",
+		"out_trade_no": "WALLET-ORDER-1",
+		"notify_url":   "https://wallet.example.com/api/user/epay/notify",
+		"return_url":   "https://wallet.example.com/wallet",
+		"name":         "TUC10",
+		"money":        "10.00",
+		"device":       "pc",
+		"sign_type":    "MD5",
+	}, "merchant-key")
+	for key, value := range expected {
+		assert.Equal(t, value, legacyURL.Query().Get(key), key)
+	}
+}
+
 func TestEpayMAPIClientRejectsInvalidResponses(t *testing.T) {
 	testCases := []struct {
 		name          string
