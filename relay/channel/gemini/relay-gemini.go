@@ -470,6 +470,14 @@ func GeminiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 		return nil, types.NewError(jsonErr, types.ErrorCodeBadResponseBody)
 	}
 
+	// Archive the converted result before writing the response. Capture is
+	// best-effort and never rewrites or invalidates the provider response.
+	if info != nil && info.ChannelMeta != nil {
+		service.CaptureImageResultsWithProxy(c, jsonResponse, info.ChannelSetting.Proxy)
+	} else {
+		service.CaptureImageResults(c, jsonResponse)
+	}
+
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(resp.StatusCode)
 	_, _ = c.Writer.Write(jsonResponse)

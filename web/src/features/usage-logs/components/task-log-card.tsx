@@ -24,8 +24,13 @@ import { Button } from '@/components/ui/button'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
-import { TASK_ACTIONS, TASK_STATUS } from '../constants'
-import type { TaskLog } from '../types'
+import { TASK_STATUS } from '../constants'
+import {
+  getTaskImageResults,
+  isImageTask,
+  isVideoTask,
+} from '../lib/task-media'
+import type { TaskImageResult, TaskLog } from '../types'
 import { parseTaskData } from './columns/task-logs-columns'
 import {
   TaskDurationTag,
@@ -40,14 +45,7 @@ import {
 } from './dialogs/audio-preview-dialog'
 import { TaskDetailsDialog } from './dialogs/task-details-dialog'
 import { VideoPreviewDialog } from './dialogs/video-preview-dialog'
-
-const VIDEO_ACTIONS = new Set<string>([
-  TASK_ACTIONS.GENERATE,
-  TASK_ACTIONS.TEXT_GENERATE,
-  TASK_ACTIONS.FIRST_TAIL_GENERATE,
-  TASK_ACTIONS.REFERENCE_GENERATE,
-  TASK_ACTIONS.REMIX_GENERATE,
-])
+import { TaskImagePreview } from './task-image-preview'
 
 function toRecord(data: unknown): Record<string, unknown> | null {
   if (!data) return null
@@ -106,6 +104,8 @@ function ResultAction({
   log,
   isSunoSuccess,
   isSuccess,
+  imageResults,
+  isImageResult,
   isVideoTask,
   isFailure,
   onPreviewAudio,
@@ -114,12 +114,25 @@ function ResultAction({
   log: TaskLog
   isSunoSuccess: boolean
   isSuccess: boolean
+  imageResults: TaskImageResult[]
+  isImageResult: boolean
   isVideoTask: boolean
   isFailure: boolean
   onPreviewAudio: () => void
   onPreviewVideo: () => void
 }) {
   const { t } = useTranslation()
+
+  if (isFailure) {
+    return (
+      <span
+        className='text-destructive truncate text-xs'
+        title={log.fail_reason || t('Failed')}
+      >
+        {log.fail_reason || t('Failed')}
+      </span>
+    )
+  }
 
   if (isSunoSuccess) {
     return (
@@ -135,6 +148,10 @@ function ResultAction({
     )
   }
 
+  if (isSuccess && isImageResult) {
+    return <TaskImagePreview images={imageResults} />
+  }
+
   if (isSuccess && isVideoTask) {
     return (
       <Button
@@ -146,17 +163,6 @@ function ResultAction({
         <Video className='size-3.5' />
         {t('Preview Video')}
       </Button>
-    )
-  }
-
-  if (isFailure) {
-    return (
-      <span
-        className='text-destructive truncate text-xs'
-        title={log.fail_reason || t('Failed')}
-      >
-        {log.fail_reason || t('Failed')}
-      </span>
     )
   }
 
@@ -188,7 +194,9 @@ export function TaskLogCard({
 
   const isSuccess = log.status === TASK_STATUS.SUCCESS
   const isFailure = log.status === TASK_STATUS.FAILURE
-  const isVideoTask = VIDEO_ACTIONS.has(log.action)
+  const isImageResult = isImageTask(log)
+  const imageResults = getTaskImageResults(log)
+  const hasVideoResult = isVideoTask(log)
   const videoUrl =
     log.result_url && /^https?:\/\//.test(log.result_url)
       ? log.result_url
@@ -291,7 +299,9 @@ export function TaskLogCard({
             log={log}
             isSunoSuccess={isSunoSuccess}
             isSuccess={isSuccess}
-            isVideoTask={isVideoTask}
+            imageResults={imageResults}
+            isImageResult={isImageResult}
+            isVideoTask={hasVideoResult}
             isFailure={isFailure}
             onPreviewAudio={() => setAudioOpen(true)}
             onPreviewVideo={() => setVideoOpen(true)}
@@ -314,7 +324,7 @@ export function TaskLogCard({
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
       />
-      {isVideoTask && (
+      {hasVideoResult && (
         <VideoPreviewDialog
           open={videoOpen}
           onOpenChange={setVideoOpen}

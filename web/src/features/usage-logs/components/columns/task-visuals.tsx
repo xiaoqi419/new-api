@@ -25,6 +25,7 @@ import {
   CircleX,
   Clock,
   FileText,
+  Image,
   List,
   Loader,
   type LucideIcon,
@@ -89,6 +90,8 @@ const STATUS_ICON: Record<string, LucideIcon> = {
 }
 
 const ACTION_ICON: Record<string, LucideIcon> = {
+  [TASK_ACTIONS.IMAGES_GENERATION]: Image,
+  [TASK_ACTIONS.IMAGES_EDIT]: Image,
   [TASK_ACTIONS.MUSIC]: Music,
   [TASK_ACTIONS.LYRICS]: FileText,
   [TASK_ACTIONS.GENERATE]: Sparkles,
@@ -149,13 +152,14 @@ export function TaskTypeTag({ action }: { action: string }) {
 }
 
 export function TaskPlatformTag({ platform }: { platform: string }) {
+  const { t } = useTranslation()
   if (!platform) {
     return <span className='text-muted-foreground text-xs'>-</span>
   }
   return (
     <TaskTag
       variant={taskPlatformMapper.getVariant(platform)}
-      label={taskPlatformMapper.getLabel(platform, platform)}
+      label={t(taskPlatformMapper.getLabel(platform, platform))}
     />
   )
 }

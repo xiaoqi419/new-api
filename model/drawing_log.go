@@ -6,6 +6,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	taskdto "github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -234,6 +235,7 @@ func recordImageDrawingLog(c *gin.Context, l *Log) {
 		return
 	}
 	dl := imageLogToDrawingLog(l)
+	requestID := c.GetString(common.RequestIdKey)
 	dl.Prompt = common.GetContextKeyString(c, constant.ContextKeyDrawingPrompt)
 	if keys := common.GetContextKeyStringSlice(c, constant.ContextKeyDrawingResultKeys); len(keys) > 0 {
 		if b, err := common.Marshal(keys); err == nil {
@@ -243,13 +245,48 @@ func recordImageDrawingLog(c *gin.Context, l *Log) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				common.SysError(fmt.Sprintf("panic in recordImageDrawingLog: %v", r))
+				common.SysError(ImageTaskFailureLogMessage(requestID, "drawing_log_panic"))
 			}
 		}()
 		if err := UpsertDrawingLog(dl); err != nil {
-			common.SysError("failed to upsert image drawing log: " + err.Error())
+			common.SysError(ImageTaskFailureLogMessage(requestID, "drawing_log_persistence"))
 		}
 	}()
+}
+
+func recordImageTaskFromConsumeLog(c *gin.Context, l *Log) error {
+	if c == nil || l == nil {
+		return nil
+	}
+	action := l.LogMode
+	if action != constant.TaskActionImagesGeneration && action != constant.TaskActionImagesEdit {
+		return nil
+	}
+	start := common.GetContextKeyTime(c, constant.ContextKeyRequestStartTime).Unix()
+	if start <= 0 {
+		start = l.CreatedAt - int64(l.UseTime)
+	}
+	finish := start + int64(l.UseTime)
+	if l.CreatedAt > finish {
+		finish = l.CreatedAt
+	}
+	results, _ := common.GetContextKeyType[[]taskdto.ImageTaskResult](c, constant.ContextKeyDrawingTaskResults)
+	_, err := UpsertTerminalImageTask(TerminalImageTaskParams{
+		RequestID:         c.GetString(common.RequestIdKey),
+		UserID:            l.UserId,
+		Group:             l.Group,
+		ChannelID:         l.ChannelId,
+		Quota:             l.Quota,
+		Action:            action,
+		Status:            TaskStatusSuccess,
+		ModelName:         l.ModelName,
+		UpstreamModelName: l.ModelName,
+		Prompt:            common.GetContextKeyString(c, constant.ContextKeyDrawingPrompt),
+		SubmitTime:        start,
+		FinishTime:        finish,
+		Results:           results,
+	})
+	return err
 }
 
 // AsyncUpsertDrawingLogFromMj materializes a Midjourney task into drawing_logs

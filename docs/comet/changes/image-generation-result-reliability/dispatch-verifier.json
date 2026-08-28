@@ -1,0 +1,8 @@
+{
+  "kind": "dispatch-verifier",
+  "checks": [
+    {"id":"focused-go-tests","name":"Focused Go tests","executable":"go","argv":["test","./relay/channel/ali","./relay/channel/openai","./service","./controller"],"cwdRef":"workspace","timeoutMs":120000,"repeatable":true},
+    {"id":"go-vet-affected","name":"Go vet affected packages","executable":"go","argv":["vet","./relay/channel/ali","./relay/channel/openai","./service","./controller"],"cwdRef":"workspace","timeoutMs":120000,"repeatable":true},
+    {"id":"diff-check","name":"Git diff check","executable":"git","argv":["diff","--check"],"cwdRef":"workspace","timeoutMs":30000,"repeatable":true}
+  ]
+}

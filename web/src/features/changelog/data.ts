@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260828-35de40fb2',
+    date: '2026-08-28',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '新增同步生图任务历史：图片生成与图片编辑调用会记录到任务日志，成功结果保留原图与缩略图并支持多图浏览，供应商临时链接失效后仍可回看已保存的原图。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260827-c59fd1bec',
     date: '2026-08-27',
     changes: [

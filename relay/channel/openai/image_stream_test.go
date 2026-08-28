@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -64,6 +65,32 @@ func TestOpenaiImageDoResponseUsesInfoIsStream(t *testing.T) {
 		require.Contains(t, recorder.Body.String(), `event: image_generation.completed`)
 		require.Contains(t, recorder.Body.String(), `data: [DONE]`)
 	})
+}
+
+func TestOpenaiImageHandlerArchivesResultWithoutRewritingResponse(t *testing.T) {
+	t.Setenv("DRAWING_IMAGE_PATH", t.TempDir())
+	body := `{"created":1710000000,"data":[{"b64_json":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="}]}`
+	c, recorder, resp, info := newImageTestContext(t, body, "application/json", false)
+
+	usage, relayErr := OpenaiImageHandler(c, info, resp)
+
+	require.Nil(t, relayErr)
+	require.NotNil(t, usage)
+	require.Equal(t, body, recorder.Body.String())
+	require.Len(t, common.GetContextKeyStringSlice(c, constant.ContextKeyDrawingResultKeys), 1)
+}
+
+func TestOpenaiImageHandlerKeepsSuccessfulResponseWhenArchivingFails(t *testing.T) {
+	t.Setenv("DRAWING_IMAGE_PATH", t.TempDir())
+	body := `{"created":1710000000,"data":[{"b64_json":"not-valid-base64"}]}`
+	c, recorder, resp, info := newImageTestContext(t, body, "application/json", false)
+
+	usage, relayErr := OpenaiImageHandler(c, info, resp)
+
+	require.Nil(t, relayErr)
+	require.NotNil(t, usage)
+	require.Equal(t, body, recorder.Body.String())
+	require.Empty(t, common.GetContextKeyStringSlice(c, constant.ContextKeyDrawingResultKeys))
 }
 
 // TestOpenaiImageStreamHandlerForwardsSSEAndUsage covers the core SSE path:

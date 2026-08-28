@@ -2,14 +2,22 @@ package model
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	taskdto "github.com/QuantumNous/new-api/dto"
 	commonRelay "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/relaykit/dto"
+	relaykitdto "github.com/QuantumNous/new-api/relaykit/dto"
+	"gorm.io/gorm"
 )
 
 type TaskStatus string
@@ -18,15 +26,15 @@ func (t TaskStatus) ToVideoStatus() string {
 	var status string
 	switch t {
 	case TaskStatusQueued, TaskStatusSubmitted:
-		status = dto.VideoStatusQueued
+		status = relaykitdto.VideoStatusQueued
 	case TaskStatusInProgress:
-		status = dto.VideoStatusInProgress
+		status = relaykitdto.VideoStatusInProgress
 	case TaskStatusSuccess:
-		status = dto.VideoStatusCompleted
+		status = relaykitdto.VideoStatusCompleted
 	case TaskStatusFailure:
-		status = dto.VideoStatusFailed
+		status = relaykitdto.VideoStatusFailed
 	default:
-		status = dto.VideoStatusUnknown // Default fallback
+		status = relaykitdto.VideoStatusUnknown // Default fallback
 	}
 	return status
 }
@@ -137,6 +145,12 @@ func (t *Task) GetResultURL() string {
 	if t.PrivateData.ResultURL != "" {
 		return t.PrivateData.ResultURL
 	}
+	// FailReason historically carried a video URL. Image tasks never use that
+	// legacy encoding: returning an error message as a URL creates a broken and
+	// potentially unsafe preview action in Task Logs.
+	if t.Platform == constant.TaskPlatformImage {
+		return ""
+	}
 	return t.FailReason
 }
 
@@ -144,6 +158,165 @@ func (t *Task) GetResultURL() string {
 func GenerateTaskID() string {
 	key, _ := common.GenerateRandomCharsKey(32)
 	return "task_" + key
+}
+
+// StableImageTaskID derives the public task identity from the gateway request
+// identity. The namespace prevents accidental overlap with other deterministic
+// IDs while the 128-bit truncated digest keeps the existing task ID footprint.
+func StableImageTaskID(requestID string) string {
+	requestID = strings.TrimSpace(requestID)
+	if requestID == "" {
+		return ""
+	}
+	digest := sha256.Sum256([]byte("synchronous-image-task\x00" + requestID))
+	return fmt.Sprintf("task_%x", digest[:16])
+}
+
+// ImageTaskFailureLogMessage returns a request-correlated message without
+// embedding upstream errors, URLs, credentials, or provider response details.
+func ImageTaskFailureLogMessage(requestID string, operation string) string {
+	return fmt.Sprintf("image task operation failed request_id=%s operation=%s", requestID, operation)
+}
+
+type TerminalImageTaskParams struct {
+	RequestID         string
+	UserID            int
+	Group             string
+	ChannelID         int
+	Quota             int
+	Action            string
+	Status            TaskStatus
+	FailReason        string
+	ModelName         string
+	UpstreamModelName string
+	Prompt            string
+	SubmitTime        int64
+	FinishTime        int64
+	Results           []taskdto.ImageTaskResult
+}
+
+var terminalImageTaskUpsertMu sync.Mutex
+
+// UpsertTerminalImageTask materializes one terminal Task row for a synchronous
+// image request. The process-local lock closes duplicate-hook races, while the
+// stable request-derived task ID makes repeated materialization idempotent.
+// Only portable GORM operations are used so SQLite, MySQL, and PostgreSQL share
+// the same behavior.
+func UpsertTerminalImageTask(params TerminalImageTaskParams) (*Task, error) {
+	taskID := StableImageTaskID(params.RequestID)
+	if taskID == "" {
+		return nil, errors.New("image task request identity is required")
+	}
+	if params.Action != constant.TaskActionImagesGeneration && params.Action != constant.TaskActionImagesEdit {
+		return nil, fmt.Errorf("invalid image task action %q", params.Action)
+	}
+	if params.Status != TaskStatusSuccess && params.Status != TaskStatusFailure {
+		return nil, fmt.Errorf("image task must be terminal, got %q", params.Status)
+	}
+
+	now := time.Now().Unix()
+	if params.SubmitTime <= 0 {
+		params.SubmitTime = now
+	}
+	if params.FinishTime < params.SubmitTime {
+		params.FinishTime = params.SubmitTime
+	}
+
+	results := make([]taskdto.ImageTaskResult, 0, len(params.Results))
+	resultURL := ""
+	if params.Status == TaskStatusSuccess {
+		for _, result := range params.Results {
+			key := strings.TrimSpace(result.Key)
+			if result.Status != taskdto.ImageTaskResultStatusAvailable || key == "" {
+				results = append(results, taskdto.ImageTaskResult{
+					Status:    taskdto.ImageTaskResultStatusUnavailable,
+					ErrorCode: taskdto.ImageTaskResultErrorCaptureFailed,
+				})
+				continue
+			}
+			assetPath := "/api/drawing_logs/image/" + url.PathEscape(key)
+			safeResult := taskdto.ImageTaskResult{
+				Status:       taskdto.ImageTaskResultStatusAvailable,
+				Key:          key,
+				ThumbnailURL: assetPath,
+				OriginalURL:  assetPath + "?variant=original",
+			}
+			if resultURL == "" {
+				resultURL = safeResult.OriginalURL
+			}
+			results = append(results, safeResult)
+		}
+	}
+	data, err := common.Marshal(results)
+	if err != nil {
+		return nil, fmt.Errorf("marshal image task results: %w", err)
+	}
+
+	task := &Task{
+		CreatedAt:  params.SubmitTime,
+		UpdatedAt:  params.FinishTime,
+		TaskID:     taskID,
+		Platform:   constant.TaskPlatformImage,
+		UserId:     params.UserID,
+		Group:      params.Group,
+		ChannelId:  params.ChannelID,
+		Quota:      params.Quota,
+		Action:     params.Action,
+		Status:     params.Status,
+		FailReason: params.FailReason,
+		SubmitTime: params.SubmitTime,
+		StartTime:  params.SubmitTime,
+		FinishTime: params.FinishTime,
+		Progress:   "100%",
+		Properties: Properties{
+			Input:             params.Prompt,
+			OriginModelName:   params.ModelName,
+			UpstreamModelName: params.UpstreamModelName,
+		},
+		PrivateData: TaskPrivateData{ResultURL: resultURL},
+		Data:        json.RawMessage(data),
+	}
+	if task.Status == TaskStatusFailure {
+		task.Quota = 0
+		task.PrivateData.ResultURL = ""
+	}
+
+	terminalImageTaskUpsertMu.Lock()
+	defer terminalImageTaskUpsertMu.Unlock()
+
+	if DB == nil {
+		return nil, errors.New("database is not initialized")
+	}
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		var existing Task
+		lookupErr := tx.Where("task_id = ?", taskID).First(&existing).Error
+		if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+			return tx.Create(task).Error
+		}
+		if lookupErr != nil {
+			return lookupErr
+		}
+		if existing.Platform != constant.TaskPlatformImage {
+			return fmt.Errorf("task id %s already belongs to platform %s", taskID, existing.Platform)
+		}
+
+		task.ID = existing.ID
+		if existing.CreatedAt > 0 {
+			task.CreatedAt = existing.CreatedAt
+		}
+		updates := map[string]any{
+			"updated_at": task.UpdatedAt, "user_id": task.UserId, "group": task.Group,
+			"channel_id": task.ChannelId, "quota": task.Quota, "action": task.Action,
+			"status": task.Status, "fail_reason": task.FailReason, "submit_time": task.SubmitTime,
+			"start_time": task.StartTime, "finish_time": task.FinishTime, "progress": task.Progress,
+			"properties": task.Properties, "private_data": task.PrivateData, "data": task.Data,
+		}
+		return tx.Model(&existing).Updates(updates).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
 }
 
 func (p *TaskPrivateData) Scan(val interface{}) error {
@@ -510,8 +683,8 @@ func TaskCountAllUserTask(userId int, queryParams SyncTaskQueryParams) int64 {
 	_ = query.Count(&total).Error
 	return total
 }
-func (t *Task) ToOpenAIVideo() *dto.OpenAIVideo {
-	openAIVideo := dto.NewOpenAIVideo()
+func (t *Task) ToOpenAIVideo() *relaykitdto.OpenAIVideo {
+	openAIVideo := relaykitdto.NewOpenAIVideo()
 	openAIVideo.ID = t.TaskID
 	openAIVideo.Status = t.Status.ToVideoStatus()
 	openAIVideo.Model = t.Properties.OriginModelName

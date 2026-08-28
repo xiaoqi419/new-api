@@ -203,11 +203,19 @@ func miniMaxImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 	}
 
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Writer.WriteHeader(resp.StatusCode)
-	if _, err := c.Writer.Write(jsonResponse); err != nil {
-		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	// Archive received results before starting the downstream response. Capture
+	// is best-effort and leaves the OpenAI-compatible body untouched.
+	if info != nil && info.ChannelMeta != nil {
+		service.CaptureImageResultsWithProxy(c, jsonResponse, info.ChannelSetting.Proxy)
+	} else {
+		service.CaptureImageResults(c, jsonResponse)
 	}
+
+	if resp.Header == nil {
+		resp.Header = make(http.Header)
+	}
+	resp.Header.Set("Content-Type", "application/json")
+	service.IOCopyBytesGracefully(c, resp, jsonResponse)
 
 	return &dto.Usage{}, nil
 }

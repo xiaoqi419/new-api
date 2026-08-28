@@ -404,6 +404,21 @@ type RecordConsumeLogParams struct {
 }
 
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
+	createdAt := common.GetTimestamp()
+	if params.IsImage {
+		if err := recordImageTaskFromConsumeLog(c, &Log{
+			UserId:    userId,
+			CreatedAt: createdAt,
+			ModelName: params.ModelName,
+			Quota:     params.Quota,
+			ChannelId: params.ChannelId,
+			UseTime:   params.UseTimeSeconds,
+			Group:     params.Group,
+			LogMode:   params.LogMode,
+		}); err != nil {
+			common.SysError(ImageTaskFailureLogMessage(c.GetString(common.RequestIdKey), "success_materialization"))
+		}
+	}
 	if !common.LogConsumeEnabled {
 		return
 	}
@@ -411,7 +426,6 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
-	createdAt := common.GetTimestamp()
 	otherStr := common.MapToJsonStr(params.Other)
 	firstTokenMs := firstTokenMsFromOther(params.Other)
 	if params.InputTokens != 0 || params.CacheReadTokens != 0 || params.CacheWriteTokens != 0 {

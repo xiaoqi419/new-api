@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
+	taskdto "github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -80,14 +82,11 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 	} else {
 		payload.Created = info.StartTime.Unix()
 	}
+	publicImageSlots := make([]bool, 0, len(zhipuResp.Data))
 	for _, data := range zhipuResp.Data {
 		url := data.Url
 		if url == "" {
 			url = data.ImageUrl
-		}
-		if url == "" {
-			logger.LogWarn(c, "zhipu_image_missing_url")
-			continue
 		}
 
 		var b64 string
@@ -97,9 +96,19 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		case data.B64Image != "":
 			b64 = data.B64Image
 		default:
-			_, downloaded, err := service.GetImageFromUrl(url)
+			if url == "" {
+				logger.LogWarn(c, "zhipu_image_missing_url")
+				publicImageSlots = append(publicImageSlots, false)
+				continue
+			}
+			proxy := ""
+			if info != nil && info.ChannelMeta != nil {
+				proxy = info.ChannelSetting.Proxy
+			}
+			downloaded, err := service.ConvertProviderImageURLToBase64WithProxy(url, proxy)
 			if err != nil {
-				logger.LogError(c, "zhipu_image_get_b64_failed: "+err.Error())
+				logger.LogWarn(c, "zhipu_image_b64_conversion_failed")
+				publicImageSlots = append(publicImageSlots, false)
 				continue
 			}
 			b64 = downloaded
@@ -107,6 +116,7 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 
 		if b64 == "" {
 			logger.LogWarn(c, "zhipu_image_empty_b64")
+			publicImageSlots = append(publicImageSlots, false)
 			continue
 		}
 
@@ -114,11 +124,34 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 			B64Json: b64,
 		}
 		payload.Data = append(payload.Data, imageData)
+		publicImageSlots = append(publicImageSlots, true)
 	}
 
 	jsonResp, err := common.Marshal(payload)
 	if err != nil {
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	}
+	if info != nil && info.ChannelMeta != nil {
+		service.CaptureImageResultsWithProxy(c, jsonResp, info.ChannelSetting.Proxy)
+	} else {
+		service.CaptureImageResults(c, jsonResp)
+	}
+	capturedResults, _ := common.GetContextKeyType[[]taskdto.ImageTaskResult](c, constant.ContextKeyDrawingTaskResults)
+	mergedResults := make([]taskdto.ImageTaskResult, 0, len(publicImageSlots))
+	capturedIndex := 0
+	for _, isPublicImage := range publicImageSlots {
+		if !isPublicImage || capturedIndex >= len(capturedResults) {
+			mergedResults = append(mergedResults, taskdto.ImageTaskResult{
+				Status:    taskdto.ImageTaskResultStatusUnavailable,
+				ErrorCode: taskdto.ImageTaskResultErrorCaptureFailed,
+			})
+			continue
+		}
+		mergedResults = append(mergedResults, capturedResults[capturedIndex])
+		capturedIndex++
+	}
+	if len(mergedResults) > 0 {
+		common.SetContextKey(c, constant.ContextKeyDrawingTaskResults, mergedResults)
 	}
 
 	service.IOCopyBytesGracefully(c, resp, jsonResp)
