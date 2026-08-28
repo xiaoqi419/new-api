@@ -37,8 +37,9 @@ type EpayMAPIRequest struct {
 	Param         string
 }
 
-// EpayCheckout is the normalized checkout instruction that can be returned to
-// a browser without exposing the merchant key or request signature.
+// EpayCheckout is the normalized checkout instruction returned to a browser.
+// It never exposes the merchant key; legacy payurls include the protocol's
+// required signature for that individual order.
 type EpayCheckout struct {
 	GatewayTradeNo string `json:"gateway_trade_no"`
 	CheckoutType   string `json:"checkout_type"`
@@ -112,6 +113,9 @@ func (client *EpayMAPIClient) CreateCheckout(ctx context.Context, args EpayMAPIR
 		return nil, fmt.Errorf("request mapi checkout: %w", err)
 	}
 	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		return client.createLegacyCheckout(args)
+	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("mapi checkout returned http status %d", response.StatusCode)
 	}
@@ -142,6 +146,46 @@ func (client *EpayMAPIClient) CreateCheckout(ctx context.Context, args EpayMAPIR
 		GatewayTradeNo: strings.TrimSpace(result.TradeNo),
 		CheckoutType:   checkoutType,
 		CheckoutValue:  checkoutValue,
+	}, nil
+}
+
+// createLegacyCheckout builds the documented EPay /submit.php checkout URL.
+// EPUSDT v2 exposes this compatibility endpoint instead of MAPI; the signed
+// URL is safe to hand to the browser, which follows the gateway redirect to
+// the hosted checkout counter.
+func (client *EpayMAPIClient) createLegacyCheckout(args EpayMAPIRequest) (*EpayCheckout, error) {
+	device := args.Device
+	if device == "" {
+		device = epay.PC
+	}
+	uri, params, err := client.epayClient.Purchase(&epay.PurchaseArgs{
+		Type:           args.PaymentMethod,
+		ServiceTradeNo: args.TradeNo,
+		Name:           args.Name,
+		Money:          args.Money,
+		Device:         device,
+		NotifyUrl:      args.NotifyURL,
+		ReturnUrl:      args.ReturnURL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create legacy epay checkout: %w", err)
+	}
+	checkoutURL, err := url.Parse(uri)
+	if err != nil || !checkoutURL.IsAbs() || (checkoutURL.Scheme != "http" && checkoutURL.Scheme != "https") || checkoutURL.Hostname() == "" {
+		return nil, errors.New("legacy epay checkout URL is invalid")
+	}
+	checkoutURL.RawQuery = ""
+	checkoutURL.ForceQuery = false
+	checkoutURL.Fragment = ""
+	checkoutURL.RawFragment = ""
+	query := url.Values{}
+	for key, value := range params {
+		query.Set(key, value)
+	}
+	checkoutURL.RawQuery = query.Encode()
+	return &EpayCheckout{
+		CheckoutType:  "payurl",
+		CheckoutValue: checkoutURL.String(),
 	}, nil
 }
 

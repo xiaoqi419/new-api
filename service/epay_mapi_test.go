@@ -120,6 +120,52 @@ func TestEpayMAPIClientCreateCheckout(t *testing.T) {
 	}
 }
 
+func TestEpayMAPIClientFallsBackToEpaySubmitRedirect(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "/gateway/mapi.php", request.URL.Path)
+		writer.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	client := newEpayMAPIClientForTest(t, server.URL+"/gateway?legacy=true#configured-fragment", nil)
+	requestArgs := epayMAPIRequestForTest()
+	requestArgs.PaymentMethod = "usdt.tron"
+	checkout, err := client.CreateCheckout(context.Background(), requestArgs)
+	require.NoError(t, err)
+	require.NotNil(t, checkout)
+	assert.Equal(t, "payurl", checkout.CheckoutType)
+	legacyURL, err := url.Parse(checkout.CheckoutValue)
+	require.NoError(t, err)
+	assert.Equal(t, "/gateway/submit.php", legacyURL.Path)
+	assert.Empty(t, legacyURL.Fragment)
+	assert.Empty(t, legacyURL.RawFragment)
+	expected := epay.GenerateParams(map[string]string{
+		"pid":          "merchant-id",
+		"type":         "usdt.tron",
+		"out_trade_no": "WALLET-ORDER-1",
+		"notify_url":   "https://wallet.example.com/api/user/epay/notify",
+		"return_url":   "https://wallet.example.com/wallet",
+		"name":         "TUC10",
+		"money":        "10.00",
+		"device":       "pc",
+		"sign_type":    "MD5",
+	}, "merchant-key")
+	expectedQuery := url.Values{}
+	for key, value := range expected {
+		expectedQuery.Set(key, value)
+	}
+	assert.Equal(t, expectedQuery, legacyURL.Query())
+	assert.Equal(t, "usdt.tron", legacyURL.Query().Get("type"))
+	assert.Equal(t, "https://wallet.example.com/api/user/epay/notify", legacyURL.Query().Get("notify_url"))
+	assert.Equal(t, "https://wallet.example.com/wallet", legacyURL.Query().Get("return_url"))
+	assert.Equal(t, "10.00", legacyURL.Query().Get("money"))
+	assert.Equal(t, "WALLET-ORDER-1", legacyURL.Query().Get("out_trade_no"))
+	assert.Equal(t, "pc", legacyURL.Query().Get("device"))
+	assert.Equal(t, "MD5", legacyURL.Query().Get("sign_type"))
+	assert.Equal(t, expected["sign"], legacyURL.Query().Get("sign"))
+}
+
 func TestEpayMAPIClientRejectsInvalidResponses(t *testing.T) {
 	testCases := []struct {
 		name          string
