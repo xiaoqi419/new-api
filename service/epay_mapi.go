@@ -37,8 +37,9 @@ type EpayMAPIRequest struct {
 	Param         string
 }
 
-// EpayCheckout is the normalized checkout instruction that can be returned to
-// a browser without exposing the merchant key or request signature.
+// EpayCheckout is the normalized checkout instruction returned to a browser.
+// It never exposes the merchant key; legacy payurls include the protocol's
+// required signature for that individual order.
 type EpayCheckout struct {
 	GatewayTradeNo string `json:"gateway_trade_no"`
 	CheckoutType   string `json:"checkout_type"`
@@ -173,7 +174,11 @@ func (client *EpayMAPIClient) createLegacyCheckout(args EpayMAPIRequest) (*EpayC
 	if err != nil || !checkoutURL.IsAbs() || (checkoutURL.Scheme != "http" && checkoutURL.Scheme != "https") || checkoutURL.Hostname() == "" {
 		return nil, errors.New("legacy epay checkout URL is invalid")
 	}
-	query := checkoutURL.Query()
+	checkoutURL.RawQuery = ""
+	checkoutURL.ForceQuery = false
+	checkoutURL.Fragment = ""
+	checkoutURL.RawFragment = ""
+	query := url.Values{}
 	for key, value := range params {
 		query.Set(key, value)
 	}
