@@ -325,13 +325,25 @@ export interface TaskProperties {
   upstream_model_name?: string
 }
 
+export type TaskImageResult =
+  | {
+      status: 'available'
+      key: string
+      thumbnail_url: string
+      original_url: string
+    }
+  | {
+      status: 'unavailable'
+      error_code?: string
+    }
+
 export interface TaskLog {
   id: number
   user_id: number
   username?: string
-  platform: string // suno, kling, runway, etc.
+  platform: string // suno, image, kling, runway, etc.
   task_id: string
-  action: string // MUSIC, LYRICS, GENERATE, TEXT_GENERATE, etc.
+  action: string // MUSIC, images_generation, images_edit, GENERATE, etc.
   channel_id: number
   quota?: number // consumed quota (settled), present on success
   submit_time: number // seconds
@@ -339,8 +351,8 @@ export interface TaskLog {
   progress?: string
   progress_message_en?: string
   properties?: TaskProperties // origin/upstream model name
-  data?: unknown // JSON object (video params/usage) or array (suno clips)
-  result_url?: string // task result URL (video address, etc.), present on success
+  data?: unknown // JSON object (video params/usage) or array (image results/Suno clips)
+  result_url?: string // first image original URL or video address, present on success
   fail_reason?: string
   status: string // NOT_START, SUBMITTED, IN_PROGRESS, SUCCESS, FAILURE, QUEUED, UNKNOWN
   other?: string

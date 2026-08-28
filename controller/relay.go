@@ -59,6 +59,17 @@ func relayHandler(c *gin.Context, info *relaycommon.RelayInfo) *types.NewAPIErro
 	return err
 }
 
+func imageTaskAction(relayMode int) (string, bool) {
+	switch relayMode {
+	case relayconstant.RelayModeImagesGenerations:
+		return constant.TaskActionImagesGeneration, true
+	case relayconstant.RelayModeImagesEdits:
+		return constant.TaskActionImagesEdit, true
+	default:
+		return "", false
+	}
+}
+
 func geminiRelayHandler(c *gin.Context, info *relaycommon.RelayInfo) *types.NewAPIError {
 	var err *types.NewAPIError
 	if strings.Contains(c.Request.URL.Path, "embed") {
@@ -191,6 +202,38 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	if err != nil {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
+	}
+	if action, isImageTask := imageTaskAction(relayInfo.RelayMode); isImageTask {
+		prompt := ""
+		if imageRequest, ok := request.(*dto.ImageRequest); ok {
+			prompt = imageRequest.Prompt
+		}
+		defer func() {
+			if newAPIError == nil {
+				return
+			}
+			start := relayInfo.StartTime.Unix()
+			if start <= 0 {
+				start = common.GetContextKeyTime(c, constant.ContextKeyRequestStartTime).Unix()
+			}
+			_, taskErr := model.UpsertTerminalImageTask(model.TerminalImageTaskParams{
+				RequestID:         requestId,
+				UserID:            relayInfo.UserId,
+				Group:             relayInfo.UsingGroup,
+				ChannelID:         relayInfo.ChannelId,
+				Action:            action,
+				Status:            model.TaskStatusFailure,
+				FailReason:        newAPIError.MaskSensitiveErrorWithStatusCode(),
+				ModelName:         relayInfo.OriginModelName,
+				UpstreamModelName: relayInfo.UpstreamModelName,
+				Prompt:            prompt,
+				SubmitTime:        start,
+				FinishTime:        time.Now().Unix(),
+			})
+			if taskErr != nil {
+				common.SysError(model.ImageTaskFailureLogMessage(requestId, "failure_materialization"))
+			}
+		}()
 	}
 
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()

@@ -52,6 +52,22 @@ type TaskDto struct {
 	Data       json.RawMessage `json:"data"`
 }
 
+const (
+	ImageTaskResultStatusAvailable    = "available"
+	ImageTaskResultStatusUnavailable  = "unavailable"
+	ImageTaskResultErrorCaptureFailed = "capture_failed"
+)
+
+// ImageTaskResult is the safe result metadata exposed by terminal synchronous
+// image tasks. Unavailable results contain no provider or first-party URL.
+type ImageTaskResult struct {
+	Status       string `json:"status"`
+	ErrorCode    string `json:"error_code,omitempty"`
+	Key          string `json:"key,omitempty"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	OriginalURL  string `json:"original_url,omitempty"`
+}
+
 type FetchReq struct {
 	IDs []string `json:"ids"`
 }

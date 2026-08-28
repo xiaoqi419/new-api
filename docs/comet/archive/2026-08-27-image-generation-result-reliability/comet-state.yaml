@@ -1,0 +1,1208 @@
+schema: comet.native.v4
+name: image-generation-result-reliability
+language: zh-CN
+phase: archive
+status: done
+state_version: 40
+brief: brief.md
+spec_changes:
+  - capability: image-generation-reliability
+    operation: create
+    source: specs/image-generation-reliability/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/image-generation-result-reliability
+  target_branch: main
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 5
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 4
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: A successful `gpt-image-2` request through the normal
+      OpenAI-compatible image endpoint is handled without entering
+      Alibaba-specific polling and retains the current synchronous API response
+      envelope."
+    result: passed
+    reason:
+      text: Ordinary generation/edit relay modes remain synchronous and the Alibaba
+        image adapter is unchanged from main.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: One successful image request produces exactly one terminal record
+      visible through the existing Task Logs API/page, even when internal
+      channel retry or fallback attempts occurred."
+    result: passed
+    reason:
+      text: Stable request-derived IDs and the guarded GORM upsert keep one terminal
+        task per request within the verified process.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: The image task shows a stable task ID, model, type, status, 100%
+      progress, submit time, finish time, duration, and the existing admin/user
+      visibility boundaries."
+    result: passed
+    reason:
+      text: Successful tasks persist the required image identity, model, routing,
+        timing, progress, user, group, channel, and quota fields.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: The image task uses the final billed quota and final selected
+      channel; existing usage and drawing logs remain intact and are not
+      replaced."
+    result: passed
+    reason:
+      text: Task materialization uses final consume-log channel and quota while
+        existing usage and drawing logs remain additive.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: Every image result received as a provider URL or base64 payload is
+      saved as an original plus thumbnail before the success task exposes stable
+      result URLs. The normal image API response body is not rewritten merely to
+      support logging."
+    result: passed
+    reason:
+      text: All supported URL/base64 results are captured in order as originals plus
+        JPEG thumbnails before stable task metadata is published.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: Task Logs shows image thumbnails and allows all images from a
+      multi-image result to be opened using the original first-party asset,
+      while Suno audio and video previews continue to work unchanged."
+    result: passed
+    reason:
+      text: Capture is side-effect-only and provider handlers preserve their ordinary
+        OpenAI-compatible public response envelopes and image fields.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: If the provider result reached the gateway but writing the downstream
+      response is interrupted, the saved original and successful task record
+      remain available. If no provider result reached the gateway, a final
+      failure task may be recorded but no nonexistent original is claimed."
+    result: passed
+    reason:
+      text: Task Logs uses stable thumbnail/original URLs, serves missing assets as
+        404, and renders explicit unavailable states.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: Failed final image outcomes are represented by one terminal failure
+      task with an actionable error and no invalid image preview; terminal image
+      tasks are never picked up by the asynchronous task poller."
+    result: passed
+    reason:
+      text: Final failures create URL-free terminal FAILURE tasks and terminal image
+        tasks are excluded from unfinished polling.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: "A9: Automated tests cover successful and failed materialization,
+      single-record behavior across retries/repeated hooks, original/thumbnail
+      retrieval, multiple image results, user/admin visibility, and frontend
+      image/audio/video rendering boundaries."
+    result: passed
+    reason:
+      text: Backend and frontend regressions cover materialization, assets, ordering,
+        authorization, providers, failures, and media non-regression.
+      truncated: false
+  - id: A10
+    source: specs/image-generation-reliability/spec.md
+    text: OpenAI-compatible `/v1/images/generations` and `/v1/images/edits` requests
+      are synchronous image requests regardless of the selected provider,
+      channel name, or model name. Models such as `gpt-image-2` use the ordinary
+      image relay. This capability does not invoke Alibaba-specific task polling
+      and does not change the public request into an asynchronous task protocol.
+    result: passed
+    reason:
+      text: Generation and edit requests continue through the ordinary synchronous
+        ImageHelper without task polling.
+      truncated: false
+  - id: A11
+    source: specs/image-generation-reliability/spec.md
+    text: The client continues to receive the existing successful OpenAI-compatible
+      image response envelope. Logging and result preservation must not replace
+      that envelope, return a mandatory `202`, or rewrite image fields to
+      thumbnail URLs.
+    result: passed
+    reason:
+      text: Archival does not return 202, task envelopes, or first-party URLs in place
+        of provider response image fields.
+      truncated: false
+  - id: A12
+    source: specs/image-generation-reliability/spec.md
+    text: "When a successful provider response contains image URLs or base64 image
+      data, the gateway captures every supported result before publishing a
+      successful task record. Each result produces:"
+    result: passed
+    reason:
+      text: Common capture handles every supported response result, and Zhipu
+        reconstructs task slots from every original provider data item.
+      truncated: false
+  - id: A13
+    source: specs/image-generation-reliability/spec.md
+    text: an unmodified original asset;
+    result: passed
+    reason:
+      text: Original source bytes are atomically written without re-encoding and
+        verified byte-identical in tests.
+      truncated: false
+  - id: A14
+    source: specs/image-generation-reliability/spec.md
+    text: a bounded thumbnail asset;
+    result: passed
+    reason:
+      text: A bounded JPEG thumbnail is committed after the original and served with
+        the correct MIME type.
+      truncated: false
+  - id: A15
+    source: specs/image-generation-reliability/spec.md
+    text: an unguessable internal key;
+    result: passed
+    reason:
+      text: Public asset capabilities use cryptographically random 32-character keys
+        unrelated to provider data.
+      truncated: false
+  - id: A16
+    source: specs/image-generation-reliability/spec.md
+    text: a stable first-party thumbnail URL; and
+    result: passed
+    reason:
+      text: Available task results expose a stable first-party thumbnail URL.
+      truncated: false
+  - id: A17
+    source: specs/image-generation-reliability/spec.md
+    text: a stable first-party original URL.
+    result: passed
+    reason:
+      text: Available task results expose a distinct stable first-party original URL.
+      truncated: false
+  - id: A18
+    source: specs/image-generation-reliability/spec.md
+    text: Provider URL downloads use SSRF-protected networking, the selected
+      channel's configured outbound proxy where applicable, MIME and magic-byte
+      validation, a response-size limit, finite retries, and a hard timeout.
+      Result capture uses an independent bounded context after the provider
+      result has been received, so downstream client cancellation does not
+      automatically discard the archive operation.
+    result: passed
+    reason:
+      text: Provider fetching enforces SSRF protection, proxy support, size and MIME
+        checks, finite retries, hard timeouts, and detached capture context.
+      truncated: false
+  - id: A19
+    source: specs/image-generation-reliability/spec.md
+    text: Capture is auxiliary to the ordinary response contract. A capture failure
+      is logged and reflected in task result metadata without rewriting or
+      corrupting the provider response. The system never reports a durable
+      original URL unless the original file exists.
+    result: passed
+    reason:
+      text: Capture failures are request-correlated and represented as URL-free
+        unavailable/capture_failed task slots without corrupting responses.
+      truncated: false
+  - id: A20
+    source: specs/image-generation-reliability/spec.md
+    text: Stored originals and thumbnails use the existing drawing-image path and
+      TTL policy. Thumbnail and original endpoints are distinct. An expired or
+      missing asset returns a normal not-found result, and the frontend renders
+      an unavailable state rather than a broken successful preview.
+    result: passed
+    reason:
+      text: Originals and thumbnails share the existing drawing path and TTL policy;
+        missing variants return 404 and render unavailable.
+      truncated: false
+  - id: A21
+    source: specs/image-generation-reliability/spec.md
+    text: Each final synchronous image request outcome creates at most one terminal
+      record in the existing `tasks` table. Channel retries and channel fallback
+      attempts belong to the same task record.
+    result: passed
+    reason:
+      text: Only final request outcomes materialize terminal image tasks and retries
+        do not create attempt-specific task rows.
+      truncated: false
+  - id: A22
+    source: specs/image-generation-reliability/spec.md
+    text: "Successful image tasks contain:"
+    result: passed
+    reason:
+      text: Successful terminal tasks contain the complete identity, timing, routing,
+        billing, properties, legacy URL, and ordered result contract.
+      truncated: false
+  - id: A23
+    source: specs/image-generation-reliability/spec.md
+    text: a stable public task ID derived from the gateway request identity without
+      exposing provider credentials or temporary URLs;
+    result: passed
+    reason:
+      text: Stable public task IDs are namespaced truncated SHA-256 digests of gateway
+        request identity and expose no provider secrets.
+      truncated: false
+  - id: A24
+    source: specs/image-generation-reliability/spec.md
+    text: "`platform=image`;"
+    result: passed
+    reason:
+      text: Terminal synchronous image tasks persist platform=image.
+      truncated: false
+  - id: A25
+    source: specs/image-generation-reliability/spec.md
+    text: an image-generation or image-edit action distinct from video actions;
+    result: passed
+    reason:
+      text: Generation and edit use dedicated image actions distinct from video
+        actions.
+      truncated: false
+  - id: A26
+    source: specs/image-generation-reliability/spec.md
+    text: "`SUCCESS` status and `100%` progress;"
+    result: passed
+    reason:
+      text: Image tasks permit only SUCCESS or FAILURE and persist 100 percent
+        progress.
+      truncated: false
+  - id: A27
+    source: specs/image-generation-reliability/spec.md
+    text: submit/start/finish timestamps and duration;
+    result: passed
+    reason:
+      text: Submit, start, finish, created, and updated timing fields are normalized
+        and persisted.
+      truncated: false
+  - id: A28
+    source: specs/image-generation-reliability/spec.md
+    text: final user, group, selected channel, model, prompt, and billed quota;
+    result: passed
+    reason:
+      text: Final user, group, channel, model, prompt, and billed quota are passed
+        from final consume context.
+      truncated: false
+  - id: A29
+    source: specs/image-generation-reliability/spec.md
+    text: an ordered array of persisted image result objects containing the key,
+      thumbnail URL, and original URL; and
+    result: passed
+    reason:
+      text: Common and Zhipu-specific paths retain provider order, including URL-free
+        unavailable slots for failed captures.
+      truncated: false
+  - id: A30
+    source: specs/image-generation-reliability/spec.md
+    text: the first original URL in the legacy single-result field for compatible
+      consumers.
+    result: passed
+    reason:
+      text: The legacy single-result field points to the first available persisted
+        original and remains empty when none exists.
+      truncated: false
+  - id: A31
+    source: specs/image-generation-reliability/spec.md
+    text: Final failed image requests create a single `FAILURE` task containing the
+      stable task ID, available request/model/channel metadata, timestamps,
+      final error, and no invalid result URL. Image task records are terminal at
+      insertion/update time and are never eligible for asynchronous provider
+      polling.
+    result: passed
+    reason:
+      text: Final failed requests create deterministic terminal tasks with masked
+        actionable errors and no invalid result URL.
+      truncated: false
+  - id: A32
+    source: specs/image-generation-reliability/spec.md
+    text: Task materialization is idempotent for the gateway request identity.
+      Repeated internal materialization of the same request updates or preserves
+      one record rather than creating duplicates.
+    result: passed
+    reason:
+      text: Stable IDs, process-local serialization, and transactional lookup/update
+        make repeated in-process materialization idempotent.
+      truncated: false
+  - id: A33
+    source: specs/image-generation-reliability/spec.md
+    text: The existing `/api/task/self` and `/api/task` endpoints remain the only
+      Task Logs data sources. User isolation, admin authorization, pagination,
+      ordering, filtering, username handling, and channel visibility retain
+      their existing behavior.
+    result: passed
+    reason:
+      text: Existing task APIs remain the sole paginated data sources and retain
+        user/admin authorization and ordering behavior.
+      truncated: false
+  - id: A34
+    source: specs/image-generation-reliability/spec.md
+    text: Image task DTOs expose safe result metadata but never expose
+      `Task.PrivateData` credentials or upstream secrets. The frontend
+      recognizes `platform=image` and the dedicated image actions without
+      classifying them as video.
+    result: passed
+    reason:
+      text: Private task data stays JSON-hidden while safe result metadata is exposed
+        and frontend image classification is explicit.
+      truncated: false
+  - id: A35
+    source: specs/image-generation-reliability/spec.md
+    text: For successful image tasks, desktop and card views show a thumbnail/result
+      action. Opening the preview loads the original first-party asset.
+      Multi-image tasks allow every result to be viewed in order. Missing or
+      expired originals show an explicit unavailable state. Failed image tasks
+      show the final error and no image action.
+    result: passed
+    reason:
+      text: Desktop/card previews support ordered thumbnails, original modal,
+        next/previous navigation, unavailable assets, and failure errors.
+      truncated: false
+  - id: A36
+    source: specs/image-generation-reliability/spec.md
+    text: Existing Suno audio and video task previews, status badges, duration
+      display, progress behavior, and details dialog remain compatible.
+    result: passed
+    reason:
+      text: Suno audio and existing video previews, status, duration, and details
+        behavior remain on their original branches.
+      truncated: false
+  - id: A37
+    source: specs/image-generation-reliability/spec.md
+    text: Usage logs and drawing logs continue to be written as before. The Task
+      record is an additional user-facing history entry, not a replacement for
+      accounting or drawing-log records. Billing values in a successful image
+      task match the final consume log.
+    result: passed
+    reason:
+      text: Usage and drawing logs remain intact and task channel/quota values match
+        the final consume log.
+      truncated: false
+  - id: A38
+    source: specs/image-generation-reliability/spec.md
+    text: If the provider result reached the gateway and was archived but downstream
+      response delivery failed, the task and original remain available. If the
+      provider never returned a result and exposes no queryable task ID, the
+      gateway can record the final failure but cannot reconstruct an image it
+      never received.
+    result: passed
+    reason:
+      text: All verified provider handlers archive before downstream writes; received
+        results survive delivery interruption without claiming unreceived
+        assets.
+      truncated: false
+  - id: A39
+    source: specs/image-generation-reliability/spec.md
+    text: "A1: Normal OpenAI-compatible image requests remain synchronous and do not
+      use Alibaba-specific polling."
+    result: passed
+    reason:
+      text: Normal OpenAI-compatible image calls remain synchronous and Alibaba
+        behavior remains unchanged.
+      truncated: false
+  - id: A40
+    source: specs/image-generation-reliability/spec.md
+    text: "A2: One final image request creates at most one terminal Task Log record
+      across retries and fallbacks."
+    result: passed
+    reason:
+      text: One final request maps to at most one in-process terminal task across
+        retries and repeated hooks.
+      truncated: false
+  - id: A41
+    source: specs/image-generation-reliability/spec.md
+    text: "A3: Successful image tasks contain the stable ID, image platform/action,
+      model, timestamps, duration, status, progress, final channel, group, user,
+      and quota."
+    result: passed
+    reason:
+      text: Successful tasks contain the full image platform/action, model, timing,
+        routing, user, group, and quota contract.
+      truncated: false
+  - id: A42
+    source: specs/image-generation-reliability/spec.md
+    text: "A4: Final failed image requests create one terminal failure task with the
+      actionable final error and no invalid result."
+    result: passed
+    reason:
+      text: Final failures produce one terminal URL-free task with the final masked
+        error.
+      truncated: false
+  - id: A43
+    source: specs/image-generation-reliability/spec.md
+    text: "A5: Every received URL/base64 result is bounded, validated, and persisted
+      as original plus thumbnail before stable task result metadata is
+      published."
+    result: passed
+    reason:
+      text: Received URL/base64 data is bounded, validated, and persisted before
+        available result metadata is published.
+      truncated: false
+  - id: A44
+    source: specs/image-generation-reliability/spec.md
+    text: "A6: The ordinary image API response envelope and image fields remain
+      compatible and are not rewritten for task logging."
+    result: passed
+    reason:
+      text: Image response envelopes and fields are not rewritten for Task Logs.
+      truncated: false
+  - id: A45
+    source: specs/image-generation-reliability/spec.md
+    text: "A7: Task Logs exposes all successful images through thumbnail and
+      original URLs and handles missing/expired assets without a broken
+      preview."
+    result: passed
+    reason:
+      text: First-party thumbnail/original metadata, ordered navigation, 404 handling,
+        and unavailable UI behavior are implemented and tested.
+      truncated: false
+  - id: A46
+    source: specs/image-generation-reliability/spec.md
+    text: "A8: Task Logs user/admin authorization, pagination, and sensitive-data
+      boundaries remain unchanged."
+    result: passed
+    reason:
+      text: User/admin task authorization, pagination, and private-data boundaries
+        remain unchanged and have API regressions.
+      truncated: false
+  - id: A47
+    source: specs/image-generation-reliability/spec.md
+    text: "A9: Existing audio and video task rendering remains compatible after
+      image task support is added."
+    result: passed
+    reason:
+      text: Image support does not reclassify or regress existing audio and video task
+        rendering.
+      truncated: false
+  - id: A48
+    source: specs/image-generation-reliability/spec.md
+    text: "A10: Usage/drawing logs continue unchanged, and successful task
+      quota/channel metadata matches the final billed request outcome."
+    result: passed
+    reason:
+      text: Task history is additive to existing usage/drawing logs and uses final
+        billed routing values.
+      truncated: false
+  - id: A49
+    source: specs/image-generation-reliability/spec.md
+    text: "A11: An already-received result survives downstream response
+      interruption; an unreceived result is not falsely claimed as recoverable."
+    result: passed
+    reason:
+      text: Detached pre-delivery archival survives downstream interruption and no
+        asset is invented when the gateway received none.
+      truncated: false
+  - id: A50
+    source: specs/image-generation-reliability/spec.md
+    text: Provider-result capture must not permit arbitrary internal-network access
+      or unbounded downloads.
+    result: passed
+    reason:
+      text: Provider fetching prevents arbitrary internal access and unbounded
+        downloads through the protected transport and limits.
+      truncated: false
+  - id: A51
+    source: specs/image-generation-reliability/spec.md
+    text: Public image keys must be unguessable and must not expose provider URLs,
+      credentials, or predictable hashes of known content.
+    result: passed
+    reason:
+      text: Task metadata contains only random capability keys and first-party paths,
+        never provider URLs, tokens, or predictable hashes.
+      truncated: false
+  - id: A52
+    source: specs/image-generation-reliability/spec.md
+    text: Task data returned to ordinary users contains only safe stable URLs and
+      request metadata; admin-only and private task data remain protected by
+      existing DTO rules.
+    result: passed
+    reason:
+      text: Ordinary task responses expose only safe result/request metadata and
+        continue to suppress PrivateData secrets.
+      truncated: false
+  - id: A53
+    source: specs/image-generation-reliability/spec.md
+    text: Capture errors, persistence errors, and task materialization errors are
+      logged with the gateway request identity. A task must never point to a
+      file that was not successfully committed.
+    result: passed
+    reason:
+      text: Capture/materialization failures are request-correlated, partial files are
+        removed, and available metadata is published only after both files
+        commit.
+      truncated: false
+  - id: A54
+    source: specs/image-generation-reliability/spec.md
+    text: Database operations use GORM-compatible behavior shared by SQLite, MySQL,
+      and PostgreSQL.
+    result: passed
+    reason:
+      text: Task persistence uses portable GORM transactions without dialect-specific
+        SQL or schema changes.
+      truncated: false
+  - id: A55
+    source: specs/image-generation-reliability/spec.md
+    text: Terminal image tasks must not enter the asynchronous unfinished-task
+      scheduler.
+    result: passed
+    reason:
+      text: Terminal image tasks cannot enter asynchronous unfinished-task polling.
+      truncated: false
+  - id: A56
+    source: specs/image-generation-reliability/spec.md
+    text: Backend tests cover success, final failure, multiple images, URL and
+      base64 capture, bounded/safe fetching, original/thumbnail endpoints,
+      idempotent materialization, final quota/channel mapping, and terminal-task
+      exclusion from polling.
+    result: passed
+    reason:
+      text: Backend tests cover success/failure, URL/base64 capture, bounds,
+        proxy/SSRF, assets, ordering, idempotency, billing, providers, and
+        poller exclusion.
+      truncated: false
+  - id: A57
+    source: specs/image-generation-reliability/spec.md
+    text: Controller/model tests verify user isolation and admin-safe serialization
+      for image task metadata.
+    result: passed
+    reason:
+      text: Controller/model tests verify owner isolation, admin serialization, stable
+        URLs, and private-data suppression.
+      truncated: false
+  - id: A58
+    source: specs/image-generation-reliability/spec.md
+    text: Frontend tests cover image task table/card actions, original-image
+      preview, multi-image navigation, missing assets, failed tasks, and
+      audio/video non-regression.
+    result: passed
+    reason:
+      text: Frontend tests cover table/card actions, original preview, ordered
+        multi-image navigation, unavailable/expired assets, failures, and
+        audio/video non-regression.
+      truncated: false
+  - id: A59
+    source: specs/image-generation-reliability/spec.md
+    text: A broader backend test, vet, frontend typecheck/lint/test/build, and
+      independent read-only acceptance verification are required before
+      completion, subject to explicitly reported checkout/environment blockers.
+    result: passed
+    reason:
+      text: All nine Comet Runtime receipts use cwd_ref='.', status=passed, and
+        exit_code=0 for affected Go tests/vet, Vitest, typecheck, build, lint,
+        format, diff, and Alibaba no-diff.
+      truncated: false
+builder_handoff:
+  candidate_id: dd90fabd-e079-4de8-abbe-dd134b898776
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:7716b5fa-95ee-408c-afa1-0fa61d710b2c
+  iteration: 5
+  summary:
+    text: "Completed synchronous image task-history reliability repair across the
+      common relay and specialized Gemini, Jimeng, MiniMax, and Zhipu paths.
+      Zhipu now preserves every original provider result position in task
+      metadata: successfully captured results remain available in provider
+      order, while conversion failures, missing URLs, and empty base64 payloads
+      become URL-free unavailable/capture_failed slots without changing the
+      public OpenAI-compatible response. All affected backend, frontend,
+      formatting, whitespace, and Alibaba no-diff checks pass locally."
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+    - A44
+    - A45
+    - A46
+    - A47
+    - A48
+    - A49
+    - A50
+    - A51
+    - A52
+    - A53
+    - A54
+    - A55
+    - A56
+    - A57
+    - A58
+    - A59
+  checks:
+    - name:
+        text: Affected Go package tests
+        truncated: false
+      result: passed
+      note:
+        text: go test -count=1 passed for model, controller, relay, OpenAI, Alibaba,
+          Gemini, Jimeng, MiniMax, Zhipu, and service packages.
+        truncated: false
+    - name:
+        text: Affected Go package vet
+        truncated: false
+      result: passed
+      note:
+        text: go vet passed for the same affected package set.
+        truncated: false
+    - name:
+        text: Usage Logs focused Vitest suite
+        truncated: false
+      result: passed
+      note:
+        text: Four test files and seventeen tests passed, including ordered image result
+          slots and audio/video rendering boundaries.
+        truncated: false
+    - name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      result: passed
+      note:
+        text: The repository Bun typecheck command exited 0.
+        truncated: false
+    - name:
+        text: Frontend production build
+        truncated: false
+      result: passed
+      note:
+        text: The repository Bun production build completed successfully.
+        truncated: false
+    - name:
+        text: Affected Usage Logs oxlint check
+        truncated: false
+      result: passed
+      note:
+        text: Repository-pinned oxlint exited 0 with only the pre-existing
+          react(self-closing-comp) warning in column-helpers.tsx.
+        truncated: false
+    - name:
+        text: Affected frontend formatting check
+        truncated: false
+      result: passed
+      note:
+        text: Repository-pinned oxfmt --check passed for affected Usage Logs, changelog,
+          and locale files.
+        truncated: false
+    - name:
+        text: Git whitespace check against main
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check main exited 0.
+        truncated: false
+    - name:
+        text: Alibaba image adapter no-diff check
+        truncated: false
+      result: passed
+      note:
+        text: relay/channel/ali/image.go has no diff from main, preserving the
+          explicitly excluded Alibaba behavior.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: tasks.task_id is not database-unique. Stable request-derived IDs plus a
+        process-local mutex prevent duplicate materialization within one
+        process, but independently racing instances are not database-enforced.
+      truncated: false
+    - text: Multi-instance deployments require shared persistent DRAWING_IMAGE_PATH
+        storage; deployment is outside this local-only change.
+      truncated: false
+    - text: A root go test -count=1 ./... remains unavailable because the checkout
+        lacks the pre-existing generated web/canvas/dist directory; all affected
+        backend packages were tested explicitly.
+      truncated: false
+    - text: Git commit, push, merge, deployment, production access, and production
+        database changes have not been performed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-27T21:39:04.693Z
+blockers: []
+verification:
+  candidate_id: dd90fabd-e079-4de8-abbe-dd134b898776
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:8c3c11e5-d9c1-4fb5-97db-a9e2023f9478
+  iteration: 5
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: affected-go-tests
+      name:
+        text: Affected Go package tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./relay
+          truncated: false
+        - text: ./relay/channel/openai
+          truncated: false
+        - text: ./relay/channel/ali
+          truncated: false
+        - text: ./relay/channel/gemini
+          truncated: false
+        - text: ./relay/channel/jimeng
+          truncated: false
+        - text: ./relay/channel/minimax
+          truncated: false
+        - text: ./relay/channel/zhipu_4v
+          truncated: false
+        - text: ./service
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 23406
+    - id: affected-go-vet
+      name:
+        text: Affected Go package vet
+        truncated: false
+      argv_display:
+        - text: vet
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./relay
+          truncated: false
+        - text: ./relay/channel/openai
+          truncated: false
+        - text: ./relay/channel/ali
+          truncated: false
+        - text: ./relay/channel/gemini
+          truncated: false
+        - text: ./relay/channel/jimeng
+          truncated: false
+        - text: ./relay/channel/minimax
+          truncated: false
+        - text: ./relay/channel/zhipu_4v
+          truncated: false
+        - text: ./service
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1210
+    - id: usage-logs-vitest
+      name:
+        text: Usage Logs focused Vitest suite
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: --cwd
+          truncated: false
+        - text: web
+          truncated: false
+        - text: test
+          truncated: false
+        - text: --
+          truncated: false
+        - text: src/features/usage-logs
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 56425
+    - id: frontend-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: --cwd
+          truncated: false
+        - text: web
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 32547
+    - id: frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: --cwd
+          truncated: false
+        - text: web
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 36300
+    - id: affected-oxlint
+      name:
+        text: Affected Usage Logs oxlint check
+        truncated: false
+      argv_display:
+        - text: -c
+          truncated: false
+        - text: web/.oxlintrc.json
+          truncated: false
+        - text: web/src/features/usage-logs
+          truncated: false
+        - text: web/src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 6840
+    - id: affected-oxfmt
+      name:
+        text: Affected frontend formatting check
+        truncated: false
+      argv_display:
+        - text: --check
+          truncated: false
+        - text: --config
+          truncated: false
+        - text: web/.oxfmtrc.json
+          truncated: false
+        - text: web/src/features/usage-logs
+          truncated: false
+        - text: web/src/features/changelog/data.ts
+          truncated: false
+        - text: web/src/i18n/locales/en.json
+          truncated: false
+        - text: web/src/i18n/locales/fr.json
+          truncated: false
+        - text: web/src/i18n/locales/ja.json
+          truncated: false
+        - text: web/src/i18n/locales/ru.json
+          truncated: false
+        - text: web/src/i18n/locales/vi.json
+          truncated: false
+        - text: web/src/i18n/locales/zh-TW.json
+          truncated: false
+        - text: web/src/i18n/locales/zh.json
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1349
+    - id: git-diff-check-main
+      name:
+        text: Git whitespace check against main
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: main
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 110
+    - id: ali-image-no-diff
+      name:
+        text: Confirm Alibaba image adapter has no change from main
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --quiet
+          truncated: false
+        - text: main
+          truncated: false
+        - text: --
+          truncated: false
+        - text: relay/channel/ali/image.go
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 60
+  summary:
+    text: "Independent read-only verification passes A1-A59. The prior Zhipu defect
+      is fixed: task metadata preserves every original provider slot as ordered
+      available or URL-free unavailable/capture_failed results before response
+      delivery, while the public response keeps only successful base64 images
+      and exposes no provider URL or token."
+    truncated: false
+  risks:
+    - text: tasks.task_id has no database uniqueness constraint; deterministic IDs
+        plus a process-local mutex do not enforce cross-instance deduplication.
+      truncated: false
+    - text: Multi-instance production requires shared persistent DRAWING_IMAGE_PATH
+        storage.
+      truncated: false
+    - text: Root go test -count=1 ./... remains blocked by the pre-existing missing
+        web/canvas/dist artifact; affected-package tests and frontend build
+        passed.
+      truncated: false
+    - text: The independent verifier could not access fast-context and its ace-tool
+        fallback failed remotely, so it used targeted rg, complete reads, direct
+        diffs, and focused tests.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-27T21:54:17.992Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A2
+      - A4
+      - A6
+      - A7
+      - A9
+      - A10
+      - A13
+      - A15
+      - A17
+      - A19
+      - A20
+      - A21
+    summary:
+      text: The initial candidate requires implementation revision for deadline
+        propagation, strict temporary-URL handling, and regression coverage.
+      truncated: false
+    completed_at: 2026-08-27T15:53:01.842Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: "Verifier identified two remaining implementation gaps: task ID was
+        missing from timeout logs and capture keys were random across retries.
+        Both are now fixed, with capture-level stable key regression coverage;
+        focused tests and vet pass."
+      truncated: false
+    completed_at: 2026-08-27T16:12:27.790Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Added the remaining regression coverage for provider URL capture and image
+        endpoint variants, and added SOCKS-aware protected result transport.
+        Re-ran focused tests, vet, and diff checks successfully.
+      truncated: false
+    completed_at: 2026-08-27T16:18:58.202Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-27T16:22:58.603Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 2
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: "User corrected the scope: gpt-image-2 uses the normal OpenAI-compatible
+        image API. The required behavior is to record successful synchronous
+        image-generation calls in the existing Task Logs experience and
+        retain/view the generated original image there; Alibaba-specific polling
+        is not the target."
+      truncated: false
+    completed_at: 2026-08-27T17:28:21.486Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A35
+      - A45
+      - A58
+      - A59
+    summary:
+      text: Independent read-only verification failed A35, A45, and A58 because the
+        frontend removes unavailable image-result slots and cannot preserve the
+        full ordered multi-image result. A59 is blocked by Runtime ENOENT
+        interruptions; all other acceptance items passed static and focused
+        evidence review.
+      truncated: false
+    completed_at: 2026-08-27T19:02:21.073Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-08-27T19:31:27.695Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 2
+    outcome: fail
+    unresolved_ids:
+      - A59
+    summary:
+      text: Independent read-only verification passes A1-A58. A59 fails only because
+        two historical cwdRef=workspace Runtime receipts remain failed in this
+        attempt; equivalent correctly rooted checks passed.
+      truncated: false
+    completed_at: 2026-08-27T20:06:02.132Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+      - A6
+      - A7
+      - A9
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A18
+      - A19
+      - A20
+      - A22
+      - A29
+      - A30
+      - A35
+      - A38
+      - A43
+      - A45
+      - A49
+      - A50
+    summary:
+      text: "Independent verification fails because provider-independent capture is
+        incomplete: Jimeng, MiniMax, and Zhipu specialized synchronous image
+        handlers return successful image results without using the capture
+        service, leaving Task Logs without originals, thumbnails, ordered result
+        metadata, or interruption recovery for those channels."
+      truncated: false
+    completed_at: 2026-08-27T20:36:39.963Z
+  - goal_cycle: 2
+    iteration: 4
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+      - A6
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A19
+      - A22
+      - A29
+      - A30
+      - A35
+      - A43
+      - A45
+      - A59
+    summary:
+      text: Independent verification fails because Zhipu removes a received provider
+        URL slot when protected conversion fails. The public response may retain
+        its prior skip behavior, but task metadata must preserve that position
+        as URL-free unavailable/capture_failed. Runtime evidence must also be
+        delivered directly to the next verifier.
+      truncated: false
+    completed_at: 2026-08-27T21:29:31.785Z
+  - goal_cycle: 2
+    iteration: 5
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Independent read-only verification passes A1-A59. The prior Zhipu defect
+        is fixed: task metadata preserves every original provider slot as
+        ordered available or URL-free unavailable/capture_failed results before
+        response delivery, while the public response keeps only successful
+        base64 images and exposes no provider URL or token."
+      truncated: false
+    completed_at: 2026-08-27T21:54:17.992Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-27T14:45:12.742Z

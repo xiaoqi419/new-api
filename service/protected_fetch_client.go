@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,6 +58,22 @@ func currentFetchProtection() (*common.SSRFProtection, bool, error) {
 
 func newProtectedFetchHTTPClient() *http.Client {
 	return newProtectedFetchHTTPClientWithDialer(nil, nil, nil)
+}
+
+// GetSSRFProtectedHTTPClientWithProxy returns the SSRF-protected fetch client
+// with an explicitly configured outbound proxy. It is intended for provider
+// result URLs that must use a channel's egress path without losing dial-time
+// private-network validation.
+func GetSSRFProtectedHTTPClientWithProxy(rawProxyURL string) (*http.Client, error) {
+	trimmed := strings.TrimSpace(rawProxyURL)
+	if trimmed == "" {
+		return GetSSRFProtectedHTTPClient(), nil
+	}
+	parsed, _, err := common.ParseProxyURLRuntime(trimmed)
+	if err != nil {
+		return nil, err
+	}
+	return newProtectedFetchHTTPClientWithProxy(nil, nil, nil, http.ProxyURL(parsed)), nil
 }
 
 func newProtectedFetchHTTPClientWithDialer(resolver ssrfResolver, dialContext func(ctx context.Context, network, address string) (net.Conn, error), getProtection func() (*common.SSRFProtection, bool, error)) *http.Client {
@@ -160,6 +177,13 @@ func (t *ssrfProtectedRoundTripper) newTransport(proxyURL *url.URL) *http.Transp
 		ForceAttemptHTTP2:   true,
 		Proxy:               proxyFunc,
 		DialContext:         dialContext,
+	}
+	if proxyURL != nil && (proxyURL.Scheme == "socks5" || proxyURL.Scheme == "socks5h") {
+		// Reuse the relay's context-aware SOCKS dialer. The round tripper has
+		// already applied SSRF URL validation before this transport is reached.
+		if err := configureProxyTransport(transport, proxyURL); err != nil {
+			common.SysError("configure protected fetch SOCKS proxy: " + err.Error())
+		}
 	}
 	if common.TLSInsecureSkipVerify {
 		transport.TLSClientConfig = common.InsecureTLSConfig

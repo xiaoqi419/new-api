@@ -98,7 +98,8 @@ const (
 	// Drawing log (image gallery) capture. Set on the image relay path so the
 	// consume-log writer can materialize a drawing_logs row and attach the
 	// stored thumbnail keys / prompt without coupling service to relay/constant.
-	ContextKeyDrawingLogMode    ContextKey = "drawing_log_mode"
-	ContextKeyDrawingResultKeys ContextKey = "drawing_result_keys"
-	ContextKeyDrawingPrompt     ContextKey = "drawing_prompt"
+	ContextKeyDrawingLogMode     ContextKey = "drawing_log_mode"
+	ContextKeyDrawingResultKeys  ContextKey = "drawing_result_keys"
+	ContextKeyDrawingTaskResults ContextKey = "drawing_task_results"
+	ContextKeyDrawingPrompt      ContextKey = "drawing_prompt"
 )

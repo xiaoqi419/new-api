@@ -51,9 +51,14 @@ func OpenaiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 
 	updateOpenAIImageCount(info, gjson.GetBytes(responseBody, "data.#").Int())
 
-	// 写入新的 response body
+	// Archive the received result before writing the response. Capture is
+	// best-effort and never rewrites or invalidates a successful upstream body.
+	if info != nil && info.ChannelMeta != nil {
+		service.CaptureImageResultsWithProxy(c, responseBody, info.ChannelSetting.Proxy)
+	} else {
+		service.CaptureImageResults(c, responseBody)
+	}
 	service.IOCopyBytesGracefully(c, resp, responseBody)
-	service.CaptureImageResults(c, responseBody)
 
 	normalizeOpenAIUsage(&usageResp.Usage)
 	applyUsagePostProcessing(info, &usageResp.Usage, responseBody)
@@ -276,7 +281,11 @@ func openaiImageJSONAsStreamHandler(c *gin.Context, info *relaycommon.RelayInfo,
 
 	imageCount := gjson.GetBytes(responseBody, "data.#").Int()
 	updateOpenAIImageCount(info, imageCount)
-	service.CaptureImageResults(c, responseBody)
+	if info != nil && info.ChannelMeta != nil {
+		service.CaptureImageResultsWithProxy(c, responseBody, info.ChannelSetting.Proxy)
+	} else {
+		service.CaptureImageResults(c, responseBody)
+	}
 
 	helper.SetEventStreamHeaders(c)
 	c.Status(http.StatusOK)

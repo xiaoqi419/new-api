@@ -184,6 +184,10 @@ export const MJ_SUBMIT_RESULT_CODES = {
  * Must match backend constants in constant/task.go
  */
 export const TASK_ACTIONS = {
+  // Synchronous image generation
+  IMAGES_GENERATION: 'images_generation',
+  IMAGES_EDIT: 'images_edit',
+
   // Suno (uppercase)
   MUSIC: 'MUSIC', // 生成音乐
   LYRICS: 'LYRICS', // 生成歌词
@@ -226,6 +230,7 @@ export const ACTIVE_TASK_STATUSES: readonly string[] = [
  * Task platforms
  */
 export const TASK_PLATFORMS = {
+  IMAGE: 'image',
   SUNO: 'suno',
   KLING: 'kling',
   RUNWAY: 'runway',
@@ -306,6 +311,11 @@ export const MJ_SUBMIT_RESULT_MAPPINGS: Record<string, StatusMapping> = {
  * Task action type mappings
  */
 export const TASK_ACTION_MAPPINGS: Record<string, StatusMapping> = {
+  [TASK_ACTIONS.IMAGES_GENERATION]: {
+    label: 'Image Generation',
+    variant: 'violet',
+  },
+  [TASK_ACTIONS.IMAGES_EDIT]: { label: 'Image Edit', variant: 'cyan' },
   [TASK_ACTIONS.MUSIC]: { label: 'Generate Music', variant: 'neutral' },
   [TASK_ACTIONS.LYRICS]: { label: 'Generate Lyrics', variant: 'pink' },
   [TASK_ACTIONS.GENERATE]: { label: 'Image to Video', variant: 'blue' },
@@ -341,6 +351,7 @@ export const TASK_STATUS_MAPPINGS: Record<string, StatusMapping> = {
  * Task platform mappings
  */
 export const TASK_PLATFORM_MAPPINGS: Record<string, StatusMapping> = {
+  [TASK_PLATFORMS.IMAGE]: { label: 'Image', variant: 'violet' },
   [TASK_PLATFORMS.SUNO]: { label: 'suno', variant: 'green' },
   [TASK_PLATFORMS.KLING]: { label: 'kling', variant: 'blue' },
   [TASK_PLATFORMS.RUNWAY]: { label: 'runway', variant: 'violet' },

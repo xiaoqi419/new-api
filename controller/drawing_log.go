@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
@@ -61,11 +62,24 @@ func GetUserDrawingLogs(c *gin.Context) {
 // capability.
 func ServeDrawingImage(c *gin.Context) {
 	key := c.Param("key")
-	path, ok := service.DrawingImageFilePath(key)
+	var path string
+	var ok bool
+	if c.Query("variant") == "original" {
+		path, ok = service.DrawingImageOriginalFilePath(key)
+	} else {
+		path, ok = service.DrawingImageFilePath(key)
+	}
 	if !ok {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Header("Cache-Control", "public, max-age=86400")
+	if file, err := os.Open(path); err == nil {
+		var header [512]byte
+		if n, readErr := file.Read(header[:]); readErr == nil || n > 0 {
+			c.Header("Content-Type", http.DetectContentType(header[:n]))
+		}
+		_ = file.Close()
+	}
 	c.File(path)
 }

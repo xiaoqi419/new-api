@@ -28,7 +28,12 @@ import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { formatTimestampToDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-import { TASK_ACTIONS, TASK_STATUS } from '../../constants'
+import { TASK_STATUS } from '../../constants'
+import {
+  getTaskImageResults,
+  isImageTask,
+  isVideoTask,
+} from '../../lib/task-media'
 import type { TaskLog } from '../../types'
 import {
   AudioPreviewDialog,
@@ -36,6 +41,7 @@ import {
 } from '../dialogs/audio-preview-dialog'
 import { FailReasonDialog } from '../dialogs/fail-reason-dialog'
 import { VideoPreviewDialog } from '../dialogs/video-preview-dialog'
+import { TaskImagePreview } from '../task-image-preview'
 import { useUsageLogsContext } from '../usage-logs-provider'
 import {
   ChannelTag,
@@ -269,6 +275,10 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
         const status = log.status
         const [dialogOpen, setDialogOpen] = useState(false)
 
+        if (status === TASK_STATUS.SUCCESS && isImageTask(log)) {
+          return <TaskImagePreview images={getTaskImageResults(log)} />
+        }
+
         const isSunoSuccess =
           log.platform === 'suno' && status === TASK_STATUS.SUCCESS
         if (isSunoSuccess) {
@@ -285,15 +295,9 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
           }
         }
 
-        const isVideoTask =
-          log.action === TASK_ACTIONS.GENERATE ||
-          log.action === TASK_ACTIONS.TEXT_GENERATE ||
-          log.action === TASK_ACTIONS.FIRST_TAIL_GENERATE ||
-          log.action === TASK_ACTIONS.REFERENCE_GENERATE ||
-          log.action === TASK_ACTIONS.REMIX_GENERATE
         const isSuccess = status === TASK_STATUS.SUCCESS
 
-        if (isSuccess && isVideoTask) {
+        if (isSuccess && isVideoTask(log)) {
           return <VideoPreviewCell log={log} />
         }
 
