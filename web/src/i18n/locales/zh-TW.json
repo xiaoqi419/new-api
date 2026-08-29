@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "請求移至其他候選群組前，目前群組內允許的可重試失敗次數（1-10）。",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "單一群組內允許的可重試失敗次數，超過後請求會轉至另一個候選群組（1-5）。",
     "Retryable upstream failures allowed in a group before escalating to the next.": "在升級到下一個分組前，單個分組內允許的可重試上游失敗次數。",
+    "Return": "返回",
     "Return a custom error immediately": "立即返回自訂錯誤",
     "Return Custom Error": "返回自訂錯誤",
     "Return data conforming to a JSON schema": "返回符合 JSON Schema 的數據",

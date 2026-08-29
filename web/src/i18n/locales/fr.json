@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "Échecs réessayables autorisés dans un groupe avant que la requête passe à un autre candidat (1-10).",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "Nombre d'échecs réessayables autorisés dans un groupe avant le passage à un autre candidat (1-5).",
     "Retryable upstream failures allowed in a group before escalating to the next.": "Nombre d’échecs amont réessayables autorisés dans un groupe avant de passer au suivant.",
+    "Return": "Retour",
     "Return a custom error immediately": "Retourner immédiatement une erreur personnalisée",
     "Return Custom Error": "Retourner une erreur personnalisée",
     "Return data conforming to a JSON schema": "Renvoyer des données conformes à un schéma JSON",
