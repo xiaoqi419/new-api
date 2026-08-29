@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "Retryable failures allowed within a group before the request moves to another candidate (1-10).",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "Retryable failures allowed within a group before the request moves to another candidate (1-5).",
     "Retryable upstream failures allowed in a group before escalating to the next.": "Retryable upstream failures allowed in a group before escalating to the next.",
+    "Return": "Return",
     "Return a custom error immediately": "Return a custom error immediately",
     "Return Custom Error": "Return Custom Error",
     "Return data conforming to a JSON schema": "Return data conforming to a JSON schema",

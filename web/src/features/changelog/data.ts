@@ -29,6 +29,16 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260830-return-i18n',
+    date: '2026-08-30',
+    changes: [
+      {
+        kind: 'fix',
+        items: ['修复支付弹窗中文界面的返回按钮显示英文 Return 的问题。'],
+      },
+    ],
+  },
+  {
     version: '20260828-48930b90f',
     date: '2026-08-28',
     changes: [

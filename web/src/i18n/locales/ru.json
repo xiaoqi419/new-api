@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "Допустимые повторяемые сбои в группе до перехода запроса к другому кандидату (1-10).",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "Допустимое число повторяемых сбоев в одной группе до перехода к другому кандидату (1-5).",
     "Retryable upstream failures allowed in a group before escalating to the next.": "Число повторяемых сбоев вышестоящего сервиса, допустимых в группе до перехода к следующей.",
+    "Return": "Вернуться",
     "Return a custom error immediately": "Немедленно вернуть пользовательскую ошибку",
     "Return Custom Error": "Вернуть пользовательскую ошибку",
     "Return data conforming to a JSON schema": "Возвращать данные, соответствующие JSON-схеме",

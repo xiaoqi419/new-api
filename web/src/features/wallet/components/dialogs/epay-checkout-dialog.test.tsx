@@ -104,6 +104,9 @@ await i18n.use(initReactI18next).init({
     en: {
       translation: Object.fromEntries(translationKeys.map((key) => [key, key])),
     },
+    zh: {
+      translation: { Return: '返回' },
+    },
   },
 })
 
@@ -234,9 +237,10 @@ function bodyHas(text: string): boolean {
   return document.body.textContent?.includes(text) === true
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   activeIntervals.clear()
   now = 1_000_000
+  await i18n.changeLanguage('en')
   Date.now = () => now
   globalThis.setInterval = ((handler: unknown) => {
     const id = ++intervalId
@@ -288,6 +292,15 @@ afterAll(() => {
 })
 
 describe('EpayCheckoutDialog', () => {
+  test('translates the return action for Chinese users', async () => {
+    await i18n.changeLanguage('zh')
+    await renderDialog()
+    await settle()
+
+    assert.equal(bodyHas('返回'), true)
+    assert.equal(hasButton('Return'), false)
+  })
+
   test('renders QR checkout content and performs an immediate then 3-second status check', async () => {
     const calls: string[] = []
     await renderDialog({

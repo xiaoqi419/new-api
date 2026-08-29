@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "Số lỗi có thể thử lại được phép trong một nhóm trước khi yêu cầu chuyển sang ứng viên khác (1-10).",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "Số lỗi có thể thử lại được phép trong một nhóm trước khi chuyển sang ứng viên khác (1-5).",
     "Retryable upstream failures allowed in a group before escalating to the next.": "Số lần lỗi thượng nguồn có thể thử lại được phép trong một nhóm trước khi chuyển sang nhóm kế tiếp.",
+    "Return": "Quay lại",
     "Return a custom error immediately": "Trả về lỗi tùy chỉnh ngay lập tức",
     "Return Custom Error": "Trả lỗi tùy chỉnh",
     "Return data conforming to a JSON schema": "Trả về dữ liệu tuân theo JSON Schema",
