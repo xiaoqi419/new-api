@@ -1,0 +1,725 @@
+schema: comet.native.v4
+name: epusdt-international-compat
+language: zh-CN
+phase: archive
+status: done
+state_version: 26
+brief: brief.md
+spec_changes:
+  - capability: epusdt-international-compat
+    operation: create
+    source: specs/epusdt-international-compat/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/epusdt-compat-latest
+  target_branch: main
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 5
+  iteration: 1
+  attempt: 2
+  retry_epoch: 1
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 当 MAPI 返回成功响应时，仍按现有优先级解析 `qrcode`、`payurl` 或受允许的 `urlscheme`，不进入兼容回退。"
+    result: passed
+    reason:
+      text: MAPI success checkout precedence is preserved and tested.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 当 MAPI 返回 HTTP 404 时，返回绝对 HTTP/HTTPS `payurl`，路径为规范化支付基址下的
+      `/submit.php`，并包含由已有库生成的有效 MD5 签名字段。"
+    result: passed
+    reason:
+      text: Only HTTP 404 invokes the signed absolute submit.php fallback.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 回退请求完整保留 `type=usdt.tron`、`out_trade_no`、金额、逐单
+      `notify_url`、`return_url`、商品名和设备类型；商户密钥本身不进入浏览器响应或日志。"
+    result: passed
+    reason:
+      text: Fallback fields and per-order callback are preserved; merchant key is not
+        exposed.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: MAPI 的非 404 非 2xx、网络错误、超时、取消和无效响应仍失败，不静默降级到 `/submit.php`。"
+    result: passed
+    reason:
+      text: Non-404, transport, timeout, cancellation and invalid responses remain
+        errors without fallback.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 配置支付基址已有 query 或 fragment 时，生成的 MAPI 和 `/submit.php`
+      地址不携带这些未签名输入，只包含本单已签名的 EPay 参数。"
+    result: passed
+    reason:
+      text: MAPI and legacy URLs remove configured query and fragment input.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: `service` 和 `controller` 的相关 Go 测试通过，新增回归测试明确覆盖
+      `usdt.tron`、query/fragment 清理、404 回退和非 404 不回退。"
+    result: passed
+    reason:
+      text: Service/controller regression suites passed with compatibility coverage.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: 维护文档记录国际/国内站边界、EPUSDT 路由和逐单回调语义；changelog 使用实际发布镜像标签对应的版本标识。"
+    result: passed
+    reason:
+      text: Maintenance boundary documentation and changelog release tag are present.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: 候选通过精确提交的 Docker 构建与 CI 后才允许发布；部署前分别备份国内站和国际站 Compose、数据库及支付
+      Options，并为两站保留旧镜像回滚路径。"
+    result: passed
+    reason:
+      text: Exact-merge Docker image, successful CI, separate backups and rollback
+        images are evidenced.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: 'A9: 国际站最终暴露名为 `GMPay`、类型为 `usdt.tron`、图标为 `SiTether`、最小充值额为字符串 `"10"`
+      的支付方式。'
+    result: passed
+    reason:
+      text: International runtime exposes GMPay, usdt.tron, SiTether and min_topup
+        string 10.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: "A10: 发布后只创建不付款的测试订单，验证 `/submit.php`、收银台跳转和逐单
+      `https://codezip.io/api/user/epay/notify`；若缺少真实 TRON
+      收款地址，则在下单前或明确失败处停止并报告，不伪造地址。"
+    result: passed
+    reason:
+      text: Unpaid checkout reached submit.php and the EPUSDT cashier returned HTTP
+        200 without settlement.
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: "A11: 发布前后分别记录国内站和国际站应用容器 ID、启动时间、镜像、健康状态和关键 Options；两站都只更新应用服务且保持数据、Redis
+      与站点配置隔离。"
+    result: passed
+    reason:
+      text: Pre/post app and dependency records show only app services changed and
+        remain healthy.
+      truncated: false
+  - id: A12
+    source: brief.md
+    text: "A12: 站内支付弹窗的返回按钮通过 `t('Return')` 渲染；简体中文界面显示 `返回`，英文界面保持
+      `Return`，其它支持的语言包均提供对应翻译且不回退为英文。"
+    result: passed
+    reason:
+      text: Return uses independent i18n and Simplified Chinese displays 返回.
+      truncated: false
+  - id: A13
+    source: specs/epusdt-international-compat/spec.md
+    text: New API 的通用 EPay 钱包 checkout 优先调用配置支付基址对应的 `mapi.php`。当且仅当网关明确返回 HTTP
+      404，服务端必须兼容 EPUSDT v2.0.0 的 EPay `/submit.php` 路由，并将安全的绝对支付页 URL 返回给既有站内
+      checkout。
+    result: passed
+    reason:
+      text: Generic checkout uses MAPI first and submit.php only on explicit 404.
+      truncated: false
+  - id: A14
+    source: specs/epusdt-international-compat/spec.md
+    text: 该代码能力保持通用。本次用户确认将同一合并提交构建的应用镜像分别热更新到国际站 `codezip.io` 和国内站
+      `aierxin.cc`；两站仍使用各自的数据库、Redis、站点配置、支付配置和用户数据，不跨站复制或改配。EPUSDT
+      支付兼容配置仍只属于国际站。
+    result: passed
+    reason:
+      text: Same image is deployed to both sites while database, Redis, config and
+        users remain isolated.
+      truncated: false
+  - id: A15
+    source: specs/epusdt-international-compat/spec.md
+    text: MAPI 请求、签名、超时、响应体限制和成功响应解析保持现有行为。
+    result: passed
+    reason:
+      text: MAPI signing, timeout, response limit and parsing behavior remain intact.
+      truncated: false
+  - id: A16
+    source: specs/epusdt-international-compat/spec.md
+    text: MAPI HTTP 404 进入 `/submit.php` 兼容路径。
+    result: passed
+    reason:
+      text: HTTP 404 explicitly enters the legacy checkout path and live request
+        resolved there.
+      truncated: false
+  - id: A17
+    source: specs/epusdt-international-compat/spec.md
+    text: 任何其他非 2xx 状态、网络错误、上下文取消、超时、无效 JSON、业务拒绝或无 checkout 目标都继续按现有错误路径返回，不进入兼容回退。
+    result: passed
+    reason:
+      text: All other failures remain failures without silent fallback.
+      truncated: false
+  - id: A18
+    source: specs/epusdt-international-compat/spec.md
+    text: MAPI 成功响应仍按现有顺序选择 `qrcode`、`payurl` 或支付方式允许的 `urlscheme`。
+    result: passed
+    reason:
+      text: Checkout target precedence and URL allowlists remain intact.
+      truncated: false
+  - id: A19
+    source: specs/epusdt-international-compat/spec.md
+    text: 兼容路径复用 `github.com/Calcium-Ion/go-epay v0.0.4`。生成的 checkout 至少包含：
+    result: passed
+    reason:
+      text: go-epay v0.0.4 is reused for required EPay fields and MD5 signing.
+      truncated: false
+  - id: A20
+    source: specs/epusdt-international-compat/spec.md
+    text: "`type`、订单号、金额、逐单回调、浏览器返回地址、商品名和设备类型必须从当前 `EpayMAPIRequest`
+      原样传递。国际站使用的选择器为 `usdt.tron`。"
+    result: passed
+    reason:
+      text: Current request fields and usdt.tron selector are preserved and observed
+        live.
+      truncated: false
+  - id: A21
+    source: specs/epusdt-international-compat/spec.md
+    text: 支付基址在生成 MAPI 或兼容 URL 前必须移除 `RawQuery`、`ForceQuery`、`Fragment` 和
+      `RawFragment`。兼容 URL 最终只能包含本单参与签名的 EPay 参数，不能混入配置基址原有但未参与签名的 query。
+    result: passed
+    reason:
+      text: Endpoint normalization removes query and fragment before generating signed
+        parameters.
+      truncated: false
+  - id: A22
+    source: specs/epusdt-international-compat/spec.md
+    text: 返回值使用：
+    result: passed
+    reason:
+      text: Existing EpayCheckout JSON contract is returned.
+      truncated: false
+  - id: A23
+    source: specs/epusdt-international-compat/spec.md
+    text: "`checkout_value` 必须是带主机名的绝对 HTTP 或 HTTPS URL。商户密钥不得出现在响应或日志。EPay
+      兼容协议要求的单笔订单 `sign` 可以出现在支付 URL 中；它必须由现有库基于当前订单参数生成。"
+    result: passed
+    reason:
+      text: Checkout URLs require absolute HTTP(S) hosts and merchant secrets stay
+        private.
+      truncated: false
+  - id: A24
+    source: specs/epusdt-international-compat/spec.md
+    text: 国际站每笔钱包充值订单使用：
+    result: passed
+    reason:
+      text: Live international order contains https://codezip.io/api/user/epay/notify.
+      truncated: false
+  - id: A25
+    source: specs/epusdt-international-compat/spec.md
+    text: 作为订单级 `notify_url`。EPUSDT API Key 页面中的 key 级 `notify_url` 不作为默认值，也不替代逐单回调。
+    result: passed
+    reason:
+      text: Per-order notify_url is used instead of the API-key-level default.
+      truncated: false
+  - id: A26
+    source: specs/epusdt-international-compat/spec.md
+    text: MAPI 成功、`/submit.php` URL 生成成功、收银台打开、return URL 返回和状态轮询都不能直接结算。只有现有 EPay
+      异步通知通过 MD5 验签、订单归属、provider、支付方式、金额和 pending 状态检查后才能入账。
+    result: passed
+    reason:
+      text: Checkout, return and polling do not settle; existing signed callback
+        guards remain required.
+      truncated: false
+  - id: A27
+    source: specs/epusdt-international-compat/spec.md
+    text: 国际站支付基址保持：
+    result: passed
+    reason:
+      text: International PayAddress remains the configured EPUSDT create-transaction
+        base.
+      truncated: false
+  - id: A28
+    source: specs/epusdt-international-compat/spec.md
+    text: 配置值不追加 `/submit.php`；客户端库负责拼接该路由。
+    result: passed
+    reason:
+      text: PayAddress omits submit.php and the client normalization adds it.
+      truncated: false
+  - id: A29
+    source: specs/epusdt-international-compat/spec.md
+    text: 国际站支付方式包含一个展示名为 `GMPay` 的条目：
+    result: passed
+    reason:
+      text: International payment method is exposed as GMPay.
+      truncated: false
+  - id: A30
+    source: specs/epusdt-international-compat/spec.md
+    text: "`name` 只用于展示，`type` 是发给 EPUSDT 并在回调中核对的协议标识。`min_topup` 按现有 `PayMethods`
+      契约保存为字符串。"
+    result: passed
+    reason:
+      text: Runtime distinguishes GMPay display name from usdt.tron protocol type and
+        string minimum.
+      truncated: false
+  - id: A31
+    source: specs/epusdt-international-compat/spec.md
+    text: 站内 `EpayCheckoutDialog` 的返回按钮必须使用独立的 `Return` 翻译键。所有支持的前端语言包都必须包含该键：简体中文值为
+      `返回`，英文值为
+      `Return`，繁体中文、法语、日语、俄语和越南语使用自然的对应译文。该修正只改变按钮显示文本，不改变支付跳转、状态轮询、回调或结算语义。
+    result: passed
+    reason:
+      text: All seven locales define the independent Return translation, with zh=返回.
+      truncated: false
+  - id: A32
+    source: specs/epusdt-international-compat/spec.md
+    text: 代码通过 Pull Request 合入 `main`，并等待所需 CI 成功。
+    result: passed
+    reason:
+      text: "PR #13 is merged into main at 342afa485 and required CI succeeded."
+      truncated: false
+  - id: A33
+    source: specs/epusdt-international-compat/spec.md
+    text: 镜像从最终合并提交构建并使用可追溯、不可变标签；changelog 版本与发布标签一致。
+    result: passed
+    reason:
+      text: Immutable image tag is labeled with the exact merge revision and matches
+        changelog.
+      truncated: false
+  - id: A34
+    source: specs/epusdt-international-compat/spec.md
+    text: 发布前分别备份国内站和 `/opt/new-api-international` 的 Compose、数据库及支付 Options。
+    result: passed
+    reason:
+      text: Both site Compose, runtime/database and payment Options backups are
+        recorded on the server.
+      truncated: false
+  - id: A35
+    source: specs/epusdt-international-compat/spec.md
+    text: 分别热更新两站应用服务，保留两站旧镜像作为各自回滚目标；不得重建或修改对方的数据库、Redis 或站点配置。
+    result: passed
+    reason:
+      text: Only domestic and international app services were hot-updated; old images
+        remain for rollback.
+      truncated: false
+  - id: A36
+    source: specs/epusdt-international-compat/spec.md
+    text: 发布前后分别记录两站应用容器 ID、启动时间、镜像、健康状态和关键 Options，证明两站使用相同代码镜像但数据与配置边界未串用。
+    result: passed
+    reason:
+      text: Pre/post IDs, start times, images, health and options hashes prove
+        isolation.
+      truncated: false
+  - id: A37
+    source: specs/epusdt-international-compat/spec.md
+    text: 线上验收只允许创建不付款的测试订单，确认请求落到 `/submit.php`、能够进入 EPUSDT 收银台，并且订单级回调地址为
+      `https://codezip.io/api/user/epay/notify`。
+    result: passed
+    reason:
+      text: Unpaid international order used submit.php, cashier HTTP 200 and the
+        required callback URL.
+      truncated: false
+  - id: A38
+    source: specs/epusdt-international-compat/spec.md
+    text: EPUSDT 必须存在用户提供的真实 TRON USDT
+      收款地址才能完成正常收款订单创建。地址缺失时应停止并报告，不生成地址、不代填地址，也不伪造支付成功、异步通知或到账证据。
+    result: passed
+    reason:
+      text: EPUSDT has one enabled TRON wallet row; test order remains pending and
+        unpaid.
+      truncated: false
+  - id: A39
+    source: specs/epusdt-international-compat/spec.md
+    text: Go 回归测试覆盖 MAPI 成功、MAPI 404 回退、`usdt.tron` 参数、有效签名、query/fragment 清理、非 404
+      不回退、非法 URL 和上下文取消。
+    result: passed
+    reason:
+      text: Regression coverage includes success, 404, signing, usdt.tron,
+        normalization and failure paths.
+      truncated: false
+  - id: A40
+    source: specs/epusdt-international-compat/spec.md
+    text: "`service` 与 `controller` 测试、差异检查和正式 Docker 镜像构建必须通过。"
+    result: passed
+    reason:
+      text: Go tests, frontend checks, diff check, Docker build and CI all passed.
+      truncated: false
+  - id: A41
+    source: specs/epusdt-international-compat/spec.md
+    text: 独立只读 Verifier 逐项核对正式验收清单。
+    result: passed
+    reason:
+      text: This is an independent read-only verification of every acceptance item.
+      truncated: false
+  - id: A42
+    source: specs/epusdt-international-compat/spec.md
+    text: 服务器验收记录国内站和国际站发布前后状态，确认两站应用均更新成功且数据库、Redis、支付配置与用户数据仍各自独立。
+    result: passed
+    reason:
+      text: Both public status endpoints return HTTP 200 and server evidence confirms
+        isolation.
+      truncated: false
+  - id: A43
+    source: specs/epusdt-international-compat/spec.md
+    text: 前端聚焦测试必须验证中文 `EpayCheckoutDialog` 的返回按钮显示 `返回`，且英文键值和其它语言包存在；i18n
+      同步与可用的前端类型/构建检查必须通过。
+    result: passed
+    reason:
+      text: Focused Return regression, locale validation, i18n sync, TypeScript and
+        frontend CI passed.
+      truncated: false
+builder_handoff:
+  candidate_id: adbff535-d137-462a-9540-8f3745bb5dc3
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:4389d5b9-6066-44d0-a8ca-5c6448e8ab32
+  iteration: 1
+  summary:
+    text: 已完成 Return
+      中文国际化修复，并将本次发布范围按用户最新确认扩展为国内站与国际站分别热更新。两站使用同一合并提交构建的应用镜像，但保留各自数据库、Redis、站点配置、支付配置和用户数据隔离；EPUSDT/GMPay
+      配置仍只属于国际站。已核对正式 brief/spec 已记录双站备份、回滚和发布验收边界。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+  checks:
+    - name:
+        text: go test ./service ./controller -count=1
+        truncated: false
+      result: passed
+      note:
+        text: Service and controller regression suites passed.
+        truncated: false
+    - name:
+        text: EpayCheckoutDialog focused Vitest
+        truncated: false
+      result: passed
+      note:
+        text: 11 tests passed, including Chinese 返回 and no English Return fallback.
+        truncated: false
+    - name:
+        text: frontend TypeScript check
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b passed.
+        truncated: false
+    - name:
+        text: i18n synchronization
+        truncated: false
+      result: passed
+      note:
+        text: node scripts/sync-i18n.mjs completed successfully.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+    - name:
+        text: final immutable Docker image
+        truncated: false
+      result: not-run
+      note:
+        text: Must be built after the final merge commit so the explicit release tag and
+          source commit are recorded.
+        truncated: false
+    - name:
+        text: two-site production backup and hot update
+        truncated: false
+      result: not-run
+      note:
+        text: Will run only after merge and final image verification; domestic and
+          international service targets will be checked separately.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: The final immutable image tag and merged commit do not exist until Archive
+        performs the requested merge and the release build runs.
+      truncated: false
+    - text: No real payment, fabricated callback, settlement, or wallet-address
+        substitution will be performed; online checkout verification remains
+        unpaid only.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-29T16:50:30.665Z
+blockers: []
+verification:
+  candidate_id: adbff535-d137-462a-9540-8f3745bb5dc3
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:c9d232f9-9268-447b-8d80-f850b4027914
+  iteration: 1
+  attempt: 2
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: go-service-controller
+      name:
+        text: Go service and controller regression tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 5094
+    - id: epay-dialog-vitest
+      name:
+        text: EpayCheckoutDialog focused frontend test
+        truncated: false
+      argv_display:
+        - text: node_modules/vitest/vitest.mjs
+          truncated: false
+        - text: run
+          truncated: false
+        - text: src/features/wallet/components/dialogs/epay-checkout-dialog.test.tsx
+          truncated: false
+        - text: --config
+          truncated: false
+        - text: vitest.config.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4447
+    - id: frontend-typecheck
+      name:
+        text: Frontend TypeScript check
+        truncated: false
+      argv_display:
+        - text: node_modules/@typescript/native-preview/bin/tsgo
+          truncated: false
+        - text: -b
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2807
+    - id: i18n-sync
+      name:
+        text: Frontend i18n synchronization
+        truncated: false
+      argv_display:
+        - text: scripts/sync-i18n.mjs
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 164
+    - id: git-diff-check
+      name:
+        text: Git diff whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 93
+  summary:
+    text: Independent verification passes all acceptance items using source, CI,
+      immutable image, backup, two-site deployment, live configuration and
+      unpaid checkout evidence.
+    truncated: false
+  risks:
+    - text: One unpaid pending test order remains intentionally and must not be
+        manually settled.
+      truncated: false
+    - text: No real funds or callback settlement were exercised; provider post-payment
+        delivery remains outside this verification.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-29T17:52:33.219Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-28T08:53:07.300Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A35
+    summary:
+      text: Independent verification passes the implementation, configuration,
+        deployment, security, callback, and domestic-isolation criteria. The
+        only blocked acceptance is A35 because EPUSDT has zero TRON receiving
+        addresses and returns status_code 10003 no available wallet addresses
+        when the unpaid checkout URL is opened. The requested ZIP API site name
+        remains unchanged by explicit confirmation.
+      truncated: false
+    completed_at: 2026-08-29T03:34:42.128Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: The user clarified this is our New API payment modal and requires the
+        Chinese Return action to display 返回. This changes the user-visible
+        acceptance scope.
+      truncated: false
+    completed_at: 2026-08-29T15:57:54.470Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A7
+      - A10
+      - A37
+      - A38
+    summary:
+      text: The New API payment modal now translates its independent Return key
+        correctly in all supported locales; 简体中文 displays 返回 and the focused
+        regression test passes. The candidate is blocked only by the existing
+        online wallet-address acceptance prerequisite and the lack of a new
+        immutable release image for this untranslated-only changelog entry.
+      truncated: false
+    completed_at: 2026-08-29T16:19:20.231Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户明确授权：提交当前 Return 中文国际化修复，合并到
+        main，并在完成两站备份、构建、回滚准备和验收后热更新国内站与国际站。最新范围要求覆盖国内站和国际站，取代原仅国际站发布边界；保留站点数据与配置隔离，不做真实支付或伪造回调。
+      truncated: false
+    completed_at: 2026-08-29T16:46:36.264Z
+  - goal_cycle: 4
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-08-29T16:50:08.299Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A14
+      - A24
+      - A27
+      - A29
+      - A30
+      - A32
+      - A33
+      - A34
+      - A35
+      - A36
+      - A37
+      - A38
+      - A40
+      - A42
+      - A43
+    summary:
+      text: Return i18n and EPay compatibility code pass local verification. The
+        candidate remains blocked only by release, live configuration and
+        two-site deployment evidence that the user has now authorized us to
+        perform.
+      truncated: false
+    completed_at: 2026-08-29T16:58:14.951Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 2
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent verification passes all acceptance items using source, CI,
+        immutable image, backup, two-site deployment, live configuration and
+        unpaid checkout evidence.
+      truncated: false
+    completed_at: 2026-08-29T17:52:33.219Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-28T08:05:23.844Z

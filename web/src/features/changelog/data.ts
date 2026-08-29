@@ -29,6 +29,28 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260830-return-i18n',
+    date: '2026-08-30',
+    changes: [
+      {
+        kind: 'fix',
+        items: ['修复支付弹窗中文界面的返回按钮显示英文 Return 的问题。'],
+      },
+    ],
+  },
+  {
+    version: '20260828-48930b90f',
+    date: '2026-08-28',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复易支付网关未提供 MAPI 接口时充值无法拉起的问题：当网关明确返回 404，系统会回退到标准 EPay /submit.php 收银台，并继续携带逐单回调地址。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260828-35de40fb2',
     date: '2026-08-28',
     changes: [

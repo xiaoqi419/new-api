@@ -4799,6 +4799,7 @@
     "Retryable failures allowed within a group before the request moves to another candidate (1-10).": "リクエストが別の候補へ移る前に、グループ内で許可される再試行可能な失敗数（1-10）。",
     "Retryable failures allowed within a group before the request moves to another candidate (1-5).": "別の候補グループに移るまで、1 つのグループ内で許容される再試行可能な失敗回数（1-5）。",
     "Retryable upstream failures allowed in a group before escalating to the next.": "次のグループに切り替える前に、1 つのグループ内で許容される再試行可能な上流の失敗回数です。",
+    "Return": "戻る",
     "Return a custom error immediately": "即座にカスタムエラーを返す",
     "Return Custom Error": "カスタムエラーを返す",
     "Return data conforming to a JSON schema": "JSON スキーマに準拠したデータを返却",
