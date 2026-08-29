@@ -3,7 +3,7 @@ name: epusdt-international-compat
 language: zh-CN
 phase: verify
 status: active
-state_version: 19
+state_version: 21
 brief: brief.md
 spec_changes:
   - capability: epusdt-international-compat
@@ -19,12 +19,32 @@ loop:
   goal_cycle: 5
   iteration: 1
   attempt: 1
-  retry_epoch: 0
+  retry_epoch: 1
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
-  previous_unresolved_ids: []
-  next_action: await-verifier-result
+  previous_unresolved_ids:
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A14
+    - A24
+    - A27
+    - A29
+    - A30
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A40
+    - A42
+    - A43
+  next_action: dispatch-new-verifier
 acceptance:
   - id: A1
     source: brief.md
@@ -457,6 +477,38 @@ history:
       text: Native confirmed acceptance criteria changed
       truncated: false
     completed_at: 2026-08-29T16:50:08.299Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A14
+      - A24
+      - A27
+      - A29
+      - A30
+      - A32
+      - A33
+      - A34
+      - A35
+      - A36
+      - A37
+      - A38
+      - A40
+      - A42
+      - A43
+    summary:
+      text: Return i18n and EPay compatibility code pass local verification. The
+        candidate remains blocked only by release, live configuration and
+        two-site deployment evidence that the user has now authorized us to
+        perform.
+      truncated: false
+    completed_at: 2026-08-29T16:58:14.951Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null
