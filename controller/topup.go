@@ -28,7 +28,7 @@ func GetTopUpInfo(c *gin.Context) {
 	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
 
 	// 获取支付方式
-	payMethods := operation_setting.PayMethods
+	payMethods := effectiveEpayPaymentMethods()
 	if !complianceConfirmed {
 		payMethods = []map[string]string{}
 	}
@@ -171,6 +171,25 @@ func GetTopUpInfo(c *gin.Context) {
 		"topup_link":              common.TopUpLink,
 	}
 	common.ApiSuccess(c, data)
+}
+
+func effectiveEpayPaymentMethods() []map[string]string {
+	methods := make([]map[string]string, 0, len(operation_setting.PayMethods))
+	for _, configured := range operation_setting.PayMethods {
+		paymentMethod := strings.TrimSpace(configured["type"])
+		if paymentMethod == "" {
+			continue
+		}
+		if operation_setting.IsGMPayNativePaymentGatewayMode() && paymentMethod != gmpayNativePaymentMethod {
+			continue
+		}
+		cloned := make(map[string]string, len(configured))
+		for key, value := range configured {
+			cloned[key] = value
+		}
+		methods = append(methods, cloned)
+	}
+	return methods
 }
 
 // defaultMaxTopupAmount 预设金额被清空时的兜底上限，取内置默认预设的最高档。
@@ -401,6 +420,10 @@ func RequestEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
 		return
 	}
+	if operation_setting.IsGMPayNativePaymentGatewayMode() {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前支付模式仅支持站内收银台"})
+		return
+	}
 	epayCfg := resolveEpayConfig(c)
 	if !epayCfg.Enabled || epayCfg.Client == nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前站点未配置支付信息"})
@@ -524,12 +547,13 @@ func RequestEpayCheckout(c *gin.Context) {
 		return
 	}
 	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice)
-	if payMoney < 0.01 || (req.PaymentMethod == gmpayNativePaymentMethod && payMoney <= 0.01) {
+	useGMPayNative := shouldUseGMPayNative(req.PaymentMethod)
+	if payMoney < 0.01 || (useGMPayNative && payMoney <= 0.01) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
 	var mapiClient *service.EpayMAPIClient
-	if req.PaymentMethod != gmpayNativePaymentMethod {
+	if !useGMPayNative {
 		mapiClient, err = service.NewEpayMAPIClient(epayCfg.Client, nil)
 		if err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI client 初始化失败 user_id=%d error=%q", userID, err.Error()))
@@ -546,12 +570,12 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 	var notifyURL *url.URL
 	if epayCfg.AgentId > 0 {
-		if req.PaymentMethod == gmpayNativePaymentMethod {
+		if useGMPayNative {
 			notifyURL, err = url.Parse(fmt.Sprintf("%s/api/agent/%d/gmpay/notify", tenantRequestBaseURL(c), epayCfg.AgentId))
 		} else {
 			notifyURL, err = url.Parse(fmt.Sprintf("%s/api/agent/%d/epay/notify", tenantRequestBaseURL(c), epayCfg.AgentId))
 		}
-	} else if req.PaymentMethod == gmpayNativePaymentMethod {
+	} else if useGMPayNative {
 		notifyURL, err = url.Parse(service.GetCallbackAddress() + "/api/user/gmpay/notify")
 	} else {
 		notifyURL, err = url.Parse(service.GetCallbackAddress() + "/api/user/epay/notify")
@@ -594,46 +618,12 @@ func RequestEpayCheckout(c *gin.Context) {
 		return
 	}
 
-	if req.PaymentMethod == gmpayNativePaymentMethod {
-		var clientErr error
-		if epayCfg.Client.Config == nil || epayCfg.Client.BaseUrl == nil {
-			clientErr = errors.New("gmpay merchant client is not configured")
-		} else {
-			gmpayClient, err := newGMPayNativeClient(epayCfg.Client.BaseUrl.String(), epayCfg.Client.Config.PartnerID, epayCfg.Client.Config.Key)
-			clientErr = err
-			if clientErr == nil && gmpayClient == nil {
-				clientErr = errors.New("gmpay client is not configured")
-			}
-			if clientErr == nil {
-				checkout, checkoutErr := gmpayClient.CreateOrder(c.Request.Context(), service.GMPayCreateOrderRequest{
-					OrderID:     tradeNo,
-					Amount:      strconv.FormatFloat(payMoney, 'f', 2, 64),
-					NotifyURL:   notifyURL,
-					RedirectURL: returnURL,
-					Name:        fmt.Sprintf("TUC%d", req.Amount),
-				})
-				if checkoutErr == nil {
-					data := gin.H{
-						"trade_no":         tradeNo,
-						"gateway_trade_no": checkout.GatewayTradeNo,
-						"checkout_type":    "crypto",
-						"payment_method":   req.PaymentMethod,
-						"money":            strconv.FormatFloat(payMoney, 'f', 2, 64),
-						"actual_amount":    checkout.ActualAmount,
-						"receive_address":  checkout.ReceiveAddress,
-						"token":            checkout.Token,
-						"network":          checkout.Network,
-						"expiration_time":  checkout.ExpirationTime,
-					}
-					if checkout.ServerTime > 0 {
-						data["server_time"] = checkout.ServerTime
-					}
-					logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%s payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, checkout.GatewayTradeNo, req.PaymentMethod, req.Amount, payMoney))
-					c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
-					return
-				}
-				clientErr = checkoutErr
-			}
+	if useGMPayNative {
+		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL)
+		if clientErr == nil {
+			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney))
+			c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
+			return
 		}
 		if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
 			!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
@@ -678,9 +668,14 @@ func RequestEpayCheckout(c *gin.Context) {
 // isEpayMAPIAllowedPaymentMethod accepts only configured Epay methods. The
 // official direct-payment types must stay on their dedicated checkout flows.
 func isEpayMAPIAllowedPaymentMethod(paymentMethod string) bool {
-	return paymentMethod != model.PaymentMethodAlipay &&
-		paymentMethod != model.PaymentMethodWechatPay &&
-		operation_setting.ContainsPayMethod(paymentMethod)
+	if paymentMethod == model.PaymentMethodAlipay || paymentMethod == model.PaymentMethodWechatPay ||
+		!operation_setting.ContainsPayMethod(paymentMethod) {
+		return false
+	}
+	if operation_setting.IsGMPayNativePaymentGatewayMode() {
+		return paymentMethod == gmpayNativePaymentMethod
+	}
+	return true
 }
 
 // AgentConsolePrepayEpay 代理预充值(经易支付)：owner 是平台用户(agent_id=0)，走平台全局易支付网关；
@@ -694,6 +689,10 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 	var req EpayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	if !isEpayMAPIAllowedPaymentMethod(req.PaymentMethod) {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
 		return
 	}
 	// 代理预充走平台全局易支付（owner 为平台账号 agent_id=0）
@@ -716,29 +715,16 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
-	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
-		return
-	}
 	callBackAddress := service.GetCallbackAddress()
 	returnUrl, _ := url.Parse(paymentReturnPath("/agent-console"))
-	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
+	useGMPayNative := shouldUseGMPayNative(req.PaymentMethod)
+	notifyPath := "/api/user/epay/notify"
+	if useGMPayNative {
+		notifyPath = "/api/user/gmpay/notify"
+	}
+	notifyUrl, _ := url.Parse(callBackAddress + notifyPath)
 	tradeNo := fmt.Sprintf("AGP%dNO%s%d", agentId, common.GetRandomString(6), time.Now().Unix())
 	client := epayCfg.Client
-	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           req.PaymentMethod,
-		ServiceTradeNo: tradeNo,
-		Name:           fmt.Sprintf("AGP%d", req.Amount),
-		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
-		Device:         epay.PC,
-		NotifyUrl:      notifyUrl,
-		ReturnUrl:      returnUrl,
-	})
-	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("代理预充 拉起支付失败 agent_id=%d trade_no=%s error=%q", agentId, tradeNo, err.Error()))
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
-		return
-	}
 	amount := req.Amount
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dAmount := decimal.NewFromInt(int64(amount))
@@ -766,8 +752,58 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return
 	}
+	if useGMPayNative {
+		data, checkoutErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("AGP%d", req.Amount), payMoney, notifyUrl, returnUrl)
+		if checkoutErr != nil {
+			if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
+				!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 代理预充回收失败订单失败 trade_no=%s error=%q", tradeNo, updateErr.Error()))
+			}
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 代理预充创建 checkout 失败 agent_id=%d trade_no=%s error=%q", agentId, tradeNo, checkoutErr.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+			return
+		}
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 代理预充订单创建成功 agent_id=%d trade_no=%s amount=%d money=%.2f", agentId, tradeNo, amount, payMoney))
+		c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
+		return
+	}
+	uri, params, err := client.Purchase(&epay.PurchaseArgs{
+		Type:           req.PaymentMethod,
+		ServiceTradeNo: tradeNo,
+		Name:           fmt.Sprintf("AGP%d", req.Amount),
+		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
+		Device:         epay.PC,
+		NotifyUrl:      notifyUrl,
+		ReturnUrl:      returnUrl,
+	})
+	if err != nil {
+		if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
+			!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("代理预充回收失败订单失败 trade_no=%s error=%q", tradeNo, updateErr.Error()))
+		}
+		logger.LogError(c.Request.Context(), fmt.Sprintf("代理预充 拉起支付失败 agent_id=%d trade_no=%s error=%q", agentId, tradeNo, err.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+		return
+	}
 	logger.LogInfo(c.Request.Context(), fmt.Sprintf("代理预充 订单创建成功 agent_id=%d trade_no=%s amount=%d money=%.2f", agentId, tradeNo, amount, payMoney))
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": params, "url": uri})
+}
+
+// AgentConsolePrepayStatus scopes polling to both the authenticated owner and
+// the agent wallet targeted by the prepayment order.
+func AgentConsolePrepayStatus(c *gin.Context) {
+	tradeNo := strings.TrimSpace(c.Query("trade_no"))
+	agentID := consoleAgentId(c)
+	if tradeNo == "" || agentID <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp == nil || topUp.UserId != c.GetInt("id") || topUp.AgentPrepayId != agentID {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": topUp.Status}})
 }
 
 // tradeNo lock
@@ -814,6 +850,10 @@ func UnlockOrder(tradeNo string) {
 
 // EpayNotify 平台主站易支付回调（全局凭据）。
 func EpayNotify(c *gin.Context) {
+	if !operation_setting.IsLegacyEpayPaymentGatewayMode() {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
 	if !isEpayWebhookEnabled() {
 		logger.LogWarn(c.Request.Context(), fmt.Sprintf("易支付 webhook 被拒绝 provider=%s status=webhook_disabled", model.PaymentProviderEpay))
 		_, _ = c.Writer.Write([]byte("fail"))

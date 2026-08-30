@@ -37,6 +37,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import type { PaymentGatewayMode } from '../types'
+
 const createPaymentMethodDialogSchema = (t: (key: string) => string) =>
   z.object({
     name: z.string().min(1, t('Payment method name is required')),
@@ -64,11 +66,13 @@ type PaymentMethodDialogProps = {
   onOpenChange: (open: boolean) => void
   onSave: (data: PaymentMethodData) => void
   editData?: PaymentMethodData | null
+  paymentGatewayMode: PaymentGatewayMode
 }
 
 const PAYMENT_TYPE_ICON_NAMES: Record<string, string> = {
   alipay: 'SiAlipay',
   stripe: 'SiStripe',
+  'usdt.tron': 'SiTether',
   waffo_pancake: 'LuCreditCard',
   wxpay: 'SiWechat',
 }
@@ -80,23 +84,37 @@ export function PaymentMethodDialog({
   onOpenChange,
   onSave,
   editData,
+  paymentGatewayMode,
 }: PaymentMethodDialogProps) {
   const { t } = useTranslation()
   const isEditMode = !!editData
   const paymentMethodDialogSchema = createPaymentMethodDialogSchema(t)
+  const epayPaymentTypeOptions =
+    paymentGatewayMode === 'gmpay_native'
+      ? [
+          {
+            iconName: 'SiTether',
+            label: `${t('GMPay USDT (TRON)')} (usdt.tron)`,
+            name: t('GMPay USDT (TRON)'),
+            value: 'usdt.tron',
+          },
+        ]
+      : [
+          {
+            iconName: 'SiAlipay',
+            label: `${t('Alipay')} (Epay: alipay)`,
+            name: t('Alipay'),
+            value: 'alipay',
+          },
+          {
+            iconName: 'SiWechat',
+            label: `${t('WeChat Pay')} (Epay: wxpay)`,
+            name: t('WeChat Pay'),
+            value: 'wxpay',
+          },
+        ]
   const paymentTypeOptions = [
-    {
-      iconName: 'SiAlipay',
-      label: `${t('Alipay')} (Epay: alipay)`,
-      name: t('Alipay'),
-      value: 'alipay',
-    },
-    {
-      iconName: 'SiWechat',
-      label: `${t('WeChat Pay')} (Epay: wxpay)`,
-      name: t('WeChat Pay'),
-      value: 'wxpay',
-    },
+    ...epayPaymentTypeOptions,
     {
       iconName: 'SiStripe',
       label: `${t('Stripe')} (stripe)`,
@@ -248,9 +266,13 @@ export function PaymentMethodDialog({
                   />
                 </FormControl>
                 <FormDescription className='leading-relaxed'>
-                  {t(
-                    'Used to decide the payment flow. Built-in keys include stripe for Stripe and waffo_pancake for Waffo Pancake; other values are sent to Epay as the type parameter.'
-                  )}
+                  {paymentGatewayMode === 'gmpay_native'
+                    ? t(
+                        'The effective Native mode accepts usdt.tron for GMPay. Stripe and Waffo Pancake remain independent.'
+                      )
+                    : t(
+                        'Used to decide the payment flow. Built-in keys include stripe for Stripe and waffo_pancake for Waffo Pancake; other values are sent to Epay as the type parameter.'
+                      )}
                 </FormDescription>
                 <FormMessage />
               </FormItem>

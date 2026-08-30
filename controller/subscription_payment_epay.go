@@ -31,6 +31,9 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
+	if !requirePlatformNativePaymentUser(c) {
+		return
+	}
 
 	plan, err := model.GetSubscriptionPlanById(req.PlanId)
 	if err != nil {
@@ -41,12 +44,11 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		common.ApiErrorMsg(c, "套餐未启用")
 		return
 	}
-	if plan.PriceAmount < 0.01 {
+	if plan.PriceAmount < 0.01 || (operation_setting.IsGMPayNativePaymentGatewayMode() && plan.PriceAmount <= 0.01) {
 		common.ApiErrorMsg(c, "套餐金额过低")
 		return
 	}
-	if req.PaymentMethod == model.PaymentMethodAlipay || req.PaymentMethod == model.PaymentMethodWechatPay ||
-		!operation_setting.ContainsPayMethod(req.PaymentMethod) {
+	if !subscriptionEpayPaymentMethodAllowed(req.PaymentMethod) {
 		common.ApiErrorMsg(c, "支付方式不存在")
 		return
 	}
@@ -62,6 +64,10 @@ func SubscriptionRequestEpay(c *gin.Context) {
 			common.ApiErrorMsg(c, "已达到该套餐购买上限")
 			return
 		}
+	}
+	if operation_setting.IsGMPayNativePaymentGatewayMode() {
+		subscriptionRequestGMPay(c, req, plan, userId)
+		return
 	}
 
 	callBackAddress := service.GetCallbackAddress()
@@ -140,7 +146,7 @@ func GetSubscriptionEpayStatus(c *gin.Context) {
 		return
 	}
 	order := model.GetSubscriptionOrderByTradeNoAndUserId(tradeNo, c.GetInt("id"))
-	if order == nil || order.PaymentProvider != model.PaymentProviderEpay {
+	if order == nil || order.PaymentProvider != model.PaymentProviderEpay || !subscriptionOrderMatchesEffectiveGatewayMode(order) {
 		common.ApiErrorMsg(c, "订单不存在")
 		return
 	}
@@ -148,6 +154,10 @@ func GetSubscriptionEpayStatus(c *gin.Context) {
 }
 
 func SubscriptionEpayNotify(c *gin.Context) {
+	if !operation_setting.IsLegacyEpayPaymentGatewayMode() {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
 	var params map[string]string
 
 	if c.Request.Method == "POST" {

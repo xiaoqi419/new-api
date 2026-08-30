@@ -20,8 +20,20 @@ vi.mock('@/components/dialog', () => ({
 }))
 
 vi.mock('@/features/wallet/components/dialogs/epay-checkout-dialog', () => ({
-  EpayCheckoutDialog: (props: { checkout: { trade_no: string } | null }) => (
-    <div data-testid='epay-checkout'>{props.checkout?.trade_no}</div>
+  EpayCheckoutDialog: (props: {
+    checkout: {
+      trade_no: string
+      checkout_type: string
+      receive_address?: string
+    } | null
+  }) => (
+    <div
+      data-testid='epay-checkout'
+      data-checkout-type={props.checkout?.checkout_type}
+      data-receive-address={props.checkout?.receive_address}
+    >
+      {props.checkout?.trade_no}
+    </div>
   ),
 }))
 
@@ -63,6 +75,7 @@ const plan: PlanRecord = {
 
 describe('SubscriptionPurchaseDialog Epay production entry', () => {
   beforeEach(() => {
+    paySubscriptionEpay.mockClear()
     paySubscriptionEpay.mockResolvedValue({
       message: 'success',
       data: {
@@ -100,6 +113,54 @@ describe('SubscriptionPurchaseDialog Epay production entry', () => {
     })
     assert.deepEqual(paySubscriptionEpay.mock.calls[0], [
       { plan_id: 31, payment_method: 'epay_alipay' },
+    ])
+    assert.equal(open.mock.calls.length, 0)
+    assert.equal(window.location.href, initialLocation)
+    assert.equal(submit.mock.calls.length, 0)
+  })
+
+  test('native GMPay response enters the same on-site checkout without navigating to a hosted cashier', async () => {
+    paySubscriptionEpay.mockResolvedValueOnce({
+      message: 'success',
+      data: {
+        trade_no: 'SUB-GMPAY-1',
+        gateway_trade_no: 'GMPAY-GATEWAY-1',
+        checkout_type: 'crypto',
+        payment_method: 'usdt.tron',
+        money: '12.50',
+        actual_amount: '12.5123',
+        receive_address: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
+        token: 'USDT',
+        network: 'TRON',
+        expiration_time: 2_000_000_000,
+        server_time: 1_999_999_700,
+      },
+    })
+    const open = vi.spyOn(window, 'open')
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit')
+    const initialLocation = window.location.href
+
+    render(
+      <SubscriptionPurchaseDialog
+        open
+        onOpenChange={vi.fn()}
+        plan={plan}
+        enableOnlineTopUp
+        epayMethods={[{ type: 'usdt.tron', name: 'USDT (TRON)' }]}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Pay' }))
+
+    const checkout = await screen.findByTestId('epay-checkout')
+    assert.equal(checkout.textContent, 'SUB-GMPAY-1')
+    assert.equal(checkout.dataset.checkoutType, 'crypto')
+    assert.equal(
+      checkout.dataset.receiveAddress,
+      'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb'
+    )
+    assert.deepEqual(paySubscriptionEpay.mock.calls[0], [
+      { plan_id: 31, payment_method: 'usdt.tron' },
     ])
     assert.equal(open.mock.calls.length, 0)
     assert.equal(window.location.href, initialLocation)

@@ -64,7 +64,7 @@ func availableGroupBuyPaymentMethods(scene string) []groupBuyPaymentMethod {
 			Name: strings.TrimSpace(configured["name"]),
 			Type: strings.TrimSpace(configured["type"]),
 		}
-		if method.Name == "" || !isSupportedGroupBuyEpayMethod(method.Type) {
+		if method.Name == "" || !isGroupBuyEpayMethodAvailable(method.Type) {
 			continue
 		}
 		if _, exists := seen[method.Type]; exists {
@@ -117,6 +117,20 @@ func isConfiguredGroupBuyEpayMethod(paymentMethod string) bool {
 		}
 	}
 	return false
+}
+
+func isGroupBuyEpayMethodAvailable(paymentMethod string) bool {
+	if !isConfiguredGroupBuyEpayMethod(paymentMethod) {
+		return false
+	}
+	switch operation_setting.GetEffectivePaymentGatewayMode() {
+	case operation_setting.PaymentGatewayModeEpayLegacy:
+		return true
+	case operation_setting.PaymentGatewayModeGMPayNative:
+		return paymentMethod == gmpayNativePaymentMethod
+	default:
+		return false
+	}
 }
 
 // GetGroupBuyInfo 返回拼团功能开关与可用套餐（登录用户）。
@@ -176,7 +190,7 @@ func resolveGroupBuyProvider(paymentMethod, scene string) (string, error) {
 		}
 		return model.PaymentProviderAlipay, nil
 	default:
-		if !isConfiguredGroupBuyEpayMethod(paymentMethod) {
+		if !isGroupBuyEpayMethodAvailable(paymentMethod) {
 			return "", fmt.Errorf("支付方式不存在或不支持拼团支付")
 		}
 		if !isEpayTopUpEnabled() {
@@ -195,6 +209,9 @@ func CreateGroupBuy(c *gin.Context) {
 	var req groupBuyCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.PackageId <= 0 {
 		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	if !requirePlatformNativePaymentUser(c) {
 		return
 	}
 	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
@@ -248,6 +265,9 @@ func JoinGroupBuy(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
+	if !requirePlatformNativePaymentUser(c) {
+		return
+	}
 	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
 	req.Scene = normalizeGroupBuyScene(req.Scene)
 	provider, err := resolveGroupBuyProvider(req.PaymentMethod, req.Scene)
@@ -291,6 +311,23 @@ func CancelGroupBuyPayment(c *gin.Context) {
 		return
 	}
 	common.ApiSuccess(c, nil)
+}
+
+// GetGroupBuyPaymentStatus returns only the authenticated user's group-buy
+// payment order, keeping group-buy polling separate from ordinary wallet
+// top-ups even though both currently persist through TopUp.
+func GetGroupBuyPaymentStatus(c *gin.Context) {
+	tradeNo := strings.TrimSpace(c.Query("trade_no"))
+	if tradeNo == "" {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp == nil || topUp.UserId != c.GetInt("id") || topUp.GroupBuyId <= 0 {
+		common.ApiErrorMsg(c, "订单不存在")
+		return
+	}
+	common.ApiSuccess(c, gin.H{"status": topUp.Status})
 }
 
 func releaseGroupBuyPaymentReservation(c *gin.Context, userId int, tradeNo string) {
@@ -430,12 +467,26 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 		}
 		return data, nil
 	default:
-		data, err := groupBuyEpayMAPI(c, tradeNo, payMoney, paymentMethod)
+		data, err := groupBuyEpayCheckout(c, tradeNo, payMoney, paymentMethod)
 		if err != nil {
-			logger.LogError(ctx, fmt.Sprintf("拼团 易支付下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
+			logger.LogError(ctx, fmt.Sprintf("拼团 在线支付下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
 			return nil, fmt.Errorf("拉起支付失败")
 		}
 		return data, nil
+	}
+}
+
+func groupBuyEpayCheckout(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+	switch operation_setting.GetEffectivePaymentGatewayMode() {
+	case operation_setting.PaymentGatewayModeEpayLegacy:
+		return groupBuyEpayMAPI(c, tradeNo, payMoney, paymentMethod)
+	case operation_setting.PaymentGatewayModeGMPayNative:
+		if paymentMethod != gmpayNativePaymentMethod {
+			return nil, fmt.Errorf("支付方式不存在或不支持拼团支付")
+		}
+		return groupBuyGMPayNative(c, tradeNo, payMoney, paymentMethod)
+	default:
+		return nil, fmt.Errorf("支付网关模式不可用")
 	}
 }
 
@@ -522,6 +573,9 @@ func groupBuyAlipay(ctx context.Context, tradeNo string, payMoney float64) (gin.
 }
 
 func groupBuyEpayMAPI(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+	if !operation_setting.IsLegacyEpayPaymentGatewayMode() {
+		return nil, fmt.Errorf("Legacy EPay 当前不可用")
+	}
 	mapiClient, err := service.NewEpayMAPIClient(GetEpayClient(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("当前管理员未配置支付信息")
@@ -557,6 +611,31 @@ func groupBuyEpayMAPI(c *gin.Context, tradeNo string, payMoney float64, paymentM
 		"payment_method":   paymentMethod,
 		"money":            money,
 	}, nil
+}
+
+func groupBuyGMPayNative(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+	if !operation_setting.IsGMPayNativePaymentGatewayMode() || paymentMethod != gmpayNativePaymentMethod {
+		return nil, fmt.Errorf("GMPay Native 当前不可用")
+	}
+	callbackAddress := service.GetCallbackAddress()
+	returnURL, err := url.Parse(paymentReturnPath("/console/log?show_history=true"))
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	notifyURL, err := url.Parse(callbackAddress + "/api/user/gmpay/notify")
+	if err != nil {
+		return nil, fmt.Errorf("回调地址配置错误")
+	}
+	return createGMPayNativeCheckout(
+		c.Request.Context(),
+		epayConfigForAgent(0),
+		paymentMethod,
+		tradeNo,
+		groupBuyPayDesc,
+		payMoney,
+		notifyURL,
+		returnURL,
+	)
 }
 
 func maskUsername(name string) string {

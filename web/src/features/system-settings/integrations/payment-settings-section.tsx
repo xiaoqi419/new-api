@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
-import { Code2, Eye, ShieldAlert } from '@/components/icons'
+import { Code2, Eye, RefreshCw, ShieldAlert } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
 import {
@@ -56,11 +56,14 @@ import {
 } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
+import { useSystemOptions } from '../hooks/use-system-options'
 import { useUpdateOption } from '../hooks/use-update-option'
+import type { PaymentGatewayMode } from '../types'
 import { safeNumberFieldProps } from '../utils/numeric-field'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
+import { getPaymentGatewayModes } from './payment-gateway-mode'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
   formatJsonForEditor,
@@ -195,6 +198,115 @@ type PaymentComplianceDefaults = {
   confirmedBy: number
 }
 
+const PAYMENT_GATEWAY_MODE_LABEL_KEYS: Record<PaymentGatewayMode, string> = {
+  epay_legacy: 'Domestic / Legacy EPay',
+  gmpay_native: 'International / GMPay Native',
+}
+
+type PaymentGatewayModeControlProps = {
+  effectiveMode: PaymentGatewayMode
+  storedTargetMode: PaymentGatewayMode
+  draftTargetMode: PaymentGatewayMode
+  isSaving: boolean
+  onDraftTargetModeChange: (mode: PaymentGatewayMode) => void
+  onSave: () => void
+}
+
+export function PaymentGatewayModeControl(
+  props: PaymentGatewayModeControlProps
+) {
+  const { t } = useTranslation()
+  const restartPending = props.effectiveMode !== props.storedTargetMode
+  const hasUnsavedTarget = props.draftTargetMode !== props.storedTargetMode
+
+  return (
+    <div className='space-y-4 rounded-lg border p-4'>
+      <div>
+        <h3 className='font-medium'>{t('EPay-family gateway mode')}</h3>
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            'Choose the protocol used by EPay-family payments. This setting never changes language, currency, branding, pricing, groups, or ratios.'
+          )}
+        </p>
+      </div>
+
+      <dl className='grid gap-3 sm:grid-cols-2'>
+        <div className='bg-muted/40 rounded-md border px-3 py-2'>
+          <dt className='text-muted-foreground text-xs font-medium'>
+            {t('Current effective mode')}
+          </dt>
+          <dd
+            className='mt-1 text-sm font-semibold'
+            data-testid='effective-payment-gateway-mode'
+          >
+            {t(PAYMENT_GATEWAY_MODE_LABEL_KEYS[props.effectiveMode])}
+          </dd>
+        </div>
+        <div className='bg-muted/40 rounded-md border px-3 py-2'>
+          <dt className='text-muted-foreground text-xs font-medium'>
+            {t('Saved target mode')}
+          </dt>
+          <dd
+            className='mt-1 text-sm font-semibold'
+            data-testid='target-payment-gateway-mode'
+          >
+            {t(PAYMENT_GATEWAY_MODE_LABEL_KEYS[props.storedTargetMode])}
+          </dd>
+        </div>
+      </dl>
+
+      {restartPending ? (
+        <Alert>
+          <RefreshCw className='size-4' />
+          <AlertTitle>{t('Saved successfully; restart to apply')}</AlertTitle>
+          <AlertDescription>
+            {t(
+              'The saved target will become effective only after the application restarts.'
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {hasUnsavedTarget ? (
+        <Alert>
+          <AlertTitle>{t('Unsaved target change')}</AlertTitle>
+          <AlertDescription>
+            {t(
+              'Saving changes only the target mode. The running application keeps its current effective mode until restart.'
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className='grid gap-2 sm:grid-cols-2' role='group'>
+        {(
+          Object.keys(PAYMENT_GATEWAY_MODE_LABEL_KEYS) as PaymentGatewayMode[]
+        ).map((mode) => (
+          <Button
+            key={mode}
+            type='button'
+            variant={props.draftTargetMode === mode ? 'default' : 'outline'}
+            aria-pressed={props.draftTargetMode === mode}
+            onClick={() => props.onDraftTargetModeChange(mode)}
+          >
+            {t(PAYMENT_GATEWAY_MODE_LABEL_KEYS[mode])}
+          </Button>
+        ))}
+      </div>
+
+      <div className='flex justify-end'>
+        <Button
+          type='button'
+          onClick={props.onSave}
+          disabled={!hasUnsavedTarget || props.isSaving}
+        >
+          {t('Save target mode')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 type PaymentSettingsSectionProps = {
   defaultValues: PaymentBaseFormValues
   waffoDefaultValues: WaffoSettingsValues
@@ -224,6 +336,15 @@ export function PaymentSettingsSection({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const updateOption = useUpdateOption()
+  const systemOptions = useSystemOptions()
+  const paymentGatewayModes = React.useMemo(
+    () => getPaymentGatewayModes(systemOptions.data?.data),
+    [systemOptions.data?.data]
+  )
+  const [draftPaymentGatewayMode, setDraftPaymentGatewayMode] =
+    React.useState<PaymentGatewayMode>(paymentGatewayModes.targetMode)
+  const [paymentGatewayModeDirty, setPaymentGatewayModeDirty] =
+    React.useState(false)
   const initialFormValues = React.useMemo<PaymentFormValues>(
     () => ({
       ...defaultValues,
@@ -263,6 +384,12 @@ export function PaymentSettingsSection({
   React.useEffect(() => {
     setWaffoPayMethods(parseWaffoPayMethods(waffoDefaultValues.WaffoPayMethods))
   }, [waffoDefaultValues.WaffoPayMethods])
+
+  React.useEffect(() => {
+    if (!paymentGatewayModeDirty) {
+      setDraftPaymentGatewayMode(paymentGatewayModes.targetMode)
+    }
+  }, [paymentGatewayModeDirty, paymentGatewayModes.targetMode])
 
   React.useEffect(() => {
     const nextBinding = {
@@ -772,6 +899,16 @@ export function PaymentSettingsSection({
     }
   }
 
+  const savePaymentGatewayMode = async () => {
+    const result = await updateOption.mutateAsync({
+      key: 'PaymentGatewayMode',
+      value: draftPaymentGatewayMode,
+    })
+    if (result.success) {
+      setPaymentGatewayModeDirty(false)
+    }
+  }
+
   const currentFormValues = form.watch()
   const waffoValues: WaffoSettingsValues = {
     WaffoEnabled: currentFormValues.WaffoEnabled,
@@ -982,6 +1119,9 @@ export function PaymentSettingsSection({
                           <PaymentMethodsVisualEditor
                             value={field.value}
                             onChange={field.onChange}
+                            paymentGatewayMode={
+                              paymentGatewayModes.effectiveMode
+                            }
                           />
                         ) : (
                           <JsonCodeEditor
@@ -1136,6 +1276,20 @@ export function PaymentSettingsSection({
 
             <TabsContent value='epay' className={paymentTabContentClassName}>
               <div className='space-y-4'>
+                <PaymentGatewayModeControl
+                  effectiveMode={paymentGatewayModes.effectiveMode}
+                  storedTargetMode={paymentGatewayModes.targetMode}
+                  draftTargetMode={draftPaymentGatewayMode}
+                  isSaving={updateOption.isPending}
+                  onDraftTargetModeChange={(mode) => {
+                    setDraftPaymentGatewayMode(mode)
+                    setPaymentGatewayModeDirty(
+                      mode !== paymentGatewayModes.targetMode
+                    )
+                  }}
+                  onSave={() => void savePaymentGatewayMode()}
+                />
+
                 <div>
                   <h3 className='text-lg font-medium'>{t('Epay Gateway')}</h3>
                   <p className='text-muted-foreground text-sm'>

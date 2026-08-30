@@ -1,3 +1,4 @@
+import type { TradeStatusResponse } from '@/features/wallet/types'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -170,7 +171,7 @@ export async function getAgentPaymentConfigs(): Promise<
 export interface AgentPrepayResponse {
   message?: string
   success?: boolean
-  data?: Record<string, unknown>
+  data?: unknown
   url?: string
 }
 
@@ -182,6 +183,19 @@ export async function agentConsolePrepay(request: {
     skipBusinessError: true,
   } as Record<string, unknown>)
   return { ...res.data, url: res.data.url }
+}
+
+export async function getAgentPrepayStatus(
+  tradeNo: string
+): Promise<TradeStatusResponse> {
+  const res = await api.get(
+    `/api/agent-console/prepay/status?trade_no=${encodeURIComponent(tradeNo)}`,
+    { skipBusinessError: true, skipErrorHandler: true } as Record<
+      string,
+      unknown
+    >
+  )
+  return res.data
 }
 
 export async function updateAgentPayment(

@@ -22,8 +22,10 @@ func TestGMPayNativeCallbackRoutesAcceptOnlyPOST(t *testing.T) {
 	_, hasPlatformGET := routes[http.MethodGet+" /api/user/gmpay/notify"]
 	_, hasAgentPOST := routes[http.MethodPost+" /api/agent/:id/gmpay/notify"]
 	_, hasAgentGET := routes[http.MethodGet+" /api/agent/:id/gmpay/notify"]
+	_, hasAgentPrepayStatus := routes[http.MethodGet+" /api/agent-console/prepay/status"]
 	assert.True(t, hasPlatformPOST)
 	assert.False(t, hasPlatformGET)
 	assert.True(t, hasAgentPOST)
 	assert.False(t, hasAgentGET)
+	assert.True(t, hasAgentPrepayStatus)
 }

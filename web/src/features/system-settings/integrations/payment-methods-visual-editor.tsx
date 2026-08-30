@@ -31,82 +31,35 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 
+import type { PaymentGatewayMode } from '../types'
 import { safeJsonParseWithValidation } from '../utils/json-parser'
 import { isArray } from '../utils/json-validators'
 import {
   PaymentMethodDialog,
   type PaymentMethodData,
 } from './payment-method-dialog'
+import {
+  getDefaultPaymentMethodIconName,
+  getPaymentMethodTemplates,
+} from './payment-method-templates'
 
 type PaymentMethodsVisualEditorProps = {
   value: string
   onChange: (value: string) => void
-}
-
-const PAYMENT_TYPE_ICON_NAMES: Record<string, string> = {
-  alipay: 'SiAlipay',
-  stripe: 'SiStripe',
-  waffo_pancake: 'LuCreditCard',
-  wxpay: 'SiWechat',
-}
-
-function getDefaultIconName(type: string) {
-  return PAYMENT_TYPE_ICON_NAMES[type] ?? ''
+  paymentGatewayMode: PaymentGatewayMode
 }
 
 function getEffectiveIconName(method: PaymentMethodData) {
-  return method.icon || getDefaultIconName(method.type)
+  return method.icon || getDefaultPaymentMethodIconName(method.type)
 }
 
 export function PaymentMethodsVisualEditor({
   value,
   onChange,
+  paymentGatewayMode,
 }: PaymentMethodsVisualEditorProps) {
   const { t } = useTranslation()
-  const paymentTemplates = [
-    {
-      name: t('Epay Alipay'),
-      template: {
-        icon: getDefaultIconName('alipay'),
-        name: '支付宝',
-        type: 'alipay',
-      },
-    },
-    {
-      name: t('Epay WeChat Pay'),
-      template: {
-        icon: getDefaultIconName('wxpay'),
-        name: '微信',
-        type: 'wxpay',
-      },
-    },
-    {
-      name: t('Stripe'),
-      template: {
-        icon: getDefaultIconName('stripe'),
-        min_topup: '10',
-        name: 'Stripe',
-        type: 'stripe',
-      },
-    },
-    {
-      name: 'Waffo Pancake',
-      template: {
-        icon: getDefaultIconName('waffo_pancake'),
-        name: 'Waffo Pancake',
-        type: 'waffo_pancake',
-      },
-    },
-    {
-      name: t('Custom Epay method'),
-      template: {
-        icon: 'LuCreditCard',
-        min_topup: '50',
-        name: '自定义1',
-        type: 'custom1',
-      },
-    },
-  ]
+  const paymentTemplates = getPaymentMethodTemplates(paymentGatewayMode, t)
   const [searchText, setSearchText] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editData, setEditData] = useState<PaymentMethodData | null>(null)
@@ -468,6 +421,7 @@ export function PaymentMethodsVisualEditor({
         onOpenChange={setDialogOpen}
         onSave={handleSave}
         editData={editData}
+        paymentGatewayMode={paymentGatewayMode}
       />
     </div>
   )

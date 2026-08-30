@@ -5,6 +5,7 @@ import (
 
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -166,4 +167,41 @@ func TestEpayWebhookEnabledRequiresTopUpAndWebhookConfig(t *testing.T) {
 
 	operation_setting.PayMethods = nil
 	require.False(t, isEpayWebhookEnabled())
+}
+
+func TestEpayAvailabilityAndPublishedMethodsFollowFrozenGatewayMode(t *testing.T) {
+	confirmPaymentComplianceForTest(t)
+	originalPayAddress := operation_setting.PayAddress
+	originalEpayID := operation_setting.EpayId
+	originalEpayKey := operation_setting.EpayKey
+	originalPayMethods := operation_setting.PayMethods
+	t.Cleanup(func() {
+		operation_setting.PayAddress = originalPayAddress
+		operation_setting.EpayId = originalEpayID
+		operation_setting.EpayKey = originalEpayKey
+		operation_setting.PayMethods = originalPayMethods
+	})
+	operation_setting.PayAddress = "https://pay.example.com"
+	operation_setting.EpayId = "merchant"
+	operation_setting.EpayKey = "secret"
+	operation_setting.PayMethods = []map[string]string{
+		{"name": "Alipay", "type": "alipay"},
+		{"name": "USDT", "type": gmpayNativePaymentMethod},
+	}
+
+	restoreLegacy := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeEpayLegacy)
+	assert.True(t, isEpayTopUpEnabled())
+	assert.Len(t, effectiveEpayPaymentMethods(), 2)
+	restoreLegacy()
+
+	restoreNative := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
+	t.Cleanup(restoreNative)
+	methods := effectiveEpayPaymentMethods()
+	require.Len(t, methods, 1)
+	assert.Equal(t, gmpayNativePaymentMethod, methods[0]["type"])
+	assert.True(t, isEpayTopUpEnabled())
+
+	operation_setting.PayMethods = []map[string]string{{"name": "Alipay", "type": "alipay"}}
+	assert.Empty(t, effectiveEpayPaymentMethods())
+	assert.False(t, isEpayTopUpEnabled())
 }

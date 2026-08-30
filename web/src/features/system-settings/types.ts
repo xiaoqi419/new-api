@@ -39,6 +39,8 @@ export type UpdateOptionResponse = {
   message: string
 }
 
+export type PaymentGatewayMode = 'epay_legacy' | 'gmpay_native'
+
 export type SendTestEmailResponse = {
   success: boolean
   message: string

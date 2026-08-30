@@ -110,6 +110,19 @@ export interface SubscriptionPayResponse {
     order_id?: string
     token?: string
     token_expires_at?: number | string
+    // EPay-family checkout data. Native GMPay intentionally omits a hosted
+    // payment URL and returns only the on-site USDT/TRON cashier fields.
+    trade_no?: string
+    gateway_trade_no?: string
+    checkout_type?: 'qrcode' | 'payurl' | 'urlscheme' | 'crypto'
+    checkout_value?: string
+    payment_method?: string
+    money?: string
+    actual_amount?: string
+    receive_address?: string
+    network?: string
+    expiration_time?: number
+    server_time?: number
   }
   url?: string
 }

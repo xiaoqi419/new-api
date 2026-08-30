@@ -38,13 +38,20 @@ func tenantReturnPath(c *gin.Context, agentId int, suffix string) string {
 
 // verifyTopupAgentOwnership 校验订单归属用户的 agent_id 是否与回调所属代理一致，防跨租户越权入账(S5)。
 func verifyTopupAgentOwnership(c *gin.Context, topUp *model.TopUp, expectedAgentId int, label string) bool {
-	owner, err := model.GetUserById(topUp.UserId, false)
-	if err != nil || owner == nil {
-		logger.LogWarn(c.Request.Context(), fmt.Sprintf("%s 回调订单用户不存在 trade_no=%s user_id=%d client_ip=%s", label, topUp.TradeNo, topUp.UserId, c.ClientIP()))
+	if topUp == nil {
 		return false
 	}
-	if owner.AgentId != expectedAgentId {
-		logger.LogWarn(c.Request.Context(), fmt.Sprintf("%s 回调订单归属代理不匹配 trade_no=%s user_agent_id=%d expected_agent_id=%d client_ip=%s", label, topUp.TradeNo, owner.AgentId, expectedAgentId, c.ClientIP()))
+	return verifyPaymentOwnerAgent(c, topUp.UserId, topUp.TradeNo, expectedAgentId, label)
+}
+
+func verifyPaymentOwnerAgent(c *gin.Context, userID int, tradeNo string, expectedAgentID int, label string) bool {
+	owner, err := model.GetUserById(userID, false)
+	if err != nil || owner == nil {
+		logger.LogWarn(c.Request.Context(), fmt.Sprintf("%s 回调订单用户不存在 trade_no=%s user_id=%d client_ip=%s", label, tradeNo, userID, c.ClientIP()))
+		return false
+	}
+	if owner.AgentId != expectedAgentID {
+		logger.LogWarn(c.Request.Context(), fmt.Sprintf("%s 回调订单归属代理不匹配 trade_no=%s user_agent_id=%d expected_agent_id=%d client_ip=%s", label, tradeNo, owner.AgentId, expectedAgentID, c.ClientIP()))
 		return false
 	}
 	return true
@@ -94,8 +101,25 @@ func resolveEpayConfig(c *gin.Context) tenantEpayConfig {
 	return epayConfigForAgent(common.GetContextKeyInt(c, constant.ContextKeyUserAgentId))
 }
 
+// requirePlatformNativePaymentUser prevents white-label tenants from creating
+// platform GMPay orders. Native callbacks settle through the platform account,
+// so allowing an agent user to create one would leave a paid order without a
+// valid tenant settlement path.
+func requirePlatformNativePaymentUser(c *gin.Context) bool {
+	if !operation_setting.IsGMPayNativePaymentGatewayMode() ||
+		common.GetContextKeyInt(c, constant.ContextKeyUserAgentId) == 0 {
+		return true
+	}
+	common.ApiErrorMsg(c, "当前支付网关仅支持平台用户")
+	return false
+}
+
 // AgentEpayNotify 代理自有易支付回调：显式路径携带 agentId，使用该代理密钥验签并做订单归属双校验。
 func AgentEpayNotify(c *gin.Context) {
+	if !operation_setting.IsLegacyEpayPaymentGatewayMode() {
+		_, _ = c.Writer.Write([]byte("fail"))
+		return
+	}
 	agentId, err := strconv.Atoi(c.Param("id"))
 	if err != nil || agentId <= 0 {
 		_, _ = c.Writer.Write([]byte("fail"))

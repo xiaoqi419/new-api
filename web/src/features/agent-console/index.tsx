@@ -26,14 +26,6 @@ import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import {
   Table,
@@ -45,8 +37,6 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { getTopupInfo } from '@/features/wallet/api'
-import { submitPaymentForm } from '@/features/wallet/lib/payment'
 import { formatQuota, formatTimestamp } from '@/lib/format'
 
 import {
@@ -55,7 +45,6 @@ import {
   type AgentPaymentConfigView,
   type AgentTerminalUser,
   addAgentDomain,
-  agentConsolePrepay,
   deleteAgentDomain,
   getAgentConsoleLedgers,
   getAgentConsoleUsers,
@@ -67,6 +56,7 @@ import {
   updateAgentRatios,
   verifyAgentDomain,
 } from './api'
+import { PrepayCard } from './components/prepay-card'
 
 const BRAND_FIELDS: { key: string; labelKey: string; multiline: boolean }[] = [
   { key: 'SystemName', labelKey: 'Site Name', multiline: false },
@@ -537,93 +527,6 @@ function PaymentProviderCard({
           copyable={false}
         />
       </div>
-    </div>
-  )
-}
-
-function PrepayCard() {
-  const { t } = useTranslation()
-  const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState('')
-  const { data: topupRes } = useQuery({
-    queryKey: ['agent-console-topup-info'],
-    queryFn: getTopupInfo,
-  })
-  const payMethods: { type: string; name?: string }[] =
-    topupRes?.data?.pay_methods ?? []
-  const paymentMethodItems =
-    payMethods.length === 0
-      ? [{ value: '', label: t('No payment method') }]
-      : payMethods.map((m) => ({ value: m.type, label: m.name || m.type }))
-  const selectedPaymentMethod = method || payMethods[0]?.type || ''
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      agentConsolePrepay({
-        amount: Number(amount) || 0,
-        payment_method: method || payMethods[0]?.type || '',
-      }),
-    onSuccess: (res) => {
-      if (res.message !== 'success' && res.success !== true) {
-        const msg = typeof res.data === 'string' ? res.data : res.message
-        toast.error(msg || t('Operation failed'))
-        return
-      }
-      if (res.url) {
-        submitPaymentForm(res.url, res.data ?? {})
-      }
-    },
-  })
-
-  return (
-    <div className='max-w-xl space-y-3 rounded-lg border p-4'>
-      <h3 className='text-base font-semibold'>{t('Prepay to Platform')}</h3>
-      <p className='text-muted-foreground text-xs'>
-        {t(
-          'Top up your agent wallet 1:1 via the platform payment gateway. The settlement discount applies when your users recharge, not here.'
-        )}
-      </p>
-      <div className='grid grid-cols-2 gap-3'>
-        <div className='space-y-1'>
-          <Label>{t('Amount')}</Label>
-          <Input
-            type='number'
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>{t('Payment Method')}</Label>
-          <Select
-            items={paymentMethodItems}
-            value={selectedPaymentMethod}
-            onValueChange={(value) => value !== null && setMethod(value)}
-          >
-            <SelectTrigger className='w-full'>
-              <SelectValue>
-                {paymentMethodItems.find(
-                  (item) => item.value === selectedPaymentMethod
-                )?.label ?? t('No payment method')}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {paymentMethodItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <Button
-        onClick={() => mutation.mutate()}
-        disabled={mutation.isPending || !amount || payMethods.length === 0}
-      >
-        {t('Prepay')}
-      </Button>
     </div>
   )
 }

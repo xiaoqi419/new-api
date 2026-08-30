@@ -29,6 +29,20 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260830-payment-gateway-mode',
+    date: '2026-08-30',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '国内站与国际站现在可从同一代码版本选择 Legacy EPay 或 GMPay Native；支付协议在应用启动时锁定，后台切换会明确提示重启后生效。',
+          'GMPay Native 现已覆盖钱包充值、订阅、拼团和代理预付，统一在站内展示 USDT 金额、TRON 地址、二维码、倒计时和订单状态。',
+          'Legacy 与 Native 的下单和回调链路已双向隔离，错误模式会在创建订单或结算前拒绝，同时保留 Stripe、Creem、Waffo、支付宝和微信等独立支付方式。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260830-1a99880ba',
     date: '2026-08-30',
     changes: [

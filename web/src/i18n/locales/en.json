@@ -6454,6 +6454,20 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Domestic / Legacy EPay": "Domestic / Legacy EPay",
+    "International / GMPay Native": "International / GMPay Native",
+    "EPay-family gateway mode": "EPay-family gateway mode",
+    "Choose the protocol used by EPay-family payments. This setting never changes language, currency, branding, pricing, groups, or ratios.": "Choose the protocol used by EPay-family payments. This setting never changes language, currency, branding, pricing, groups, or ratios.",
+    "Current effective mode": "Current effective mode",
+    "Saved target mode": "Saved target mode",
+    "Restart required": "Restart required",
+    "The saved target will become effective only after the application restarts.": "The saved target will become effective only after the application restarts.",
+    "Unsaved target change": "Unsaved target change",
+    "Saving changes only the target mode. The running application keeps its current effective mode until restart.": "Saving changes only the target mode. The running application keeps its current effective mode until restart.",
+    "Save target mode": "Save target mode",
+    "GMPay USDT (TRON)": "GMPay USDT (TRON)",
+    "The effective Native mode accepts usdt.tron for GMPay. Stripe and Waffo Pancake remain independent.": "The effective Native mode accepts usdt.tron for GMPay. Stripe and Waffo Pancake remain independent.",
+    "Saved successfully; restart to apply": "Saved successfully; restart to apply"
   }
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -30,6 +31,10 @@ var newGMPayNativeClient = func(gatewayAddress string, pid string, secret string
 // GMPayNotify handles callbacks sent to the platform's configured GMPay
 // merchant account. Agent callbacks use their own route and credentials.
 func GMPayNotify(c *gin.Context) {
+	if !operation_setting.IsGMPayNativePaymentGatewayMode() {
+		writeGMPayNotifyResult(c, false)
+		return
+	}
 	client := GetEpayClient()
 	if client == nil || client.Config == nil {
 		writeGMPayNotifyResult(c, false)
@@ -42,6 +47,10 @@ func GMPayNotify(c *gin.Context) {
 // configuration. The route agent ID and order owner are both checked before
 // settlement to prevent cross-tenant credits.
 func AgentGMPayNotify(c *gin.Context) {
+	if !operation_setting.IsGMPayNativePaymentGatewayMode() {
+		writeGMPayNotifyResult(c, false)
+		return
+	}
 	agentID, err := strconv.Atoi(c.Param("id"))
 	if err != nil || agentID <= 0 {
 		writeGMPayNotifyResult(c, false)
@@ -84,10 +93,73 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	}
 
 	topUp := model.GetTopUpByTradeNo(orderID)
-	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderEpay || topUp.PaymentMethod != gmpayNativePaymentMethod ||
-		topUp.GroupBuyId != 0 || topUp.AgentPrepayId != 0 || !epayCallbackAmountMatches(amount, topUp.Money) ||
-		!verifyTopupAgentOwnership(c, topUp, expectedAgentID, "GMPay") {
+	subscriptionOrder := model.GetSubscriptionOrderByTradeNo(orderID)
+	if topUp != nil && subscriptionOrder != nil && !isDerivedSubscriptionTopUp(topUp, subscriptionOrder) {
 		writeGMPayNotifyResult(c, false)
+		return
+	}
+	auditParams := make(map[string]any, len(params)-1)
+	for key, value := range params {
+		if key != "signature" {
+			auditParams[key] = value
+		}
+	}
+	payload, marshalErr := common.Marshal(auditParams)
+	if marshalErr != nil {
+		writeGMPayNotifyResult(c, false)
+		return
+	}
+	handledSubscription, subscriptionErr := TryCompleteGMPaySubscriptionOrder(orderID, amount, string(payload), expectedAgentID)
+	if handledSubscription {
+		if subscriptionErr != nil {
+			if !errors.Is(subscriptionErr, model.ErrSubscriptionOrderNotFound) &&
+				!errors.Is(subscriptionErr, model.ErrSubscriptionOrderStatusInvalid) &&
+				!errors.Is(subscriptionErr, model.ErrPaymentMethodMismatch) {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 订阅结算失败 trade_no=%s error=%q", orderID, subscriptionErr.Error()))
+			}
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		writeGMPayNotifyResult(c, true)
+		return
+	}
+	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderEpay ||
+		topUp.PaymentMethod != gmpayNativePaymentMethod || !epayCallbackAmountMatches(amount, topUp.Money) ||
+		!verifyTopupAgentOwnership(c, topUp, expectedAgentID, "GMPay") ||
+		(topUp.GroupBuyId != 0 && topUp.AgentPrepayId != 0) {
+		writeGMPayNotifyResult(c, false)
+		return
+	}
+	if topUp.AgentPrepayId > 0 {
+		if expectedAgentID != 0 {
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		handled, settleErr := model.TryCompleteAgentPrepay(orderID, model.PaymentProviderEpay, c.ClientIP())
+		if settleErr != nil || !handled {
+			if settleErr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 代理预充值结算失败 trade_no=%s error=%q", orderID, settleErr.Error()))
+			}
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		writeGMPayNotifyResult(c, true)
+		return
+	}
+	if topUp.GroupBuyId > 0 {
+		if expectedAgentID != 0 {
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		handled, settleErr := model.TrySettleGroupBuyOrder(orderID, model.PaymentProviderEpay, c.ClientIP())
+		if settleErr != nil || !handled {
+			if settleErr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 拼团结算失败 trade_no=%s error=%q", orderID, settleErr.Error()))
+			}
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		writeGMPayNotifyResult(c, true)
 		return
 	}
 
@@ -114,6 +186,14 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 		}
 	}
 	writeGMPayNotifyResult(c, true)
+}
+
+func isDerivedSubscriptionTopUp(topUp *model.TopUp, order *model.SubscriptionOrder) bool {
+	return topUp != nil && order != nil &&
+		order.Status == common.TopUpStatusSuccess && topUp.Status == common.TopUpStatusSuccess &&
+		topUp.PaymentProvider == "" && topUp.Amount == 0 && topUp.GroupBuyId == 0 && topUp.AgentPrepayId == 0 &&
+		topUp.UserId == order.UserId && topUp.PaymentMethod == order.PaymentMethod &&
+		epayCallbackAmountMatches(strconv.FormatFloat(topUp.Money, 'f', 6, 64), order.Money)
 }
 
 func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {

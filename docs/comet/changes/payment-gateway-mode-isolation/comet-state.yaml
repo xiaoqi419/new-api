@@ -1,0 +1,740 @@
+schema: comet.native.v4
+name: payment-gateway-mode-isolation
+language: zh-CN
+phase: archive
+status: active
+state_version: 7
+brief: brief.md
+spec_changes:
+  - capability: payment-gateway-mode
+    operation: create
+    source: specs/payment-gateway-mode/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/payment-gateway-mode-isolation
+  target_branch: main
+  finish: keep
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 没有 `PaymentGatewayMode` Option 时应用以 `epay_legacy` 启动；两个合法值可由 Root
+      保存并在下次启动准确加载；保存非法值被拒绝，数据库非法值拒绝启动，错误不包含支付凭据。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 生效模式在进程生命周期内不变；后台保存新值后仅目标模式改变，当前下单和回调仍使用原生效模式，直到应用重启；不从
+      Host、转发头、请求参数或 `PayMethods` 推断。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: Legacy 模式下所有已配置普通 EPay 钱包方式继续走原版 EPay；即使方式名是 `usdt.tron` 也不得实例化 GMPay
+      客户端。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: Native 模式下只有已配置的 `usdt.tron` 能为普通钱包、订阅、拼团和代理预付创建 GMPay 订单；其他
+      EPay-family 方式在业务占位、插单和网络调用前拒绝。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: Native 模式下旧 `/api/user/pay` 不能绕过统一 checkout 重新进入原版 EPay。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: Legacy EPay 平台/代理回调只在 Legacy 模式处理；GMPay 平台/代理回调只在 Native
+      模式处理；错误协议不能查询或结算订单。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7:
+      正确模式下现有金额、签名、PID、支付方式、租户、幂等和敏感信息保护保持有效；订阅、拼团和代理预付分别进入已有的专用事务结算，不得充入普通用户钱包\
+      。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: 钱包公开的 EPay-family 支付方式按模式过滤；独立支付 Provider 的可用性不受影响。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: "A9: Root 支付配置页默认选中“国内站 / Legacy EPay”，可选“国际站 / GMPay
+      Native”；页面同时显示当前生效与重启后生效值，两者不同时显示明确的待重启状态。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: "A10: 国内 Legacy 与国际 Native 的管理员文案、模板和说明支持全部现有前端语言，并在窄屏和桌面不溢出。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: "A11: 订阅购买在 Native 模式返回结构化 GMPay `crypto` 收银数据；成功回调仅完成匹配的
+      `SubscriptionOrder`、创建一次权益并遵守购买上限，重复回调不重复创建权益。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A12
+    source: brief.md
+    text: "A12: 文档给出国内 `epay_legacy`、国际 `gmpay_native`
+      的后台选择和重启流程，并明确两个实例使用同一提交，但数据库、Redis、凭据和支付数据保持隔离。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A13
+    source: brief.md
+    text: "A13: 拼团在 Native 模式只公布 `usdt.tron` 作为 EPay-family 方式，返回结构化 `crypto`
+      收银数据；回调继续通过 `TrySettleGroupBuyOrder` 幂等结算，不跳过名额、成团和阶梯规则。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A14
+    source: brief.md
+    text: "A14: 代理向平台预付在 Native 模式使用平台 GMPay 凭据和平台 Native 回调，返回结构化 `crypto`
+      收银数据；成功回调只通过 `TryCompleteAgentPrepay` 幂等充入目标代理钱包。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A15
+    source: brief.md
+    text: "A15: 代理白标终端用户的普通钱包 Native 支付继续使用该代理的地址、PID、密钥和代理回调；平台/代理凭据、路由 ID
+      或订单归属不匹配时不得结算。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A16
+    source: brief.md
+    text: "A16: 四类 Native 收银台在站内显示精确 USDT 金额、TRON 地址、二维码、复制操作、过期倒计时和本地状态轮询，不跳转或嵌入
+      GMPay 托管页；成功后刷新各自的权益或钱包状态。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A17
+    source: brief.md
+    text: "A17: Legacy 模式下订阅、拼团和代理预付继续使用原版 EPay MAPI/回调流程；Stripe、Creem、Waffo、Waffo
+      Pancake、微信直连和支付宝直连回归测试通过。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A18
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用必须以同一代码基线支持两个互斥的 EPay-family 支付运行模式。国内实例使用原版 Legacy EPay；国际实例使用 GMPay
+      Native。Root 管理员可在支付配置页修改目标模式，但应用只在启动时从当前实例的隔离数据库读取并冻结生效模式。保存新值不得在运行期热切换协议。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A19
+    source: specs/payment-gateway-mode/spec.md
+    text: 可持久化 Option `PaymentGatewayMode` 只接受 `epay_legacy` 和 `gmpay_native`。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A20
+    source: specs/payment-gateway-mode/spec.md
+    text: Option 不存在或为空时使用 `epay_legacy`，保持现有安装兼容并作为管理页默认选项。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A21
+    source: specs/payment-gateway-mode/spec.md
+    text: 通用 Option PUT 只允许 Root 保存两个合法值；非法值必须在持久化前拒绝。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A22
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用在主数据库初始化和 Options 加载完成后验证并冻结生效模式；若数据库中存在非法值，必须在 HTTP
+      服务启动前失败，且错误不包含地址、PID、密钥或签名。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A23
+    source: specs/payment-gateway-mode/spec.md
+    text: 后台保存新目标值不改变已冻结的生效值。所有下单、公开支付能力和回调必须继续使用启动时值，直到应用重启。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A24
+    source: specs/payment-gateway-mode/spec.md
+    text: 模式不从 HTTP Host、转发头、请求参数、系统名称或支付方式名称推断。所有同一实例副本必须在重启后使用同一数据库配置。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A25
+    source: specs/payment-gateway-mode/spec.md
+    text: 钱包已配置的普通 EPay 方式继续使用现有 MAPI、明确 404 时的 `/submit.php` 兼容路径和 MD5 回调。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A26
+    source: specs/payment-gateway-mode/spec.md
+    text: 支付方式名称即使为 `usdt.tron`，也不能单独触发 GMPay Native 客户端、HMAC 回调或 Crypto checkout。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A27
+    source: specs/payment-gateway-mode/spec.md
+    text: 平台和代理 GMPay 回调必须在解析请求、验签、查单或入账前失败关闭。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A28
+    source: specs/payment-gateway-mode/spec.md
+    text: 原有金额、支付方式、订单归属、代理归属、重复回调和幂等结算检查保持不变。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A29
+    source: specs/payment-gateway-mode/spec.md
+    text: 普通钱包、订阅、拼团和代理向平台预付只有同时满足实例模式为 `gmpay_native`、方式已在当前实例配置、方式精确为 `usdt.tron`
+      时才能创建 Native GMPay 订单。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A30
+    source: specs/payment-gateway-mode/spec.md
+    text: 其他 EPay-family 钱包方式必须在持久化订单和发起网关请求前拒绝；Stripe、Creem、Waffo、官方支付宝和微信等独立
+      Provider 不受影响。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A31
+    source: specs/payment-gateway-mode/spec.md
+    text: 旧 `/api/user/pay` 不能绕过可信模式进入 Legacy `/submit.php`。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A32
+    source: specs/payment-gateway-mode/spec.md
+    text: Native checkout 继续返回现有结构化 Crypto 数据；不得返回、打开、嵌入或编码 GMPay 托管支付页。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A33
+    source: specs/payment-gateway-mode/spec.md
+    text: 平台和代理 GMPay 回调继续要求
+      JSON、请求体上限、PID、HMAC-SHA256、成功状态、金额、`usdt.tron`、租户归属和幂等结算。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A34
+    source: specs/payment-gateway-mode/spec.md
+    text: 平台 GMPay
+      回调在验签和通用字段校验后，必须按本地订单唯一分流：普通钱包调用用户额度结算，订阅调用订阅订单结算，拼团调用拼团结算，代理预付调用代理钱包结算。不得因订单类型识别失败而回退到普通钱包入账。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A35
+    source: specs/payment-gateway-mode/spec.md
+    text: 错误模式的 Legacy EPay 回调不得改变订单、额度、代理钱包、拼团、订阅或其他数据。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A36
+    source: specs/payment-gateway-mode/spec.md
+    text: Root 支付设置页提供两个目标模式：“国内站 / Legacy EPay”（`epay_legacy`）和“国际站 / GMPay
+      Native”（`gmpay_native`），默认为前者。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A37
+    source: specs/payment-gateway-mode/spec.md
+    text: 页面必须同时展示已冻结的当前生效模式和数据库中的目标模式；两者不同时显示“保存成功，重启后生效”状态和明确重启说明。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A38
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存模式不得改变运行中处理器的协议分支；支付方式模板和公开能力在重启前仍按当前生效模式显示。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A39
+    source: specs/payment-gateway-mode/spec.md
+    text: "`PayAddress`、`EpayId`、`EpayKey` 和 `PayMethods` 继续保存在各实例自己的 Options
+      中；现有密钥过滤和空值不覆盖行为保持。"
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A40
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 模式提供 `GMPay USDT (TRON)` 模板；Legacy 模式保留原版 EPay
+      模板。模板只减少误配，后端守卫始终是安全边界。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A41
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 模式下订阅只将已配置的 `usdt.tron` 暴露为 EPay-family 方式；余额、Stripe、Creem 和 Waffo
+      Pancake 等独立 Provider 保持原有可用性。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A42
+    source: specs/payment-gateway-mode/spec.md
+    text: 下单前仍验证套餐启用状态、价格、用户归属和每用户购买上限；无效请求在创建 `SubscriptionOrder` 和网络调用前拒绝。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A43
+    source: specs/payment-gateway-mode/spec.md
+    text: 成功创建 Native 订单后返回与钱包一致的结构化 `crypto` 数据，状态查询仅允许订单所有者访问。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A44
+    source: specs/payment-gateway-mode/spec.md
+    text: 成功回调必须调用现有 `CompleteSubscriptionOrder`
+      事务，保持套餐快照、权益生成、用户组更新、购买上限复核和幂等性；不得为同一订单创建多份权益。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A45
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 模式下拼团能力仅将已配置的 `usdt.tron` 暴露为 EPay-family 方式；微信和支付宝直连等独立 Provider
+      保持原有可用性。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A46
+    source: specs/payment-gateway-mode/spec.md
+    text: 伪造的其他 EPay-family 方式必须在创建拼团草稿、占用名额、创建参与者或 `TopUp` 记录前拒绝。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A47
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 创建/参团成功后返回结构化 `crypto` 数据；本地订单仍记录 `GroupBuyId`、用户、实付金额和支付方式。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A48
+    source: specs/payment-gateway-mode/spec.md
+    text: 成功回调必须调用现有 `TrySettleGroupBuyOrder` 事务，保持名额、成团门槛、阶梯额度、团状态和重复回调幂等规则。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A49
+    source: specs/payment-gateway-mode/spec.md
+    text: GMPay 不提供本系统可信的自动退款接口时，拼团失败的退款依旧按现有“网关手工退款后后台标记”规则处理，不伪造自动退款成功。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A50
+    source: specs/payment-gateway-mode/spec.md
+    text: 代理向平台预付使用平台全局 GMPay 地址、PID 和密钥，通知地址为平台 GMPay 回调；不使用该代理面向白标用户的商户凭据。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A51
+    source: specs/payment-gateway-mode/spec.md
+    text: 预付订单继续记录 `AgentPrepayId`、所有者、支付金额和支付方式；创建成功后返回结构化 `crypto` 数据。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A52
+    source: specs/payment-gateway-mode/spec.md
+    text: 成功回调必须通过现有 `TryCompleteAgentPrepay` 事务且只增加目标代理钱包，不增加下单用户额度；重复回调最多入账一次。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A53
+    source: specs/payment-gateway-mode/spec.md
+    text: 代理白标终端用户的普通钱包支付继续使用该代理的地址、PID、密钥和 `/api/agent/:id/gmpay/notify`；路由代理
+      ID、凭据或订单归属不匹配时必须在结算前拒绝。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A54
+    source: specs/payment-gateway-mode/spec.md
+    text: 四类 Native 产品共用同一结构化 `crypto` 数据契约：本地订单号、网关订单号、原始金额、精确 USDT 应付金额、TRON
+      收款地址、`USDT`、`TRON`、过期时间和可选服务器时间。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A55
+    source: specs/payment-gateway-mode/spec.md
+    text: 站内 Modal 显示地址二维码、完整地址、精确金额、复制操作和倒计时；不保留、打开、嵌入或编码托管支付页 URL。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A56
+    source: specs/payment-gateway-mode/spec.md
+    text: 每类产品通过自己的已登录状态接口轮询；成功、失败、过期、超时和关闭必须清理定时器并防止重叠请求。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A57
+    source: specs/payment-gateway-mode/spec.md
+    text: 成功后分别刷新用户额度、订阅权益、拼团订单/团状态或代理钱包；不得仅关闭 Modal 而留下陈旧数据。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A58
+    source: specs/payment-gateway-mode/spec.md
+    text: 本 change 不增加数据库列或迁移，不修改现有生产数据。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A59
+    source: specs/payment-gateway-mode/spec.md
+    text: 现有钱包订单继续使用历史 `PaymentProvider=epay`，避免部署时仍 pending 的国际 Native 订单失去回调兼容。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A60
+    source: specs/payment-gateway-mode/spec.md
+    text: 本 change 新增的订阅、拼团和代理预付 Native 订单也暂时使用现有 `epay` Provider
+      字符串；协议安全边界由启动模式、`usdt.tron`、HMAC/PID、金额、本地订单类型和归属共同构成。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A61
+    source: specs/payment-gateway-mode/spec.md
+    text: Legacy 和 Native 回调只在正确实例模式下处理，并继续验证订单方法、金额、类型和归属。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A62
+    source: specs/payment-gateway-mode/spec.md
+    text: 若未来需要同一实例同时使用两种 EPay-family 协议，应建立新的 Provider 数据模型和旧 pending
+      订单迁移窗口，不在本规格范围内实现。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A63
+    source: specs/payment-gateway-mode/spec.md
+    text: 国内实例在 Root 支付配置页保持默认“国内站 / Legacy EPay”，对应 `epay_legacy`。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A64
+    source: specs/payment-gateway-mode/spec.md
+    text: 国际实例在 Root 支付配置页选择“国际站 / GMPay Native”，对应 `gmpay_native`，保存后重启应用。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A65
+    source: specs/payment-gateway-mode/spec.md
+    text: 两个实例可以从同一个 Git 提交构建和独立发布，但数据库、Redis、支付凭据、渠道、用户和站点配置保持隔离。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+  - id: A66
+    source: specs/payment-gateway-mode/spec.md
+    text: 不得根据域名自动选择模式，也不得为支付差异创建长期国内/国际源代码分支。选择模式不自动修改语言、币种、品牌、价格、分组或倍率。
+    result: passed
+    reason:
+      text: Independent verifier confirmed the criterion.
+      truncated: false
+builder_handoff:
+  candidate_id: cd156479-1c6f-46ed-b35e-2faa552682a1
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:6f396028-c632-4507-9bd0-695166315500
+  iteration: 1
+  summary:
+    text: Implemented the payment gateway mode isolation change. The application now
+      persists and freezes either epay_legacy or gmpay_native at startup, routes
+      all wallet/subscription/group-buy/agent-prepay flows through the frozen
+      mode, blocks protocol bypasses and platform-native payment creation for
+      agent tenants, validates native callback ownership and order types, and
+      exposes structured in-app crypto checkout data. Added the Root payment
+      mode selector with restart messaging and provider templates, updated all
+      frontend locales, documentation, changelog, and focused regression
+      coverage.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+    - A44
+    - A45
+    - A46
+    - A47
+    - A48
+    - A49
+    - A50
+    - A51
+    - A52
+    - A53
+    - A54
+    - A55
+    - A56
+    - A57
+    - A58
+    - A59
+    - A60
+    - A61
+    - A62
+    - A63
+    - A64
+    - A65
+    - A66
+  checks:
+    - name:
+        text: go test ./controller ./router ./setting/operation_setting ./model -count=1
+        truncated: false
+      result: passed
+      note:
+        text: All affected backend packages passed, including the new agent-tenant
+          guards and option normalization tests.
+        truncated: false
+    - name:
+        text: go test ./... -count=1
+        truncated: false
+      result: failed
+      note:
+        text: Root package setup cannot resolve the existing embedded path
+          web/canvas/dist; every other package completed successfully.
+        truncated: false
+    - name:
+        text: bun run typecheck
+        truncated: false
+      result: passed
+      note:
+        text: Executed from web/.
+        truncated: false
+    - name:
+        text: bun run i18n:sync
+        truncated: false
+      result: passed
+      note:
+        text: Executed from web/.
+        truncated: false
+    - name:
+        text: bun run test -- focused payment gateway tests
+        truncated: false
+      result: passed
+      note:
+        text: 4 files passed, 13 tests passed.
+        truncated: false
+    - name:
+        text: bun run build
+        truncated: false
+      result: passed
+      note:
+        text: Production frontend build completed successfully.
+        truncated: false
+    - name:
+        text: focused frontend oxlint
+        truncated: false
+      result: passed
+      note:
+        text: All changed frontend integration, wallet, group-buy, subscription, and
+          agent-console files passed.
+        truncated: false
+    - name:
+        text: bun run format:check
+        truncated: false
+      result: failed
+      note:
+        text: Repository baseline classic/ files remain unformatted; no change-owned
+          file was formatted broadly.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No production database, container, remote repository, merge, or deployment
+        operation was performed.
+      truncated: false
+    - text: Full root-module test completion requires the existing web/canvas/dist
+        vendor build described in web/canvas/VENDOR.md.
+      truncated: false
+    - text: Full frontend format check remains blocked by unrelated classic/ baseline
+        files.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-30T16:49:25.784Z
+blockers: []
+verification:
+  candidate_id: cd156479-1c6f-46ed-b35e-2faa552682a1
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:b698d6fa-1930-435f-b10b-8d94018a46a7
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Independent read-only verification confirmed A1-A66. Affected backend
+      tests, focused frontend tests, typecheck, build, i18n sync, focused lint,
+      and diff checks passed; remaining limits are pre-existing or
+      external-environment constraints.
+    truncated: false
+  risks:
+    - text: Full root go test is blocked by the pre-existing missing web/canvas/dist
+        embedded path.
+      truncated: false
+    - text: Full frontend format check is blocked by pre-existing web/classic
+        formatting violations.
+      truncated: false
+    - text: Real external GMPay credentials and production deployment were not
+        exercised.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-30T17:14:39.940Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification confirmed A1-A66. Affected backend
+        tests, focused frontend tests, typecheck, build, i18n sync, focused
+        lint, and diff checks passed; remaining limits are pre-existing or
+        external-environment constraints.
+      truncated: false
+    completed_at: 2026-08-30T17:14:39.940Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-30T13:09:57.824Z

@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -26,9 +28,20 @@ func setupGMPayTopUpTest(t *testing.T) {
 	previousRedisEnabled := common.RedisEnabled
 	previousMainDatabaseType := common.MainDatabaseType()
 	previousLogDatabaseType := common.LogDatabaseType()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:gmpay-%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.TopUp{}, &model.User{}, &model.Log{}))
+	require.NoError(t, db.AutoMigrate(
+		&model.TopUp{},
+		&model.User{},
+		&model.Log{},
+		&model.SubscriptionPlan{},
+		&model.SubscriptionOrder{},
+		&model.UserSubscription{},
+		&model.Agent{},
+		&model.AgentLedger{},
+		&model.GroupBuy{},
+		&model.GroupBuyParticipant{},
+	))
 	model.DB, model.LOG_DB = db, db
 	common.RedisEnabled = false
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
@@ -50,7 +63,9 @@ func setupGMPayTopUpTest(t *testing.T) {
 	operation_setting.MinTopUp = 1
 	operation_setting.CustomCallbackAddress = "https://new-api.example"
 	system_setting.ServerAddress = "https://new-api.example"
+	restoreGatewayMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
 	t.Cleanup(func() {
+		restoreGatewayMode()
 		operation_setting.PayAddress = previousPayAddress
 		operation_setting.EpayId = previousEpayID
 		operation_setting.EpayKey = previousEpayKey
@@ -67,6 +82,21 @@ func setupGMPayTopUpTest(t *testing.T) {
 			require.NoError(t, sqlDB.Close())
 		}
 	})
+}
+
+func TestGMPayNotifyRejectsLegacyModeBeforeReadingConfigurationOrDatabase(t *testing.T) {
+	restore := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeEpayLegacy)
+	t.Cleanup(restore)
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/gmpay/notify", strings.NewReader(`{"not":"parsed"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	GMPayNotify(ctx)
+
+	assert.Equal(t, "fail", recorder.Body.String())
 }
 
 func insertGMPayTopUpForTest(t *testing.T, tradeNo string, money float64, paymentMethod string, paymentProvider string) *model.TopUp {
@@ -133,6 +163,144 @@ func TestGMPayNotifySettlesMatchingOrderExactlyOnce(t *testing.T) {
 	var user model.User
 	require.NoError(t, model.DB.First(&user, order.UserId).Error)
 	assert.Equal(t, int(common.QuotaPerUnit), user.Quota)
+}
+
+func TestGMPayNotifySettlesAgentPrepayWithoutCreditingOwnerWallet(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	owner := &model.User{Id: 705, Username: "gmpay-agent-owner", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(owner).Error)
+	agent := &model.Agent{Id: 51, OwnerUserId: owner.Id, Name: "native-agent", Status: model.AgentStatusActive, CostRatio: 1}
+	require.NoError(t, model.DB.Create(agent).Error)
+	order := &model.TopUp{
+		UserId: owner.Id, Amount: 1, Money: 10, TradeNo: "gmpay-agent-prepay", PaymentMethod: gmpayNativePaymentMethod,
+		PaymentProvider: model.PaymentProviderEpay, AgentPrepayId: agent.Id, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, order.Insert())
+
+	for attempt := 0; attempt < 2; attempt++ {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = signedGMPayNotifyRequest(t, validGMPayNotifyParams(order.TradeNo))
+		GMPayNotify(ctx)
+		assert.Equal(t, "ok", recorder.Body.String())
+	}
+
+	var storedAgent model.Agent
+	require.NoError(t, model.DB.First(&storedAgent, agent.Id).Error)
+	assert.Equal(t, int(common.QuotaPerUnit), storedAgent.WalletQuota)
+	var storedOwner model.User
+	require.NoError(t, model.DB.First(&storedOwner, owner.Id).Error)
+	assert.Zero(t, storedOwner.Quota)
+	var ledgers int64
+	require.NoError(t, model.DB.Model(&model.AgentLedger{}).Where("agent_id = ?", agent.Id).Count(&ledgers).Error)
+	assert.Equal(t, int64(1), ledgers)
+}
+
+func TestGMPayNotifyRoutesGroupBuyToDedicatedSettlement(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 708, Username: "gmpay-group-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+	group := &model.GroupBuy{
+		GroupNo: "GB-GMPAY-CALLBACK", InitiatorId: user.Id, Status: model.GroupBuyStatusDraft,
+		RequiredCount: 2, TargetCount: 2, PerShareAmount: 1, PerSharePrice: 10,
+		ExpireTime: common.GetTimestamp() + 3600, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, model.DB.Create(group).Error)
+	participant := &model.GroupBuyParticipant{
+		GroupBuyId: group.Id, UserId: user.Id, Username: user.Username, TradeNo: "gmpay-group-buy",
+		PayStatus: model.GroupBuyParticipantPending, PayMoney: 10, JoinTime: common.GetTimestamp(),
+	}
+	require.NoError(t, model.DB.Create(participant).Error)
+	order := &model.TopUp{
+		UserId: user.Id, Amount: 1, Money: 10, TradeNo: participant.TradeNo, PaymentMethod: gmpayNativePaymentMethod,
+		PaymentProvider: model.PaymentProviderEpay, GroupBuyId: group.Id, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, order.Insert())
+
+	for attempt := 0; attempt < 2; attempt++ {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = signedGMPayNotifyRequest(t, validGMPayNotifyParams(order.TradeNo))
+		GMPayNotify(ctx)
+		assert.Equal(t, "ok", recorder.Body.String())
+	}
+
+	storedTopUp := model.GetTopUpByTradeNo(order.TradeNo)
+	require.NotNil(t, storedTopUp)
+	assert.Equal(t, common.TopUpStatusSuccess, storedTopUp.Status)
+	var storedParticipant model.GroupBuyParticipant
+	require.NoError(t, model.DB.Where("trade_no = ?", order.TradeNo).First(&storedParticipant).Error)
+	assert.Equal(t, model.GroupBuyParticipantPaid, storedParticipant.PayStatus)
+	var storedGroup model.GroupBuy
+	require.NoError(t, model.DB.First(&storedGroup, group.Id).Error)
+	assert.Equal(t, model.GroupBuyStatusPending, storedGroup.Status)
+	var storedUser model.User
+	require.NoError(t, model.DB.First(&storedUser, user.Id).Error)
+	assert.Zero(t, storedUser.Quota)
+}
+
+func TestGMPayNotifySettlesSubscriptionWithoutWalletFallback(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 706, Username: "gmpay-subscription-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+	plan := &model.SubscriptionPlan{
+		Title: "Native subscription", PriceAmount: 10, Currency: "USD", DurationUnit: model.SubscriptionDurationMonth,
+		DurationValue: 1, Enabled: true, TotalAmount: 1000, QuotaResetPeriod: model.SubscriptionResetNever,
+	}
+	plan.NormalizeDefaults()
+	require.NoError(t, model.DB.Create(plan).Error)
+	order := &model.SubscriptionOrder{
+		UserId: user.Id, PlanId: plan.Id, Money: 10, TradeNo: "gmpay-subscription", PaymentMethod: gmpayNativePaymentMethod,
+		PaymentProvider: model.PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, order.Insert())
+
+	for attempt := 0; attempt < 2; attempt++ {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = signedGMPayNotifyRequest(t, validGMPayNotifyParams(order.TradeNo))
+		GMPayNotify(ctx)
+		assert.Equal(t, "ok", recorder.Body.String())
+	}
+
+	storedOrder := model.GetSubscriptionOrderByTradeNo(order.TradeNo)
+	require.NotNil(t, storedOrder)
+	assert.Equal(t, common.TopUpStatusSuccess, storedOrder.Status)
+	var subscriptions int64
+	require.NoError(t, model.DB.Model(&model.UserSubscription{}).Where("user_id = ?", user.Id).Count(&subscriptions).Error)
+	assert.Equal(t, int64(1), subscriptions)
+	var storedUser model.User
+	require.NoError(t, model.DB.First(&storedUser, user.Id).Error)
+	assert.Zero(t, storedUser.Quota)
+}
+
+func TestGMPayNotifyRejectsAmbiguousOrderType(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 707, Username: "gmpay-ambiguous-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+	topUp := &model.TopUp{
+		UserId: user.Id, Amount: 1, Money: 10, TradeNo: "gmpay-ambiguous", PaymentMethod: gmpayNativePaymentMethod,
+		PaymentProvider: model.PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, topUp.Insert())
+	order := &model.SubscriptionOrder{
+		UserId: user.Id, PlanId: 999, Money: 10, TradeNo: topUp.TradeNo, PaymentMethod: gmpayNativePaymentMethod,
+		PaymentProvider: model.PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(),
+	}
+	require.NoError(t, order.Insert())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = signedGMPayNotifyRequest(t, validGMPayNotifyParams(topUp.TradeNo))
+	GMPayNotify(ctx)
+
+	assert.Equal(t, "fail", recorder.Body.String())
+	assert.Equal(t, common.TopUpStatusPending, model.GetTopUpByTradeNo(topUp.TradeNo).Status)
+	assert.Equal(t, common.TopUpStatusPending, model.GetSubscriptionOrderByTradeNo(order.TradeNo).Status)
 }
 
 func TestGMPayNotifyRejectsUntrustedCallbackBeforeSettlement(t *testing.T) {
@@ -375,4 +543,70 @@ func TestRequestEpayCheckoutUsesNativeGMPayForUSDTTron(t *testing.T) {
 	assert.Equal(t, "tron", payload["network"])
 	assert.Equal(t, "https://new-api.example/api/user/gmpay/notify", payload["notify_url"])
 	assert.Equal(t, "https://new-api.example/wallet", payload["redirect_url"])
+}
+
+func TestAgentConsolePrepayUsesPlatformGMPayAndOwnerScopedStatus(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	owner := &model.User{Id: 709, Username: "gmpay-prepay-owner", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(owner).Error)
+	agent := &model.Agent{Id: 52, OwnerUserId: owner.Id, Name: "prepay-agent", Status: model.AgentStatusActive, CostRatio: 1}
+	require.NoError(t, model.DB.Create(agent).Error)
+
+	requestBodies := make(chan map[string]any, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var payload map[string]any
+		require.NoError(t, common.DecodeJson(request.Body, &payload))
+		requestBodies <- payload
+		_, _ = writer.Write([]byte(fmt.Sprintf(
+			`{"status_code":200,"message":"success","data":{"trade_id":"gateway-agent-prepay","order_id":%q,"amount":%v,"currency":"USD","actual_amount":10.0123,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","status":1,"expiration_time":2000000000}}`,
+			payload["order_id"], payload["amount"],
+		)))
+	}))
+	t.Cleanup(server.Close)
+	previousClientFactory := newGMPayNativeClient
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		assert.Equal(t, operation_setting.EpayId, pid)
+		assert.Equal(t, operation_setting.EpayKey, secret)
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() { newGMPayNativeClient = previousClientFactory })
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", owner.Id)
+	common.SetContextKey(ctx, constant.ContextKeySelfAgentId, agent.Id)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/agent-console/prepay", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	AgentConsolePrepayEpay(ctx)
+
+	var response struct {
+		Message string         `json:"message"`
+		Data    map[string]any `json:"data"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	require.Equal(t, "success", response.Message)
+	assert.Equal(t, "crypto", response.Data["checkout_type"])
+	assert.Equal(t, "gateway-agent-prepay", response.Data["gateway_trade_no"])
+	tradeNo, ok := response.Data["trade_no"].(string)
+	require.True(t, ok)
+	assert.NotEmpty(t, tradeNo)
+	payload := <-requestBodies
+	assert.Equal(t, "https://new-api.example/api/user/gmpay/notify", payload["notify_url"])
+
+	statusRecorder := httptest.NewRecorder()
+	statusContext, _ := gin.CreateTestContext(statusRecorder)
+	statusContext.Set("id", owner.Id)
+	common.SetContextKey(statusContext, constant.ContextKeySelfAgentId, agent.Id)
+	statusContext.Request = httptest.NewRequest(http.MethodGet, "/api/agent-console/prepay/status?trade_no="+tradeNo, nil)
+	AgentConsolePrepayStatus(statusContext)
+	assert.Contains(t, statusRecorder.Body.String(), common.TopUpStatusPending)
+
+	foreignRecorder := httptest.NewRecorder()
+	foreignContext, _ := gin.CreateTestContext(foreignRecorder)
+	foreignContext.Set("id", owner.Id)
+	common.SetContextKey(foreignContext, constant.ContextKeySelfAgentId, agent.Id+1)
+	foreignContext.Request = httptest.NewRequest(http.MethodGet, "/api/agent-console/prepay/status?trade_no="+tradeNo, nil)
+	AgentConsolePrepayStatus(foreignContext)
+	assert.Contains(t, foreignRecorder.Body.String(), "订单不存在")
 }

@@ -6454,6 +6454,20 @@
     "Zero retention": "零数据保留",
     "Zhipu": "智谱",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Domestic / Legacy EPay": "国内站 / 传统易支付",
+    "International / GMPay Native": "国际站 / GMPay 原生模式",
+    "EPay-family gateway mode": "易支付系列网关模式",
+    "Choose the protocol used by EPay-family payments. This setting never changes language, currency, branding, pricing, groups, or ratios.": "选择易支付系列付款所使用的协议。此设置不会改变语言、币种、品牌、价格、分组或倍率。",
+    "Current effective mode": "当前生效模式",
+    "Saved target mode": "已保存的目标模式",
+    "Restart required": "需要重启",
+    "The saved target will become effective only after the application restarts.": "已保存的目标模式仅在应用重启后生效。",
+    "Unsaved target change": "目标模式尚未保存",
+    "Saving changes only the target mode. The running application keeps its current effective mode until restart.": "保存操作只会修改目标模式；应用重启前，当前运行实例继续使用现有生效模式。",
+    "Save target mode": "保存目标模式",
+    "GMPay USDT (TRON)": "GMPay USDT（TRON）",
+    "The effective Native mode accepts usdt.tron for GMPay. Stripe and Waffo Pancake remain independent.": "当前生效的原生模式仅接受 GMPay 的 usdt.tron；Stripe 和 Waffo Pancake 仍使用各自独立的支付链路。",
+    "Saved successfully; restart to apply": "保存成功，重启后生效"
   }
 }

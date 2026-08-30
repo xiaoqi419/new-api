@@ -354,7 +354,17 @@ func InitResources() error {
 			common.SysError("failed to migrate retired frontend options: " + err.Error())
 		}
 	}
-	model.InitOptionMap()
+	if err = model.InitOptionMap(); err != nil {
+		common.FatalLog("failed to load options: " + err.Error())
+		return err
+	}
+	common.OptionMapRWMutex.RLock()
+	configuredPaymentGatewayMode := common.OptionMap[operation_setting.PaymentGatewayModeOptionKey]
+	common.OptionMapRWMutex.RUnlock()
+	if err = operation_setting.FreezePaymentGatewayMode(configuredPaymentGatewayMode); err != nil {
+		common.FatalLog("failed to initialize payment gateway mode: " + err.Error())
+		return err
+	}
 
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()

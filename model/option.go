@@ -29,7 +29,7 @@ func AllOption() ([]*Option, error) {
 	return options, err
 }
 
-func InitOptionMap() {
+func InitOptionMap() error {
 	common.OptionMapRWMutex.Lock()
 	common.OptionMap = make(map[string]string)
 
@@ -90,6 +90,7 @@ func InitOptionMap() {
 	common.OptionMap["CustomCallbackAddress"] = ""
 	common.OptionMap["EpayId"] = ""
 	common.OptionMap["EpayKey"] = ""
+	common.OptionMap[operation_setting.PaymentGatewayModeOptionKey] = operation_setting.PaymentGatewayModeEpayLegacy
 	common.OptionMap["Price"] = strconv.FormatFloat(operation_setting.Price, 'f', -1, 64)
 	common.OptionMap["USDExchangeRate"] = strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64)
 	common.OptionMap["MinTopUp"] = strconv.Itoa(operation_setting.MinTopUp)
@@ -223,28 +224,41 @@ func InitOptionMap() {
 	}
 
 	common.OptionMapRWMutex.Unlock()
-	loadOptionsFromDatabase()
+	return loadOptionsFromDatabase()
 }
 
-func loadOptionsFromDatabase() {
-	options, _ := AllOption()
+func loadOptionsFromDatabase() error {
+	options, err := AllOption()
+	if err != nil {
+		return err
+	}
 	for _, option := range options {
 		err := updateOptionMap(option.Key, option.Value)
 		if err != nil {
-			common.SysLog("failed to update option map: " + err.Error())
+			return fmt.Errorf("failed to load option %q: %w", option.Key, err)
 		}
 	}
+	return nil
 }
 
 func SyncOptions(frequency int) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
 		common.SysLog("syncing options from database")
-		loadOptionsFromDatabase()
+		if err := loadOptionsFromDatabase(); err != nil {
+			common.SysLog("failed to sync options from database: " + err.Error())
+		}
 	}
 }
 
 func validateOptionValue(key string, value string) error {
+	if key == operation_setting.EffectivePaymentGatewayModeOptionKey {
+		return fmt.Errorf("%s is read-only", operation_setting.EffectivePaymentGatewayModeOptionKey)
+	}
+	if key == operation_setting.PaymentGatewayModeOptionKey {
+		_, err := operation_setting.NormalizePaymentGatewayMode(value)
+		return err
+	}
 	if key == operation_setting.ChannelRoutingPoolSettingConfigName+".pools" {
 		return validateChannelRoutingPoolOption(value)
 	}
@@ -260,10 +274,22 @@ func validateOptionValue(key string, value string) error {
 	return nil
 }
 
-func UpdateOption(key string, value string) error {
+func normalizeOptionValue(key string, value string) (string, error) {
+	if key == operation_setting.PaymentGatewayModeOptionKey {
+		return operation_setting.NormalizePaymentGatewayMode(value)
+	}
 	if err := validateOptionValue(key, value); err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+func UpdateOption(key string, value string) error {
+	normalizedValue, err := normalizeOptionValue(key, value)
+	if err != nil {
 		return err
 	}
+	value = normalizedValue
 	// Save to database first
 	option := Option{
 		Key: key,
@@ -288,13 +314,16 @@ func UpdateOptionsBulk(values map[string]string) error {
 	if len(values) == 0 {
 		return nil
 	}
+	normalizedValues := make(map[string]string, len(values))
 	for key, value := range values {
-		if err := validateOptionValue(key, value); err != nil {
+		normalizedValue, err := normalizeOptionValue(key, value)
+		if err != nil {
 			return err
 		}
+		normalizedValues[key] = normalizedValue
 	}
 	err := DB.Transaction(func(tx *gorm.DB) error {
-		for k, v := range values {
+		for k, v := range normalizedValues {
 			option := Option{Key: k}
 			if err := tx.FirstOrCreate(&option, Option{Key: k}).Error; err != nil {
 				return err
@@ -309,7 +338,7 @@ func UpdateOptionsBulk(values map[string]string) error {
 	if err != nil {
 		return err
 	}
-	for k, v := range values {
+	for k, v := range normalizedValues {
 		if err := updateOptionMap(k, v); err != nil {
 			return err
 		}
@@ -376,6 +405,15 @@ func validateChannelRoutingPoolMembers(setting operation_setting.ChannelRoutingP
 }
 
 func updateOptionMap(key string, value string) (err error) {
+	if key == operation_setting.EffectivePaymentGatewayModeOptionKey {
+		return fmt.Errorf("%s is read-only", operation_setting.EffectivePaymentGatewayModeOptionKey)
+	}
+	if key == operation_setting.PaymentGatewayModeOptionKey {
+		value, err = operation_setting.NormalizePaymentGatewayMode(value)
+		if err != nil {
+			return err
+		}
+	}
 	if key == retiredThemeOptionKey {
 		common.OptionMapRWMutex.Lock()
 		delete(common.OptionMap, key)
@@ -538,6 +576,8 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.EpayId = value
 	case "EpayKey":
 		operation_setting.EpayKey = value
+	case operation_setting.PaymentGatewayModeOptionKey:
+		_, err = operation_setting.NormalizePaymentGatewayMode(value)
 	case "Price":
 		operation_setting.Price, _ = strconv.ParseFloat(value, 64)
 	case "USDExchangeRate":

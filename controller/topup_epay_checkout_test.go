@@ -40,3 +40,23 @@ func TestIsEpayMAPIAllowedPaymentMethod(t *testing.T) {
 		})
 	}
 }
+
+func TestEpayFamilyPaymentMethodUsesFrozenGatewayMode(t *testing.T) {
+	previousPayMethods := operation_setting.PayMethods
+	operation_setting.PayMethods = []map[string]string{{"type": "alipay"}, {"type": gmpayNativePaymentMethod}}
+	t.Cleanup(func() { operation_setting.PayMethods = previousPayMethods })
+
+	restoreLegacy := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeEpayLegacy)
+	assert.True(t, isEpayMAPIAllowedPaymentMethod("alipay"))
+	assert.True(t, isEpayMAPIAllowedPaymentMethod(gmpayNativePaymentMethod))
+	assert.False(t, shouldUseGMPayNative("alipay"))
+	assert.False(t, shouldUseGMPayNative(gmpayNativePaymentMethod))
+	restoreLegacy()
+
+	restoreNative := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
+	t.Cleanup(restoreNative)
+	assert.False(t, isEpayMAPIAllowedPaymentMethod("alipay"))
+	assert.True(t, isEpayMAPIAllowedPaymentMethod(gmpayNativePaymentMethod))
+	assert.False(t, shouldUseGMPayNative("alipay"))
+	assert.True(t, shouldUseGMPayNative(gmpayNativePaymentMethod))
+}

@@ -1,3 +1,4 @@
+import type { TradeStatusResponse } from '@/features/wallet/types'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -93,6 +94,17 @@ export async function cancelGroupBuyPayment(
     '/api/user/groupbuy/cancel',
     { trade_no: tradeNo },
     { skipBusinessError: true }
+  )
+  return res.data
+}
+
+/** Poll a group-buy payment owned by the authenticated user. */
+export async function getGroupBuyPaymentStatus(
+  tradeNo: string
+): Promise<TradeStatusResponse> {
+  const res = await api.get(
+    `/api/user/groupbuy/payment/status?trade_no=${encodeURIComponent(tradeNo)}`,
+    { skipBusinessError: true, skipErrorHandler: true }
   )
   return res.data
 }

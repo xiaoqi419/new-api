@@ -97,19 +97,34 @@ API 密钥：同一条记录中的 Secret
 
 当前线上国际站镜像的普通钱包流程曾切换到 `/mapi.php`。EPUSDT v2.0.0 没有对应的 MAPI 路由，因此会出现 `mapi checkout returned http status 404`。这属于国际站 New API 版本与 EPUSDT 路由的兼容问题，不是教程的支付地址写错，也不是回调地址缺失。
 
-## 5. GMPay 名称、类型和协议的定义
+## 5. EPay-family 运行模式
+
+国内站与国际站使用同一份产品代码，通过各自数据库中的 Root 配置选择互斥的 EPay-family 协议：
+
+| 实例 | `PaymentGatewayMode` | 协议行为 |
+| --- | --- | --- |
+| 国内站 | `epay_legacy` | 使用原版 Legacy EPay MAPI、明确 404 时的 `/submit.php` 兼容路径和 MD5 回调 |
+| 国际站 | `gmpay_native` | 只允许已配置的 `usdt.tron` 使用 GMPay Native HMAC-SHA256 下单与回调 |
+
+Root 管理员在“系统设置 -> 支付设置 -> Epay”中修改目标模式。应用只在数据库和 Options 初始化完成后读取一次并冻结当前生效模式；保存目标模式不会热切换正在运行的支付协议。页面显示“当前生效模式”和“已保存的目标模式”，两者不一致时必须重启对应应用实例后才生效。
+
+模式只控制 EPay-family 协议，不改变语言、币种、品牌、价格、分组或倍率，也不根据域名、Host、转发头或支付方式显示名称自动推断。国内和国际实例必须继续隔离数据库、Redis、支付凭据、用户、渠道和订单数据。
+
+### 5.1 GMPay 名称、类型和协议定义
 
 New API 支付方式记录有两个容易混淆的字段：
 
 - `name`：只负责前台显示，例如 `GMPay`。
 - `type`：实际发送给网关的 EPay `type` 参数，并且必须原样出现在回调中。
 
-当前 New API 的通用 EPay 客户端使用 **MD5** 签名。EPUSDT v2.0.0 的原生 GMPay 接口使用 **HMAC-SHA256**，当前 New API 没有原生 GMPay 客户端、签名器或专用回调处理器。因此：
+Legacy EPay 客户端使用 **MD5** 签名；GMPay Native 使用 **HMAC-SHA256**。当前代码已分别实现并按启动时冻结的模式隔离两套客户端与回调处理器。因此：
 
-- 不能仅把显示名称改成 `GMPay`，就宣称已经接入原生 GMPay。
-- 如果使用 EPUSDT 的 EPay 兼容接口，`type` 必须是 EPUSDT EPay 分支接受的值，例如 `alipay` 或已启用的 `token.network` 选择器（当前 TRON USDT 可用值为 `usdt.tron`）。
+- 不能仅把显示名称改成 `GMPay` 来切换协议；实际行为只由启动时冻结的 `PaymentGatewayMode` 决定。
+- Legacy 模式使用已配置的原版 EPay 方法。即使方法名为 `usdt.tron`，也不会触发 GMPay Native。
+- Native 模式只接受已配置且类型精确为 `usdt.tron` 的 EPay-family 方法；其他 EPay-family 方法会在创建本地订单或调用网关之前拒绝。
 - 自定义类型必须在 EPUSDT 创建订单和回调中保持完全一致，否则 New API 会因订单支付方式不匹配而拒绝回调。
-- 原生 GMPay 若要接入，必须单独实现 HMAC-SHA256 请求、回调验签、订单状态映射和前端结算流程；不能通过改 JSON 显示字段替代。
+- GMPay Native 为钱包、订阅、拼团和代理向平台预付返回结构化 `crypto` 数据；前端只展示精确 USDT 金额、TRON 地址、地址二维码、倒计时和本地订单状态，不打开、嵌入或编码网关托管收银页。
+- GMPay Native 回调按本地订单类型分别进入钱包、订阅、拼团或代理预付事务；无法唯一识别类型时拒绝，不回退为普通钱包充值。
 
 ## 6. 国际站 EPUSDT 运行前检查
 
@@ -121,10 +136,11 @@ New API 支付方式记录有两个容易混淆的字段：
 4. `tron` 链和 `USDT` 代币均为启用状态。
 5. `api_rate_url` 已配置为可靠的汇率源；不能留空。若使用固定汇率，必须记录来源、更新时间和人工复核人。
 6. New API 的 `EpayId` 使用 EPUSDT API Key 的 `PID`，`EpayKey` 使用同一条记录的 `Secret`。
-7. New API 的 `PayAddress` 不包含 `/submit.php`，最终请求日志中应出现 `/submit.php`。
-8. New API 的 `CustomCallbackAddress` 为空或明确为 `https://codezip.io`，最终 `notify_url` 必须是 `https://codezip.io/api/user/epay/notify`。
-9. API Key 的 IP 白名单按实际请求来源配置；留空表示允许所有来源，不应在不了解代理链的情况下随意填写。
-10. 不用真实资金测试；只验证创建订单、收银台跳转、回调地址和待支付状态，不伪造支付成功。
+7. Root 支付设置中的目标模式为 `gmpay_native`，重启国际站应用后“当前生效模式”也显示 `gmpay_native`。
+8. Native 模式的 `PayMethods` 包含且只对 EPay-family 暴露 `type=usdt.tron`；Stripe、Creem、Waffo、支付宝和微信等独立 Provider 可按各自配置继续使用。
+9. New API 的 `CustomCallbackAddress` 为空或明确为 `https://codezip.io`，Native 订单的 `notify_url` 必须是 `https://codezip.io/api/user/gmpay/notify`。
+10. API Key 的 IP 白名单按实际请求来源配置；留空表示允许所有来源，不应在不了解代理链的情况下随意填写。
+11. 不用真实资金测试；只验证创建订单、站内结构化收银台、回调地址和待支付状态，不伪造支付成功。
 
 ## 7. 发布和回滚流程
 
@@ -146,9 +162,9 @@ New API 支付方式记录有两个容易混淆的字段：
 ### 发布后
 
 - 请求国际站 `/api/user/topup/info`，确认支付方式和最小充值金额。
-- 创建一笔不实际支付的订单，确认请求到 EPUSDT 的最终路径为 `/submit.php`。
-- 确认日志中没有 `/mapi.php` 404。
-- 确认订单携带 `notify_url=https://codezip.io/api/user/epay/notify`。
+- 创建一笔不实际支付的 `usdt.tron` 订单，确认请求到 GMPay Native 创建订单接口。
+- 确认响应只包含结构化 Crypto 收银字段，不包含或打开托管支付页 URL。
+- 确认订单携带 `notify_url=https://codezip.io/api/user/gmpay/notify`，站内状态轮询保持待支付。
 - 确认国内站 Options、容器时间戳和配置哈希未变化。
 - 若支付创建、回调或签名验证失败，立即恢复上一镜像和配置备份，不要通过手工改支付成功状态绕过问题。
 
@@ -160,7 +176,7 @@ New API 支付方式记录有两个容易混淆的字段：
 - 调查时的国际站镜像提交：`35de40fb2c8e247f9565a819ef7ad8fe54536361`。
 - EPUSDT 数据库中 TRON、USDT 和多条链配置存在且处于启用状态；钱包地址、汇率源和支付设置仍需在每次上线前按第 6 节复核。
 - 国际站当前 `PayMethods` 中已有支付宝；新增支付方式前必须确认其 `type` 是 EPUSDT EPay 分支支持的协议值，而不是只改显示名称。
-- EPay `/submit.php` 兼容修复已在 `35de40fb2` 和最新 `origin/main` 候选上通过相关后端测试；在独立复核、镜像构建和线上验收通过前，不得描述为已发布或线上已修复。
+- 本文记录的双模式实现仍需经过独立 Verify、合并和明确发布授权；在这些步骤完成前，不得描述为已发布或线上已生效。
 
 ## 9. 变更记录模板
 

@@ -32,11 +32,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
-import { getTradeStatus } from '@/features/wallet/api'
 import { EpayCheckoutDialog } from '@/features/wallet/components/dialogs/epay-checkout-dialog'
 import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 import { formatTimestampToDate } from '@/lib/format'
 
+import { getGroupBuyPaymentStatus } from './api'
 import { GroupBuyCountdown } from './components/group-buy-countdown'
 import { JoinPanel } from './components/join-panel'
 import { MembersList } from './components/members-list'
@@ -326,7 +326,7 @@ function GroupBuyDetailBody({ detail, no, onPaid }: GroupBuyDetailBodyProps) {
       <EpayCheckoutDialog
         open={epayCheckout !== null}
         checkout={epayCheckout}
-        getStatus={getTradeStatus}
+        getStatus={getGroupBuyPaymentStatus}
         onClose={() => closeEpayCheckout(false)}
         onSuccess={() => closeEpayCheckout(true)}
         onRetry={retryEpayCheckout}

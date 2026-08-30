@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,37 @@ func setupSubscriptionEpayControllerTest(t *testing.T) {
 			require.NoError(t, sqlDB.Close())
 		}
 	})
+}
+
+func TestSubscriptionRequestEpayRejectsAgentTenantBeforeNativeCheckout(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupSubscriptionEpayCheckoutTest(t, "https://pay.example.com", []map[string]string{{"type": gmpayNativePaymentMethod}})
+	restoreMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
+	t.Cleanup(restoreMode)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", 301)
+	common.SetContextKey(ctx, constant.ContextKeyUserAgentId, 42)
+	ctx.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/api/subscription/epay/pay",
+		strings.NewReader(`{"plan_id":71009,"payment_method":"usdt.tron"}`),
+	)
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	SubscriptionRequestEpay(ctx)
+
+	var response struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.False(t, response.Success)
+	assert.Equal(t, "当前支付网关仅支持平台用户", response.Message)
+	var orderCount int64
+	require.NoError(t, model.DB.Model(&model.SubscriptionOrder{}).Count(&orderCount).Error)
+	assert.Zero(t, orderCount)
 }
 
 func setupSubscriptionEpayCheckoutTest(t *testing.T, payAddress string, payMethods []map[string]string) {

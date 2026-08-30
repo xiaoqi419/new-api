@@ -56,6 +56,7 @@ func registerAgentRoutes(apiRouter *gin.RouterGroup) {
 		consoleRoute.GET("/payment", controller.AgentConsoleGetPayment)
 		consoleRoute.PUT("/payment", controller.AgentConsoleUpdatePayment)
 		consoleRoute.POST("/prepay", middleware.CriticalRateLimit(), controller.AgentConsolePrepayEpay)
+		consoleRoute.GET("/prepay/status", controller.AgentConsolePrepayStatus)
 		consoleRoute.GET("/ledgers", controller.AgentConsoleGetLedgers)
 		consoleRoute.GET("/users", controller.AgentConsoleListUsers)
 	}

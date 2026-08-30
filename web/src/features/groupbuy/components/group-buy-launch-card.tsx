@@ -30,10 +30,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TitledCard } from '@/components/ui/titled-card'
-import { getTradeStatus } from '@/features/wallet/api'
 import { EpayCheckoutDialog } from '@/features/wallet/components/dialogs/epay-checkout-dialog'
 import { PaymentQrDialog } from '@/features/wallet/components/dialogs/payment-qr-dialog'
 
+import { getGroupBuyPaymentStatus } from '../api'
 import { useGroupBuyLaunch } from '../hooks/use-group-buy-launch'
 import { useGroupBuyPayment } from '../hooks/use-group-buy-payment'
 import { formatShare, packageInfo } from '../lib'
@@ -170,7 +170,7 @@ export function GroupBuyLaunchCard() {
       <EpayCheckoutDialog
         open={epayCheckout !== null}
         checkout={epayCheckout}
-        getStatus={getTradeStatus}
+        getStatus={getGroupBuyPaymentStatus}
         onClose={() => closeEpayCheckout(false)}
         onSuccess={() => closeEpayCheckout(true)}
         onRetry={retryEpayCheckout}
