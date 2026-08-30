@@ -105,6 +105,7 @@ func SetApiRouter(router *gin.Engine) {
 			//userRoute.POST("/tokenlog", middleware.CriticalRateLimit(), controller.TokenLog)
 			userRoute.POST("/epay/notify", anonymousRequestBodyLimit, controller.EpayNotify)
 			userRoute.GET("/epay/notify", controller.EpayNotify)
+			userRoute.POST("/gmpay/notify", anonymousRequestBodyLimit, controller.GMPayNotify)
 			// 微信支付 / 支付宝官方商户直连回调（公开放行，处理器内验签）
 			userRoute.POST("/wechatpay/notify", anonymousRequestBodyLimit, controller.WechatPayNotify)
 			userRoute.GET("/wechatpay/jsapi/callback", controller.WechatJSAPICallback)

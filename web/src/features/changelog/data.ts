@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260830-1a99880ba',
+    date: '2026-08-30',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '国际站 GMPay USDT（TRON）钱包充值现在会在站内收银台展示准确转账金额、收款地址二维码、倒计时和订单状态，无需跳转第三方收银页。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260830-return-i18n',
     date: '2026-08-30',
     changes: [
