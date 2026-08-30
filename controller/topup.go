@@ -524,17 +524,20 @@ func RequestEpayCheckout(c *gin.Context) {
 		return
 	}
 	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice)
-	if payMoney < 0.01 {
+	if payMoney < 0.01 || (req.PaymentMethod == gmpayNativePaymentMethod && payMoney <= 0.01) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
-
-	mapiClient, err := service.NewEpayMAPIClient(epayCfg.Client, nil)
-	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI client 初始化失败 user_id=%d error=%q", userID, err.Error()))
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前站点未配置支付信息"})
-		return
+	var mapiClient *service.EpayMAPIClient
+	if req.PaymentMethod != gmpayNativePaymentMethod {
+		mapiClient, err = service.NewEpayMAPIClient(epayCfg.Client, nil)
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI client 初始化失败 user_id=%d error=%q", userID, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "当前站点未配置支付信息"})
+			return
+		}
 	}
+
 	returnURL, err := url.Parse(tenantReturnPath(c, epayCfg.AgentId, "/wallet"))
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI 回跳地址无效 user_id=%d error=%q", userID, err.Error()))
@@ -543,7 +546,13 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 	var notifyURL *url.URL
 	if epayCfg.AgentId > 0 {
-		notifyURL, err = url.Parse(fmt.Sprintf("%s/api/agent/%d/epay/notify", tenantRequestBaseURL(c), epayCfg.AgentId))
+		if req.PaymentMethod == gmpayNativePaymentMethod {
+			notifyURL, err = url.Parse(fmt.Sprintf("%s/api/agent/%d/gmpay/notify", tenantRequestBaseURL(c), epayCfg.AgentId))
+		} else {
+			notifyURL, err = url.Parse(fmt.Sprintf("%s/api/agent/%d/epay/notify", tenantRequestBaseURL(c), epayCfg.AgentId))
+		}
+	} else if req.PaymentMethod == gmpayNativePaymentMethod {
+		notifyURL, err = url.Parse(service.GetCallbackAddress() + "/api/user/gmpay/notify")
 	} else {
 		notifyURL, err = url.Parse(service.GetCallbackAddress() + "/api/user/epay/notify")
 	}
@@ -582,6 +591,56 @@ func RequestEpayCheckout(c *gin.Context) {
 	if err := topUp.Insert(); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI 创建充值订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d error=%q", userID, tradeNo, req.PaymentMethod, req.Amount, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
+		return
+	}
+
+	if req.PaymentMethod == gmpayNativePaymentMethod {
+		var clientErr error
+		if epayCfg.Client.Config == nil || epayCfg.Client.BaseUrl == nil {
+			clientErr = errors.New("gmpay merchant client is not configured")
+		} else {
+			gmpayClient, err := newGMPayNativeClient(epayCfg.Client.BaseUrl.String(), epayCfg.Client.Config.PartnerID, epayCfg.Client.Config.Key)
+			clientErr = err
+			if clientErr == nil && gmpayClient == nil {
+				clientErr = errors.New("gmpay client is not configured")
+			}
+			if clientErr == nil {
+				checkout, checkoutErr := gmpayClient.CreateOrder(c.Request.Context(), service.GMPayCreateOrderRequest{
+					OrderID:     tradeNo,
+					Amount:      strconv.FormatFloat(payMoney, 'f', 2, 64),
+					NotifyURL:   notifyURL,
+					RedirectURL: returnURL,
+					Name:        fmt.Sprintf("TUC%d", req.Amount),
+				})
+				if checkoutErr == nil {
+					data := gin.H{
+						"trade_no":         tradeNo,
+						"gateway_trade_no": checkout.GatewayTradeNo,
+						"checkout_type":    "crypto",
+						"payment_method":   req.PaymentMethod,
+						"money":            strconv.FormatFloat(payMoney, 'f', 2, 64),
+						"actual_amount":    checkout.ActualAmount,
+						"receive_address":  checkout.ReceiveAddress,
+						"token":            checkout.Token,
+						"network":          checkout.Network,
+						"expiration_time":  checkout.ExpirationTime,
+					}
+					if checkout.ServerTime > 0 {
+						data["server_time"] = checkout.ServerTime
+					}
+					logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%s payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, checkout.GatewayTradeNo, req.PaymentMethod, req.Amount, payMoney))
+					c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
+					return
+				}
+				clientErr = checkoutErr
+			}
+		}
+		if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
+			!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值回收失败订单失败 trade_no=%s error=%q", tradeNo, updateErr.Error()))
+		}
+		logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值创建 checkout 失败 user_id=%d trade_no=%s payment_method=%s error=%q", userID, tradeNo, req.PaymentMethod, clientErr.Error()))
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 		return
 	}
 

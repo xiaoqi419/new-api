@@ -138,27 +138,10 @@ export function getEpayCheckoutData(
 ): EpayCheckoutData | null {
   if (!value || typeof value !== 'object') return null
   const fields = value as Record<string, unknown>
-  let checkoutType = fields.checkout_type
-  let checkoutValue = fields.checkout_value
-  if (!checkoutType && typeof fields.pay_url === 'string') {
-    checkoutType = 'payurl'
-    checkoutValue = fields.pay_url
-  } else if (!checkoutType && typeof fields.payurl === 'string') {
-    checkoutType = 'payurl'
-    checkoutValue = fields.payurl
-  } else if (!checkoutType && typeof fields.qr_code === 'string') {
-    checkoutType = 'qrcode'
-    checkoutValue = fields.qr_code
-  }
   const tradeNo = fields.trade_no ?? fallback.tradeNo
   const paymentMethod = fields.payment_method ?? fallback.paymentMethod
   const money = fields.money ?? fallback.money
   if (
-    (checkoutType !== 'qrcode' &&
-      checkoutType !== 'payurl' &&
-      checkoutType !== 'urlscheme') ||
-    typeof checkoutValue !== 'string' ||
-    !checkoutValue.trim() ||
     typeof tradeNo !== 'string' ||
     !tradeNo.trim() ||
     typeof paymentMethod !== 'string' ||
@@ -183,6 +166,74 @@ export function getEpayCheckoutData(
     ) {
       return null
     }
+  }
+
+  if (fields.checkout_type === 'crypto') {
+    const actualAmount = fields.actual_amount
+    const receiveAddress = fields.receive_address
+    const token = fields.token
+    const network = fields.network
+    const expirationTime = fields.expiration_time
+    const serverTime = fields.server_time
+    if (
+      typeof actualAmount !== 'string' ||
+      !/^\d+(?:\.\d+)?$/.test(actualAmount.trim()) ||
+      !/[1-9]/.test(actualAmount) ||
+      typeof receiveAddress !== 'string' ||
+      !receiveAddress.trim() ||
+      typeof token !== 'string' ||
+      token.trim().toUpperCase() !== 'USDT' ||
+      typeof network !== 'string' ||
+      network.trim().toUpperCase() !== 'TRON' ||
+      typeof expirationTime !== 'number' ||
+      !Number.isFinite(expirationTime) ||
+      expirationTime <= 0 ||
+      (serverTime !== undefined &&
+        (typeof serverTime !== 'number' ||
+          !Number.isFinite(serverTime) ||
+          serverTime <= 0))
+    ) {
+      return null
+    }
+
+    const gatewayTradeNo = fields.gateway_trade_no
+    return {
+      trade_no: tradeNo.trim(),
+      ...(typeof gatewayTradeNo === 'string' && gatewayTradeNo.trim()
+        ? { gateway_trade_no: gatewayTradeNo.trim() }
+        : {}),
+      checkout_type: 'crypto',
+      payment_method: paymentMethod.trim(),
+      money: String(money),
+      actual_amount: actualAmount.trim(),
+      receive_address: receiveAddress.trim(),
+      token: 'USDT',
+      network: 'TRON',
+      expiration_time: expirationTime,
+      ...(typeof serverTime === 'number' ? { server_time: serverTime } : {}),
+    }
+  }
+
+  let checkoutType = fields.checkout_type
+  let checkoutValue = fields.checkout_value
+  if (!checkoutType && typeof fields.pay_url === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.pay_url
+  } else if (!checkoutType && typeof fields.payurl === 'string') {
+    checkoutType = 'payurl'
+    checkoutValue = fields.payurl
+  } else if (!checkoutType && typeof fields.qr_code === 'string') {
+    checkoutType = 'qrcode'
+    checkoutValue = fields.qr_code
+  }
+  if (
+    (checkoutType !== 'qrcode' &&
+      checkoutType !== 'payurl' &&
+      checkoutType !== 'urlscheme') ||
+    typeof checkoutValue !== 'string' ||
+    !checkoutValue.trim()
+  ) {
+    return null
   }
   if (
     checkoutType !== 'qrcode' &&

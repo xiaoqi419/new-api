@@ -15,6 +15,7 @@ func registerAgentRoutes(apiRouter *gin.RouterGroup) {
 	{
 		paymentCallback.POST("/:id/epay/notify", middleware.AnonymousRequestBodyLimit(), controller.AgentEpayNotify)
 		paymentCallback.GET("/:id/epay/notify", controller.AgentEpayNotify)
+		paymentCallback.POST("/:id/gmpay/notify", middleware.AnonymousRequestBodyLimit(), controller.AgentGMPayNotify)
 		paymentCallback.POST("/:id/stripe/webhook", middleware.AnonymousRequestBodyLimit(), controller.AgentStripeWebhook)
 	}
 

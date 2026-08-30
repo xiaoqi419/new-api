@@ -38,15 +38,32 @@ export type AmountResponse = ApiResponse<string>
 export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
 }
-export type EpayCheckoutType = 'qrcode' | 'payurl' | 'urlscheme'
-export interface EpayCheckoutData {
+export type EpayLegacyCheckoutType = 'qrcode' | 'payurl' | 'urlscheme'
+
+interface EpayCheckoutBase {
   trade_no: string
   gateway_trade_no?: string
-  checkout_type: EpayCheckoutType
-  checkout_value: string
   payment_method: string
   money: string
 }
+
+export interface EpayLegacyCheckoutData extends EpayCheckoutBase {
+  checkout_type: EpayLegacyCheckoutType
+  checkout_value: string
+}
+
+export interface EpayCryptoCheckoutData extends EpayCheckoutBase {
+  checkout_type: 'crypto'
+  actual_amount: string
+  receive_address: string
+  token: 'USDT'
+  network: 'TRON'
+  expiration_time: number
+  server_time?: number
+}
+
+export type EpayCheckoutType = EpayLegacyCheckoutType | 'crypto'
+export type EpayCheckoutData = EpayLegacyCheckoutData | EpayCryptoCheckoutData
 export type EpayCheckoutResponse = ApiResponse<EpayCheckoutData>
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AlipayPaymentResponse = ApiResponse<

@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
 import {
   CheckCircle2,
@@ -49,7 +50,8 @@ interface EpayCheckoutDialogProps {
 
 function getStatusContent(
   status: CheckoutStatus,
-  t: (key: string) => string
+  t: (key: string) => string,
+  isCryptoCheckout: boolean
 ): { label: string; description: string; icon: typeof Clock; tone: string } {
   if (status === 'success') {
     return {
@@ -87,10 +89,25 @@ function getStatusContent(
   }
   return {
     label: t('Waiting for payment'),
-    description: t('Scan the QR code to complete your payment.'),
+    description: isCryptoCheckout
+      ? t('Send the exact amount to the TRON address shown.')
+      : t('Scan the QR code to complete your payment.'),
     icon: Loader2,
     tone: 'text-primary',
   }
+}
+
+function toEpochMilliseconds(timestamp: number): number {
+  return timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp
+}
+
+function formatCountdown(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = seconds % 60
+  return [hours, minutes, remainingSeconds]
+    .map((value) => String(value).padStart(2, '0'))
+    .join(':')
 }
 
 export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
@@ -98,7 +115,13 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const [checkoutStatus, setCheckoutStatus] =
     useState<CheckoutStatus>('waiting')
   const [refreshing, setRefreshing] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
+    null
+  )
+  const pollingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  )
   const refreshRef = useRef<(manual?: boolean) => void>(() => undefined)
   const checkoutOpen = props.open
   const activeCheckout = props.checkout
@@ -106,15 +129,23 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const handleSuccess = props.onSuccess
 
   const stopPolling = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-      timerRef.current = null
+    if (pollingTimerRef.current) {
+      clearInterval(pollingTimerRef.current)
+      pollingTimerRef.current = null
+    }
+  }, [])
+
+  const stopCountdown = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current)
+      countdownTimerRef.current = null
     }
   }, [])
 
   useEffect(() => {
     if (!checkoutOpen || !activeCheckout) {
       stopPolling()
+      stopCountdown()
       refreshRef.current = () => undefined
       return
     }
@@ -122,13 +153,42 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
     let active = true
     let checking = false
     const startedAt = Date.now()
+    const isCryptoCheckout = activeCheckout.checkout_type === 'crypto'
+    let expiresAt = 0
+    if (isCryptoCheckout) {
+      expiresAt = activeCheckout.server_time
+        ? startedAt +
+          (toEpochMilliseconds(activeCheckout.expiration_time) -
+            toEpochMilliseconds(activeCheckout.server_time))
+        : toEpochMilliseconds(activeCheckout.expiration_time)
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a changed order starts a fresh status observation lifecycle
     setCheckoutStatus('waiting')
 
+    const updateCountdown = () => {
+      if (!isCryptoCheckout) return false
+
+      const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
+      if (active) setRemainingSeconds(seconds)
+      if (seconds === 0) {
+        stopPolling()
+        stopCountdown()
+        if (active) setCheckoutStatus('expired')
+        return true
+      }
+      return false
+    }
+
+    if (!isCryptoCheckout) {
+      setRemainingSeconds(null)
+    }
+
     const refresh = async (manual = false) => {
       if (!active || checking) return
+      if (!manual && updateCountdown()) return
       if (!manual && Date.now() - startedAt >= POLL_MAX_SECONDS * 1000) {
         stopPolling()
+        stopCountdown()
         if (active) setCheckoutStatus('timeout')
         return
       }
@@ -142,6 +202,7 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
         const status = response.data?.status?.toLowerCase()
         if (status === 'success') {
           stopPolling()
+          stopCountdown()
           setCheckoutStatus('success')
           toast.success(t('Payment successful'))
           await handleSuccess()
@@ -149,6 +210,7 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
         }
         if (status === 'failed' || status === 'expired') {
           stopPolling()
+          stopCountdown()
           setCheckoutStatus(status)
         }
       } catch {
@@ -160,19 +222,30 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
     }
 
     refreshRef.current = (manual = false) => void refresh(manual)
-    void refresh()
-    timerRef.current = setInterval(() => void refresh(), POLL_INTERVAL_MS)
+    const expired = updateCountdown()
+    if (!expired) {
+      void refresh()
+      pollingTimerRef.current = setInterval(
+        () => void refresh(),
+        POLL_INTERVAL_MS
+      )
+      if (isCryptoCheckout) {
+        countdownTimerRef.current = setInterval(updateCountdown, 1000)
+      }
+    }
 
     return () => {
       active = false
       refreshRef.current = () => undefined
       stopPolling()
+      stopCountdown()
     }
   }, [
     activeCheckout,
     checkoutOpen,
     getCheckoutStatus,
     handleSuccess,
+    stopCountdown,
     stopPolling,
     t,
   ])
@@ -180,7 +253,8 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const checkout = props.checkout
   if (!checkout) return null
 
-  const statusContent = getStatusContent(checkoutStatus, t)
+  const isCryptoCheckout = checkout.checkout_type === 'crypto'
+  const statusContent = getStatusContent(checkoutStatus, t, isCryptoCheckout)
   const StatusIcon = statusContent.icon
   const canRetry = checkoutStatus === 'failed' || checkoutStatus === 'expired'
 
@@ -222,22 +296,77 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
     >
       <div className='grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center'>
         <div className='order-2 space-y-3 sm:order-1'>
-          <dl className='space-y-2 text-sm'>
-            <div className='flex items-center justify-between gap-4'>
-              <dt className='text-muted-foreground'>{t('Amount Due')}</dt>
-              <dd className='font-semibold'>{checkout.money}</dd>
-            </div>
-            <div className='flex items-center justify-between gap-4'>
-              <dt className='text-muted-foreground'>{t('Payment Method')}</dt>
-              <dd className='font-medium'>{checkout.payment_method}</dd>
-            </div>
-            <div className='flex items-start justify-between gap-4'>
-              <dt className='text-muted-foreground'>{t('Order number')}</dt>
-              <dd className='max-w-[230px] text-right font-mono text-xs break-all'>
-                {checkout.trade_no}
-              </dd>
-            </div>
-          </dl>
+          {isCryptoCheckout ? (
+            <dl className='space-y-2 text-sm'>
+              <div className='flex items-center justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Amount to send')}</dt>
+                <dd className='flex items-center gap-1 font-mono font-semibold'>
+                  <span>{`${checkout.actual_amount} ${checkout.token}`}</span>
+                  <CopyButton
+                    value={checkout.actual_amount}
+                    variant='ghost'
+                    size='icon'
+                    className='size-6'
+                    iconClassName='size-3.5'
+                    tooltip={t('Copy payment amount')}
+                    successTooltip={t('Copied')}
+                    aria-label={t('Copy payment amount')}
+                  />
+                </dd>
+              </div>
+              <div className='flex items-center justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Network')}</dt>
+                <dd className='font-medium'>{checkout.network}</dd>
+              </div>
+              <div className='flex items-start justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Receive address')}</dt>
+                <dd className='flex min-w-0 items-start gap-1 text-right font-mono text-xs break-all'>
+                  <span className='min-w-0 flex-1'>
+                    {checkout.receive_address}
+                  </span>
+                  <CopyButton
+                    value={checkout.receive_address}
+                    variant='ghost'
+                    size='icon'
+                    className='size-6'
+                    iconClassName='size-3.5'
+                    tooltip={t('Copy payment address')}
+                    successTooltip={t('Copied')}
+                    aria-label={t('Copy payment address')}
+                  />
+                </dd>
+              </div>
+              <div className='flex items-start justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Order number')}</dt>
+                <dd className='max-w-[230px] text-right font-mono text-xs break-all'>
+                  {checkout.trade_no}
+                </dd>
+              </div>
+              <div className='flex items-center justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Expires in')}</dt>
+                <dd className='font-mono font-medium'>
+                  {formatCountdown(remainingSeconds ?? 0)}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <dl className='space-y-2 text-sm'>
+              <div className='flex items-center justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Amount Due')}</dt>
+                <dd className='font-semibold'>{checkout.money}</dd>
+              </div>
+              <div className='flex items-center justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Payment Method')}</dt>
+                <dd className='font-medium'>{checkout.payment_method}</dd>
+              </div>
+              <div className='flex items-start justify-between gap-4'>
+                <dt className='text-muted-foreground'>{t('Order number')}</dt>
+                <dd className='max-w-[230px] text-right font-mono text-xs break-all'>
+                  {checkout.trade_no}
+                </dd>
+              </div>
+            </dl>
+          )}
 
           <Alert>
             <StatusIcon
@@ -254,7 +383,11 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
 
         <div className='order-1 mx-auto bg-white p-3 sm:order-2'>
           <QRCodeSVG
-            value={checkout.checkout_value}
+            value={
+              isCryptoCheckout
+                ? checkout.receive_address
+                : checkout.checkout_value
+            }
             size={240}
             className='size-[208px] max-[390px]:size-[208px] sm:size-[240px]'
             aria-label={t('Payment QR code')}
