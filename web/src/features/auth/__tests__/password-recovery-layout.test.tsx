@@ -96,6 +96,7 @@ vi.mock('@/lib/copy-to-clipboard', () => ({
 
 const { ForgotPassword } = await import('../forgot-password')
 const { ResetPasswordConfirm } = await import('../reset-password-confirm')
+const { authSubmitClassName } = await import('../components/auth-card')
 
 const reactTestGlobals = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean
@@ -151,6 +152,12 @@ function assertExperienceShell(
   assert.match(panel.className, /max-w-\[1120px\]/)
   assert.match(panel.className, /lg:grid-cols-/)
   assert.match(formRegion.className, /min-w-0/)
+  const transitionContent = formRegion.querySelector<HTMLElement>(
+    '[data-auth-transition="content"]'
+  )
+  assert.ok(transitionContent)
+  assert.equal(transitionContent.dataset.authTransition, 'content')
+  assert.match(transitionContent.className, /auth-route-content/)
 }
 
 describe('password recovery authentication experience', () => {
@@ -172,6 +179,7 @@ describe('password recovery authentication experience', () => {
     const view = await renderNode(<ForgotPassword />)
 
     assertExperienceShell(view.container, 'forgot-password', 'Forgot password')
+    assert.ok(view.container.querySelector('.auth-card-canvas'))
     assert.ok(view.container.querySelector('[data-auth-decoration="dot-grid"]'))
     assert.ok(
       view.container.querySelector('[data-testid="forgot-password-form"]')
@@ -193,12 +201,16 @@ describe('password recovery authentication experience', () => {
     )
 
     assertExperienceShell(view.container, 'reset-password', 'Reset password')
+    assert.ok(view.container.querySelector('.auth-card-canvas'))
     assert.equal(
       view.container.querySelector<HTMLInputElement>('input[type="email"]')
         ?.value,
       'member@example.com'
     )
-    assert.ok(view.container.querySelector('button'))
+    const submit = view.container.querySelector<HTMLButtonElement>('button')
+    assert.ok(submit)
+    assert.ok(submit.classList.contains('auth-submit-button'))
+    assert.match(authSubmitClassName, /auth-submit-button/)
 
     await removeNode(view)
   })

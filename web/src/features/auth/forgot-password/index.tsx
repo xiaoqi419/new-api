@@ -29,11 +29,11 @@ export function ForgotPassword() {
     <AuthExperienceLayout page='forgot-password'>
       <AuthCard
         showBrand={false}
+        variant='canvas'
         title={t('Forgot password')}
         description={t(
           'Enter your registered email and we will send you a link to reset your password.'
         )}
-        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
       >
         <ForgotPasswordForm />
 

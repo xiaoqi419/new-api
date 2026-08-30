@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { register } from '@/features/auth/api'
+import { AuthCapsuleCanvas } from '@/features/auth/components/auth-capsule-canvas'
 import {
   AuthDivider,
   authInputClassName,
@@ -368,8 +369,11 @@ export function SignUpForm({
           className={authSubmitClassName}
           disabled={isLoading || !turnstileReady}
         >
-          {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
-          {t('Create account')}
+          <AuthCapsuleCanvas />
+          <span className='auth-submit-content'>
+            {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
+            {t('Create account')}
+          </span>
         </Button>
       </form>
 

@@ -30,7 +30,7 @@ export function SignUp() {
     <AuthExperienceLayout page='sign-up'>
       <AuthCard
         showBrand={false}
-        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
+        variant='canvas'
       >
         <SignUpForm />
 

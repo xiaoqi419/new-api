@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import ClaudeIcon from '@lobehub/icons/es/Claude/components/Color'
 import CodexIcon from '@lobehub/icons/es/Codex/components/Color'
 import GeminiIcon from '@lobehub/icons/es/Gemini/components/Color'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Sparkles } from '@/components/icons'
@@ -34,6 +34,16 @@ const MODEL_FAMILIES = [
   { name: 'Gemini', Icon: GeminiIcon },
 ] as const
 
+const AUTH_TITLE_WORDS = [
+  'design',
+  'build',
+  'integrate',
+  'scale',
+  'orchestrate',
+] as const
+
+const AUTH_VIDEO_SRC = '/assets/iconsax-sec1-new.mp4'
+
 type AuthExperienceLayoutProps = {
   children: React.ReactNode
   page: 'sign-in' | 'sign-up' | 'forgot-password' | 'reset-password'
@@ -42,10 +52,63 @@ type AuthExperienceLayoutProps = {
 export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
+  const [isDesktop, setIsDesktop] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(min-width: 1024px)').matches === true
+  )
+  const [reducedMotion, setReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  )
+  const [videoFailed, setVideoFailed] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const config = useMemo(
     () => parseLoginPageConfig(status?.login_page_config),
     [status?.login_page_config]
   )
+  const showVideo = isDesktop && !reducedMotion
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+
+    const desktopQuery = window.matchMedia('(min-width: 1024px)')
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const syncMediaPreferences = () => {
+      setIsDesktop(desktopQuery.matches)
+      setReducedMotion(motionQuery.matches)
+    }
+
+    syncMediaPreferences()
+    desktopQuery.addEventListener?.('change', syncMediaPreferences)
+    motionQuery.addEventListener?.('change', syncMediaPreferences)
+
+    return () => {
+      desktopQuery.removeEventListener?.('change', syncMediaPreferences)
+      motionQuery.removeEventListener?.('change', syncMediaPreferences)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showVideo) return
+
+    const video = videoRef.current
+    if (!video) return
+
+    const startPlayback = () => {
+      if (video.paused) {
+        void video.play().catch(() => undefined)
+      }
+    }
+
+    startPlayback()
+    video.addEventListener('loadeddata', startPlayback)
+
+    return () => {
+      video.removeEventListener('loadeddata', startPlayback)
+    }
+  }, [showVideo])
 
   const configuredTitle = config.title?.trim()
   const description =
@@ -80,33 +143,164 @@ export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
         <section
           data-auth-region='brand'
           aria-label={t('Brand')}
-          className='relative hidden min-w-0 flex-col overflow-hidden p-10 lg:flex xl:p-12'
+          className='relative hidden min-w-0 flex-col overflow-hidden bg-neutral-950 p-10 lg:flex xl:p-12'
         >
           {config.background_image && (
             <img
               src={config.background_image}
               alt=''
               aria-hidden='true'
-              className='absolute inset-0 h-full w-full object-cover opacity-20 grayscale'
+              className='absolute inset-0 h-full w-full object-cover opacity-25 grayscale'
             />
+          )}
+          {showVideo && (
+            <video
+              ref={videoRef}
+              data-auth-media='video'
+              aria-hidden='true'
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload='auto'
+              poster={config.background_image || undefined}
+              onError={() => setVideoFailed(true)}
+              onCanPlay={() => setVideoFailed(false)}
+              data-auth-media-state={videoFailed ? 'error' : 'ready'}
+              className='absolute inset-0 h-full w-full object-cover opacity-75 saturate-[0.8]'
+            >
+              <source src={AUTH_VIDEO_SRC} type='video/mp4' />
+            </video>
           )}
           <div
             aria-hidden='true'
-            className='absolute inset-0 bg-neutral-950/80'
+            className='absolute inset-0 bg-[linear-gradient(115deg,rgba(7,8,11,0.76)_0%,rgba(7,8,11,0.44)_45%,rgba(7,8,11,0.72)_100%)]'
+          />
+          <div
+            aria-hidden='true'
+            className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_28%,color-mix(in_oklab,var(--primary)_22%,transparent),transparent_34%)] opacity-80'
           />
 
           <AuthBrandMark className='relative z-10 w-fit text-white' />
 
           <div className='relative z-10 flex min-w-0 flex-1 flex-col justify-center py-10'>
-            <h2 className='max-w-[13ch] min-w-0 text-5xl leading-[0.98] font-semibold break-words xl:text-6xl'>
+            {!configuredTitle && (
+              <style data-auth-motion-styles='title-ticker'>
+                {`
+                  @keyframes auth-title-ticker-word {
+                    0%,
+                    16% {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+
+                    18%,
+                    20% {
+                      opacity: 0;
+                      transform: translateY(-0.95em);
+                    }
+
+                    21%,
+                    96% {
+                      opacity: 0;
+                      transform: translateY(0.95em);
+                    }
+
+                    100% {
+                      opacity: 1;
+                      transform: translateY(0);
+                    }
+                  }
+
+                  .auth-title-ticker-word {
+                    animation: auth-title-ticker-word 12s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+                  }
+
+                  [data-auth-title-word='design'] {
+                    animation-delay: 0s;
+                  }
+
+                  [data-auth-title-word='build'] {
+                    animation-delay: -9.6s;
+                  }
+
+                  [data-auth-title-word='integrate'] {
+                    animation-delay: -7.2s;
+                  }
+
+                  [data-auth-title-word='scale'] {
+                    animation-delay: -4.8s;
+                  }
+
+                  [data-auth-title-word='orchestrate'] {
+                    animation-delay: -2.4s;
+                  }
+
+                  @media (prefers-reduced-motion: reduce) {
+                    .auth-title-ticker-word {
+                      animation: none;
+                      opacity: 0;
+                      transform: translateY(0);
+                    }
+
+                    [data-auth-title-word='design'] {
+                      opacity: 1;
+                    }
+                  }
+                `}
+              </style>
+            )}
+            <h2 className='max-w-full min-w-0 text-5xl leading-[0.98] font-semibold break-words'>
               {configuredTitle ? (
                 configuredTitle
               ) : (
                 <>
-                  {t('Built for developers,')}
-                  <br />
-                  <span className='text-primary'>
-                    {t('designed for scale')}
+                  <span data-auth-title='accessible' className='sr-only'>
+                    {t('Built for developers,')} {t('designed for scale')}
+                  </span>
+                  <span aria-hidden='true'>
+                    {t('Built for developers,')}
+                    <br />
+                    <span className='text-primary inline-flex max-w-full min-w-0 flex-wrap items-baseline'>
+                      <span className='max-w-full min-w-0 break-words'>
+                        {t('designed for')}
+                      </span>
+                      <span className='ml-[0.28em] inline-grid h-[1em] max-w-full min-w-0 overflow-hidden align-bottom'>
+                        {reducedMotion ? (
+                          <span
+                            data-auth-title='static-word'
+                            className='inline-block h-[1em]'
+                          >
+                            {t('design')}
+                          </span>
+                        ) : (
+                          <span
+                            data-auth-title='ticker'
+                            aria-hidden='true'
+                            className='relative col-start-1 row-start-1 inline-grid h-[1em] max-w-full overflow-hidden align-bottom'
+                          >
+                            {AUTH_TITLE_WORDS.map((word) => (
+                              <span
+                                key={`size-${word}`}
+                                aria-hidden='true'
+                                className='invisible col-start-1 row-start-1 h-[1em] text-left whitespace-nowrap'
+                              >
+                                {t(word)}
+                              </span>
+                            ))}
+                            {AUTH_TITLE_WORDS.map((word) => (
+                              <span
+                                key={word}
+                                data-auth-title-word={word}
+                                className='auth-title-ticker-word col-start-1 row-start-1 h-[1em] text-left whitespace-nowrap'
+                              >
+                                {t(word)}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    </span>
                   </span>
                 </>
               )}
@@ -220,7 +414,13 @@ export function AuthExperienceLayout(props: AuthExperienceLayoutProps) {
             <AuthBrandMark className='w-fit' />
           </div>
           <div className='flex min-w-0 flex-1 items-center justify-center px-3 py-6 sm:px-8 sm:py-10 lg:px-10'>
-            <div className='w-full max-w-[420px] min-w-0'>{props.children}</div>
+            <div
+              key={props.page}
+              data-auth-transition='content'
+              className='auth-route-content w-full max-w-[420px] min-w-0'
+            >
+              {props.children}
+            </div>
           </div>
         </section>
       </div>

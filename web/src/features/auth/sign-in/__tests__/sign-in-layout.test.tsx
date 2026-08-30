@@ -30,6 +30,19 @@ const { useStatusMock, useSystemConfigMock } = vi.hoisted(() => ({
 }))
 
 const domWindow = new Window({ url: 'http://localhost/sign-in' })
+Object.defineProperty(domWindow, 'matchMedia', {
+  configurable: true,
+  value: (query: string) => ({
+    media: query,
+    matches: query === '(min-width: 1024px)',
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+})
 for (const key of [
   'window',
   'document',
@@ -127,7 +140,8 @@ vi.mock('@/lib/passkey', () => ({
 }))
 
 const { AuthLayout } = await import('../../auth-layout')
-const { AuthCard } = await import('../../components/auth-card')
+const { AuthCard, authSubmitClassName } =
+  await import('../../components/auth-card')
 const { AuthExperienceLayout } =
   await import('../../components/auth-experience-layout')
 const { AuthTabs } = await import('../../components/auth-tabs')
@@ -221,6 +235,15 @@ describe('authentication experience layout', () => {
     assert.match(brand.className, /hidden/)
     assert.match(brand.className, /lg:flex/)
     assert.match(form.className, /min-w-0/)
+    const transitionContent = form.querySelector<HTMLElement>(
+      '[data-auth-transition="content"]'
+    )
+    assert.ok(transitionContent)
+    assert.match(transitionContent.className, /auth-route-content/)
+    assert.equal(
+      transitionContent.querySelector('[data-testid="auth-form"]')?.textContent,
+      'Authentication'
+    )
     assert.equal(
       view.container.querySelector('[data-testid="auth-form"]')?.textContent,
       'Authentication'
@@ -236,6 +259,21 @@ describe('authentication experience layout', () => {
       brand.querySelector('img[aria-hidden="true"]')?.getAttribute('src'),
       '/auth-background.jpg'
     )
+    const video = brand.querySelector<HTMLVideoElement>(
+      '[data-auth-media="video"]'
+    )
+    assert.ok(video)
+    assert.equal(video.autoplay, true)
+    assert.equal(video.muted, true)
+    assert.equal(video.loop, true)
+    assert.equal(video.getAttribute('playsinline'), '')
+    assert.equal(video.preload, 'auto')
+    assert.equal(
+      video.querySelector('source')?.getAttribute('src'),
+      '/assets/iconsax-sec1-new.mp4'
+    )
+    assert.equal(video.querySelector('source')?.getAttribute('media'), null)
+    assert.equal(video.getAttribute('aria-hidden'), 'true')
     assert.equal(brand.querySelector('dt')?.textContent, 'providers')
     assert.equal(brand.querySelector('dd')?.textContent, '40+')
 
@@ -274,6 +312,138 @@ describe('authentication experience layout', () => {
     await removeNode(view)
   })
 
+  test('keeps auth background media out of reduced-motion layouts', async () => {
+    const originalMatchMedia = domWindow.matchMedia
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        media: query,
+        matches: query === '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    })
+
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const brand = view.container.querySelector<HTMLElement>(
+      '[data-auth-region="brand"]'
+    )
+    assert.ok(brand)
+    assert.equal(brand.querySelector('[data-auth-media="video"]'), null)
+
+    await removeNode(view)
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia,
+    })
+  })
+
+  test('shows the first headline word as a static fallback when reduced motion is enabled', async () => {
+    const originalMatchMedia = domWindow.matchMedia
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        media: query,
+        matches:
+          query === '(min-width: 1024px)' ||
+          query === '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    })
+
+    useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const brand = view.container.querySelector<HTMLElement>(
+      '[data-auth-region="brand"]'
+    )
+    assert.ok(brand)
+    assert.equal(brand.querySelector('[data-auth-title="ticker"]'), null)
+    assert.equal(
+      brand.querySelector('[data-auth-title="static-word"]')?.textContent,
+      'design'
+    )
+
+    await removeNode(view)
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia,
+    })
+  })
+
+  test('does not mount the auth background video below the desktop breakpoint', async () => {
+    const originalMatchMedia = domWindow.matchMedia
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        media: query,
+        matches: false,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    })
+
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    assert.equal(
+      view.container.querySelector('[data-auth-media="video"]'),
+      null
+    )
+
+    await removeNode(view)
+    Object.defineProperty(domWindow, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia,
+    })
+  })
+
+  test('mounts the local desktop video on every auth page', async () => {
+    for (const page of [
+      'sign-in',
+      'sign-up',
+      'forgot-password',
+      'reset-password',
+    ] as const) {
+      const view = await renderNode(
+        <AuthExperienceLayout page={page}>
+          <div>Form</div>
+        </AuthExperienceLayout>
+      )
+      const video = view.container.querySelector<HTMLVideoElement>(
+        '[data-auth-media="video"]'
+      )
+      assert.ok(video, `Expected video on ${page}`)
+      assert.equal(
+        video.querySelector('source')?.getAttribute('src'),
+        '/assets/iconsax-sec1-new.mp4'
+      )
+      await removeNode(view)
+    }
+  })
+
   test('uses translated defaults when login page narrative is not configured', async () => {
     useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
 
@@ -301,6 +471,188 @@ describe('authentication experience layout', () => {
     await removeNode(view)
   })
 
+  test('renders the default headline as an accessible vertical word ticker', async () => {
+    useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
+
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const brand = view.container.querySelector<HTMLElement>(
+      '[data-auth-region="brand"]'
+    )
+    assert.ok(brand)
+
+    const ticker = brand.querySelector<HTMLElement>(
+      '[data-auth-title="ticker"]'
+    )
+    assert.ok(ticker)
+    assert.equal(ticker.getAttribute('aria-hidden'), 'true')
+    assert.match(ticker.className, /h-\[1em\]/)
+    assert.match(ticker.className, /overflow-hidden/)
+
+    const words = [
+      ...ticker.querySelectorAll<HTMLElement>('[data-auth-title-word]'),
+    ]
+    assert.deepEqual(
+      words.map((word) => word.dataset.authTitleWord),
+      ['design', 'build', 'integrate', 'scale', 'orchestrate']
+    )
+    assert.ok(
+      words.every(
+        (word) =>
+          word.className.includes('col-start-1') &&
+          word.className.includes('row-start-1')
+      )
+    )
+
+    const accessibleTitle = brand.querySelector<HTMLElement>(
+      '[data-auth-title="accessible"]'
+    )
+    assert.ok(accessibleTitle)
+    assert.equal(accessibleTitle.getAttribute('aria-hidden'), null)
+    assert.equal(
+      accessibleTitle.textContent,
+      'Built for developers, designed for scale'
+    )
+
+    const titleStyles = brand.querySelector<HTMLStyleElement>(
+      'style[data-auth-motion-styles="title-ticker"]'
+    )
+    assert.ok(titleStyles)
+    assert.match(
+      titleStyles.textContent ?? '',
+      /@keyframes auth-title-ticker-word/
+    )
+    assert.match(titleStyles.textContent ?? '', /transform:/)
+    assert.match(titleStyles.textContent ?? '', /opacity:/)
+    assert.match(
+      titleStyles.textContent ?? '',
+      /\[data-auth-title-word='design'\].*animation-delay/s
+    )
+    assert.match(
+      titleStyles.textContent ?? '',
+      /\[data-auth-title-word='orchestrate'\].*animation-delay/s
+    )
+    assert.match(
+      titleStyles.textContent ?? '',
+      /@media \(prefers-reduced-motion: reduce\)/
+    )
+
+    await removeNode(view)
+  })
+
+  test('keeps localized long headline words on one stable line without a fixed character clip', async () => {
+    await i18n.changeLanguage('zh')
+    useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
+
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const brand = view.container.querySelector<HTMLElement>(
+      '[data-auth-region="brand"]'
+    )
+    assert.ok(brand)
+    const ticker = brand.querySelector<HTMLElement>(
+      '[data-auth-title="ticker"]'
+    )
+    assert.ok(ticker)
+    const titleWindow = ticker.parentElement
+    assert.ok(titleWindow)
+    assert.match(titleWindow.className, /inline-grid/)
+    assert.match(titleWindow.className, /overflow-hidden/)
+    assert.match(titleWindow.className, /min-w-0/)
+    assert.equal(titleWindow.className.includes('w-[14ch]'), false)
+    assert.match(
+      brand.querySelector('h2')?.parentElement?.className ?? '',
+      /justify-center/
+    )
+    assert.ok(ticker.textContent?.includes('编排'))
+
+    await removeNode(view)
+  })
+
+  test('keeps the local desktop video mounted after a media error and exposes a dark fallback state', async () => {
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const video = view.container.querySelector<HTMLVideoElement>(
+      '[data-auth-media="video"]'
+    )
+    assert.ok(video)
+    await act(async () => {
+      video.dispatchEvent(new Event('error'))
+    })
+    assert.ok(view.container.querySelector('[data-auth-media="video"]'))
+    assert.equal(
+      view.container
+        .querySelector('[data-auth-media="video"]')
+        ?.getAttribute('data-auth-media-state'),
+      'error'
+    )
+    assert.match(
+      view.container.querySelector('[data-auth-media="video"]')?.className ??
+        '',
+      /opacity-75/
+    )
+
+    await removeNode(view)
+  })
+
+  test('keeps the local desktop video mounted when the locale changes', async () => {
+    useStatusMock.mockReturnValue({ status: { login_page_config: {} } })
+
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const videoBefore = view.container.querySelector<HTMLVideoElement>(
+      '[data-auth-media="video"]'
+    )
+    assert.ok(videoBefore)
+
+    await act(async () => {
+      await i18n.changeLanguage('zh')
+    })
+
+    const videoAfter = view.container.querySelector<HTMLVideoElement>(
+      '[data-auth-media="video"]'
+    )
+    assert.equal(videoAfter, videoBefore)
+    assert.equal(videoAfter?.getAttribute('data-auth-media-state'), 'ready')
+    assert.equal(
+      videoAfter?.querySelector('source')?.getAttribute('src'),
+      '/assets/iconsax-sec1-new.mp4'
+    )
+
+    await removeNode(view)
+  })
+
+  test('keeps the configured title static without mounting the ticker', async () => {
+    const view = await renderNode(
+      <AuthExperienceLayout page='sign-in'>
+        <div>Form</div>
+      </AuthExperienceLayout>
+    )
+    const brand = view.container.querySelector<HTMLElement>(
+      '[data-auth-region="brand"]'
+    )
+    assert.ok(brand)
+    assert.equal(brand.querySelector('[data-auth-title="ticker"]'), null)
+    assert.equal(
+      brand.querySelector('h2')?.textContent,
+      'One account for every model'
+    )
+
+    await removeNode(view)
+  })
+
   test('renders the confirmed Simplified Chinese welcome copy with wrapping safeguards', async () => {
     await i18n.changeLanguage('zh')
 
@@ -312,6 +664,7 @@ describe('authentication experience layout', () => {
     assert.equal(description?.textContent, '登录后进入AI的汪洋大海中~')
     assert.match(title?.className ?? '', /min-w-0/)
     assert.match(title?.className ?? '', /break-words/)
+    assert.match(title?.querySelector('span')?.className ?? '', /text-2xl/)
     assert.match(description?.className ?? '', /min-w-0/)
     assert.match(description?.className ?? '', /break-words/)
 
@@ -360,11 +713,13 @@ describe('authentication experience layout', () => {
 
     assert.ok(surface)
     assert.ok(formRegion)
-    assert.ok(card)
+    assert.equal(card, undefined)
     assert.ok(username)
     assert.ok(forgotPassword)
     assert.ok(divider)
     assert.ok(submit)
+    assert.ok(submit.querySelector('[data-auth-capsule="canvas"]'))
+    assert.ok(submit.querySelector('.auth-submit-content'))
     assert.ok(surface.classList.contains('dark'))
     assert.ok(surface.classList.contains('[color-scheme:dark]'))
     assert.ok(document.documentElement.classList.contains('light'))
@@ -375,6 +730,10 @@ describe('authentication experience layout', () => {
     assert.ok(forgotPassword.classList.contains('text-muted-foreground'))
     assert.ok(submit.classList.contains('bg-primary'))
     assert.ok(submit.classList.contains('text-primary-foreground'))
+    assert.ok(submit.classList.contains('auth-submit-button'))
+    assert.ok(submit.classList.contains('relative'))
+    assert.ok(submit.classList.contains('isolate'))
+    assert.ok(submit.classList.contains('overflow-hidden'))
 
     await removeNode(view)
   })
@@ -396,6 +755,7 @@ describe('authentication experience layout', () => {
     assert.match(formRegion.className, /min-w-0/)
     assert.ok(view.container.querySelector('[data-testid="sign-up-form"]'))
     assert.equal(view.container.querySelectorAll('a[href="/"]').length, 2)
+    assert.match(authSubmitClassName, /auth-submit-button/)
 
     await removeNode(view)
   })
