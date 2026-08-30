@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260831-epusdt-multichain-wallet',
+    date: '2026-08-31',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'GMPay Native 充值支持从已配置的多链钱包中选择网络和代币；单链配置可直接进入站内二维码收银台，多链配置无需离开当前页面即可完成选择和支付。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260830-payment-gateway-mode',
     date: '2026-08-30',
     changes: [

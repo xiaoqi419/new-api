@@ -90,7 +90,7 @@ function getStatusContent(
   return {
     label: t('Waiting for payment'),
     description: isCryptoCheckout
-      ? t('Send the exact amount to the TRON address shown.')
+      ? t('Send the exact amount to the address shown.')
       : t('Scan the QR code to complete your payment.'),
     icon: Loader2,
     tone: 'text-primary',
@@ -115,13 +115,9 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const [checkoutStatus, setCheckoutStatus] =
     useState<CheckoutStatus>('waiting')
   const [refreshing, setRefreshing] = useState(false)
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
-    null
-  )
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const pollingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  )
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const refreshRef = useRef<(manual?: boolean) => void>(() => undefined)
   const checkoutOpen = props.open
   const activeCheckout = props.checkout
@@ -319,7 +315,9 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
                 <dd className='font-medium'>{checkout.network}</dd>
               </div>
               <div className='flex items-start justify-between gap-4'>
-                <dt className='text-muted-foreground'>{t('Receive address')}</dt>
+                <dt className='text-muted-foreground'>
+                  {t('Receive address')}
+                </dt>
                 <dd className='flex min-w-0 items-start gap-1 text-right font-mono text-xs break-all'>
                   <span className='min-w-0 flex-1'>
                     {checkout.receive_address}

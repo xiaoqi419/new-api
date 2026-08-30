@@ -28,6 +28,7 @@ import {
   getDefaultPaymentType,
   getMinTopupAmount,
   isAlipayDirectPayment,
+  isNativeCryptoPayment,
   isSafeEpayCheckoutTarget,
   isSafePaymentRedirectUrl,
   isStripePayment,
@@ -60,6 +61,30 @@ describe('payment type classification', () => {
   test('separates the direct Alipay merchant from the epay Alipay channel', () => {
     assert.equal(isAlipayDirectPayment(PAYMENT_TYPES.ALIPAY_DIRECT), true)
     assert.equal(isAlipayDirectPayment(PAYMENT_TYPES.ALIPAY), false)
+  })
+
+  test('keeps legacy TRON on EPay when Native asset capabilities are absent', () => {
+    assert.equal(
+      isNativeCryptoPayment('usdt.tron', buildTopupInfo({})),
+      false
+    )
+    assert.equal(
+      isNativeCryptoPayment(
+        'usdt.tron',
+        buildTopupInfo({ crypto_assets: undefined })
+      ),
+      false
+    )
+  })
+
+  test('recognizes Native crypto when the asset capability is present', () => {
+    assert.equal(
+      isNativeCryptoPayment(
+        'usdt.tron',
+        buildTopupInfo({ crypto_assets: [] })
+      ),
+      true
+    )
   })
 })
 

@@ -94,6 +94,7 @@ const translationKeys = [
   'Retry',
   'Return',
   'Scan the QR code to complete your payment.',
+  'Send the exact amount to the address shown.',
   'Waiting for payment',
 ] as const
 

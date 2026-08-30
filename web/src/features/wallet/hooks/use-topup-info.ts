@@ -30,6 +30,7 @@ import type {
   CreemProduct,
   PaymentMethod,
   WaffoPayMethod,
+  CryptoAsset,
 } from '../types'
 
 // ============================================================================
@@ -79,6 +80,32 @@ function parsePaymentMethods(
       }
     })
     .filter((item) => item.name && item.type && item.type !== 'waffo')
+}
+
+function parseCryptoAssets(data: unknown): CryptoAsset[] | undefined {
+  if (data === undefined || data === null) {
+    return undefined
+  }
+
+  return parseJsonArray(data)
+    .filter(
+      (item): item is Record<string, unknown> =>
+        !!item && typeof item === 'object'
+    )
+    .map((item) => {
+      const network =
+        typeof item.network === 'string' ? item.network.trim() : ''
+      const displayName =
+        typeof item.display_name === 'string' && item.display_name.trim()
+          ? item.display_name.trim()
+          : network
+      return {
+        network,
+        token: typeof item.token === 'string' ? item.token.trim() : '',
+        display_name: displayName,
+      }
+    })
+    .filter((item) => item.network && item.token && item.display_name)
 }
 
 function parseWaffoPayMethods(data: unknown): WaffoPayMethod[] {
@@ -186,6 +213,7 @@ export function useTopupInfo() {
           response.data.pay_methods,
           response.data.stripe_min_topup
         ),
+        crypto_assets: parseCryptoAssets(response.data.crypto_assets),
         amount_options: parseAmountOptions(response.data.amount_options),
         discount: parseDiscountMap(response.data.discount),
         creem_products: parseCreemProducts(response.data.creem_products),

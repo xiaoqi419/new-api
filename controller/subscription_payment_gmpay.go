@@ -31,7 +31,7 @@ func subscriptionOrderMatchesEffectiveGatewayMode(order *model.SubscriptionOrder
 		return false
 	}
 	if operation_setting.IsGMPayNativePaymentGatewayMode() {
-		return order.PaymentMethod == gmpayNativePaymentMethod
+		return isGMPayNativeOrderPaymentMethod(order.PaymentMethod)
 	}
 	return order.PaymentMethod != gmpayNativePaymentMethod
 }
@@ -80,6 +80,8 @@ func subscriptionRequestGMPay(c *gin.Context, req SubscriptionEpayPayRequest, pl
 		plan.PriceAmount,
 		notifyURL,
 		returnURL,
+		req.Token,
+		req.Network,
 	)
 	if err == nil {
 		c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
@@ -108,11 +110,11 @@ func TryCompleteGMPaySubscriptionOrder(orderID string, signedAmount string, prov
 	if ownerErr != nil || owner == nil || owner.AgentId != 0 {
 		return true, errors.New("gmpay subscription owner is not a platform user")
 	}
-	if order.PaymentProvider != model.PaymentProviderEpay || order.PaymentMethod != gmpayNativePaymentMethod {
+	if order.PaymentProvider != model.PaymentProviderEpay || !isGMPayNativeOrderPaymentMethod(order.PaymentMethod) {
 		return true, model.ErrPaymentMethodMismatch
 	}
 	if !epayCallbackAmountMatches(signedAmount, order.Money) {
 		return true, errors.New("gmpay subscription amount mismatch")
 	}
-	return true, model.CompleteSubscriptionOrder(orderID, providerPayload, model.PaymentProviderEpay, gmpayNativePaymentMethod)
+	return true, model.CompleteSubscriptionOrder(orderID, providerPayload, model.PaymentProviderEpay, order.PaymentMethod)
 }

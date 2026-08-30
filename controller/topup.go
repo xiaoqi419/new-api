@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
@@ -31,6 +32,23 @@ func GetTopUpInfo(c *gin.Context) {
 	payMethods := effectiveEpayPaymentMethods()
 	if !complianceConfirmed {
 		payMethods = []map[string]string{}
+	}
+	nativeCrypto := operation_setting.IsGMPayNativePaymentGatewayMode()
+	var cryptoAssets []service.GMPayPaymentAsset
+	if nativeCrypto {
+		cryptoAssets = make([]service.GMPayPaymentAsset, 0)
+	}
+	if complianceConfirmed && nativeCrypto {
+		if cfg := epayConfigForAgent(common.GetContextKeyInt(c, constant.ContextKeyUserAgentId)); cfg.Enabled && cfg.Client != nil && cfg.Client.Config != nil && cfg.Client.BaseUrl != nil {
+			if client, err := newGMPayNativeClient(cfg.Client.BaseUrl.String(), cfg.Client.Config.PartnerID, cfg.Client.Config.Key); err == nil {
+				assets, _ := client.SupportedAssets(c.Request.Context())
+				for _, asset := range assets {
+					for _, token := range asset.Tokens {
+						cryptoAssets = append(cryptoAssets, service.GMPayPaymentAsset{Network: asset.Network, Token: token, DisplayName: asset.DisplayName})
+					}
+				}
+			}
+		}
 	}
 
 	// 如果启用了 Stripe 支付，添加到支付方法列表
@@ -170,6 +188,12 @@ func GetTopUpInfo(c *gin.Context) {
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
 	}
+	// Legacy EPay must not expose the Native asset capability. Native mode
+	// deliberately returns an empty array when EPUSDT is unavailable so the
+	// wallet can fail closed instead of falling back to the default TRON order.
+	if nativeCrypto {
+		data["crypto_assets"] = cryptoAssets
+	}
 	common.ApiSuccess(c, data)
 }
 
@@ -198,6 +222,8 @@ const defaultMaxTopupAmount = 500
 type EpayRequest struct {
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"payment_method"`
+	Token         string `json:"token"`
+	Network       string `json:"network"`
 }
 
 type AmountRequest struct {
@@ -619,7 +645,7 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 
 	if useGMPayNative {
-		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL)
+		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL, req.Token, req.Network)
 		if clientErr == nil {
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney))
 			c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
@@ -753,7 +779,7 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		return
 	}
 	if useGMPayNative {
-		data, checkoutErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("AGP%d", req.Amount), payMoney, notifyUrl, returnUrl)
+		data, checkoutErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("AGP%d", req.Amount), payMoney, notifyUrl, returnUrl, req.Token, req.Network)
 		if checkoutErr != nil {
 			if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
 				!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {

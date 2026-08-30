@@ -38,7 +38,12 @@ import {
   isWechatDirectPayment,
   openWalletEpayCheckout,
 } from '../lib'
-import type { AmountRequest, AmountResponse, EpayCheckoutData } from '../types'
+import type {
+  AmountRequest,
+  AmountResponse,
+  CryptoAsset,
+  EpayCheckoutData,
+} from '../types'
 
 // ============================================================================
 // Payment Hook
@@ -92,6 +97,7 @@ export function usePayment() {
   const lastEpayRequestRef = useRef<{
     amount: number
     paymentType: string
+    cryptoAsset?: CryptoAsset
   } | null>(null)
 
   // Calculate payment amount
@@ -117,13 +123,21 @@ export function usePayment() {
 
   // Process payment
   const processPayment = useCallback(
-    async (topupAmount: number, paymentType: string) => {
+    async (
+      topupAmount: number,
+      paymentType: string,
+      cryptoAsset?: CryptoAsset
+    ) => {
       try {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
         const requestAmount = Math.floor(topupAmount)
-        lastEpayRequestRef.current = { amount: topupAmount, paymentType }
+        lastEpayRequestRef.current = {
+          amount: topupAmount,
+          paymentType,
+          ...(cryptoAsset ? { cryptoAsset } : {}),
+        }
 
         const isDirectPayment =
           isAlipayDirectPayment(paymentType) ||
@@ -162,6 +176,9 @@ export function usePayment() {
         const response = await requestEpayCheckout({
           amount: requestAmount,
           payment_method: paymentType,
+          ...(cryptoAsset
+            ? { network: cryptoAsset.network, token: cryptoAsset.token }
+            : {}),
         })
 
         if (!isApiSuccess(response)) {
@@ -196,7 +213,11 @@ export function usePayment() {
     const request = lastEpayRequestRef.current
     if (!request) return false
     setEpayCheckout(null)
-    return processPayment(request.amount, request.paymentType)
+    return processPayment(
+      request.amount,
+      request.paymentType,
+      request.cryptoAsset
+    )
   }, [processPayment])
 
   const closeEpayCheckout = useCallback(() => {

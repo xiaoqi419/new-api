@@ -56,8 +56,8 @@ export interface EpayCryptoCheckoutData extends EpayCheckoutBase {
   checkout_type: 'crypto'
   actual_amount: string
   receive_address: string
-  token: 'USDT'
-  network: 'TRON'
+  token: string
+  network: string
   expiration_time: number
   server_time?: number
 }
@@ -142,6 +142,13 @@ export interface PaymentMethod {
   icon?: string
 }
 
+/** A wallet asset enabled by the GMPay/EPUSDT gateway. */
+export interface CryptoAsset {
+  network: string
+  token: string
+  display_name: string
+}
+
 /**
  * Waffo payment method configuration
  */
@@ -166,6 +173,8 @@ export interface TopupInfo {
   enable_stripe_topup: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
+  /** Available native crypto networks and tokens, when configured. */
+  crypto_assets?: CryptoAsset[]
   /** Minimum topup amount for online topup */
   min_topup: number
   /** Minimum topup amount for Stripe */
@@ -240,6 +249,9 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
+  /** Native crypto asset selection. Both fields must be sent together. */
+  network?: string
+  token?: string
 }
 
 export type WechatPaymentRequestScene = 'native' | 'h5'

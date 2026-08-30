@@ -182,9 +182,9 @@ export function getEpayCheckoutData(
       typeof receiveAddress !== 'string' ||
       !receiveAddress.trim() ||
       typeof token !== 'string' ||
-      token.trim().toUpperCase() !== 'USDT' ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/.test(token.trim()) ||
       typeof network !== 'string' ||
-      network.trim().toUpperCase() !== 'TRON' ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/.test(network.trim()) ||
       typeof expirationTime !== 'number' ||
       !Number.isFinite(expirationTime) ||
       expirationTime <= 0 ||
@@ -207,8 +207,8 @@ export function getEpayCheckoutData(
       money: String(money),
       actual_amount: actualAmount.trim(),
       receive_address: receiveAddress.trim(),
-      token: 'USDT',
-      network: 'TRON',
+      token: token.trim().toUpperCase(),
+      network: network.trim().toUpperCase(),
       expiration_time: expirationTime,
       ...(typeof serverTime === 'number' ? { server_time: serverTime } : {}),
     }
@@ -293,6 +293,23 @@ export function isAlipayDirectPayment(paymentType: string): boolean {
  */
 export function isWechatDirectPayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.WECHAT_DIRECT
+}
+
+/** Native GMPay payment methods use the `usdt.<network>` identifier. */
+export function isCryptoPayment(paymentType: string): boolean {
+  return paymentType.toLowerCase().startsWith('usdt.')
+}
+
+/**
+ * Native GMPay is identified by the asset capability returned with top-up
+ * info. Legacy EPay may still expose `usdt.tron`, but intentionally omits
+ * `crypto_assets` and must continue through its existing confirmation flow.
+ */
+export function isNativeCryptoPayment(
+  paymentType: string,
+  topupInfo: TopupInfo | null | undefined
+): boolean {
+  return isCryptoPayment(paymentType) && Array.isArray(topupInfo?.crypto_assets)
 }
 
 /**

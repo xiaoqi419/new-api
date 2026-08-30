@@ -84,6 +84,20 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	amount, amountOK := service.GMPayCanonicalParameter(params["amount"])
 	status, statusOK := service.GMPayCanonicalParameter(params["status"])
 	signature, signatureOK := params["signature"].(string)
+	if err == nil {
+		// New EPUSDT callbacks include the selected network. Keep accepting
+		// legacy TRON callbacks that omitted it, but validate any supplied
+		// asset/address before settlement.
+		if networkValue, ok := params["network"]; ok {
+			network, networkOK := networkValue.(string)
+			token, tokenOK := params["token"].(string)
+			address, addressOK := params["receive_address"].(string)
+			if !networkOK || !tokenOK || !addressOK || !service.IsGMPayAddress(network, address) || strings.TrimSpace(network) == "" || strings.TrimSpace(token) == "" {
+				writeGMPayNotifyResult(c, false)
+				return
+			}
+		}
+	}
 	if err != nil || !pidOK || !orderIDOK || !amountOK || !statusOK || !signatureOK ||
 		strings.TrimSpace(pid) == "" || strings.TrimSpace(orderID) == "" || strings.TrimSpace(signature) == "" ||
 		subtle.ConstantTimeCompare([]byte(pid), []byte(expectedPID)) != 1 ||
@@ -95,6 +109,17 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	topUp := model.GetTopUpByTradeNo(orderID)
 	subscriptionOrder := model.GetSubscriptionOrderByTradeNo(orderID)
 	if topUp != nil && subscriptionOrder != nil && !isDerivedSubscriptionTopUp(topUp, subscriptionOrder) {
+		writeGMPayNotifyResult(c, false)
+		return
+	}
+	expectedPaymentMethod := ""
+	if topUp != nil {
+		expectedPaymentMethod = topUp.PaymentMethod
+	}
+	if subscriptionOrder != nil {
+		expectedPaymentMethod = subscriptionOrder.PaymentMethod
+	}
+	if !isGMPayNativeOrderPaymentMethod(expectedPaymentMethod) || !gmpayCallbackMatchesOrderAsset(params, expectedPaymentMethod) {
 		writeGMPayNotifyResult(c, false)
 		return
 	}
@@ -124,7 +149,7 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 		return
 	}
 	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderEpay ||
-		topUp.PaymentMethod != gmpayNativePaymentMethod || !epayCallbackAmountMatches(amount, topUp.Money) ||
+		!isGMPayNativeOrderPaymentMethod(topUp.PaymentMethod) || !epayCallbackAmountMatches(amount, topUp.Money) ||
 		!verifyTopupAgentOwnership(c, topUp, expectedAgentID, "GMPay") ||
 		(topUp.GroupBuyId != 0 && topUp.AgentPrepayId != 0) {
 		writeGMPayNotifyResult(c, false)
@@ -209,6 +234,7 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 		"actual_amount":        {},
 		"receive_address":      {},
 		"token":                {},
+		"network":              {},
 		"block_transaction_id": {},
 		"signature":            {},
 		"status":               {},
@@ -237,11 +263,42 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 	actualAmount, actualAmountOK := service.GMPayCanonicalParameter(params["actual_amount"])
 	receiveAddress, receiveAddressOK := params["receive_address"].(string)
 	token, tokenOK := params["token"].(string)
+	networkValue, networkPresent := params["network"]
+	network, networkOK := networkValue.(string)
 	if !amountOK || !actualAmountOK || !receiveAddressOK || !tokenOK || !gmpayPositiveDecimal(amount) ||
-		!gmpayPositiveDecimal(actualAmount) || !service.IsGMPayTronAddress(receiveAddress) || token != "USDT" {
+		!gmpayPositiveDecimal(actualAmount) || strings.TrimSpace(token) == "" {
 		return nil, errors.New("invalid gmpay callback audit data")
 	}
+	if networkPresent {
+		if !networkOK || strings.TrimSpace(network) == "" || !service.IsGMPayAddress(network, receiveAddress) {
+			return nil, errors.New("invalid gmpay callback asset")
+		}
+	} else if strings.TrimSpace(receiveAddress) == "" {
+		return nil, errors.New("invalid gmpay callback receive address")
+	}
 	return params, nil
+}
+
+// gmpayCallbackMatchesOrderAsset binds the callback to the asset encoded in
+// the existing payment_method column. EPUSDT versions that predate multi-chain
+// callbacks omit network, so the order's canonical method supplies it.
+func gmpayCallbackMatchesOrderAsset(params map[string]any, paymentMethod string) bool {
+	expectedToken, expectedNetwork, ok := parseGMPayPaymentMethod(paymentMethod)
+	if !ok {
+		return false
+	}
+	token, tokenOK := params["token"].(string)
+	address, addressOK := params["receive_address"].(string)
+	if !tokenOK || !addressOK || strings.ToLower(strings.TrimSpace(token)) != expectedToken {
+		return false
+	}
+	if networkValue, present := params["network"]; present {
+		network, networkOK := networkValue.(string)
+		if !networkOK || strings.ToLower(strings.TrimSpace(network)) != expectedNetwork {
+			return false
+		}
+	}
+	return service.IsGMPayAddress(expectedNetwork, address)
 }
 
 func gmpayPositiveDecimal(value string) bool {

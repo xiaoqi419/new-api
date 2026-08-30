@@ -16,24 +16,27 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import i18next from 'i18next'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { toast } from 'sonner'
 
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
 
+import { getTradeStatus } from './api'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
+import { CryptoAssetSelectDialog } from './components/dialogs/crypto-asset-select-dialog'
+import { EpayCheckoutDialog } from './components/dialogs/epay-checkout-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { PaymentQrDialog } from './components/dialogs/payment-qr-dialog'
-import { EpayCheckoutDialog } from './components/dialogs/epay-checkout-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
 import { DEFAULT_DISCOUNT_RATE, PAYMENT_TYPES } from './constants'
-import { getTradeStatus } from './api'
 import {
   useTopupInfo,
   usePayment,
@@ -51,12 +54,14 @@ import {
   getMinTopupAmount,
   dispatchSelectedPayment,
 } from './lib'
+import { isNativeCryptoPayment } from './lib/payment'
 import type {
   UserWalletData,
   PaymentMethod,
   PresetAmount,
   CreemProduct,
   WaffoPayMethod,
+  CryptoAsset,
 } from './types'
 
 interface WalletProps {
@@ -75,6 +80,9 @@ export function Wallet(props: WalletProps) {
   >(null)
   const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [cryptoAssetDialogOpen, setCryptoAssetDialogOpen] = useState(false)
+  const [selectedCryptoAsset, setSelectedCryptoAsset] =
+    useState<CryptoAsset | null>(null)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false)
   const [redemptionCode, setRedemptionCode] = useState('')
@@ -190,6 +198,8 @@ export function Wallet(props: WalletProps) {
   // Handle payment method selection
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
     setSelectedPaymentMethod(method)
+    setSelectedCryptoAsset(null)
+    setCryptoAssetDialogOpen(false)
     setSelectedWaffoMethodIndex(null)
     setPaymentLoading(method.type)
 
@@ -206,8 +216,35 @@ export function Wallet(props: WalletProps) {
         return
       }
 
-      // Calculate payment amount and show confirmation dialog
+      // Native crypto checkout chooses a configured wallet before creating the
+      // order. Keep the existing confirmation dialog for all other methods.
       await calculatePaymentAmount(topupAmount, method.type)
+      if (isNativeCryptoPayment(method.type, topupInfo)) {
+        const cryptoAssets = topupInfo?.crypto_assets
+        if (!cryptoAssets) {
+          toast.error(
+            i18next.t('No crypto payment networks are currently available')
+          )
+          return
+        }
+        if (cryptoAssets.length === 0) {
+          toast.error(
+            i18next.t('No crypto payment networks are currently available')
+          )
+          return
+        }
+        if (cryptoAssets.length === 1) {
+          const success = await processPayment(
+            topupAmount,
+            method.type,
+            cryptoAssets[0]
+          )
+          if (success) await fetchUser()
+          return
+        }
+        setCryptoAssetDialogOpen(true)
+        return
+      }
       setConfirmDialogOpen(true)
     } finally {
       setPaymentLoading(null)
@@ -218,12 +255,39 @@ export function Wallet(props: WalletProps) {
   const handlePaymentConfirm = async () => {
     if (!selectedPaymentMethod) return
 
+    const cryptoAssets = topupInfo?.crypto_assets
+    const isNativeCrypto = isNativeCryptoPayment(
+      selectedPaymentMethod.type,
+      topupInfo
+    )
+    if (isNativeCrypto && (!cryptoAssets || cryptoAssets.length === 0)) {
+      toast.error(
+        i18next.t('No crypto payment networks are currently available')
+      )
+      return
+    }
+    if (
+      isNativeCrypto &&
+      cryptoAssets &&
+      cryptoAssets.length > 1 &&
+      !selectedCryptoAsset
+    ) {
+      setConfirmDialogOpen(false)
+      setCryptoAssetDialogOpen(true)
+      return
+    }
+
+    const cryptoAsset = isNativeCrypto
+      ? selectedCryptoAsset || cryptoAssets?.[0]
+      : undefined
+
     const success = await dispatchSelectedPayment(
       selectedPaymentMethod,
       topupAmount,
       selectedWaffoMethodIndex,
       {
-        regular: processPayment,
+        regular: (amount, paymentType) =>
+          processPayment(amount, paymentType, cryptoAsset),
         waffo: processWaffoPayment,
         waffoPancake: processWaffoPancakePayment,
         alipay: processAlipayPayment,
@@ -233,6 +297,20 @@ export function Wallet(props: WalletProps) {
 
     if (success) {
       setConfirmDialogOpen(false)
+      await fetchUser()
+    }
+  }
+
+  const handleCryptoAssetSelect = async (asset: CryptoAsset) => {
+    if (!selectedPaymentMethod) return
+    setSelectedCryptoAsset(asset)
+    const success = await processPayment(
+      topupAmount,
+      selectedPaymentMethod.type,
+      asset
+    )
+    if (success) {
+      setCryptoAssetDialogOpen(false)
       await fetchUser()
     }
   }
@@ -388,6 +466,14 @@ export function Wallet(props: WalletProps) {
         }
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
+      />
+
+      <CryptoAssetSelectDialog
+        open={cryptoAssetDialogOpen}
+        assets={topupInfo?.crypto_assets ?? []}
+        processing={processing}
+        onOpenChange={setCryptoAssetDialogOpen}
+        onSelect={handleCryptoAssetSelect}
       />
 
       <TransferDialog

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, test, vi } from 'vitest'
 
+import type { EpayCheckoutData, EpayCryptoCheckoutData } from '../../types'
+
 const checkout = {
   trade_no: 'WALLET-EPAY-1',
   checkout_type: 'payurl' as const,
@@ -11,9 +13,9 @@ const checkout = {
   money: '12.50',
 }
 
-const requestEpayCheckout = vi.fn(async () => ({
+const requestEpayCheckout = vi.fn(async (_request: unknown) => ({
   message: 'success',
-  data: checkout,
+  data: checkout as EpayCheckoutData,
 }))
 
 vi.mock('../../api', () => ({
@@ -48,5 +50,45 @@ describe('wallet Epay production entry', () => {
     assert.equal(open.mock.calls.length, 0)
     assert.equal(window.location.href, initialLocation)
     assert.equal(submit.mock.calls.length, 0)
+  })
+
+  test('passes the selected native crypto asset as a pair to checkout', async () => {
+    const cryptoCheckout: EpayCryptoCheckoutData = {
+      trade_no: 'WALLET-CRYPTO-1',
+      checkout_type: 'crypto',
+      payment_method: 'usdt.solana',
+      money: '10.00',
+      actual_amount: '9.99',
+      receive_address: 'So11111111111111111111111111111111111111112',
+      token: 'USDC',
+      network: 'SOLANA',
+      expiration_time: 1_700_000_300,
+    }
+    requestEpayCheckout.mockResolvedValueOnce({
+      message: 'success',
+      data: cryptoCheckout,
+    })
+    const view = renderHook(() => usePayment())
+
+    await act(async () => {
+      await view.result.current.processPayment(10, 'usdt.solana', {
+        network: 'solana',
+        token: 'USDC',
+        display_name: 'Solana',
+      })
+    })
+
+    assert.deepEqual(requestEpayCheckout.mock.calls[0]?.[0], {
+      amount: 10,
+      payment_method: 'usdt.solana',
+      network: 'solana',
+      token: 'USDC',
+    })
+    const checkout = view.result.current.epayCheckout
+    assert.equal(checkout?.checkout_type, 'crypto')
+    if (checkout?.checkout_type === 'crypto') {
+      assert.equal(checkout.network, 'SOLANA')
+      assert.equal(checkout.token, 'USDC')
+    }
   })
 })

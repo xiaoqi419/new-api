@@ -1,0 +1,531 @@
+schema: comet.native.v4
+name: epusdt-multi-chain-wallet-checkout
+language: zh-CN
+phase: archive
+status: active
+state_version: 17
+brief: brief.md
+spec_changes:
+  - capability: epusdt-multi-chain-wallet-checkout
+    operation: create
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/epusdt-multi-chain-wallet-checkout
+  target_branch: main
+  finish: keep
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 2
+  attempt: 4
+  retry_epoch: 1
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：`supported_assets` 返回一个 TRON/USDT 时，点击充值按钮直接创建 `network=tron,
+      token=usdt` 的订单并打开 checkout Modal，不出现资产选择步骤。
+    result: passed
+    reason:
+      text: A single Native asset is sent directly to the in-site checkout without
+        opening the selector.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：返回 TRON/USDT、Ethereum/USDT、Solana/USDC 等多个资产时，首次点击只打开资产选择
+      Modal；未选择前不创建订单、不调用创建订单接口。
+    result: passed
+    reason:
+      text: Multiple Native assets open the selector and do not create an order before
+        selection.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：选择任一资产后，创建请求同时携带该 network/token；Modal 展示网关返回的实际金额、地址、网络和代币，且没有新窗口或外部导航。
+    result: passed
+    reason:
+      text: The selected network/token pair is sent and the returned payment data
+        stays in the checkout modal.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：前端刷新充值信息或网关配置失败时，显示本地化错误并阻止创建订单；旧 TRON 配置仍可正常充值。
+    result: passed
+    reason:
+      text: Native configuration failures, invalid responses, and empty assets return
+        an empty capability list and block order creation; Legacy mode remains
+        available.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：后端拒绝不在当前 `supported_assets` 中的组合、缺失 network/token、非法地址或与订单资产不一致的
+      checkout/回调数据。
+    result: passed
+    reason:
+      text: Selected assets, checkout responses, and callbacks are validated against
+        supported assets, network-specific addresses, and the original order
+        binding.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：Native 回调仍按订单类型、金额、签名、商户和租户归属完成正确结算，重复回调至多入账一次；Legacy 回调路径行为不变。
+    result: passed
+    reason:
+      text: Callback signature, PID, status, amount, ownership, and idempotent
+        settlement checks remain in place for wallet, subscription, group-buy,
+        and agent flows.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：EPUSDT 配置接口响应受超时、大小和短时缓存保护；不会在每次轮询或状态查询时重复读取配置。
+    result: passed
+    reason:
+      text: Supported assets use timeout, response-size limits, and short-lived
+        process caching; status polling does not refetch gateway configuration.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: A8：定向后端测试、前端测试、类型检查和生产构建通过；不产生数据库迁移或生产环境变更。
+    result: passed
+    reason:
+      text: Backend tests, five focused wallet test files (35 tests), typecheck,
+        production build, gofmt, and git diff checks passed.
+      truncated: false
+  - id: A9
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 在 GMPay Native 模式下，钱包充值页面根据 EPUSDT 当前公开配置提供可用的网络/代币选择，并始终在 New API
+      站内展示支付信息。
+    result: passed
+    reason:
+      text: The wallet displays current Native network/token capabilities and
+        completes payment information in the New API site.
+      truncated: false
+  - id: A10
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 服务端通过 EPUSDT `/payments/gmpay/v1/config` 读取
+      `supported_assets`。每个资产至少包含规范化的 `network`、`tokens` 和可选
+      `display_name`。只保留网关返回且同时满足格式、网络支持和代币支持的组合；空列表、超时、无效响应或网关错误都视为暂不可用。该结果短时间缓存，并受响应大小和请求超时限制。
+    result: passed
+    reason:
+      text: The EPUSDT config endpoint is parsed, normalized, constrained, invalid
+        data is rejected, and valid results are cached.
+      truncated: false
+  - id: A11
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 用户端 `/api/user/topup/info` 在 GMPay Native 且配置可用时返回 `crypto_assets`，元素包含
+      `network`、`token`、`display_name`。Legacy 模式不返回该列表，国内原有支付方式保持不变。
+    result: passed
+    reason:
+      text: Native mode returns crypto_assets and Legacy mode omits it, preserving
+        domestic payment behavior.
+      truncated: false
+  - id: A12
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 钱包支付按钮触发以下流程：
+    result: passed
+    reason:
+      text: Native and Legacy payment flows are separated while all other payment
+        methods retain their existing confirmation paths.
+      truncated: false
+  - id: A13
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 如果 `crypto_assets` 只有一个元素，直接使用该元素创建 Native 订单。
+    result: passed
+    reason:
+      text: One crypto asset skips the selector and immediately starts checkout.
+      truncated: false
+  - id: A14
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 如果有多个元素，打开资产选择 Modal；Modal 关闭或取消不创建订单。
+    result: passed
+    reason:
+      text: A multi-asset selector can be cancelled without creating an order.
+      truncated: false
+  - id: A15
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 用户选择资产后，客户端发送金额、`payment_method`、`network` 和
+      `token`。服务端重新确认该组合存在于当前缓存配置中，然后直接调用 EPUSDT `order/create-transaction` 创建
+      concrete order。
+    result: passed
+    reason:
+      text: The selected amount, payment method, network, and token are sent and
+        revalidated server-side before EPUSDT order creation.
+      truncated: false
+  - id: A16
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 服务端返回结构化 checkout 数据，不返回或打开 hosted cashier URL。金额使用 USD，实际加密货币金额由 EPUSDT
+      响应提供。
+    result: passed
+    reason:
+      text: Native checkout returns structured USD payment data and does not expose or
+        navigate to the hosted cashier URL.
+      truncated: false
+  - id: A17
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Modal
+      展示二维码、完整收款地址、精确实际金额、网络、代币、复制操作、过期倒计时及支付状态。状态轮询、成功刷新余额、失败/过期提示和定时器清理沿用现有钱包支付逻辑。任何网络错误都停留在当前页面并提供本地化重试，不触发新窗口或外部导航。
+    result: passed
+    reason:
+      text: The modal renders QR, address, exact amount, network, token, expiry,
+        status, copy, retry, failure, and timer cleanup behavior.
+      truncated: false
+  - id: A18
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: network/token 必须成对出现，服务端拒绝未知组合、空值和大小写绕过。
+    result: passed
+    reason:
+      text: Explicit Native network/token pairs are required, normalized, and matched
+        exactly against supported assets; historical non-wallet TRON defaults
+        remain compatible.
+      truncated: false
+  - id: A19
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: checkout 响应的 network/token 必须与请求资产一致；地址按网络使用对应校验器，TRON、Ethereum、Solana 不共用
+      TRON 校验规则。
+    result: passed
+    reason:
+      text: Checkout network/token responses must match the request and addresses use
+        network-specific validation for TRON, EVM, Solana, Aptos, and fallback
+        networks.
+      truncated: false
+  - id: A20
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 回调继续校验签名、PID、成功状态、金额、订单类型、商户/租户归属和幂等性，并使用回调中的资产字段与订单资产匹配。
+    result: passed
+    reason:
+      text: Callbacks bind to the order payment_method asset; networkless official
+        callbacks derive the network from that binding and network-bearing
+        callbacks must match it.
+      truncated: false
+  - id: A21
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 单资产 TRON/USDT 继续兼容既有 `usdt.tron` 支付方式、订单和回调；Legacy EPay 不受 Native 代码路径影响。
+    result: passed
+    reason:
+      text: Legacy EPay does not return crypto_assets. Native detection uses
+        Array.isArray, so Legacy usdt.tron continues through the original EPay
+        flow; the regression test passes.
+      truncated: false
+  - id: A22
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 不增加数据库对象或迁移；资产配置来自网关实时公开配置和短 TTL 缓存。
+    result: passed
+    reason:
+      text: The existing payment_method column stores the canonical asset binding; no
+        schema field or migration was added.
+      truncated: false
+  - id: A23
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 单资产跳过选择，多资产必须先选择且选择前不建单。
+    result: passed
+    reason:
+      text: Single-asset checkout is direct and multi-asset checkout requires
+        selection before order creation.
+      truncated: false
+  - id: A24
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 选择的 network/token 被准确传入网关，Modal 展示实际返回数据。
+    result: passed
+    reason:
+      text: The selected pair is transmitted end-to-end and the modal renders the
+        gateway's actual payment data.
+      truncated: false
+  - id: A25
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 配置失败、组合非法、响应不一致、过期和回调重复均安全失败且有本地化反馈。
+    result: passed
+    reason:
+      text: Configuration errors, unavailable assets, invalid combinations, address
+        mismatches, expiry, and duplicate callbacks fail safely with localized
+        UI states or retry paths.
+      truncated: false
+  - id: A26
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 钱包余额刷新和原有 TRON 流程回归通过。
+    result: passed
+    reason:
+      text: Native success refreshes the wallet, while existing TRON and Legacy
+        checkout/callback paths retain regression coverage and pass.
+      truncated: false
+builder_handoff:
+  candidate_id: 28091cbd-ae75-4981-b2e9-2b3156651271
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:607177e4-9f18-409b-b9dd-61cedc0d4be5
+  iteration: 2
+  summary:
+    text: Repaired Verify findings. Native wallet configuration now fails closed
+      with an explicit empty crypto_assets array, and the frontend blocks
+      payment when Native assets are unavailable. The selected asset is encoded
+      into the existing payment_method field as usdt.<network>.<token> (TRON
+      remains usdt.tron), so order callbacks can bind token/network/address
+      without a schema migration. Official EPUSDT callbacks that omit network
+      are resolved from the order binding; callbacks that include network must
+      match it. Subscription, group-buy, agent prepay, and wallet Native
+      checkout paths pass and bind the selected asset. Legacy EPay behavior
+      remains unchanged.
+    truncated: false
+  addressed_acceptance_ids:
+    - A4
+    - A5
+    - A6
+    - A9
+    - A11
+    - A20
+    - A25
+  checks:
+    - name:
+        text: go test ./service ./controller ./router -count=1
+        truncated: false
+      result: passed
+      note:
+        text: All selected backend packages passed after repair.
+        truncated: false
+    - name:
+        text: wallet multi-chain frontend tests
+        truncated: false
+      result: passed
+      note:
+        text: 4 files, 19 tests passed.
+        truncated: false
+    - name:
+        text: bun run typecheck
+        truncated: false
+      result: passed
+      note:
+        text: Frontend typecheck passed after fail-closed guard.
+        truncated: false
+    - name:
+        text: bun run build
+        truncated: false
+      result: passed
+      note:
+        text: Production frontend build passed.
+        truncated: false
+    - name:
+        text: gofmt and git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: Changed Go files formatted and diff has no whitespace errors.
+        truncated: false
+    - name:
+        text: fast-context semantic search
+        truncated: false
+      result: not-run
+      note:
+        text: Tool request failed; investigation downgraded to rg as required by
+          AGENTS.md.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Full frontend suite retains one unrelated sign-in-layout Array buffer
+        allocation failure.
+      truncated: false
+    - text: Full repository format check remains blocked by existing classic/legacy
+        formatting findings.
+      truncated: false
+    - text: No real EPUSDT payment, production deployment, database migration, or
+        production data change was performed.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-08-30T19:18:09.806Z
+blockers: []
+verification:
+  candidate_id: 28091cbd-ae75-4981-b2e9-2b3156651271
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:58b15fe5-e4d5-431c-b430-f1647abe11d0
+  iteration: 2
+  attempt: 4
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: repair-go-tests
+      name:
+        text: EPUSDT repaired backend/controller tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./router
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 4824
+    - id: repair-wallet-tests
+      name:
+        text: Wallet multi-chain repaired frontend tests
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: test
+          truncated: false
+        - text: --
+          truncated: false
+        - text: src/features/wallet/components/dialogs/__tests__/crypto-asset-select.test.tsx
+          truncated: false
+        - text: src/features/wallet/components/dialogs/__tests__/native-crypto-checkout.test.tsx
+          truncated: false
+        - text: src/features/wallet/hooks/__tests__/epay-entry.test.ts
+          truncated: false
+        - text: src/features/wallet/lib/__tests__/epay-entry.test.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4710
+    - id: repair-typecheck
+      name:
+        text: Frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2467
+    - id: repair-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6306
+    - id: repair-diff-check
+      name:
+        text: Candidate whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 177
+  summary:
+    text: Independent second-round Verify confirms all A1-A26 acceptance items pass.
+      The Legacy EPay regression was fixed with Array.isArray-based Native
+      detection. No production payment, deployment, database migration, or
+      production data changes were performed.
+    truncated: false
+  risks:
+    - text: "Medium: historical non-wallet calls that omit network/token retain the
+        default usdt/tron behavior; the wallet Native path always sends an
+        explicit pair."
+      truncated: false
+    - text: "Medium: the unrelated sign-in-layout test can fail with RangeError: Array
+        buffer allocation failed; focused wallet tests pass."
+      truncated: false
+    - text: "Low: repository-wide formatting still reports existing classic/legacy
+        issues; changed files and git diff --check pass."
+      truncated: false
+    - text: "Low: no real EPUSDT payment, production deployment, database migration,
+        production data, or payment gateway configuration was changed."
+      truncated: false
+    - text: "Low: fast-context failed after retry and code facts were verified with rg
+        as required by project instructions."
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-08-30T19:42:59.272Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A4
+      - A5
+      - A6
+      - A9
+      - A11
+      - A20
+      - A25
+    summary:
+      text: Focused checks pass, but independent review found blocking configuration
+        fallback and callback asset-binding/protocol issues. Return to Build
+        before Archive.
+      truncated: false
+    completed_at: 2026-08-30T18:56:06.009Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier response fields are
+        invalid"
+      truncated: false
+    completed_at: 2026-08-30T19:35:44.281Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier verdict is invalid"
+      truncated: false
+    completed_at: 2026-08-30T19:40:52.876Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 3
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier risks must be text
+        entries"
+      truncated: false
+    completed_at: 2026-08-30T19:41:45.464Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 4
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent second-round Verify confirms all A1-A26 acceptance items pass.
+        The Legacy EPay regression was fixed with Array.isArray-based Native
+        detection. No production payment, deployment, database migration, or
+        production data changes were performed.
+      truncated: false
+    completed_at: 2026-08-30T19:42:59.272Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-08-30T17:53:42.369Z

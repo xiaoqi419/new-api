@@ -610,3 +610,22 @@ func TestAgentConsolePrepayUsesPlatformGMPayAndOwnerScopedStatus(t *testing.T) {
 	AgentConsolePrepayStatus(foreignContext)
 	assert.Contains(t, foreignRecorder.Body.String(), "订单不存在")
 }
+
+func TestGMPayCallbackMatchesNetworklessNonTronOrderByPersistedAsset(t *testing.T) {
+	params := map[string]any{
+		"token":           "USDC",
+		"receive_address": "0x1111111111111111111111111111111111111111",
+	}
+	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdc"))
+	assert.False(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdt"))
+}
+
+func TestGMPayCallbackMatchesNetworkFieldToPersistedAsset(t *testing.T) {
+	params := map[string]any{
+		"token":           "USDC",
+		"network":         "polygon",
+		"receive_address": "0x1111111111111111111111111111111111111111",
+	}
+	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.polygon.usdc"))
+	assert.False(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdc"))
+}

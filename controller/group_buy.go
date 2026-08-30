@@ -160,12 +160,16 @@ type groupBuyCreateRequest struct {
 	PackageId     int    `json:"package_id"`
 	PaymentMethod string `json:"payment_method"`
 	Scene         string `json:"scene"`
+	Token         string `json:"token"`
+	Network       string `json:"network"`
 }
 
 type groupBuyJoinRequest struct {
 	GroupNo       string `json:"group_no"`
 	PaymentMethod string `json:"payment_method"`
 	Scene         string `json:"scene"`
+	Token         string `json:"token"`
+	Network       string `json:"network"`
 }
 
 type groupBuyCancelRequest struct {
@@ -241,7 +245,7 @@ func CreateGroupBuy(c *gin.Context) {
 		return
 	}
 
-	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
+	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene, req.Token, req.Network)
 	if err != nil {
 		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
 		if provider == model.PaymentProviderEpay {
@@ -286,7 +290,7 @@ func JoinGroupBuy(c *gin.Context) {
 		return
 	}
 
-	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene)
+	data, err := dispatchGroupBuyPayment(c, groupBuy, tradeNo, req.PaymentMethod, req.Scene, req.Token, req.Network)
 	if err != nil {
 		releaseGroupBuyPaymentReservation(c, userId, tradeNo)
 		if provider == model.PaymentProviderEpay {
@@ -453,7 +457,7 @@ func groupBuyTradeNo(userId int) string {
 	return fmt.Sprintf("GBU%dNO%s%d", userId, common.GetRandomString(4), time.Now().Unix())
 }
 
-func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, paymentMethod, scene string) (gin.H, error) {
+func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, paymentMethod, scene string, asset ...string) (gin.H, error) {
 	ctx := c.Request.Context()
 	payMoney := groupBuy.PerSharePrice
 	switch paymentMethod {
@@ -467,7 +471,7 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 		}
 		return data, nil
 	default:
-		data, err := groupBuyEpayCheckout(c, tradeNo, payMoney, paymentMethod)
+		data, err := groupBuyEpayCheckout(c, tradeNo, payMoney, paymentMethod, asset...)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("拼团 在线支付下单失败 trade_no=%s error=%q", tradeNo, err.Error()))
 			return nil, fmt.Errorf("拉起支付失败")
@@ -476,7 +480,7 @@ func dispatchGroupBuyPayment(c *gin.Context, groupBuy *model.GroupBuy, tradeNo, 
 	}
 }
 
-func groupBuyEpayCheckout(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+func groupBuyEpayCheckout(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string, asset ...string) (gin.H, error) {
 	switch operation_setting.GetEffectivePaymentGatewayMode() {
 	case operation_setting.PaymentGatewayModeEpayLegacy:
 		return groupBuyEpayMAPI(c, tradeNo, payMoney, paymentMethod)
@@ -484,7 +488,7 @@ func groupBuyEpayCheckout(c *gin.Context, tradeNo string, payMoney float64, paym
 		if paymentMethod != gmpayNativePaymentMethod {
 			return nil, fmt.Errorf("支付方式不存在或不支持拼团支付")
 		}
-		return groupBuyGMPayNative(c, tradeNo, payMoney, paymentMethod)
+		return groupBuyGMPayNative(c, tradeNo, payMoney, paymentMethod, asset...)
 	default:
 		return nil, fmt.Errorf("支付网关模式不可用")
 	}
@@ -613,7 +617,7 @@ func groupBuyEpayMAPI(c *gin.Context, tradeNo string, payMoney float64, paymentM
 	}, nil
 }
 
-func groupBuyGMPayNative(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string) (gin.H, error) {
+func groupBuyGMPayNative(c *gin.Context, tradeNo string, payMoney float64, paymentMethod string, asset ...string) (gin.H, error) {
 	if !operation_setting.IsGMPayNativePaymentGatewayMode() || paymentMethod != gmpayNativePaymentMethod {
 		return nil, fmt.Errorf("GMPay Native 当前不可用")
 	}
@@ -635,6 +639,7 @@ func groupBuyGMPayNative(c *gin.Context, tradeNo string, payMoney float64, payme
 		payMoney,
 		notifyURL,
 		returnURL,
+		asset...,
 	)
 }
 

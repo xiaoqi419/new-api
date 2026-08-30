@@ -6468,6 +6468,11 @@
     "Save target mode": "儲存目標模式",
     "GMPay USDT (TRON)": "GMPay USDT（TRON）",
     "The effective Native mode accepts usdt.tron for GMPay. Stripe and Waffo Pancake remain independent.": "目前生效的原生模式僅接受 GMPay 的 usdt.tron；Stripe 與 Waffo Pancake 仍使用各自獨立的付款流程。",
-    "Saved successfully; restart to apply": "儲存成功，重新啟動後生效"
+    "Saved successfully; restart to apply": "儲存成功，重新啟動後生效",
+    "Choose a payment network": "Choose a payment network",
+    "No crypto payment networks are currently available": "No crypto payment networks are currently available",
+    "Select the wallet you want to use for this payment.": "Select the wallet you want to use for this payment.",
+    "Payment network": "Payment network",
+    "Send the exact amount to the address shown.": "Send the exact amount to the address shown."
   }
 }

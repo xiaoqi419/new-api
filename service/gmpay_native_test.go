@@ -89,6 +89,49 @@ func TestGMPayClientCreatesValidatedNativeCheckout(t *testing.T) {
 	assert.NotContains(t, payload, "payment_url")
 }
 
+func TestGMPayClientReadsAndCachesSupportedAssets(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, gmpayConfigPath, request.URL.Path)
+		requestCount++
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT","TRX","USDT"]},{"network":"solana","display_name":"Solana","tokens":["USDC"]}]}}`))
+	}))
+	t.Cleanup(server.Close)
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	assets, err := client.SupportedAssets(context.Background())
+	require.NoError(t, err)
+	require.Len(t, assets, 2)
+	assert.Equal(t, []string{"USDT", "TRX"}, assets[0].Tokens)
+	assets[0].Tokens[0] = "MUTATED"
+	assetsAgain, err := client.SupportedAssets(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, []string{"USDT", "TRX"}, assetsAgain[0].Tokens)
+	assert.Equal(t, 1, requestCount)
+}
+
+func TestGMPayClientCreatesEthereumCheckoutWithSelectedAsset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, gmpayCreateOrderPath, request.URL.Path)
+		var payload map[string]any
+		require.NoError(t, common.DecodeJson(request.Body, &payload))
+		assert.Equal(t, "usdc", payload["token"])
+		assert.Equal(t, "ethereum", payload["network"])
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"ETH-ORDER","trade_id":"ETH-TRADE","amount":10,"currency":"USD","status":1,"actual_amount":"10.1","receive_address":"0x1111111111111111111111111111111111111111","token":"USDC","network":"ethereum","expiration_time":2000000000}}`))
+	}))
+	t.Cleanup(server.Close)
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	notifyURL, err := url.Parse("https://new-api.example/api/user/gmpay/notify")
+	require.NoError(t, err)
+	redirectURL, err := url.Parse("https://new-api.example/wallet")
+	require.NoError(t, err)
+	checkout, err := client.CreateOrder(context.Background(), GMPayCreateOrderRequest{OrderID: "ETH-ORDER", Amount: "10", NotifyURL: notifyURL, RedirectURL: redirectURL, Token: "USDC", Network: "ethereum"})
+	require.NoError(t, err)
+	assert.Equal(t, "USDC", checkout.Token)
+	assert.Equal(t, "ETHEREUM", checkout.Network)
+}
+
 func TestGMPayClientRejectsUnsafeOrUnusableResponse(t *testing.T) {
 	testCases := []struct {
 		name    string

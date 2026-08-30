@@ -19,6 +19,8 @@ import (
 type SubscriptionEpayPayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
+	Token         string `json:"token"`
+	Network       string `json:"network"`
 }
 
 func SubscriptionRequestEpay(c *gin.Context) {
