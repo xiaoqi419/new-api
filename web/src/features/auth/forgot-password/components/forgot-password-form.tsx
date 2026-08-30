@@ -24,7 +24,7 @@ import { toast } from 'sonner'
 import type { z } from 'zod'
 
 import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
-import { ArrowRight, Loader2 } from '@/components/icons'
+import { Loader2 } from '@/components/icons'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { sendPasswordResetEmail } from '@/features/auth/api'
+import { AuthCapsuleCanvas } from '@/features/auth/components/auth-capsule-canvas'
 import {
   authInputClassName,
   authSubmitClassName,
@@ -156,10 +157,13 @@ export function ForgotPasswordForm({
           className={authSubmitClassName}
           disabled={isLoading || isActive || !turnstileReady}
         >
-          {isActive
-            ? t('Resend ({{seconds}}s)', { seconds: secondsLeft })
-            : t('Send reset email')}
-          {isLoading ? <Loader2 className='animate-spin' /> : <ArrowRight />}
+          <AuthCapsuleCanvas />
+          <span className='auth-submit-content'>
+            {isActive
+              ? t('Resend ({{seconds}}s)', { seconds: secondsLeft })
+              : t('Send reset email')}
+            {isLoading ? <Loader2 className='animate-spin' /> : null}
+          </span>
         </Button>
 
         {isTurnstileEnabled && (

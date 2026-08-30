@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 import type { z } from 'zod'
 
 import { ClickCaptchaDialog } from '@/components/click-captcha-dialog'
-import { Loader2, LogIn, KeyRound } from '@/components/icons'
+import { KeyRound, Loader2 } from '@/components/icons'
 import { PasswordInput } from '@/components/password-input'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { login } from '@/features/auth/api'
+import { AuthCapsuleCanvas } from '@/features/auth/components/auth-capsule-canvas'
 import {
   AuthDivider,
   authInputClassName,
@@ -358,8 +359,11 @@ export function UserAuthForm({
               className={authSubmitClassName}
               disabled={isLoading}
             >
-              {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
-              {t('Sign in')}
+              <AuthCapsuleCanvas />
+              <span className='auth-submit-content'>
+                {isLoading ? <Loader2 className='animate-spin' /> : null}
+                {t('Sign in')}
+              </span>
             </Button>
 
             {/* Turnstile */}

@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 export const authInputClassName =
   'h-[39px] rounded-[9px] bg-muted px-[15px] text-[15px] md:text-[15px]'
 export const authSubmitClassName =
-  'h-[42px] w-full justify-center gap-2 rounded-[9px] text-[16px] font-bold'
+  'auth-submit-button relative isolate h-[42px] w-full justify-center gap-2 overflow-hidden rounded-full text-[16px] font-bold'
 export const authSecondaryButtonClassName =
   'h-[39px] justify-center gap-[7px] rounded-[9px] text-[13px] font-semibold'
 
@@ -52,6 +52,7 @@ export function AuthCard({
   description,
   className,
   showBrand = true,
+  variant = 'card',
 }: {
   children: React.ReactNode
   /** Pages without the sign-in/sign-up tab strip name themselves here instead. */
@@ -60,6 +61,8 @@ export function AuthCard({
   className?: string
   /** Login-specific layouts can carry the single visible brand outside the card. */
   showBrand?: boolean
+  /** The experience layout uses a continuous quiet canvas instead of a nested card. */
+  variant?: 'card' | 'canvas'
 }) {
   const { t } = useTranslation()
   const { systemName, logo, loading } = useSystemConfig()
@@ -67,7 +70,9 @@ export function AuthCard({
   return (
     <div
       className={cn(
-        'bg-card rounded-[20px] border px-[26px] py-[30px] shadow-[0_18px_44px_-20px_rgba(90,20,60,0.22),0_3px_10px_-4px_rgba(90,20,60,0.10)]',
+        'bg-card rounded-[20px] border px-[26px] py-[30px] shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_28%,transparent),0_4px_16px_-8px_color-mix(in_oklab,var(--foreground)_18%,transparent)]',
+        variant === 'canvas' &&
+          'auth-card-canvas rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
         className
       )}
     >
@@ -96,7 +101,7 @@ export function AuthCard({
       )}
 
       {(title || description) && (
-        <div className='mb-[22px] space-y-1.5 text-center'>
+        <div className='mb-[26px] space-y-2 text-center'>
           {title && showBrand && (
             <h2 className='text-xl font-semibold tracking-tight'>{title}</h2>
           )}

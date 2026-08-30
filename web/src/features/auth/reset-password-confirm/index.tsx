@@ -31,6 +31,7 @@ import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { cn } from '@/lib/utils'
 
+import { AuthCapsuleCanvas } from '../components/auth-capsule-canvas'
 import {
   authInputClassName,
   authSubmitClassName,
@@ -122,13 +123,13 @@ export function ResetPasswordConfirm({
     <AuthExperienceLayout page='reset-password'>
       <AuthCard
         showBrand={false}
+        variant='canvas'
         title={t('Reset password')}
         description={
           newPassword
             ? t('auth.resetPasswordConfirm.success')
             : t('auth.resetPasswordConfirm.description')
         }
-        className='border-border/80 bg-card/95 rounded-[8px] px-5 py-6 shadow-[0_24px_70px_-36px_color-mix(in_oklab,var(--primary)_38%,transparent)] backdrop-blur-sm sm:px-7 sm:py-8'
       >
         <div className='space-y-[18px]'>
           {!isValidResetLink && (
@@ -192,7 +193,8 @@ export function ResetPasswordConfirm({
               newPassword ? false : loading || isActive || !isValidResetLink
             }
           >
-            {submitLabel}
+            <AuthCapsuleCanvas />
+            <span className='auth-submit-content'>{submitLabel}</span>
           </Button>
 
           {!newPassword && (

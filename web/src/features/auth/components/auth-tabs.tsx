@@ -22,9 +22,9 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
 const tabClassName =
-  'flex items-center justify-center rounded-[6px] text-sm font-semibold transition-colors'
+  'relative flex min-w-0 items-center justify-center border-b border-transparent text-sm font-semibold transition-colors'
 const activeTabClassName =
-  'bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.10),0_0_0_1px_rgba(0,0,0,0.03)]'
+  'text-foreground after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary'
 
 /**
  * Segmented switch between the two auth pages. They stay separate routes, so this
@@ -42,7 +42,7 @@ export function AuthTabs({
   return (
     <div
       className={cn(
-        'bg-muted grid h-[38px] grid-cols-2 rounded-[9px] p-[5px]',
+        'border-border/70 grid h-[39px] grid-cols-2 border-b',
         className
       )}
     >
