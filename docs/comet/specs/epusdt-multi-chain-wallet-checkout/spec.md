@@ -1,39 +1,45 @@
-# EPUSDT 多链站内充值
+# EPUSDT USDT 多网络站内充值
 
-## 目标
+## 行为
 
-在 GMPay Native 模式下，钱包充值页面根据 EPUSDT 当前公开配置提供可用的网络/代币选择，并始终在 New API 站内展示支付信息。
+GMPay Native 普通钱包充值只接受 USDT。服务端读取 EPUSDT `/payments/gmpay/v1/config` 的 `supported_assets`，按大小写不敏感方式保留包含 USDT 的已知网络，并为每个规范化网络返回一项 `crypto_assets`：`network`、本地化可显示的 `display_name` 和固定 `token=USDT`。TRX、ETH、SOL、BNB、USDC 和未知网络不进入用户选择器。
 
-## 可用资产
+支持的网络标签为 TRON/TRC20、Ethereum/ERC20、Solana/SPL 和 BSC/BEP20；网络别名规范化、顺序稳定、重复网络去重。配置超时、无效、超量、空列表或无 USDT 时返回空集合并失败关闭。
 
-服务端通过 EPUSDT `/payments/gmpay/v1/config` 读取 `supported_assets`。每个资产至少包含规范化的 `network`、`tokens` 和可选 `display_name`。只保留网关返回且同时满足格式、网络支持和代币支持的组合；空列表、超时、无效响应或网关错误都视为暂不可用。该结果短时间缓存，并受响应大小和请求超时限制。
+只有一个可用网络时直接建单；多个网络时先打开网络选择 Modal，取消不建单。服务端在写入 pending 订单和调用网关前再次验证显式 `network` 与 `token=usdt`，stale 或非 USDT 请求拒绝且不回退到 TRON。
 
-用户端 `/api/user/topup/info` 在 GMPay Native 且配置可用时返回 `crypto_assets`，元素包含 `network`、`token`、`display_name`。Legacy 模式不返回该列表，国内原有支付方式保持不变。
+TRON 新订单保留 `usdt.tron`，其他 USDT 网络使用现有可解析的 network/token binding。历史 pending 非 USDT 订单仍按自身 binding 处理回调，新订单不得利用历史兼容绕过 USDT 限制。
 
-## 建单
+成功 checkout 保持站内 Modal，展示精确 USDT 金额、完整地址、网络、二维码、有效期和状态，不打开 hosted page。地址按网络分别校验，轮询和 i18n 遵循现有钱包实现。
 
-钱包支付按钮触发以下流程：
+## Scenarios
 
-1. 如果 `crypto_assets` 只有一个元素，直接使用该元素创建 Native 订单。
-2. 如果有多个元素，打开资产选择 Modal；Modal 关闭或取消不创建订单。
-3. 用户选择资产后，客户端发送金额、`payment_method`、`network` 和 `token`。服务端重新确认该组合存在于当前缓存配置中，然后直接调用 EPUSDT `order/create-transaction` 创建 concrete order。
-4. 服务端返回结构化 checkout 数据，不返回或打开 hosted cashier URL。金额使用 USD，实际加密货币金额由 EPUSDT 响应提供。
+### Scenario: 多 token 响应只展示 USDT 网络
 
-## Checkout Modal
+- Given 网关返回 TRON、Ethereum、Solana 并混合 TRX/USDC/SOL/USDT
+- When 用户加载 Native 钱包充值
+- Then 每个包含 USDT 的已知网络各显示一张 USDT 卡片，非 USDT 不显示
 
-Modal 展示二维码、完整收款地址、精确实际金额、网络、代币、复制操作、过期倒计时及支付状态。状态轮询、成功刷新余额、失败/过期提示和定时器清理沿用现有钱包支付逻辑。任何网络错误都停留在当前页面并提供本地化重试，不触发新窗口或外部导航。
+### Scenario: 单网络直接建单
 
-## 安全与兼容
+- Given 只有一个可用 USDT 网络
+- When 用户点击充值
+- Then 不显示选择器，创建该网络和 `token=usdt` 的订单
 
-- network/token 必须成对出现，服务端拒绝未知组合、空值和大小写绕过。
-- checkout 响应的 network/token 必须与请求资产一致；地址按网络使用对应校验器，TRON、Ethereum、Solana 不共用 TRON 校验规则。
-- 回调继续校验签名、PID、成功状态、金额、订单类型、商户/租户归属和幂等性，并使用回调中的资产字段与订单资产匹配。
-- 单资产 TRON/USDT 继续兼容既有 `usdt.tron` 支付方式、订单和回调；Legacy EPay 不受 Native 代码路径影响。
-- 不增加数据库对象或迁移；资产配置来自网关实时公开配置和短 TTL 缓存。
+### Scenario: 多网络取消不建单
 
-## 可观察验收
+- Given 存在多个可用 USDT 网络
+- When 用户打开选择器并取消
+- Then 不创建本地订单且不调用网关
 
-- 单资产跳过选择，多资产必须先选择且选择前不建单。
-- 选择的 network/token 被准确传入网关，Modal 展示实际返回数据。
-- 配置失败、组合非法、响应不一致、过期和回调重复均安全失败且有本地化反馈。
-- 钱包余额刷新和原有 TRON 流程回归通过。
+### Scenario: stale 网络失败关闭
+
+- Given 用户选择的网络在建单前从网关配置中消失
+- When 服务端收到 checkout 请求
+- Then 拒绝请求、不回退到其他网络且不调用网关建单
+
+### Scenario: 站内 checkout
+
+- Given 网关成功创建 USDT 订单
+- When 页面显示支付信息
+- Then 当前 Modal 展示地址、二维码、金额、网络、有效期和轮询状态，不发生外部导航
