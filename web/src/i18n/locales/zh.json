@@ -6472,6 +6472,7 @@
     "Choose a payment network": "选择支付网络",
     "No crypto payment networks are currently available": "当前没有可用的加密货币支付网络",
     "Select the wallet you want to use for this payment.": "选择本次支付使用的钱包。",
+    "Select a USDT payment network.": "选择 USDT 支付网络。",
     "Payment network": "支付网络",
     "Send the exact amount to the address shown.": "请将准确金额发送到页面显示的地址。"
   }

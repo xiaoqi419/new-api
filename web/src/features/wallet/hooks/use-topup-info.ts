@@ -82,30 +82,84 @@ function parsePaymentMethods(
     .filter((item) => item.name && item.type && item.type !== 'waffo')
 }
 
-function parseCryptoAssets(data: unknown): CryptoAsset[] | undefined {
+const GMPAY_NETWORK_ALIASES: Record<string, string> = {
+  tron: 'tron',
+  trc20: 'tron',
+  'trc-20': 'tron',
+  ethereum: 'ethereum',
+  eth: 'ethereum',
+  erc20: 'ethereum',
+  'erc-20': 'ethereum',
+  solana: 'solana',
+  sol: 'solana',
+  spl: 'solana',
+  binance: 'binance',
+  bsc: 'binance',
+  bnb: 'binance',
+  bep20: 'binance',
+  'bep-20': 'binance',
+  'binance-smart-chain': 'binance',
+}
+
+const GMPAY_NETWORK_DISPLAY_NAMES: Record<string, string> = {
+  tron: 'TRON',
+  ethereum: 'Ethereum',
+  solana: 'Solana',
+  binance: 'BSC',
+}
+
+/**
+ * Keep the wallet selector aligned with the international product contract.
+ * EPUSDT exposes a network together with every enabled token, while this
+ * checkout accepts USDT only. The backend applies the same filter; repeating
+ * it here protects the UI from stale or older gateway responses and collapses
+ * duplicate network entries into one card.
+ *
+ * The parser accepts both the current flattened `{ token }` response and the
+ * grouped `{ tokens }` form used by older gateway versions so a rolling
+ * deployment does not briefly expose native assets such as TRX or SOL.
+ */
+export function parseCryptoAssets(data: unknown): CryptoAsset[] | undefined {
   if (data === undefined || data === null) {
     return undefined
   }
 
-  return parseJsonArray(data)
-    .filter(
-      (item): item is Record<string, unknown> =>
-        !!item && typeof item === 'object'
-    )
-    .map((item) => {
-      const network =
-        typeof item.network === 'string' ? item.network.trim() : ''
-      const displayName =
-        typeof item.display_name === 'string' && item.display_name.trim()
-          ? item.display_name.trim()
-          : network
-      return {
-        network,
-        token: typeof item.token === 'string' ? item.token.trim() : '',
-        display_name: displayName,
-      }
+  const assetsByNetwork = new Map<string, CryptoAsset>()
+
+  for (const item of parseJsonArray(data)) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      continue
+    }
+
+    const record = item as Record<string, unknown>
+    const rawNetwork =
+      typeof record.network === 'string' ? record.network.trim() : ''
+    const network = GMPAY_NETWORK_ALIASES[rawNetwork.toLowerCase()]
+    if (!network) continue
+
+    const tokens: string[] = []
+    if (typeof record.token === 'string') {
+      tokens.push(record.token)
+    }
+    for (const token of parseJsonArray(record.tokens)) {
+      if (typeof token === 'string') tokens.push(token)
+    }
+
+    if (!tokens.some((token) => token.trim().toUpperCase() === 'USDT')) {
+      continue
+    }
+
+    const displayName = GMPAY_NETWORK_DISPLAY_NAMES[network]
+    if (!displayName || assetsByNetwork.has(network)) continue
+
+    assetsByNetwork.set(network, {
+      network,
+      token: 'USDT',
+      display_name: displayName,
     })
-    .filter((item) => item.network && item.token && item.display_name)
+  }
+
+  return [...assetsByNetwork.values()]
 }
 
 function parseWaffoPayMethods(data: unknown): WaffoPayMethod[] {

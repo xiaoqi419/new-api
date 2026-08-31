@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260831-gmpay-usdt-selection',
+    date: '2026-08-31',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          'GMPay Native 钱包充值现在仅展示网关实际可用的 USDT 网络；单网络直接进入站内收银台，多网络先选择网络。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260831-epusdt-multichain-wallet',
     date: '2026-08-31',
     changes: [

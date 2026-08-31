@@ -94,7 +94,7 @@ func TestGMPayClientReadsAndCachesSupportedAssets(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		require.Equal(t, gmpayConfigPath, request.URL.Path)
 		requestCount++
-		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT","TRX","USDT"]},{"network":"solana","display_name":"Solana","tokens":["USDC"]}]}}`))
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT","TRX","USDT"]},{"network":"solana","display_name":"Solana","tokens":["USDC"]},{"network":"erc20","display_name":"Ethereum","tokens":["usdt","USDC"]},{"network":"unknown","display_name":"Unknown","tokens":["USDT"]}]}}`))
 	}))
 	t.Cleanup(server.Close)
 	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
@@ -102,11 +102,14 @@ func TestGMPayClientReadsAndCachesSupportedAssets(t *testing.T) {
 	assets, err := client.SupportedAssets(context.Background())
 	require.NoError(t, err)
 	require.Len(t, assets, 2)
-	assert.Equal(t, []string{"USDT", "TRX"}, assets[0].Tokens)
+	assert.Equal(t, "tron", assets[0].Network)
+	assert.Equal(t, []string{"USDT"}, assets[0].Tokens)
+	assert.Equal(t, "ethereum", assets[1].Network)
+	assert.Equal(t, []string{"USDT"}, assets[1].Tokens)
 	assets[0].Tokens[0] = "MUTATED"
 	assetsAgain, err := client.SupportedAssets(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, []string{"USDT", "TRX"}, assetsAgain[0].Tokens)
+	assert.Equal(t, []string{"USDT"}, assetsAgain[0].Tokens)
 	assert.Equal(t, 1, requestCount)
 }
 
@@ -115,9 +118,9 @@ func TestGMPayClientCreatesEthereumCheckoutWithSelectedAsset(t *testing.T) {
 		require.Equal(t, gmpayCreateOrderPath, request.URL.Path)
 		var payload map[string]any
 		require.NoError(t, common.DecodeJson(request.Body, &payload))
-		assert.Equal(t, "usdc", payload["token"])
+		assert.Equal(t, "usdt", payload["token"])
 		assert.Equal(t, "ethereum", payload["network"])
-		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"ETH-ORDER","trade_id":"ETH-TRADE","amount":10,"currency":"USD","status":1,"actual_amount":"10.1","receive_address":"0x1111111111111111111111111111111111111111","token":"USDC","network":"ethereum","expiration_time":2000000000}}`))
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"ETH-ORDER","trade_id":"ETH-TRADE","amount":10,"currency":"USD","status":1,"actual_amount":"10.1","receive_address":"0x1111111111111111111111111111111111111111","token":"USDT","network":"erc20","expiration_time":2000000000}}`))
 	}))
 	t.Cleanup(server.Close)
 	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
@@ -126,9 +129,9 @@ func TestGMPayClientCreatesEthereumCheckoutWithSelectedAsset(t *testing.T) {
 	require.NoError(t, err)
 	redirectURL, err := url.Parse("https://new-api.example/wallet")
 	require.NoError(t, err)
-	checkout, err := client.CreateOrder(context.Background(), GMPayCreateOrderRequest{OrderID: "ETH-ORDER", Amount: "10", NotifyURL: notifyURL, RedirectURL: redirectURL, Token: "USDC", Network: "ethereum"})
+	checkout, err := client.CreateOrder(context.Background(), GMPayCreateOrderRequest{OrderID: "ETH-ORDER", Amount: "10", NotifyURL: notifyURL, RedirectURL: redirectURL, Token: "USDT", Network: "erc20"})
 	require.NoError(t, err)
-	assert.Equal(t, "USDC", checkout.Token)
+	assert.Equal(t, "USDT", checkout.Token)
 	assert.Equal(t, "ETHEREUM", checkout.Network)
 }
 
