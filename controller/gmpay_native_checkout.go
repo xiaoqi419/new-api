@@ -37,23 +37,73 @@ func resolveGMPayAsset(ctx context.Context, epayCfg tenantEpayConfig, paymentMet
 	if err != nil {
 		return "", "", err
 	}
-	assets, err := client.SupportedAssets(ctx)
+	assets, err := client.SupportedAssetsAllFresh(ctx)
 	if err != nil {
 		return "", "", err
 	}
-	token = strings.ToUpper(token)
+	token = strings.ToLower(token)
 	network = strings.ToLower(network)
+	if !validGMPayAssetPart(token) || !validGMPayAssetPart(network) {
+		return "", "", errors.New("gmpay payment asset is invalid")
+	}
+	if normalizedNetwork, ok := service.NormalizeGMPayNetwork(network); ok {
+		network = normalizedNetwork
+	}
 	for _, asset := range assets {
 		if asset.Network != network {
 			continue
 		}
 		for _, supportedToken := range asset.Tokens {
-			if supportedToken == token {
-				return strings.ToLower(token), network, nil
+			if strings.EqualFold(supportedToken, token) {
+				return token, network, nil
 			}
 		}
 	}
 	return "", "", errors.New("gmpay payment asset is unavailable")
+}
+
+func resolveGMPayWalletAsset(ctx context.Context, epayCfg tenantEpayConfig, paymentMethod, token, network string) (string, string, error) {
+	if !shouldUseGMPayNative(paymentMethod) || !operation_setting.ContainsPayMethod(paymentMethod) {
+		return "", "", errors.New("gmpay native payment method is unavailable")
+	}
+	token = strings.ToLower(strings.TrimSpace(token))
+	network = strings.ToLower(strings.TrimSpace(network))
+	if token == "" || network == "" {
+		return "", "", errors.New("gmpay wallet payment asset must be explicit")
+	}
+	if !validGMPayAssetPart(token) || !validGMPayAssetPart(network) {
+		return "", "", errors.New("gmpay payment asset is invalid")
+	}
+	if token != "usdt" {
+		return "", "", errors.New("gmpay wallet only accepts USDT")
+	}
+	var networkKnown bool
+	network, networkKnown = service.NormalizeGMPayNetwork(network)
+	if !networkKnown {
+		return "", "", errors.New("gmpay payment network is unavailable")
+	}
+	if !epayCfg.Enabled || epayCfg.Client == nil || epayCfg.Client.Config == nil || epayCfg.Client.BaseUrl == nil {
+		return "", "", errors.New("gmpay merchant client is not configured")
+	}
+	client, err := newGMPayNativeClient(epayCfg.Client.BaseUrl.String(), epayCfg.Client.Config.PartnerID, epayCfg.Client.Config.Key)
+	if err != nil {
+		return "", "", err
+	}
+	assets, err := client.SupportedAssetsFresh(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	for _, asset := range assets {
+		if asset.Network != network {
+			continue
+		}
+		for _, supportedToken := range asset.Tokens {
+			if strings.EqualFold(supportedToken, "USDT") {
+				return "usdt", network, nil
+			}
+		}
+	}
+	return "", "", errors.New("gmpay wallet payment asset is unavailable")
 }
 
 // bindGMPayNativeOrderAsset persists the selected network/token using the
@@ -110,7 +160,11 @@ func bindGMPayNativeOrderAsset(tradeNo, paymentMethod string) error {
 // durable order-level binding. The legacy TRON spelling remains unchanged.
 func gmpayPaymentMethodForAsset(token, network string) string {
 	token = strings.ToLower(strings.TrimSpace(token))
-	network = strings.ToLower(strings.TrimSpace(network))
+	if normalizedNetwork, ok := service.NormalizeGMPayNetwork(network); ok {
+		network = normalizedNetwork
+	} else {
+		network = strings.ToLower(strings.TrimSpace(network))
+	}
 	if token == "usdt" && network == "tron" {
 		return gmpayNativePaymentMethod
 	}

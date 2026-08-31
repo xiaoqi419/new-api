@@ -496,6 +496,11 @@ func TestRequestEpayCheckoutUsesNativeGMPayForUSDTTron(t *testing.T) {
 
 	requestBodies := make(chan map[string]any, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			require.Equal(t, "/payments/gmpay/v1/config", request.URL.Path)
+			_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+			return
+		}
 		require.Equal(t, http.MethodPost, request.Method)
 		require.Equal(t, "/payments/gmpay/v1/order/create-transaction", request.URL.Path)
 		var payload map[string]any
@@ -514,7 +519,7 @@ func TestRequestEpayCheckoutUsesNativeGMPayForUSDTTron(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
 	ctx.Set("id", user.Id)
-	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron"}`))
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron","token":"USDT","network":"tron"}`))
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
 	RequestEpayCheckout(ctx)
@@ -543,6 +548,74 @@ func TestRequestEpayCheckoutUsesNativeGMPayForUSDTTron(t *testing.T) {
 	assert.Equal(t, "tron", payload["network"])
 	assert.Equal(t, "https://new-api.example/api/user/gmpay/notify", payload["notify_url"])
 	assert.Equal(t, "https://new-api.example/wallet", payload["redirect_url"])
+}
+
+func TestRequestEpayCheckoutRejectsMissingNativeAssetBeforeOrderCreation(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 704, Username: "gmpay-missing-asset-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestCount++
+		t.Errorf("gateway should not be called for a missing wallet asset: %s %s", request.Method, request.URL.Path)
+	}))
+	t.Cleanup(server.Close)
+	previousClientFactory := newGMPayNativeClient
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() { newGMPayNativeClient = previousClientFactory })
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", user.Id)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	RequestEpayCheckout(ctx)
+
+	assert.Equal(t, 0, requestCount)
+	assert.Contains(t, recorder.Body.String(), "拉起支付失败")
+	var topUpCount int64
+	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&topUpCount).Error)
+	assert.Zero(t, topUpCount)
+}
+
+func TestRequestEpayCheckoutRejectsStaleNativeAssetBeforeOrderCreation(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 705, Username: "gmpay-stale-asset-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestCount++
+		require.Equal(t, http.MethodGet, request.Method)
+		require.Equal(t, "/payments/gmpay/v1/config", request.URL.Path)
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+	}))
+	t.Cleanup(server.Close)
+	previousClientFactory := newGMPayNativeClient
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() { newGMPayNativeClient = previousClientFactory })
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", user.Id)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron","token":"USDT","network":"ethereum"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	RequestEpayCheckout(ctx)
+
+	assert.Equal(t, 1, requestCount)
+	assert.Contains(t, recorder.Body.String(), "拉起支付失败")
+	var topUpCount int64
+	require.NoError(t, model.DB.Model(&model.TopUp{}).Count(&topUpCount).Error)
+	assert.Zero(t, topUpCount)
 }
 
 func TestAgentConsolePrepayUsesPlatformGMPayAndOwnerScopedStatus(t *testing.T) {
@@ -628,4 +701,13 @@ func TestGMPayCallbackMatchesNetworkFieldToPersistedAsset(t *testing.T) {
 	}
 	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.polygon.usdc"))
 	assert.False(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdc"))
+}
+
+func TestGMPayCallbackMatchesNetworkAliasToPersistedAsset(t *testing.T) {
+	params := map[string]any{
+		"token":           "USDT",
+		"network":         "ERC20",
+		"receive_address": "0x1111111111111111111111111111111111111111",
+	}
+	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdt"))
 }

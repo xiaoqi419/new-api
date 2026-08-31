@@ -63,6 +63,25 @@ type GMPayPaymentAsset struct {
 	DisplayName string `json:"display_name"`
 }
 
+// NormalizeGMPayNetwork converts the network aliases accepted by EPUSDT into
+// the provider's canonical network identifiers. Keeping the provider value
+// (for example, "binance" rather than "bsc") is important because it is sent
+// back to the gateway when a checkout is created.
+func NormalizeGMPayNetwork(value string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "tron", "trc20", "trc-20":
+		return "tron", true
+	case "ethereum", "eth", "erc20", "erc-20":
+		return "ethereum", true
+	case "solana", "sol", "spl":
+		return "solana", true
+	case "binance", "bsc", "bnb", "bep20", "bep-20", "binance-smart-chain":
+		return "binance", true
+	default:
+		return "", false
+	}
+}
+
 // GMPayCheckout contains only checkout data that is safe to return to a
 // browser. It deliberately omits the hosted cashier URL and all credentials.
 type GMPayCheckout struct {
@@ -307,8 +326,13 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 		return nil, errors.New("gmpay checkout response has an invalid actual amount")
 	}
 	responseToken := strings.ToUpper(strings.TrimSpace(response.Token))
-	responseNetwork := strings.ToLower(strings.TrimSpace(response.Network))
-	if responseToken != strings.ToUpper(expectedToken) || (responseNetwork != "" && responseNetwork != expectedNetwork) ||
+	responseNetwork := ""
+	responseNetworkKnown := true
+	if strings.TrimSpace(response.Network) != "" {
+		responseNetwork, responseNetworkKnown = normalizeGMPayNetworkIdentifier(response.Network)
+	}
+	expectedNetwork, expectedNetworkKnown := normalizeGMPayNetworkIdentifier(expectedNetwork)
+	if !responseNetworkKnown || !expectedNetworkKnown || responseToken != strings.ToUpper(expectedToken) || (responseNetwork != "" && responseNetwork != expectedNetwork) ||
 		!IsGMPayAddress(expectedNetwork, response.ReceiveAddress) ||
 		response.ExpirationTime <= time.Now().Unix() {
 		return nil, errors.New("gmpay checkout response is incomplete")
@@ -325,21 +349,56 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 	}, nil
 }
 
-// SupportedAssets fetches EPUSDT's public, already-filtered wallet assets.
-// Results are cached briefly because this endpoint is read on every top-up
-// page load, while gateway configuration changes infrequently.
+// SupportedAssets fetches EPUSDT's public configuration and returns only the
+// USDT networks that are safe to offer from the ordinary wallet. Results are
+// cached briefly because this endpoint is read on every top-up page load,
+// while gateway configuration changes infrequently.
 func (client *GMPayClient) SupportedAssets(ctx context.Context) ([]GMPayAsset, error) {
+	assets, err := client.supportedAssets(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	return filterGMPayUSDTAssets(assets), nil
+}
+
+// SupportedAssetsFresh fetches the current gateway asset configuration without
+// consulting the short-lived top-up page cache. Wallet checkout callers use
+// this boundary to reject a network that disappeared after the page was loaded.
+func (client *GMPayClient) SupportedAssetsFresh(ctx context.Context) ([]GMPayAsset, error) {
+	assets, err := client.supportedAssets(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	return filterGMPayUSDTAssets(assets), nil
+}
+
+// SupportedAssetsAll retains the full validated gateway asset list for the
+// existing subscription, group-buy, and agent-prepayment Native paths. The
+// ordinary wallet must use SupportedAssets, which is deliberately USDT-only.
+func (client *GMPayClient) SupportedAssetsAll(ctx context.Context) ([]GMPayAsset, error) {
+	return client.supportedAssets(ctx, true)
+}
+
+// SupportedAssetsAllFresh is the uncached counterpart used by specialized
+// checkout paths when they explicitly select an asset.
+func (client *GMPayClient) SupportedAssetsAllFresh(ctx context.Context) ([]GMPayAsset, error) {
+	return client.supportedAssets(ctx, false)
+}
+
+func (client *GMPayClient) supportedAssets(ctx context.Context, useCache bool) ([]GMPayAsset, error) {
 	if client == nil || client.httpClient == nil || strings.TrimSpace(client.endpoint) == "" {
 		return nil, errors.New("gmpay client is not configured")
 	}
 	cacheKey := client.endpoint
-	gmpayConfigCache.Lock()
-	if cached, ok := gmpayConfigCache.entries[cacheKey]; ok && time.Now().Before(cached.expiresAt) {
-		assets := cloneGMPayAssets(cached.assets)
+	if useCache {
+		gmpayConfigCache.Lock()
+		if cached, ok := gmpayConfigCache.entries[cacheKey]; ok && time.Now().Before(cached.expiresAt) {
+			assets := cloneGMPayAssets(cached.assets)
+			gmpayConfigCache.Unlock()
+			return assets, nil
+		}
 		gmpayConfigCache.Unlock()
-		return assets, nil
 	}
-	gmpayConfigCache.Unlock()
 
 	configURL, err := gmpayConfigEndpoint(client.endpoint)
 	if err != nil {
@@ -376,13 +435,15 @@ func (client *GMPayClient) SupportedAssets(ctx context.Context) ([]GMPayAsset, e
 	if err := common.Unmarshal(envelope.Data, &data); err != nil {
 		return nil, errors.New("invalid gmpay config data")
 	}
-	assets, err := normalizeGMPayAssets(data.SupportedAssets)
+	assets, err := normalizeGMPayAssetsAll(data.SupportedAssets)
 	if err != nil {
 		return nil, err
 	}
-	gmpayConfigCache.Lock()
-	gmpayConfigCache.entries[cacheKey] = gmpayConfigCacheEntry{assets: cloneGMPayAssets(assets), expiresAt: time.Now().Add(gmpayConfigCacheTTL)}
-	gmpayConfigCache.Unlock()
+	if useCache {
+		gmpayConfigCache.Lock()
+		gmpayConfigCache.entries[cacheKey] = gmpayConfigCacheEntry{assets: cloneGMPayAssets(assets), expiresAt: time.Now().Add(gmpayConfigCacheTTL)}
+		gmpayConfigCache.Unlock()
+	}
 	return assets, nil
 }
 
@@ -406,20 +467,33 @@ func cloneGMPayAssets(assets []GMPayAsset) []GMPayAsset {
 }
 
 func normalizeGMPayAssets(assets []GMPayAsset) ([]GMPayAsset, error) {
+	allAssets, err := normalizeGMPayAssetsAll(assets)
+	if err != nil {
+		return nil, err
+	}
+	return filterGMPayUSDTAssets(allAssets), nil
+}
+
+// normalizeGMPayAssetsAll validates the gateway response while preserving all
+// token/network combinations for Native flows that predate the wallet's
+// USDT-only selector. Unknown network families remain valid here so historical
+// specialized orders can continue to be created and settled; the wallet
+// filter below only exposes the four supported USDT network families.
+func normalizeGMPayAssetsAll(assets []GMPayAsset) ([]GMPayAsset, error) {
 	if len(assets) > gmpayMaxAssets {
 		return nil, errors.New("gmpay config contains too many assets")
 	}
 	seen := make(map[string]struct{})
 	result := make([]GMPayAsset, 0, len(assets))
 	for _, asset := range assets {
-		network := strings.ToLower(strings.TrimSpace(asset.Network))
-		if network == "" || len(network) > 32 || len(asset.Tokens) == 0 || len(asset.Tokens) > gmpayMaxTokensPerAsset {
+		network, validNetwork := normalizeGMPayNetworkIdentifier(asset.Network)
+		if !validNetwork || len(asset.Tokens) == 0 || len(asset.Tokens) > gmpayMaxTokensPerAsset {
 			continue
 		}
 		tokens := make([]string, 0, len(asset.Tokens))
 		for _, rawToken := range asset.Tokens {
 			token := strings.ToUpper(strings.TrimSpace(rawToken))
-			if token == "" || len(token) > 32 {
+			if token == "" || len(token) > 32 || !regexp.MustCompile(`^[A-Z0-9_-]+$`).MatchString(token) {
 				continue
 			}
 			key := network + "\x00" + token
@@ -444,29 +518,88 @@ func normalizeGMPayAssets(assets []GMPayAsset) ([]GMPayAsset, error) {
 	return result, nil
 }
 
+func filterGMPayUSDTAssets(assets []GMPayAsset) []GMPayAsset {
+	seen := make(map[string]struct{})
+	result := make([]GMPayAsset, 0, len(assets))
+	for _, asset := range assets {
+		network, knownNetwork := NormalizeGMPayNetwork(asset.Network)
+		if !knownNetwork {
+			continue
+		}
+		hasUSDT := false
+		for _, token := range asset.Tokens {
+			if strings.EqualFold(strings.TrimSpace(token), "USDT") {
+				hasUSDT = true
+				break
+			}
+		}
+		if !hasUSDT {
+			continue
+		}
+		if _, ok := seen[network]; ok {
+			continue
+		}
+		seen[network] = struct{}{}
+		displayName := strings.TrimSpace(asset.DisplayName)
+		if displayName == "" {
+			displayName = network
+		}
+		if len(displayName) > 64 {
+			displayName = displayName[:64]
+		}
+		result = append(result, GMPayAsset{
+			Network:     network,
+			DisplayName: displayName,
+			Tokens:      []string{"USDT"},
+		})
+	}
+	// Gateway ordering is not a contract. Keep the selector stable while
+	// retaining the familiar TRON-first ordering for existing deployments.
+	networkRank := map[string]int{"tron": 0, "ethereum": 1, "solana": 2, "binance": 3}
+	sort.SliceStable(result, func(i, j int) bool {
+		return networkRank[result[i].Network] < networkRank[result[j].Network]
+	})
+	return result
+}
+
 func normalizeGMPayAsset(token, network string) (string, string, error) {
 	token = strings.ToUpper(strings.TrimSpace(token))
-	network = strings.ToLower(strings.TrimSpace(network))
+	network, validNetwork := normalizeGMPayNetworkIdentifier(network)
 	if token == "" && network == "" {
 		return "usdt", "tron", nil
 	}
 	// Dots are reserved by the persisted payment_method encoding
 	// (usdt.<network>.<token>), so reject them here instead of creating an
 	// asset that cannot be unambiguously matched during callbacks.
-	if token == "" || network == "" || len(token) > 32 || len(network) > 32 || !regexp.MustCompile(`^[A-Z0-9_-]+$`).MatchString(token) || !regexp.MustCompile(`^[a-z0-9_-]+$`).MatchString(network) {
+	if token == "" || !validNetwork || len(token) > 32 || len(network) > 32 || !regexp.MustCompile(`^[A-Z0-9_-]+$`).MatchString(token) {
 		return "", "", errors.New("gmpay payment asset is invalid")
 	}
 	return strings.ToLower(token), network, nil
 }
 
+func normalizeGMPayNetworkIdentifier(value string) (string, bool) {
+	trimmed := strings.ToLower(strings.TrimSpace(value))
+	if canonical, ok := NormalizeGMPayNetwork(trimmed); ok {
+		return canonical, true
+	}
+	if len(trimmed) == 0 || len(trimmed) > 32 || !regexp.MustCompile(`^[a-z0-9_-]+$`).MatchString(trimmed) {
+		return "", false
+	}
+	return trimmed, true
+}
+
 // IsGMPayAddress validates addresses for the supported network families.
 func IsGMPayAddress(network, address string) bool {
-	network = strings.ToLower(strings.TrimSpace(network))
+	if normalized, ok := NormalizeGMPayNetwork(network); ok {
+		network = normalized
+	} else {
+		network = strings.ToLower(strings.TrimSpace(network))
+	}
 	address = strings.TrimSpace(address)
 	switch network {
 	case "tron":
 		return IsGMPayTronAddress(address)
-	case "ethereum", "bsc", "polygon", "arbitrum", "optimism", "base", "avalanche", "plasma":
+	case "ethereum", "binance", "bsc", "polygon", "arbitrum", "optimism", "base", "avalanche", "plasma":
 		return regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`).MatchString(address)
 	case "solana":
 		decoded, ok := decodeGMPayBase58(address)

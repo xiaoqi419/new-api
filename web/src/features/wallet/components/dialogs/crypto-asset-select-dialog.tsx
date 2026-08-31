@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -34,12 +34,48 @@ interface CryptoAssetSelectDialogProps {
   onSelect: (asset: CryptoAsset) => void | Promise<void>
 }
 
+const GMPAY_NETWORK_PROTOCOLS: Record<string, string> = {
+  tron: 'TRC20',
+  trc20: 'TRC20',
+  'trc-20': 'TRC20',
+  ethereum: 'ERC20',
+  eth: 'ERC20',
+  erc20: 'ERC20',
+  'erc-20': 'ERC20',
+  solana: 'SPL',
+  sol: 'SPL',
+  spl: 'SPL',
+  binance: 'BEP20',
+  bsc: 'BEP20',
+  bnb: 'BEP20',
+  bep20: 'BEP20',
+  'bep-20': 'BEP20',
+  'binance-smart-chain': 'BEP20',
+}
+
+function getCryptoNetworkProtocol(network: string): string {
+  const normalizedNetwork = network.trim().toLowerCase()
+  return (
+    GMPAY_NETWORK_PROTOCOLS[normalizedNetwork] ||
+    normalizedNetwork.toUpperCase()
+  )
+}
+
 /** Lets users choose a configured native wallet before an order is created. */
 export function CryptoAssetSelectDialog(props: CryptoAssetSelectDialogProps) {
   const { t } = useTranslation()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const usdtAssets = props.assets.filter(
+    (asset) => asset.token.trim().toUpperCase() === 'USDT'
+  )
 
-  if (!props.assets.length) return null
+  useEffect(() => {
+    if (!props.open) {
+      setSelectedKey(null)
+    }
+  }, [props.open])
+
+  if (!usdtAssets.length) return null
 
   const handleSelect = async (asset: CryptoAsset) => {
     setSelectedKey(`${asset.network}:${asset.token}`)
@@ -51,7 +87,7 @@ export function CryptoAssetSelectDialog(props: CryptoAssetSelectDialogProps) {
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={t('Choose a payment network')}
-      description={t('Select the wallet you want to use for this payment.')}
+      description={t('Select a USDT payment network.')}
       contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-md'
       footerClassName='grid grid-cols-1 gap-2 sm:flex sm:justify-end'
       footer={
@@ -69,7 +105,7 @@ export function CryptoAssetSelectDialog(props: CryptoAssetSelectDialogProps) {
         role='listbox'
         aria-label={t('Payment network')}
       >
-        {props.assets.map((asset) => {
+        {usdtAssets.map((asset) => {
           const key = `${asset.network}:${asset.token}`
           const selected = selectedKey === key
           let statusIcon = null
@@ -97,7 +133,7 @@ export function CryptoAssetSelectDialog(props: CryptoAssetSelectDialogProps) {
                   {asset.display_name}
                 </span>
                 <span className='text-muted-foreground text-xs'>
-                  {asset.network} · {asset.token}
+                  USDT · {getCryptoNetworkProtocol(asset.network)}
                 </span>
               </span>
               {statusIcon}

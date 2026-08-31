@@ -142,10 +142,17 @@ export interface PaymentMethod {
   icon?: string
 }
 
-/** A wallet asset enabled by the GMPay/EPUSDT gateway. */
+/**
+ * A payment network enabled for USDT by the GMPay/EPUSDT gateway.
+ *
+ * GMPay reports both networks and tokens, but the international checkout only
+ * accepts USDT. Keeping the token literal here makes that product invariant
+ * visible to every wallet UI caller while historical checkout responses can
+ * continue using the broader EpayCryptoCheckoutData shape above.
+ */
 export interface CryptoAsset {
   network: string
-  token: string
+  token: 'USDT'
   display_name: string
 }
 
@@ -173,7 +180,7 @@ export interface TopupInfo {
   enable_stripe_topup: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
-  /** Available native crypto networks and tokens, when configured. */
+  /** Available USDT payment networks, when GMPay Native is configured. */
   crypto_assets?: CryptoAsset[]
   /** Minimum topup amount for online topup */
   min_topup: number
@@ -249,7 +256,7 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
-  /** Native crypto asset selection. Both fields must be sent together. */
+  /** Native USDT network selection. Both fields must be sent together. */
   network?: string
   token?: string
 }

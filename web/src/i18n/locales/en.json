@@ -6472,6 +6472,7 @@
     "Choose a payment network": "Choose a payment network",
     "No crypto payment networks are currently available": "No crypto payment networks are currently available",
     "Select the wallet you want to use for this payment.": "Select the wallet you want to use for this payment.",
+    "Select a USDT payment network.": "Select a USDT payment network.",
     "Payment network": "Payment network",
     "Send the exact amount to the address shown.": "Send the exact amount to the address shown."
   }

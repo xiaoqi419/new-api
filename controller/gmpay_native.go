@@ -294,11 +294,25 @@ func gmpayCallbackMatchesOrderAsset(params map[string]any, paymentMethod string)
 	}
 	if networkValue, present := params["network"]; present {
 		network, networkOK := networkValue.(string)
-		if !networkOK || strings.ToLower(strings.TrimSpace(network)) != expectedNetwork {
+		if !networkOK || !gmpayNetworksMatch(network, expectedNetwork) {
 			return false
 		}
 	}
 	return service.IsGMPayAddress(expectedNetwork, address)
+}
+
+func gmpayNetworksMatch(actual, expected string) bool {
+	actual = strings.TrimSpace(actual)
+	expected = strings.TrimSpace(expected)
+	if actual == "" || expected == "" {
+		return false
+	}
+	actualCanonical, actualKnown := service.NormalizeGMPayNetwork(actual)
+	expectedCanonical, expectedKnown := service.NormalizeGMPayNetwork(expected)
+	if actualKnown && expectedKnown {
+		return actualCanonical == expectedCanonical
+	}
+	return strings.EqualFold(actual, expected)
 }
 
 func gmpayPositiveDecimal(value string) bool {

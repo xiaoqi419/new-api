@@ -24,11 +24,11 @@ import { CryptoAssetSelectDialog } from '../crypto-asset-select-dialog'
 
 const assets: CryptoAsset[] = [
   { network: 'tron', token: 'USDT', display_name: 'TRON' },
-  { network: 'solana', token: 'USDC', display_name: 'Solana' },
+  { network: 'ethereum', token: 'USDT', display_name: 'Ethereum' },
 ]
 
 describe('crypto asset selection dialog', () => {
-  test('shows every configured asset and returns the selected pair', async () => {
+  test('shows only configured USDT networks and returns the selected pair', async () => {
     const onSelect = vi.fn()
     render(
       <CryptoAssetSelectDialog
@@ -40,9 +40,11 @@ describe('crypto asset selection dialog', () => {
     )
 
     expect(screen.getByText('TRON')).toBeVisible()
-    expect(screen.getByText('Solana')).toBeVisible()
+    expect(screen.getByText('Ethereum')).toBeVisible()
+    expect(screen.getByText('USDT · TRC20')).toBeVisible()
+    expect(screen.getByText('USDT · ERC20')).toBeVisible()
 
-    fireEvent.click(screen.getByRole('option', { name: /Solana/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Ethereum/ }))
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith(assets[1])
     })
