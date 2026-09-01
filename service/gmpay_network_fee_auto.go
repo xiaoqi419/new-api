@@ -177,6 +177,13 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	}
 	ctx, cancel := context.WithTimeout(ctx, estimator.configured.config.timeout)
 	defer cancel()
+	var latestSlot uint64
+	if network == "solana" {
+		transaction, latestSlot, err = estimator.refreshBuiltinSolanaBlockhash(ctx, chain, transaction)
+		if err != nil {
+			return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
+		}
+	}
 	var raw chainRawNetworkEstimate
 	switch network {
 	case "tron":
@@ -206,9 +213,52 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	if raw.Evidence.RPCSource == "" {
 		raw.Evidence.RPCSource = endpointSource(chain.rpcURL)
 	}
+	if network == "solana" {
+		raw.Evidence.RPCMethods = append([]string{"getLatestBlockhash"}, raw.Evidence.RPCMethods...)
+		if latestSlot > 0 {
+			raw.Evidence.Slot = latestSlot
+		}
+	}
 	quote := NetworkFeeQuote{Token: token, Network: network, Source: ChainNetworkEstimateSource, EstimatorVersion: builtinNetworkFeeEstimatorVersion, NativeAsset: chain.nativeAsset, NativeAmount: raw.NativeAmount, FeeAmount: fee, BaseAmount: input.BaseAmount, TotalAmount: total, SettlementCurrency: currency, QuotedAt: now, ExpiresAt: now.Add(estimator.configured.config.quoteTTL), Confidence: raw.Confidence, Subsidized: raw.Subsidized, Evidence: raw.Evidence}
 	estimator.configured.quoteCache.put(key, quote, now, estimator.configured.config.cacheTTL)
 	return quote, nil
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) refreshBuiltinSolanaBlockhash(ctx context.Context, chain parsedNetworkFeeChainConfig, transaction NetworkFeeTransactionContext) (NetworkFeeTransactionContext, uint64, error) {
+	result, err := estimator.configured.callJSONRPC(ctx, chain.rpcURL, "getLatestBlockhash", []any{map[string]string{"commitment": "confirmed"}})
+	if err != nil {
+		return transaction, 0, err
+	}
+	fields, err := objectFields(result.Raw)
+	if err != nil {
+		return transaction, 0, errors.New("solana latest blockhash response is invalid")
+	}
+	valueRaw, ok := findJSONField(fields, "value")
+	if !ok || common.GetJsonType(valueRaw) != "object" {
+		return transaction, 0, errors.New("solana latest blockhash value is missing")
+	}
+	valueFields, err := objectFields(valueRaw)
+	if err != nil {
+		return transaction, 0, errors.New("solana latest blockhash value is invalid")
+	}
+	blockhashRaw, ok := findJSONField(valueFields, "blockhash")
+	if !ok || common.GetJsonType(blockhashRaw) != "string" {
+		return transaction, 0, errors.New("solana latest blockhash is missing")
+	}
+	blockhash := strings.TrimSpace(common.JsonRawMessageToString(blockhashRaw))
+	if _, err := solanaAddressBytes(blockhash); err != nil {
+		return transaction, 0, errors.New("solana latest blockhash is invalid")
+	}
+	transaction.RecentBlockhash = blockhash
+	var slot uint64
+	if contextRaw, ok := findJSONField(fields, "context"); ok && common.GetJsonType(contextRaw) == "object" {
+		if contextFields, contextErr := objectFields(contextRaw); contextErr == nil {
+			if slotRaw, slotOK := findJSONField(contextFields, "slot"); slotOK {
+				slot, _ = parseUnsignedInteger(slotRaw)
+			}
+		}
+	}
+	return transaction, slot, nil
 }
 
 // estimateBuiltinTRON prices a canonical TRC-20 transfer using chain burn
