@@ -13,6 +13,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
@@ -1141,7 +1142,23 @@ func GetAllTopUps(c *gin.Context) {
 		total  int64
 		err    error
 	)
-	if keyword != "" {
+	if userIDValue, present := c.GetQuery("user_id"); present {
+		userID, parseErr := strconv.Atoi(userIDValue)
+		if parseErr != nil || userID <= 0 {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		targetUser, getUserErr := model.GetUserById(userID, false)
+		if getUserErr != nil {
+			common.ApiError(c, getUserErr)
+			return
+		}
+		if !canManageTargetRole(c.GetInt("role"), targetUser.Role) {
+			common.ApiErrorI18n(c, i18n.MsgUserNoPermissionSameLevel)
+			return
+		}
+		topups, total, err = model.GetAllTopUpsByUser(userID, pageInfo)
+	} else if keyword != "" {
 		topups, total, err = model.SearchAllTopUps(keyword, pageInfo)
 	} else {
 		topups, total, err = model.GetAllTopUps(pageInfo)
