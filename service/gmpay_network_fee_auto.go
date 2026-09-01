@@ -69,6 +69,13 @@ func BuiltinNetworkFeeSupported(network, token string) bool {
 	return (token == "USDT" || token == "USDC")
 }
 
+// BuiltinNetworkFeeSupportedNetworks returns canonical network identifiers
+// advertised by the preset. Solana remains intentionally absent because a
+// wallet-independent SPL transfer cannot be constructed safely.
+func BuiltinNetworkFeeSupportedNetworks() []string {
+	return []string{"tron", "ethereum", "binance"}
+}
+
 func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*BuiltinNetworkFeeEstimator, error) {
 	config := NetworkFeeEstimatorConfig{
 		Version:                  NetworkFeeEstimatorConfigVersion,
