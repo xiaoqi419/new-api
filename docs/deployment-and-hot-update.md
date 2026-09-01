@@ -2,13 +2,15 @@
 
 本文档是本仓库二开版本的唯一发布操作说明。目标是让后续开发遵循同一套路径：以 GitHub `origin/main` 为唯一发布源，完成验收后推送 `main`，构建带提交号的镜像，再只更新应用容器。除非任务明确要求迁移或变更数据，否则不得操作生产数据库、Redis 数据卷或网关配置。
 
-最后核对时间：2026-08-31
+最后核对时间：2026-09-01
 
 ## 1. 代码与分支规则
 
 - `origin`：`https://github.com/xiaoqi419/new-api.git`，这是二开仓库，不是上游 `upstream`。
 - `main`：唯一可发布分支，必须始终指向最新、已验收的完整版本。
 - `secondary-dev` 和临时 `codex/*`、`comet/*` 分支只能用于开发或 Comet worktree，不能直接部署。
+- 同一时间只能有一个 active Native Comet change。开始新需求前，先让当前 change 进入 Archive，或在保留可恢复外部备份后明确废弃；不得让失效的 `comet-state.yaml`、运行时 overlay 或绑定不一致的 worktree 留在 `docs/comet/changes/` / `.comet/runtime/` 中。
+- 本地长期只保留 `main` 发布 worktree 与 `secondary-dev` 开发 worktree。一次需求最多一个实现分支/worktree；完成合并后删除临时 worktree 和本地分支，远端只保留 `origin/main`（已合并的远端功能分支应在确认无独有提交后删除）。
 - 所有开发开始前，先从远端同步并确认工作区状态：
 
   ```bash
@@ -29,6 +31,8 @@
 
 - 本地 `main`、远端 `origin/main` 和部署镜像的短提交号必须一致。发现不一致时停止部署，先查清来源。
 - 上游 `upstream/main` 只用于后续兼容性同步，不能直接覆盖二开 `origin/main`，也不能把上游仓库当成发布仓库。
+
+若检测到多于一个 active change、工作区与 change 绑定不一致，或本地/远端/线上提交号不一致，发布流程立即停止；先做只读核对和可恢复备份，再清理或重新绑定，不能通过创建更多分支绕过检查。
 
 ## 2. 当前服务器拓扑
 
@@ -204,6 +208,5 @@ docker compose --project-directory /opt/new-api-international \
 - 若发生回滚，记录回滚标签和原因。
 
 该文档只描述发布流程，不保存任何生产凭据。服务器域名到容器的映射若发生变化，必须先更新本节并现场用 Caddy/nginx 配置和 Docker Compose 标签核对，不能依赖历史记忆。
-
 
 
