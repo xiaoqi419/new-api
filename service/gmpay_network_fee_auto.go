@@ -111,9 +111,9 @@ func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*
 				RPCAllowedHosts:    []string{"bsc-dataseed.binance.org"},
 				PriceAllowedHosts:  []string{"api.coingecko.com"},
 			},
-			// Solana is listed for explicit capability reporting.  A safe,
-			// wallet-independent SPL transfer message cannot be constructed
-			// without server-owned token accounts, so Estimate fails closed.
+			// Solana uses a fixed canonical SPL transferChecked message with
+			// synthetic accounts; getFeeForMessage prices the message without
+			// requiring a live wallet or signing key.
 			"solana": {
 				RPCURL:             "https://api.mainnet-beta.solana.com",
 				PriceURL:           "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd,cny&include_last_updated_at=true",
