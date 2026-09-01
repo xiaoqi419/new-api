@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260902-6b3151426',
+    date: '2026-09-02',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'GMPay Native 钱包充值现在可通过 EPUSDT 网关能力自动同步链上归集上下文并估算网络费用，无需手工填写 RPC、价格源或交易参数。',
+          '支付设置改为展示自动发现说明，动态报价不可用时继续安全失败；人工兜底仍需管理员明确启用。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260901-gmpay-dynamic-fee-settings',
     date: '2026-09-01',
     changes: [

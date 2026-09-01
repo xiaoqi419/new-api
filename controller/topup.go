@@ -597,7 +597,7 @@ func RequestEpayCheckout(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 			return
 		}
-		nativeFeeQuote, err = quoteGMPayWalletFee(c.Request.Context(), basePayMoneyDecimal, nativeToken, nativeNetwork)
+		nativeFeeQuote, err = quoteGMPayWalletFee(c.Request.Context(), epayCfg, basePayMoneyDecimal, nativeToken, nativeNetwork)
 		if err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值手续费报价失败 user_id=%d status=quote_unavailable error=%q", userID, err.Error()))
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该支付组合暂不可用"})

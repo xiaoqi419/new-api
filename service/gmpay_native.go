@@ -30,6 +30,8 @@ const (
 	gmpayNativeResponseLimit = 1 << 20
 	gmpayNativeTimeout       = 10 * time.Second
 	gmpayConfigCacheTTL      = 30 * time.Second
+	gmpayConfigRetryAttempts = 2
+	gmpayConfigRetryBackoff  = 50 * time.Millisecond
 	gmpayMaxAssets           = 32
 	gmpayMaxTokensPerAsset   = 32
 	// GMPay uses USD cents for the fiat amount.  Keep a modest decimal scale
@@ -474,12 +476,46 @@ func (client *GMPayClient) supportedAssets(ctx context.Context, useCache bool) (
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, configURL, nil)
-	if err != nil {
-		return nil, errors.New("create gmpay config request")
+	maxAttempts := 1
+	if !useCache {
+		maxAttempts = gmpayConfigRetryAttempts
 	}
-	request.Header.Set("Accept", "application/json")
-	response, err := client.httpClient.Do(request)
+	var response *http.Response
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		request, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, configURL, nil)
+		if requestErr != nil {
+			return nil, errors.New("create gmpay config request")
+		}
+		request.Header.Set("Accept", "application/json")
+		response, err = client.httpClient.Do(request)
+		if err == nil {
+			transient := response.StatusCode == http.StatusTooManyRequests ||
+				(response.StatusCode >= http.StatusInternalServerError && response.StatusCode < http.StatusInternalServerError+100)
+			if !transient || attempt == maxAttempts-1 {
+				break
+			}
+			_ = response.Body.Close()
+		} else {
+			if response != nil && response.Body != nil {
+				_ = response.Body.Close()
+			}
+			if attempt == maxAttempts-1 || ctx.Err() != nil {
+				return nil, fmt.Errorf("request gmpay config: %w", err)
+			}
+		}
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("request gmpay config: %w", ctx.Err())
+		}
+		timer := time.NewTimer(gmpayConfigRetryBackoff)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return nil, fmt.Errorf("request gmpay config: %w", ctx.Err())
+		case <-timer.C:
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("request gmpay config: %w", err)
 	}

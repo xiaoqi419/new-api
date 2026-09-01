@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -32,6 +35,342 @@ var newGMPayNativeClient = func(gatewayAddress string, pid string, secret string
 // loader. RequestEpayCheckout must never construct an estimator from request
 // fields or from GMPay's create-order response.
 var newGMPayNetworkFeeEstimator = service.CurrentNetworkFeeEstimator
+
+// newAutomaticGMPayNetworkFeeEstimator is the no-configuration preset seam.
+// It is used only when dynamic_enabled was omitted and private EPUSDT
+// discovery cannot provide a server-owned context.
+var newAutomaticGMPayNetworkFeeEstimator = service.NewAutomaticGMPayNetworkFeeEstimator
+
+var automaticGMPayEstimatorCache struct {
+	sync.Mutex
+	estimator service.NetworkFeeEstimator
+}
+
+func cachedAutomaticGMPayNetworkFeeEstimator() (service.NetworkFeeEstimator, error) {
+	automaticGMPayEstimatorCache.Lock()
+	defer automaticGMPayEstimatorCache.Unlock()
+	if automaticGMPayEstimatorCache.estimator != nil {
+		return automaticGMPayEstimatorCache.estimator, nil
+	}
+	estimator, err := newAutomaticGMPayNetworkFeeEstimator()
+	if err != nil {
+		return nil, err
+	}
+	automaticGMPayEstimatorCache.estimator = estimator
+	return estimator, nil
+}
+
+func resetCachedAutomaticGMPayNetworkFeeEstimator() {
+	automaticGMPayEstimatorCache.Lock()
+	automaticGMPayEstimatorCache.estimator = nil
+	automaticGMPayEstimatorCache.Unlock()
+}
+
+// discoverGMPayNetworkFeeEstimator is the server-to-server EPUSDT capability
+// bridge used by turnkey Native wallet checkout.  It remains a seam so tests
+// can provide a deterministic estimator without contacting a gateway.
+var discoverGMPayNetworkFeeEstimator = service.DiscoverGMPayNetworkFeeEstimator
+
+var discoverGMPayNetworkFeeEstimatorFromClient = service.DiscoverGMPayNetworkFeeEstimatorFromClient
+
+func resolveGMPayEstimatorWithClient(ctx context.Context, cfg service.GMPayFeeConfig, client *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+	if cfg.IsDynamicEnabled() {
+		return newGMPayNetworkFeeEstimator()
+	}
+	if cfg.IsDynamicConfigured() {
+		return nil, service.ErrNetworkFeeUnavailable
+	}
+	if client != nil {
+		if estimator, err := discoverGMPayNetworkFeeEstimatorFromClient(ctx, client); err == nil && estimator != nil {
+			return estimator, nil
+		}
+	}
+	return cachedAutomaticGMPayNetworkFeeEstimator()
+}
+
+// estimateAndNormalizeGMPayNetworkQuote is the single boundary used by the
+// admin probe and the checkout-facing status probe.  Estimators return a raw
+// chain quote, while GMPayFeeQuoteFromNetworkQuote applies the same amount,
+// provenance, asset, currency, TTL, and configured-limit checks used by order
+// creation.  Keeping the conversion here prevents a healthy status from being
+// reported for a quote that checkout would reject.
+func estimateAndNormalizeGMPayNetworkQuote(
+	ctx context.Context,
+	estimator service.NetworkFeeEstimator,
+	input service.NetworkFeeEstimateInput,
+) (service.GMPayFeeQuote, error) {
+	if estimator == nil {
+		return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+	}
+	networkQuote, err := estimator.Estimate(ctx, input)
+	if err != nil {
+		return service.GMPayFeeQuote{}, err
+	}
+	return service.GMPayFeeQuoteFromNetworkQuote(
+		networkQuote,
+		input.BaseAmount,
+		input.Token,
+		input.Network,
+		input.SettlementCurrency,
+	)
+}
+
+// estimateGMPayNetworkQuoteWithAutomaticFallback mirrors the wallet's
+// automatic ordering for status/test requests.  A private EPUSDT estimator
+// can become unusable after discovery (for example when its context expires),
+// so omitted dynamic_enabled retries the built-in preset before reporting an
+// unavailable estimate. Explicit dynamic configuration never silently falls
+// back to a different estimator.
+func estimateGMPayNetworkQuoteWithAutomaticFallback(
+	ctx context.Context,
+	cfg service.GMPayFeeConfig,
+	client *service.GMPayClient,
+	input service.NetworkFeeEstimateInput,
+) (service.GMPayFeeQuote, error) {
+	estimator, err := resolveGMPayEstimatorWithClient(ctx, cfg, client)
+	if err != nil {
+		return service.GMPayFeeQuote{}, err
+	}
+	quote, err := estimateAndNormalizeGMPayNetworkQuote(ctx, estimator, input)
+	if err == nil {
+		return quote, nil
+	}
+	if !cfg.IsDynamicConfigured() {
+		if fallbackEstimator, fallbackErr := cachedAutomaticGMPayNetworkFeeEstimator(); fallbackErr == nil {
+			if fallbackQuote, fallbackQuoteErr := estimateAndNormalizeGMPayNetworkQuote(ctx, fallbackEstimator, input); fallbackQuoteErr == nil {
+				return fallbackQuote, nil
+			}
+		}
+	}
+	return service.GMPayFeeQuote{}, err
+}
+
+type gmpayFeeStatusResponse struct {
+	Configured      bool                        `json:"configured"`
+	Capability      bool                        `json:"capability"`
+	Healthy         bool                        `json:"healthy"`
+	QuoteAvailable  bool                        `json:"quote_available"`
+	Reason          string                      `json:"reason,omitempty"`
+	SupportedAssets []service.GMPayPaymentAsset `json:"supported_assets,omitempty"`
+	LastSyncAt      int64                       `json:"last_sync_at,omitempty"`
+	LastSuccessAt   int64                       `json:"last_success_at,omitempty"`
+}
+
+var gmpayFeeStatusCache struct {
+	sync.Mutex
+	value     gmpayFeeStatusResponse
+	expiresAt time.Time
+	key       string
+}
+
+// GetGMPayFeeStatus reports only sanitized capability and availability data.
+// Merchant credentials, endpoint URLs, transaction context, and full wallet
+// addresses never cross this response boundary.
+func GetGMPayFeeStatus(c *gin.Context) {
+	cacheKey := currentGMPayFeeStatusCacheKey()
+	if gmpayFeeStatusCacheValid(cacheKey) {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": gmpayFeeStatusCached()})
+		return
+	}
+	status := discoverGMPayFeeStatus(c.Request.Context())
+	storeGMPayFeeStatus(status, cacheKey)
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": status})
+}
+
+// TestGMPayFeeEstimate performs one server-side estimate using a safe 1.00
+// base amount and an optional validated token/network pair. It never creates
+// an order and returns no low-level gateway or chain context.
+func TestGMPayFeeEstimate(c *gin.Context) {
+	var request struct {
+		Token   string `json:"token"`
+		Network string `json:"network"`
+	}
+	if c.Request.Body != nil {
+		_ = common.DecodeJson(c.Request.Body, &request)
+	}
+	clientCfg := GetEpayClient()
+	if clientCfg == nil || clientCfg.Config == nil || clientCfg.BaseUrl == nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
+		return
+	}
+	client, err := newGMPayNativeClient(clientCfg.BaseUrl.String(), clientCfg.Config.PartnerID, clientCfg.Config.Key)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
+		return
+	}
+	assets, err := client.SupportedAssetsFresh(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
+		return
+	}
+	request.Token, request.Network, err = chooseGMPayFeeStatusAsset(assets, request.Token, request.Network)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "GMPay token or network is unavailable"})
+		return
+	}
+	feeCfg, cfgErr := service.CurrentGMPayFeeConfig()
+	if cfgErr != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee estimate is unavailable"})
+		return
+	}
+	settlementCurrency, currencyErr := gmpaySettlementCurrencyForNetwork(request.Network, feeCfg)
+	if currencyErr != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay settlement currency is unavailable"})
+		return
+	}
+	quote, err := estimateGMPayNetworkQuoteWithAutomaticFallback(c.Request.Context(), feeCfg, client, service.NetworkFeeEstimateInput{
+		Token: request.Token, Network: request.Network, SettlementCurrency: settlementCurrency, BaseAmount: decimal.NewFromInt(1),
+	})
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee estimate is unavailable"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{
+		"token": strings.ToUpper(request.Token), "network": strings.ToUpper(request.Network),
+		"source": quote.Source, "native_asset": quote.NativeAsset, "native_amount": quote.NativeAmount.String(),
+		"fee_amount": quote.FeeAmount.StringFixed(2), "base_amount": quote.BaseAmount.StringFixed(2),
+		"total_amount": quote.TotalAmount.StringFixed(2), "settlement_currency": quote.SettlementCurrency,
+		"estimator_version": quote.EstimatorVersion, "confidence": quote.Confidence,
+		"quoted_at": quote.QuotedAt.UTC().Format(time.RFC3339Nano), "expires_at": quote.ExpiresAt.UTC().Format(time.RFC3339Nano),
+	}})
+}
+
+func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
+	status := gmpayFeeStatusResponse{}
+	clientCfg := GetEpayClient()
+	if clientCfg == nil || clientCfg.Config == nil || clientCfg.BaseUrl == nil {
+		status.Reason = "GMPay merchant is not configured"
+		return status
+	}
+	status.Configured = true
+	client, err := newGMPayNativeClient(clientCfg.BaseUrl.String(), clientCfg.Config.PartnerID, clientCfg.Config.Key)
+	if err != nil {
+		status.Reason = "GMPay merchant client is unavailable"
+		return status
+	}
+	assets, err := client.SupportedAssetsFresh(ctx)
+	status.LastSyncAt = time.Now().Unix()
+	if err != nil {
+		status.Reason = "EPUSDT supported assets are unavailable"
+		return status
+	}
+	for _, asset := range assets {
+		for _, token := range asset.Tokens {
+			status.SupportedAssets = append(status.SupportedAssets, service.GMPayPaymentAsset{Network: strings.ToUpper(asset.Network), Token: strings.ToUpper(token), DisplayName: asset.DisplayName})
+		}
+	}
+	feeCfg, cfgErr := service.CurrentGMPayFeeConfig()
+	if cfgErr != nil {
+		status.Reason = "GMPay network fee configuration is unavailable"
+		return status
+	}
+	estimator, err := resolveGMPayEstimatorWithClient(ctx, feeCfg, client)
+	if err != nil {
+		if errors.Is(err, service.ErrGMPayNetworkFeeCapabilityUnavailable) {
+			status.Reason = "EPUSDT network fee capability is unavailable"
+		} else if errors.Is(err, service.ErrNetworkFeeUnavailable) && feeCfg.IsDynamicConfigured() && !feeCfg.IsDynamicEnabled() {
+			status.Reason = "GMPay dynamic network fee estimation is disabled"
+		} else {
+			status.Reason = "EPUSDT network fee context is unavailable"
+		}
+		return status
+	}
+	status.Capability = true
+	if gmpayEstimatorHasQuote(ctx, estimator, assets, feeCfg) {
+		status.Healthy, status.QuoteAvailable = true, true
+		status.LastSuccessAt = status.LastSyncAt
+		return status
+	}
+	status.Reason = "GMPay network fee estimate is unavailable"
+	return status
+}
+
+func gmpayEstimatorHasQuote(ctx context.Context, estimator service.NetworkFeeEstimator, assets []service.GMPayAsset, feeCfg service.GMPayFeeConfig) bool {
+	if estimator == nil {
+		return false
+	}
+	for _, asset := range assets {
+		for _, token := range asset.Tokens {
+			currency, err := gmpaySettlementCurrencyForNetwork(asset.Network, feeCfg)
+			if err != nil {
+				continue
+			}
+			input := service.NetworkFeeEstimateInput{Token: token, Network: asset.Network, SettlementCurrency: currency, BaseAmount: decimal.NewFromInt(1)}
+			if _, err = estimateAndNormalizeGMPayNetworkQuote(ctx, estimator, input); err == nil {
+				return true
+			}
+			// In automatic mode a discovered private context may be structurally
+			// valid but fail when its representative transaction is simulated.
+			// Give the same cached built-in estimator used by checkout a chance.
+			if !feeCfg.IsDynamicConfigured() {
+				if fallbackEstimator, fallbackErr := cachedAutomaticGMPayNetworkFeeEstimator(); fallbackErr == nil {
+					if _, fallbackQuoteErr := estimateAndNormalizeGMPayNetworkQuote(ctx, fallbackEstimator, input); fallbackQuoteErr == nil {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func chooseGMPayFeeStatusAsset(assets []service.GMPayAsset, token, network string) (string, string, error) {
+	token = strings.ToLower(strings.TrimSpace(token))
+	network = strings.ToLower(strings.TrimSpace(network))
+	if network != "" {
+		if canonical, ok := service.NormalizeGMPayNetwork(network); ok {
+			network = canonical
+		}
+	}
+	for _, asset := range assets {
+		if network != "" && asset.Network != network {
+			continue
+		}
+		for _, supported := range asset.Tokens {
+			if token != "" && !strings.EqualFold(token, supported) {
+				continue
+			}
+			return strings.ToUpper(supported), asset.Network, nil
+		}
+	}
+	return "", "", errors.New("asset unavailable")
+}
+
+func currentGMPayFeeStatusCacheKey() string {
+	client := GetEpayClient()
+	endpoint := ""
+	if client != nil && client.BaseUrl != nil {
+		endpoint = client.BaseUrl.String()
+	}
+	cfg, _ := service.CurrentGMPayFeeConfig()
+	return fmt.Sprintf("%s|v=%d|dynamic=%t|configured=%t|chains=%d", endpoint, cfg.Version, cfg.IsDynamicEnabled(), cfg.IsDynamicConfigured(), len(cfg.Chains))
+}
+
+func gmpayFeeStatusCacheValid(keys ...string) bool {
+	key := currentGMPayFeeStatusCacheKey()
+	if len(keys) > 0 {
+		key = keys[0]
+	}
+	gmpayFeeStatusCache.Lock()
+	defer gmpayFeeStatusCache.Unlock()
+	return key != "" && key == gmpayFeeStatusCache.key && !gmpayFeeStatusCache.expiresAt.IsZero() && time.Now().Before(gmpayFeeStatusCache.expiresAt)
+}
+
+func gmpayFeeStatusCached() gmpayFeeStatusResponse {
+	gmpayFeeStatusCache.Lock()
+	defer gmpayFeeStatusCache.Unlock()
+	return gmpayFeeStatusCache.value
+}
+
+func storeGMPayFeeStatus(value gmpayFeeStatusResponse, keys ...string) {
+	key := currentGMPayFeeStatusCacheKey()
+	if len(keys) > 0 {
+		key = keys[0]
+	}
+	gmpayFeeStatusCache.Lock()
+	gmpayFeeStatusCache.value, gmpayFeeStatusCache.expiresAt, gmpayFeeStatusCache.key = value, time.Now().Add(15*time.Second), key
+	gmpayFeeStatusCache.Unlock()
+}
 
 // GMPayNotify handles callbacks sent to the platform's configured GMPay
 // merchant account. Agent callbacks use their own route and credentials.

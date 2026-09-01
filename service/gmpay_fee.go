@@ -619,6 +619,13 @@ func (cfg GMPayFeeConfig) IsDynamicEnabled() bool {
 	return cfg.DynamicEnabled
 }
 
+// IsDynamicConfigured reports whether the administrator explicitly supplied
+// dynamic_enabled.  An omitted value keeps the turnkey Native wallet path in
+// automatic-discovery mode; an explicit false is a deliberate opt-out.
+func (cfg GMPayFeeConfig) IsDynamicConfigured() bool {
+	return cfg.dynamicConfigured
+}
+
 // HasFallbackPolicy reports whether an administrator has explicitly enabled
 // a fixed or percentage fallback. Legacy version-1 configs map Enabled to the
 // same policy for backward compatibility.
@@ -667,6 +674,16 @@ func GMPayFeeQuoteFromNetworkQuote(networkQuote NetworkFeeQuote, expectedBaseAmo
 	}
 	if networkQuote.NativeAmount.IsNegative() || !decimalIsFinite(networkQuote.NativeAmount) ||
 		strings.TrimSpace(networkQuote.NativeAsset) == "" || strings.TrimSpace(networkQuote.EstimatorVersion) == "" {
+		return GMPayFeeQuote{}, ErrGMPayFeeUnavailable
+	}
+	// A chain estimate is only actionable when its provenance can be audited.
+	// Require the server-side RPC and price observations here as well as in the
+	// concrete estimators so admin status/test endpoints cannot report a quote
+	// that checkout would accept without evidence.
+	if strings.TrimSpace(networkQuote.Evidence.RPCMethod) == "" ||
+		strings.TrimSpace(networkQuote.Evidence.RPCSource) == "" ||
+		strings.TrimSpace(networkQuote.Evidence.PriceSource) == "" ||
+		networkQuote.Evidence.PriceTimestamp <= 0 {
 		return GMPayFeeQuote{}, ErrGMPayFeeUnavailable
 	}
 	if networkQuote.FeeAmount.IsZero() && (!networkQuote.Subsidized || strings.TrimSpace(networkQuote.Evidence.RPCMethod) == "") {

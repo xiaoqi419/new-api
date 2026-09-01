@@ -58,6 +58,36 @@ func TestBuiltinNetworkFeeEstimatorEVM(t *testing.T) {
 	assert.Equal(t, now.Unix(), quote.Evidence.PriceTimestamp)
 }
 
+func TestBuiltinNetworkFeeEstimatorEVMSyntheticSenderFallback(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"ethereum":{"usd":3000,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		switch call.Method {
+		case "eth_estimateGas":
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32000}}`), nil
+		case "eth_gasPrice":
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":"0x3b9aca00"}`), nil
+		case "eth_feeHistory":
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32601}}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "ethereum", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "0.000065", quote.NativeAmount.String())
+	assert.Equal(t, "0.195", quote.FeeAmount.String())
+	assert.Equal(t, "65000", quote.Evidence.Gas)
+	assert.Equal(t, "medium", quote.Confidence)
+}
+
 func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
@@ -83,6 +113,37 @@ func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 	assert.Equal(t, "27.645", quote.NativeAmount.String())
 	assert.Equal(t, "2.7645", quote.FeeAmount.String())
 	assert.Contains(t, quote.Evidence.RPCMethods, "wallet/estimateenergy")
+}
+
+func TestBuiltinTransferContextTRONUSDCUsesCanonicalContract(t *testing.T) {
+	transaction, err := builtinTransferContext("tron", "USDC")
+	require.NoError(t, err)
+	assert.Equal(t, "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8", transaction.TokenContract)
+	assert.True(t, IsGMPayAddress("tron", transaction.TokenContract))
+}
+
+func TestBuiltinNetworkFeeEstimatorTRONSimulationFallback(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy", "/wallet/triggerconstantcontract":
+			return builtinResponse(http.StatusBadGateway, `{}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "65000", quote.Evidence.Energy)
+	assert.Equal(t, "27.645", quote.NativeAmount.String())
+	assert.Equal(t, "2.7645", quote.FeeAmount.String())
 }
 
 func TestBuiltinNetworkFeeEstimatorFailsClosedOnStalePrice(t *testing.T) {
@@ -129,6 +190,39 @@ func TestBuiltinNetworkFeeEstimatorSolanaTransfer(t *testing.T) {
 	assert.Equal(t, uint64(456), quote.Evidence.Slot)
 	assert.Equal(t, []string{"getLatestBlockhash", "getFeeForMessage"}, methods)
 	assert.Equal(t, []string{"getLatestBlockhash", "getFeeForMessage"}, quote.Evidence.RPCMethods)
+}
+
+func TestBuiltinNetworkFeeEstimatorSolanaRefreshesNetworkFeeForEveryQuote(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	latestBlockhashCalls := 0
+	feeForMessageCalls := 0
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"solana":{"usd":150,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		switch call.Method {
+		case "getLatestBlockhash":
+			latestBlockhashCalls++
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":{"context":{"slot":456},"value":{"blockhash":"So11111111111111111111111111111111111111112","lastValidBlockHeight":10}}}`), nil
+		case "getFeeForMessage":
+			feeForMessageCalls++
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":{"context":{"slot":123},"value":5000}}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	input := NetworkFeeEstimateInput{Token: "USDC", Network: "solana", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)}
+	_, err = estimator.Estimate(context.Background(), input)
+	require.NoError(t, err)
+	_, err = estimator.Estimate(context.Background(), input)
+	require.NoError(t, err)
+	assert.Equal(t, 2, latestBlockhashCalls)
+	assert.Equal(t, 2, feeForMessageCalls)
 }
 
 func TestBuiltinNetworkFeeEstimatorSolanaFailsOnInvalidBlockhash(t *testing.T) {

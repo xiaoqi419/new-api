@@ -115,6 +115,45 @@ func TestGMPayClientReadsAndCachesSupportedAssets(t *testing.T) {
 	assert.Equal(t, 1, requestCount)
 }
 
+func TestGMPayClientSupportedAssetsFreshRetriesTransientFailure(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, gmpayConfigPath, request.URL.Path)
+		requestCount++
+		if requestCount == 1 {
+			writer.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	assets, err := client.SupportedAssetsFresh(context.Background())
+	require.NoError(t, err)
+	require.Len(t, assets, 1)
+	assert.Equal(t, "tron", assets[0].Network)
+	assert.Equal(t, []string{"USDT"}, assets[0].Tokens)
+	assert.Equal(t, 2, requestCount)
+}
+
+func TestGMPayClientSupportedAssetsFreshDoesNotRetryClientError(t *testing.T) {
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		require.Equal(t, gmpayConfigPath, request.URL.Path)
+		requestCount++
+		writer.WriteHeader(http.StatusBadRequest)
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	_, err = client.SupportedAssetsFresh(context.Background())
+	require.Error(t, err)
+	assert.Equal(t, 1, requestCount)
+}
+
 func TestGMPayClientCreatesEthereumCheckoutWithSelectedAsset(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		require.Equal(t, gmpayCreateOrderPath, request.URL.Path)

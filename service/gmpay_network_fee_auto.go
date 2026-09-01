@@ -21,7 +21,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const builtinNetworkFeeEstimatorVersion = NetworkFeeEstimatorVersion + "+builtin"
+const (
+	builtinNetworkFeeEstimatorVersion = NetworkFeeEstimatorVersion + "+builtin"
+	builtinEVMTransferGasUnits        = "65000"
+	builtinTRONTransferEnergyUnits    = "65000"
+)
 
 // BuiltinNetworkFeeEstimator is a fail-closed estimator backed by fixed,
 // public RPC and market-data endpoints.  The HTTP client and clock are
@@ -139,6 +143,9 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	if estimator == nil || estimator.configured == nil || ctx == nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: estimator is unavailable", ErrNetworkFeeUnavailable)
 	}
+	if err := ctx.Err(); err != nil {
+		return NetworkFeeQuote{}, fmt.Errorf("%w: estimation context is canceled", ErrNetworkFeeUnavailable)
+	}
 	network, ok := normalizeEstimatorNetwork(input.Network)
 	if !ok {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: unsupported network", ErrNetworkFeeUnavailable)
@@ -172,15 +179,23 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	if now.IsZero() {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: estimator clock is invalid", ErrNetworkFeeUnavailable)
 	}
-	key := networkFeeQuoteCacheKey(network, NetworkFeeEstimateInput{Token: token, Network: network, SettlementCurrency: currency, BaseAmount: input.BaseAmount}, transaction)
-	if cached, found := estimator.configured.quoteCache.get(key, now); found && estimator.configured.cachedQuoteIsFresh(cached, now) {
-		return cached, nil
+	// Solana quotes are deliberately never served from the generic cache. The
+	// message fee is tied to a recent blockhash, so every quote must first fetch
+	// a fresh blockhash and then query getFeeForMessage. EVM/TRON quotes retain
+	// the short cache because their resource observations are not blockhash
+	// bound.
+	key := ""
+	if network != "solana" {
+		key = networkFeeQuoteCacheKey(network, NetworkFeeEstimateInput{Token: token, Network: network, SettlementCurrency: currency, BaseAmount: input.BaseAmount}, transaction)
+		if cached, found := estimator.configured.quoteCache.get(key, now); found && estimator.configured.cachedQuoteIsFresh(cached, now) {
+			return cached, nil
+		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, estimator.configured.config.timeout)
+	requestCtx, cancel := context.WithTimeout(ctx, estimator.configured.config.timeout)
 	defer cancel()
 	var latestSlot uint64
 	if network == "solana" {
-		transaction, latestSlot, err = estimator.refreshBuiltinSolanaBlockhash(ctx, chain, transaction)
+		transaction, latestSlot, err = estimator.refreshBuiltinSolanaBlockhash(requestCtx, chain, transaction)
 		if err != nil {
 			return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
 		}
@@ -188,16 +203,16 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	var raw chainRawNetworkEstimate
 	switch network {
 	case "tron":
-		raw, err = estimator.estimateBuiltinTRON(ctx, chain, token, transaction)
+		raw, err = estimator.estimateBuiltinTRON(requestCtx, chain, token, transaction)
 	case "ethereum", "binance":
-		raw, err = estimator.configured.estimateEVM(ctx, chain, token, transaction)
+		raw, err = estimator.estimateBuiltinEVM(requestCtx, chain, token, transaction)
 	case "solana":
-		raw, err = estimator.configured.estimateSolana(ctx, chain, token, transaction)
+		raw, err = estimator.configured.estimateSolana(requestCtx, chain, token, transaction)
 	}
 	if err != nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
 	}
-	price, timestamp, source, err := estimator.fetchBuiltinPrice(ctx, chain, network, currency, now)
+	price, timestamp, source, err := estimator.fetchBuiltinPrice(requestCtx, chain, network, currency, now)
 	if err != nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
 	}
@@ -221,7 +236,9 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 		}
 	}
 	quote := NetworkFeeQuote{Token: token, Network: network, Source: ChainNetworkEstimateSource, EstimatorVersion: builtinNetworkFeeEstimatorVersion, NativeAsset: chain.nativeAsset, NativeAmount: raw.NativeAmount, FeeAmount: fee, BaseAmount: input.BaseAmount, TotalAmount: total, SettlementCurrency: currency, QuotedAt: now, ExpiresAt: now.Add(estimator.configured.config.quoteTTL), Confidence: raw.Confidence, Subsidized: raw.Subsidized, Evidence: raw.Evidence}
-	estimator.configured.quoteCache.put(key, quote, now, estimator.configured.config.cacheTTL)
+	if network != "solana" {
+		estimator.configured.quoteCache.put(key, quote, now, estimator.configured.config.cacheTTL)
+	}
 	return quote, nil
 }
 
@@ -298,14 +315,22 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 		methods = append(methods, "wallet/estimateenergy")
 	} else {
 		constantResult, constantErr := estimator.configured.callTRON(ctx, chain.rpcURL, "/wallet/triggerconstantcontract", payload)
-		if constantErr != nil {
-			return chainRawNetworkEstimate{}, energyErr
+		if constantErr == nil {
+			energy, err = parseTRONEnergy(constantResult.Raw)
+			if err == nil && energy.GreaterThan(decimal.Zero) {
+				methods = append(methods, "wallet/triggerconstantcontract")
+			}
+		} else {
+			err = constantErr
 		}
-		energy, err = parseTRONEnergy(constantResult.Raw)
-		methods = append(methods, "wallet/triggerconstantcontract")
 	}
-	if err != nil || energy.IsNegative() {
-		return chainRawNetworkEstimate{}, errors.New("tron energy estimate is invalid")
+	if err != nil || energy.LessThanOrEqual(decimal.Zero) {
+		// A synthetic sender intentionally owns neither token balance nor account
+		// resources, so some TRC-20 contracts reject simulation. Use a bounded,
+		// representative transfer quantity while still reading current energy and
+		// bandwidth burn prices from the chain. This is an auditable preset, not a
+		// claim about GMPay's exact collection wallet.
+		energy = decimal.RequireFromString(builtinTRONTransferEnergyUnits)
 	}
 	bandwidth := decimal.NewFromInt(345)
 	sun := energy.Mul(energyFee).Add(bandwidth.Mul(bandwidthFee))
@@ -313,6 +338,70 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 		return chainRawNetworkEstimate{}, errors.New("tron resource cost is invalid")
 	}
 	return chainRawNetworkEstimate{NativeAmount: sun.Div(decimal.RequireFromString(tronSunPerTRX)), Confidence: "medium", Subsidized: sun.IsZero(), Evidence: NetworkFeeEvidence{RPCMethod: methods[0], RPCMethods: methods, Energy: energy.String(), Bandwidth: bandwidth.String()}}, nil
+}
+
+// estimateBuiltinEVM first attempts an exact eth_estimateGas call. Public RPC
+// nodes commonly reject a representative ERC-20 transfer from a synthetic
+// sender because that address intentionally has no token balance. In that
+// case, use a bounded representative transfer quantity and combine it with
+// current gas-price observations. The estimate remains dynamic with chain
+// conditions while its confidence is lowered to reflect the preset quantity.
+func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinEVM(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
+	from := strings.TrimSpace(transaction.From)
+	contract := strings.TrimSpace(firstNonEmpty(transaction.TokenContract, transaction.Contract))
+	recipient := strings.TrimSpace(firstNonEmpty(transaction.Recipient, transaction.To))
+	data := strings.TrimSpace(firstNonEmpty(transaction.Calldata, transaction.Data))
+	if !evMAddressPattern.MatchString(from) || !evMAddressPattern.MatchString(contract) || !evMAddressPattern.MatchString(recipient) ||
+		!validNetworkFeeHexData(data) || len(data) > maxNetworkFeeContextLength {
+		return chainRawNetworkEstimate{}, ErrNetworkFeeContextMissing
+	}
+	if err := validateEVMERC20TransferCalldata(data, recipient); err != nil {
+		return chainRawNetworkEstimate{}, err
+	}
+	if exact, err := estimator.configured.estimateEVM(ctx, chain, token, transaction); err == nil {
+		return exact, nil
+	}
+
+	gas := decimal.RequireFromString(builtinEVMTransferGasUnits)
+	gasPrice := decimal.Zero
+	methods := make([]string, 0, 2)
+	gasPriceResult, gasPriceErr := estimator.configured.callJSONRPC(ctx, chain.rpcURL, "eth_gasPrice", []any{})
+	if gasPriceErr == nil {
+		gasPrice, gasPriceErr = parseHexQuantity(gasPriceResult.Raw)
+		if gasPriceErr == nil && gasPrice.GreaterThan(decimal.Zero) {
+			methods = append(methods, "eth_gasPrice")
+		} else {
+			gasPriceErr = errors.New("eth_gasPrice returned an invalid quantity")
+		}
+	}
+	baseFee, priorityFee, block, feeHistoryErr := estimator.configured.evmFeeHistory(ctx, chain.rpcURL)
+	if feeHistoryErr == nil {
+		candidate := baseFee.Add(priorityFee)
+		if candidate.GreaterThan(decimal.Zero) {
+			methods = append(methods, "eth_feeHistory")
+			if gasPriceErr != nil || candidate.GreaterThan(gasPrice) {
+				gasPrice = candidate
+			}
+		}
+	}
+	if gasPrice.LessThanOrEqual(decimal.Zero) || len(methods) == 0 {
+		return chainRawNetworkEstimate{}, fmt.Errorf("evm gas price unavailable: gas price: %v; fee history: %v", gasPriceErr, feeHistoryErr)
+	}
+	nativeAmount := gas.Mul(gasPrice).Div(decimal.RequireFromString(evmWeiPerNative))
+	if nativeAmount.IsNegative() || !decimalIsFinite(nativeAmount) {
+		return chainRawNetworkEstimate{}, errors.New("evm representative network cost is invalid")
+	}
+	return chainRawNetworkEstimate{
+		NativeAmount: nativeAmount,
+		Confidence:   "medium",
+		Evidence: NetworkFeeEvidence{
+			RPCMethod:  methods[0],
+			RPCMethods: methods,
+			Block:      block,
+			Gas:        gas.String(),
+			GasPrice:   gasPrice.String(),
+		},
+	}, nil
 }
 
 func builtinTransferContext(network, token string) (NetworkFeeTransactionContext, error) {
@@ -334,7 +423,7 @@ func builtinTransferContext(network, token string) (NetworkFeeTransactionContext
 		}
 		return NetworkFeeTransactionContext{From: syntheticEVMAddress, Recipient: syntheticEVMAddress, TokenContract: contract, Calldata: builtinERC20Calldata(syntheticEVMAddress)}, nil
 	case "tron":
-		contract := map[string]string{"USDT": "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj", "USDC": "TEkxiTehnzSmSe2XqrBjgG9wRkX4z6a6Q"}[token]
+		contract := map[string]string{"USDT": "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj", "USDC": "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8"}[token]
 		if contract == "" {
 			return NetworkFeeTransactionContext{}, errors.New("token contract is unavailable")
 		}

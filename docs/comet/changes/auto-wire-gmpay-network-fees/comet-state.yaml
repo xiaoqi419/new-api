@@ -1,0 +1,441 @@
+schema: comet.native.v4
+name: auto-wire-gmpay-network-fees
+language: zh-CN
+phase: archive
+status: active
+state_version: 22
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: comet/auto-wire-gmpay-network-fees
+  target_branch: main
+  finish: merge
+loop:
+  stage: archive-ready
+  goal_cycle: 2
+  iteration: 3
+  attempt: 3
+  retry_epoch: 0
+  failed_iteration_count: 2
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 仅配置 GMPay/EPUSDT 的现有网关地址、商户 ID 和密钥时，后台自动显示 EPUSDT `supported_assets`
+      中的可用网络/token 与同步状态；私有 context 不存在时仍尝试内置预设，不出现必须填写 RPC/价格源/交易上下文的输入框。"
+    result: passed
+    reason:
+      text: Sanitized supported-assets/status data is exposed without RPC,
+        price-source, or transaction inputs; automatic mode falls back to the
+        built-in estimator when private context is absent.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 选择受支持的 USDT/USDC 网络并充值 30.00 时，服务端返回
+      `base_amount=30.00`、有明确来源且非负的网络成本估算和
+      `total_amount=base_amount+fee`；客户端不能覆盖费用。估算值不代表 GMPay 服务费；没有可用私有 context
+      或内置预设时不得建单，除非显式人工兜底已开启。"
+    result: passed
+    reason:
+      text: Checkout recomputes a server-owned non-negative network quote and total;
+        TopUp.Money and gateway amount use the total while client fields cannot
+        override it.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 动态报价包含来源（私有 context 或具体内置预设）、原生币数量、结算币种、报价时间、过期时间、估算器版本和脱敏
+      RPC/价格证据，并标注“网络成本估算”。证据至少能区分 EVM `eth_estimateGas`/gas-price、TRON
+      chain-parameter/energy、Solana
+      `getLatestBlockhash`/`getFeeForMessage`；过期、上下文不完整、价格不可信或预设不支持时不会伪造 0 费用。"
+    result: passed
+    reason:
+      text: Quotes contain source, native amount, currency, timestamps, estimator
+        version, confidence, and redacted RPC/price evidence; Solana records
+        latest blockhash and getFeeForMessage.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 报价有效时，GMPay 建单金额和 `TopUp.Money` 使用冻结的总额，`TopUp.Amount`
+      仍只用于到账额度；回调按绑定金额/资产/网络幂等校验。"
+    result: passed
+    reason:
+      text: Order quote binding covers amount, asset, currency, TTL and callback
+        idempotency; credited quota remains distinct from charged money.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: EPUSDT 暂不可达、私有 discovery 未提供 context，或私有估算器无法产出有效 quote
+      时，系统按白名单资产尝试内置预设；只有私有 context
+      与内置预设均不可用、链上数据/价格不可信或链不受支持时才显示可重试的支付不可用提示。只有管理员明确启用的兜底规则才可替代估算，并标注为人工兜底；任\
+      何路径都不把网关服务费当作网络费。"
+    result: passed
+    reason:
+      text: Both wallet asset-resolution stages use a narrow automatic-mode builtin
+        whitelist fallback on supported-assets outages, canonicalize aliases,
+        and still reject unsupported assets. Explicit dynamic policies and
+        gateway-included specialized paths remain strict. End-to-end regression
+        reaches CreateOrder under dual 503 responses.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6:
+      内置预设的同步周期、缓存、超时、响应大小、重试次数、价格年龄和费用上限有固定安全默认值，无需管理员填写；异常不会导致负数、溢出、静默零费或重复收费\
+      ，公开 RPC/价格源仅访问服务器端白名单。"
+    result: passed
+    reason:
+      text: Builtin defaults enforce allowlisted HTTPS hosts, bounded
+        timeouts/responses/retries/cache/price age, fee and total limits,
+        cancellation checks, and fail-closed arithmetic.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: Legacy EPay 与其他支付场景的金额、回调和结算行为保持现状。"
+    result: passed
+    reason:
+      text: Legacy EPay, subscriptions, group buys, agent prepayment, and
+        gateway-included callback paths retain their prior behavior.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: 设置页和充值 Modal 在桌面/移动端可读，费用来源、基础金额和总额均有 i18n 文案，不暴露敏感配置。"
+    result: passed
+    reason:
+      text: Settings and wallet UI expose translated base/fee/total/source metadata,
+        keep sensitive configuration hidden, and pass responsive frontend
+        tests/build.
+      truncated: false
+builder_handoff:
+  candidate_id: c23686de-5a8d-4797-9c67-8e63fdb9742c
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:66b0df23-9065-4ac7-bca7-1618c3caa1ca
+  iteration: 3
+  summary:
+    text: Completed the A5 end-to-end repair. The shared GMPay order path now uses a
+      narrow builtin asset fallback only for ordinary wallet quotes whose source
+      is dynamic or explicitly configured fallback; legacy gateway-included
+      subscription, group-buy, and agent paths remain strict. When
+      SupportedAssetsAllFresh is unavailable, the fallback canonicalizes the
+      requested token/network, checks the closed builtin whitelist and
+      settlement currency, and then permits CreateOrder to proceed. Unsupported
+      assets remain rejected. Added an end-to-end regression test proving both
+      fresh asset reads can fail while a supported wallet order reaches
+      CreateOrder, plus a negative unsupported-asset case. No production
+      services, databases, Redis, payment gateway, or admin-mobile-h5 files were
+      touched.
+    truncated: false
+  addressed_acceptance_ids:
+    - A5
+  checks:
+    - name:
+        text: A5 controller resolver and end-to-end regression tests
+        truncated: false
+      result: passed
+      note:
+        text: go test -count=1 ./controller -run
+          'TestResolveGMPayWalletAsset|TestRequestEpayCheckoutBuiltinAssetFallbackReachesCreateOrder|TestRequestEpayCheckoutUsesNativeGMPayForUSDCOnEthereum'
+        truncated: false
+    - name:
+        text: Affected controller package tests
+        truncated: false
+      result: passed
+      note:
+        text: go test -count=1 ./controller
+        truncated: false
+    - name:
+        text: GMPay service regression tests
+        truncated: false
+      result: passed
+      note:
+        text: go test -count=1 ./service -run GMPay
+        truncated: false
+    - name:
+        text: Whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+    - name:
+        text: Previously completed candidate checks
+        truncated: false
+      result: passed
+      note:
+        text: The remaining backend package tests, wallet/integration frontend tests
+          (53), typecheck, i18n sync, targeted lint, and production build were
+          green before this narrow A5 repair; Runtime should run its required
+          verification plan again.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: If the EPUSDT create-order endpoint itself is unavailable, no fallback can
+        complete payment; this change removes only duplicate supported-assets
+        preflight failure.
+      truncated: false
+    - text: When supported-assets is unavailable, automatic mode can validate only the
+        fixed builtin whitelist; it cannot know a gateway-side asset toggle
+        until the gateway recovers.
+      truncated: false
+    - text: Builtin EVM/TRON quantities are representative transfer presets combined
+        with live chain rates, not exact GMPay sweep invoices.
+      truncated: false
+    - text: CoinGecko remains a single allowlisted public price source and failures
+        remain fail-closed unless explicit administrator fallback is enabled.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-01T21:15:57.451Z
+blockers: []
+verification:
+  candidate_id: c23686de-5a8d-4797-9c67-8e63fdb9742c
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:2e42e41e-b2ab-4a7b-9a90-f553937a8ac7
+  iteration: 3
+  attempt: 3
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: gmpay-focused-go-tests
+      name:
+        text: GMPay focused Go regression tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./router
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: GMPay|NetworkFee|Gmpay|Resolve
+          truncated: false
+      argv_truncated: false
+      cwd_ref: workspace
+      status: passed
+      exit_code: 0
+      duration_ms: 13224
+    - id: gmpay-backend-package-tests
+      name:
+        text: Affected backend package tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: -count=1
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./model
+          truncated: false
+        - text: ./router
+          truncated: false
+      argv_truncated: false
+      cwd_ref: workspace
+      status: passed
+      exit_code: 0
+      duration_ms: 9727
+    - id: gmpay-frontend-tests
+      name:
+        text: GMPay and wallet frontend tests
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: test
+          truncated: false
+        - text: --
+          truncated: false
+        - text: src/features/system-settings/integrations/__tests__/gmpay-fee-config.test.ts
+          truncated: false
+        - text: src/features/wallet/lib/payment.test.ts
+          truncated: false
+        - text: src/features/wallet/components/dialogs/__tests__/native-crypto-checkout.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 4233
+    - id: gmpay-frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2235
+    - id: gmpay-frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5797
+    - id: gmpay-diff-check
+      name:
+        text: Git diff check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: workspace
+      status: passed
+      exit_code: 0
+      duration_ms: 80
+  summary:
+    text: Independent read-only verification for iteration 3 attempt 2 passes all
+      eight acceptance items. Focused and affected Go tests, frontend
+      tests/typecheck/i18n/build, changed-file lint, and diff checks are green;
+      no files, services, databases, Redis instances, or payment-gateway data
+      were modified by the verifier.
+    truncated: false
+  risks:
+    - text: If EPUSDT itself cannot create orders, no estimator fallback can complete
+        payment; this change removes duplicate preflight rejection only.
+      truncated: false
+    - text: During a supported-assets outage, the UI cannot discover newly enabled
+        gateway assets; users must submit an already known supported pair, and
+        the fixed whitelist prevents arbitrary assets.
+      truncated: false
+    - text: Builtin EVM/TRON resource quantities are representative transfer presets
+        combined with live rates, not exact GMPay sweep invoices.
+      truncated: false
+    - text: CoinGecko is a single allowlisted public price source and safely fails
+        closed unless explicit administrator fallback is enabled.
+      truncated: false
+    - text: GetOptions may return the raw GMPay configuration to a root
+        administrator's browser response even though the settings UI does not
+        render advanced estimator fields; URLs containing embedded credentials
+        should not be stored in those fields.
+      truncated: false
+    - text: If a quote expires while the external CreateOrder call is in flight, the
+        local pending record fails closed but the gateway may retain an orphan
+        order.
+      truncated: false
+    - text: The repository-wide lint script reports existing warnings outside the
+        changed files; changed-file oxlint passed.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-01T21:47:55.679Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A1
+      - A2
+      - A6
+      - A8
+    summary:
+      text: 核心费用金额与回调安全、失败关闭和旧支付兼容已通过；A1、A6、A8 缺少自动发现状态/缓存重试/i18n，A2 受网关能力接口阻塞。返回
+        Build 修复，不归档。
+      truncated: false
+    completed_at: 2026-09-01T18:44:01.886Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-01T20:46:52.246Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+    summary:
+      text: Most acceptance items pass and all recorded checks are green. A5 remains
+        incomplete because an EPUSDT supported-assets outage exits before the
+        builtin estimator can be attempted. Return to Build for that narrow
+        fallback and regression test.
+      truncated: false
+    completed_at: 2026-09-01T21:01:34.464Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A5
+    summary:
+      text: Iteration 2 still fails A5 at the end-to-end create-order path because a
+        second strict supported-assets read rejects gateway outages. Return to
+        Build for a narrowly scoped ordinary-wallet fallback and regression
+        test.
+      truncated: false
+    completed_at: 2026-09-01T21:14:41.449Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-09-01T21:24:42.617Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-09-01T21:33:45.992Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 3
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verification for iteration 3 attempt 2 passes all
+        eight acceptance items. Focused and affected Go tests, frontend
+        tests/typecheck/i18n/build, changed-file lint, and diff checks are
+        green; no files, services, databases, Redis instances, or
+        payment-gateway data were modified by the verifier.
+      truncated: false
+    completed_at: 2026-09-01T21:47:55.679Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-01T17:55:53.033Z

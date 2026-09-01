@@ -3,6 +3,7 @@ package service
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/shopspring/decimal"
@@ -135,4 +136,60 @@ func TestGMPayFeeDisabledUsesGatewayIncludedAmount(t *testing.T) {
 	assert.Equal(t, "12.34", quote.BaseAmount.StringFixed(2))
 	assert.True(t, quote.FeeAmount.IsZero())
 	assert.Equal(t, GMPayFeeSourceGatewayIncluded, quote.Source)
+}
+
+func TestGMPayFeeQuoteFromNetworkQuoteRequiresAuditableEvidence(t *testing.T) {
+	previous := common.OptionMap
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{GMPayFeeConfigOptionKey: `{"version":1,"max_fee":"20.00","max_total":"100000.00"}`}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previous
+		common.OptionMapRWMutex.Unlock()
+	})
+
+	now := time.Now().UTC()
+	valid := NetworkFeeQuote{
+		Token:              "USDT",
+		Network:            "ethereum",
+		Source:             ChainNetworkEstimateSource,
+		EstimatorVersion:   "chain-network-v1+builtin",
+		NativeAsset:        "ETH",
+		NativeAmount:       decimal.RequireFromString("0.00002"),
+		FeeAmount:          decimal.RequireFromString("0.06"),
+		BaseAmount:         decimal.NewFromInt(1),
+		TotalAmount:        decimal.RequireFromString("1.06"),
+		SettlementCurrency: "USD",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(time.Minute),
+		Confidence:         "high",
+		Evidence: NetworkFeeEvidence{
+			RPCMethod:      "eth_estimateGas",
+			RPCSource:      "cloudflare-eth.com",
+			PriceSource:    "api.coingecko.com",
+			PriceTimestamp: now.Unix(),
+		},
+	}
+	quote, err := GMPayFeeQuoteFromNetworkQuote(valid, decimal.NewFromInt(1), "USDT", "ethereum", "USD")
+	require.NoError(t, err)
+	assert.Equal(t, "1.06", quote.TotalAmount.StringFixed(2))
+
+	for name, mutate := range map[string]func(*NetworkFeeQuote){
+		"missing rpc evidence": func(candidate *NetworkFeeQuote) { candidate.Evidence.RPCMethod = "" },
+		"missing rpc source":   func(candidate *NetworkFeeQuote) { candidate.Evidence.RPCSource = "" },
+		"missing price source": func(candidate *NetworkFeeQuote) { candidate.Evidence.PriceSource = "" },
+		"missing price timestamp": func(candidate *NetworkFeeQuote) {
+			candidate.Evidence.PriceTimestamp = 0
+		},
+		"expired quote": func(candidate *NetworkFeeQuote) { candidate.ExpiresAt = now.Add(-time.Second) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			mutate(&candidate)
+			_, err := GMPayFeeQuoteFromNetworkQuote(candidate, decimal.NewFromInt(1), "USDT", "ethereum", "USD")
+			require.Error(t, err)
+			assert.ErrorIs(t, err, ErrGMPayFeeUnavailable)
+		})
+	}
 }
