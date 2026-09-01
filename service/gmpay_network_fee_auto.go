@@ -57,12 +57,10 @@ func NewAutomaticGMPayNetworkFeeEstimator() (NetworkFeeEstimator, error) {
 }
 
 // BuiltinNetworkFeeSupported reports whether the closed preset has a
-// representative transfer definition for the selected asset.  Solana is
-// intentionally reported unsupported until token-account context can be
-// proven server-side.
+// representative transfer definition for the selected asset.
 func BuiltinNetworkFeeSupported(network, token string) bool {
-	normalized, ok := normalizeEstimatorNetwork(network)
-	if !ok || normalized == "solana" {
+	_, ok := normalizeEstimatorNetwork(network)
+	if !ok {
 		return false
 	}
 	token = strings.ToUpper(strings.TrimSpace(token))
@@ -70,10 +68,9 @@ func BuiltinNetworkFeeSupported(network, token string) bool {
 }
 
 // BuiltinNetworkFeeSupportedNetworks returns canonical network identifiers
-// advertised by the preset. Solana remains intentionally absent because a
-// wallet-independent SPL transfer cannot be constructed safely.
+// advertised by the preset.
 func BuiltinNetworkFeeSupportedNetworks() []string {
-	return []string{"tron", "ethereum", "binance"}
+	return []string{"tron", "ethereum", "binance", "solana"}
 }
 
 func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*BuiltinNetworkFeeEstimator, error) {
@@ -166,10 +163,6 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	if !isEmptyNetworkFeeTransaction(input.Transaction) {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: transaction context cannot override built-in context", ErrNetworkFeeUnavailable)
 	}
-	// No wallet-independent representative SPL message can be proven safe.
-	if network == "solana" {
-		return NetworkFeeQuote{}, fmt.Errorf("%w: solana transfer context is unavailable", ErrNetworkFeeUnavailable)
-	}
 	transaction, err := builtinTransferContext(network, token)
 	if err != nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
@@ -190,6 +183,8 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 		raw, err = estimator.estimateBuiltinTRON(ctx, chain, token, transaction)
 	case "ethereum", "binance":
 		raw, err = estimator.configured.estimateEVM(ctx, chain, token, transaction)
+	case "solana":
+		raw, err = estimator.configured.estimateSolana(ctx, chain, token, transaction)
 	}
 	if err != nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
@@ -271,6 +266,11 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 func builtinTransferContext(network, token string) (NetworkFeeTransactionContext, error) {
 	const syntheticEVMAddress = "0x0000000000000000000000000000000000000001"
 	const syntheticTRONAddress = "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb"
+	const syntheticSolanaPayer = "11111111111111111111111111111111"
+	const syntheticSolanaSource = "So11111111111111111111111111111111111111112"
+	const syntheticSolanaDestination = "Vote111111111111111111111111111111111111111"
+	const syntheticSolanaMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	const syntheticSolanaBlockhash = "11111111111111111111111111111111"
 	switch network {
 	case "ethereum", "binance":
 		contracts := map[string]map[string]string{
@@ -293,6 +293,13 @@ func builtinTransferContext(network, token string) (NetworkFeeTransactionContext
 		}
 		data := "a9059cbb" + strings.Repeat("0", 24) + hex.EncodeToString(decoded[1:21]) + strings.Repeat("0", 63) + "1"
 		return NetworkFeeTransactionContext{From: syntheticTRONAddress, Recipient: syntheticTRONAddress, TokenContract: contract, Data: data, FunctionSelector: tronTRC20TransferSignature, BandwidthBytes: 345}, nil
+	case "solana":
+		return NetworkFeeTransactionContext{
+			Payer: syntheticSolanaPayer, From: syntheticSolanaPayer,
+			SourceTokenAccount: syntheticSolanaSource, RecipientTokenAccount: syntheticSolanaDestination,
+			TokenMint: syntheticSolanaMint, TransferInstruction: "transferChecked", TransferAmountBaseUnits: "1",
+			TokenDecimals: 6, RecentBlockhash: syntheticSolanaBlockhash, TokenProgramID: solanaTokenProgramID,
+		}, nil
 	default:
 		return NetworkFeeTransactionContext{}, errors.New("network is unsupported")
 	}
@@ -345,7 +352,7 @@ func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Conte
 	if err := common.Unmarshal(body, &fields); err != nil {
 		return decimal.Zero, time.Time{}, "", errors.New("price source response is invalid")
 	}
-	id := map[string]string{"tron": "tron", "ethereum": "ethereum", "binance": "binancecoin"}[network]
+	id := map[string]string{"tron": "tron", "ethereum": "ethereum", "binance": "binancecoin", "solana": "solana"}[network]
 	nested, ok := fields[id]
 	if !ok {
 		return decimal.Zero, time.Time{}, "", errors.New("price source asset is missing")

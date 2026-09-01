@@ -99,3 +99,27 @@ func TestBuiltinNetworkFeeEstimatorFailsClosedOnStalePrice(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
 }
+
+func TestBuiltinNetworkFeeEstimatorSolanaTransfer(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"solana":{"usd":150,"cny":1050,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		if call.Method != "getFeeForMessage" {
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+		return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":{"context":{"slot":123},"value":5000}}`), nil
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDC", Network: "solana", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "SOL", quote.NativeAsset)
+	assert.Equal(t, "0.000005", quote.NativeAmount.String())
+	assert.Equal(t, "0.00075", quote.FeeAmount.String())
+	assert.Equal(t, uint64(123), quote.Evidence.Slot)
+}
