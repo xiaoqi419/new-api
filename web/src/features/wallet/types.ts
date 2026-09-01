@@ -60,6 +60,14 @@ export interface EpayCryptoCheckoutData extends EpayCheckoutBase {
   network: string
   expiration_time: number
   server_time?: number
+  /** Base fiat amount credited to the wallet before any user-paid fee. */
+  base_amount?: string
+  /** User-paid gateway/network fee in the checkout currency. */
+  fee_amount?: string
+  /** Human-readable origin of the fee quote (gateway/configured fallback). */
+  fee_source?: string
+  /** Total fiat amount charged by the gateway, including the fee. */
+  total_amount?: string
 }
 
 export type EpayCheckoutType = EpayLegacyCheckoutType | 'crypto'
@@ -142,17 +150,20 @@ export interface PaymentMethod {
   icon?: string
 }
 
+/** Stablecoins that the wallet checkout is allowed to expose. */
+export type CryptoToken = 'USDT' | 'USDC'
+
 /**
- * A payment network enabled for USDT by the GMPay/EPUSDT gateway.
+ * A token/network pair enabled by the GMPay/EPUSDT gateway.
  *
- * GMPay reports both networks and tokens, but the international checkout only
- * accepts USDT. Keeping the token literal here makes that product invariant
- * visible to every wallet UI caller while historical checkout responses can
- * continue using the broader EpayCryptoCheckoutData shape above.
+ * The server filters the gateway response to the supported stablecoins before
+ * returning it to the browser. Keeping the union narrow here prevents native
+ * gas assets such as TRX, ETH, BNB, and SOL from accidentally entering the
+ * wallet selection flow.
  */
 export interface CryptoAsset {
   network: string
-  token: 'USDT'
+  token: CryptoToken
   display_name: string
 }
 
@@ -180,7 +191,7 @@ export interface TopupInfo {
   enable_stripe_topup: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
-  /** Available USDT payment networks, when GMPay Native is configured. */
+  /** Available stablecoin/network pairs, when GMPay Native is configured. */
   crypto_assets?: CryptoAsset[]
   /** Minimum topup amount for online topup */
   min_topup: number

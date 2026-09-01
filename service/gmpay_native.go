@@ -32,6 +32,13 @@ const (
 	gmpayConfigCacheTTL      = 30 * time.Second
 	gmpayMaxAssets           = 32
 	gmpayMaxTokensPerAsset   = 32
+	// GMPay uses USD cents for the fiat amount.  Keep a modest decimal scale
+	// and a hard absolute ceiling at this protocol boundary even when a caller
+	// bypasses the normal top-up range checks.
+	gmpayNativeAmountMaxScale       = int32(6)
+	gmpayNativeActualAmountMaxScale = int32(18)
+	gmpayNativeAmountInputMaxLength = 128
+	gmpayNativeAmountAbsoluteLimit  = "1000000000.00"
 )
 
 var defaultGMPayNativeHTTPClient = &http.Client{Timeout: gmpayNativeTimeout}
@@ -39,8 +46,14 @@ var defaultGMPayNativeHTTPClient = &http.Client{Timeout: gmpayNativeTimeout}
 // GMPayCreateOrderRequest contains server-generated payment fields. The
 // configured merchant identity stays encapsulated by GMPayClient.
 type GMPayCreateOrderRequest struct {
-	OrderID     string
-	Amount      string
+	OrderID string
+	Amount  string
+	// BaseAmount, FeeAmount, and FeeSource are optional server-side context
+	// used to validate and expose the amount breakdown. Amount remains the
+	// final fiat amount sent to the gateway for backwards compatibility.
+	BaseAmount  string
+	FeeAmount   string
+	FeeSource   string
 	NotifyURL   *url.URL
 	RedirectURL *url.URL
 	Name        string
@@ -87,6 +100,10 @@ func NormalizeGMPayNetwork(value string) (string, bool) {
 type GMPayCheckout struct {
 	OrderID        string
 	GatewayTradeNo string
+	BaseAmount     string
+	FeeAmount      string
+	TotalAmount    string
+	FeeSource      string
 	ActualAmount   string
 	ReceiveAddress string
 	Token          string
@@ -223,11 +240,35 @@ func (client *GMPayClient) CreateOrder(ctx context.Context, args GMPayCreateOrde
 	if !isAbsoluteHTTPURL(args.NotifyURL) || !isAbsoluteHTTPURL(args.RedirectURL) {
 		return nil, errors.New("gmpay callback URLs are invalid")
 	}
-	amount, err := positiveDecimal(args.Amount)
+	amount, err := ParseGMPayAmount(args.Amount, false)
 	if err != nil || amount.LessThanOrEqual(decimal.NewFromFloat(0.01)) {
 		return nil, errors.New("gmpay create-order amount is invalid")
 	}
-	amountNumber, _ := amount.Float64()
+	baseAmount := amount
+	feeAmount := decimal.Zero
+	if strings.TrimSpace(args.BaseAmount) != "" {
+		baseAmount, err = ParseGMPayAmount(args.BaseAmount, false)
+		if err != nil {
+			return nil, errors.New("gmpay base amount is invalid")
+		}
+	}
+	if strings.TrimSpace(args.FeeAmount) != "" {
+		feeAmount, err = ParseGMPayAmount(args.FeeAmount, true)
+		if err != nil {
+			return nil, errors.New("gmpay fee amount is invalid")
+		}
+	}
+	if !baseAmount.Add(feeAmount).Equal(amount) {
+		return nil, errors.New("gmpay amount breakdown does not match total")
+	}
+	feeSource, err := NormalizeGMPayFeeSource(args.FeeSource)
+	if err != nil {
+		return nil, err
+	}
+	amountNumber, exact := amount.Float64()
+	if !exact && math.IsInf(amountNumber, 0) {
+		return nil, errors.New("gmpay create-order amount is out of range")
+	}
 	token, network, err := normalizeGMPayAsset(args.Token, args.Network)
 	if err != nil {
 		return nil, err
@@ -286,7 +327,7 @@ func (client *GMPayClient) CreateOrder(ctx context.Context, args GMPayCreateOrde
 	if err := common.Unmarshal(envelope.Data, &result); err != nil {
 		return nil, errors.New("invalid gmpay checkout data")
 	}
-	return result.checkout(args.OrderID, amount, token, network)
+	return result.checkout(args.OrderID, amount, baseAmount, feeAmount, feeSource, token, network)
 }
 
 type gmpayCreateOrderEnvelope struct {
@@ -302,6 +343,10 @@ type gmpayCreateOrderResponse struct {
 	Currency       string          `json:"currency"`
 	Status         int             `json:"status"`
 	ActualAmount   json.RawMessage `json:"actual_amount"`
+	Fee            json.RawMessage `json:"fee"`
+	ServiceFee     json.RawMessage `json:"service_fee"`
+	NetworkFee     json.RawMessage `json:"network_fee"`
+	TotalAmount    json.RawMessage `json:"total_amount"`
 	ReceiveAddress string          `json:"receive_address"`
 	Token          string          `json:"token"`
 	Network        string          `json:"network"`
@@ -309,19 +354,45 @@ type gmpayCreateOrderResponse struct {
 	ServerTime     int64           `json:"server_time"`
 }
 
-func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expectedAmount decimal.Decimal, expectedToken string, expectedNetwork string) (*GMPayCheckout, error) {
+func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expectedAmount, expectedBaseAmount, expectedFeeAmount decimal.Decimal, expectedFeeSource, expectedToken string, expectedNetwork string) (*GMPayCheckout, error) {
 	if strings.TrimSpace(response.OrderID) != expectedOrderID || strings.TrimSpace(response.TradeID) == "" || response.Status != 1 {
 		return nil, errors.New("gmpay checkout response does not describe a waiting order")
 	}
-	fiatAmount, err := rawDecimalString(response.Amount)
+	fiatAmount, err := rawGMPayDecimalString(response.Amount, false, gmpayNativeAmountMaxScale)
 	if err != nil {
 		return nil, errors.New("gmpay checkout response has an invalid fiat amount")
 	}
-	parsedFiatAmount, err := positiveDecimal(fiatAmount)
+	parsedFiatAmount, err := ParseGMPayAmount(fiatAmount, false)
 	if err != nil || !parsedFiatAmount.Equal(expectedAmount) || strings.ToUpper(strings.TrimSpace(response.Currency)) != "USD" {
 		return nil, errors.New("gmpay checkout response does not match the requested fiat amount")
 	}
-	actualAmount, err := rawDecimalString(response.ActualAmount)
+	responseFee, responseFeePresent, err := gmpayResponseFee(response)
+	if err != nil {
+		return nil, errors.New("gmpay checkout response has an invalid fee")
+	}
+	responseTotal, responseTotalPresent, err := gmpayResponseTotal(response)
+	if err != nil {
+		return nil, errors.New("gmpay checkout response has an invalid total amount")
+	}
+	if responseTotalPresent && !responseTotal.Equal(parsedFiatAmount) {
+		return nil, errors.New("gmpay checkout response total does not match fiat amount")
+	}
+	baseAmount := expectedBaseAmount
+	feeAmount := expectedFeeAmount
+	feeSource := expectedFeeSource
+	if responseFeePresent {
+		if responseTotalPresent && !baseAmount.Add(responseFee).Equal(responseTotal) {
+			return nil, errors.New("gmpay checkout response fee does not match total")
+		}
+		if !baseAmount.Add(responseFee).Equal(expectedAmount) {
+			return nil, errors.New("gmpay checkout response fee changes the requested amount")
+		}
+		feeAmount = responseFee
+		feeSource = GMPayFeeSourceGatewayQuote
+	} else if responseTotalPresent && !baseAmount.Add(feeAmount).Equal(responseTotal) {
+		return nil, errors.New("gmpay checkout response total changes the requested amount")
+	}
+	actualAmount, err := rawGMPayDecimalString(response.ActualAmount, false, gmpayNativeActualAmountMaxScale)
 	if err != nil {
 		return nil, errors.New("gmpay checkout response has an invalid actual amount")
 	}
@@ -340,6 +411,10 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 	return &GMPayCheckout{
 		OrderID:        expectedOrderID,
 		GatewayTradeNo: strings.TrimSpace(response.TradeID),
+		BaseAmount:     baseAmount.StringFixed(2),
+		FeeAmount:      feeAmount.StringFixed(2),
+		TotalAmount:    parsedFiatAmount.StringFixed(2),
+		FeeSource:      feeSource,
 		ActualAmount:   actualAmount,
 		ReceiveAddress: strings.TrimSpace(response.ReceiveAddress),
 		Token:          responseToken,
@@ -349,8 +424,36 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 	}, nil
 }
 
+func gmpayResponseFee(response gmpayCreateOrderResponse) (decimal.Decimal, bool, error) {
+	var fee decimal.Decimal
+	present := false
+	for _, raw := range []json.RawMessage{response.Fee, response.ServiceFee, response.NetworkFee} {
+		if len(raw) == 0 {
+			continue
+		}
+		value, err := nonNegativeDecimalString(raw)
+		if err != nil {
+			return decimal.Zero, false, err
+		}
+		if present && !fee.Equal(value) {
+			return decimal.Zero, false, errors.New("gmpay fee fields disagree")
+		}
+		fee = value
+		present = true
+	}
+	return fee, present, nil
+}
+
+func gmpayResponseTotal(response gmpayCreateOrderResponse) (decimal.Decimal, bool, error) {
+	if len(response.TotalAmount) == 0 {
+		return decimal.Zero, false, nil
+	}
+	value, err := positiveDecimalString(response.TotalAmount)
+	return value, true, err
+}
+
 // SupportedAssets fetches EPUSDT's public configuration and returns only the
-// USDT networks that are safe to offer from the ordinary wallet. Results are
+// USDT/USDC networks that are safe to offer from the ordinary wallet. Results are
 // cached briefly because this endpoint is read on every top-up page load,
 // while gateway configuration changes infrequently.
 func (client *GMPayClient) SupportedAssets(ctx context.Context) ([]GMPayAsset, error) {
@@ -358,7 +461,7 @@ func (client *GMPayClient) SupportedAssets(ctx context.Context) ([]GMPayAsset, e
 	if err != nil {
 		return nil, err
 	}
-	return filterGMPayUSDTAssets(assets), nil
+	return filterGMPayStablecoinAssets(assets), nil
 }
 
 // SupportedAssetsFresh fetches the current gateway asset configuration without
@@ -369,12 +472,13 @@ func (client *GMPayClient) SupportedAssetsFresh(ctx context.Context) ([]GMPayAss
 	if err != nil {
 		return nil, err
 	}
-	return filterGMPayUSDTAssets(assets), nil
+	return filterGMPayStablecoinAssets(assets), nil
 }
 
 // SupportedAssetsAll retains the full validated gateway asset list for the
 // existing subscription, group-buy, and agent-prepayment Native paths. The
-// ordinary wallet must use SupportedAssets, which is deliberately USDT-only.
+// ordinary wallet must use SupportedAssets, which applies the stablecoin and
+// network allowlist.
 func (client *GMPayClient) SupportedAssetsAll(ctx context.Context) ([]GMPayAsset, error) {
 	return client.supportedAssets(ctx, true)
 }
@@ -471,7 +575,7 @@ func normalizeGMPayAssets(assets []GMPayAsset) ([]GMPayAsset, error) {
 	if err != nil {
 		return nil, err
 	}
-	return filterGMPayUSDTAssets(allAssets), nil
+	return filterGMPayStablecoinAssets(allAssets), nil
 }
 
 // normalizeGMPayAssetsAll validates the gateway response while preserving all
@@ -518,48 +622,57 @@ func normalizeGMPayAssetsAll(assets []GMPayAsset) ([]GMPayAsset, error) {
 	return result, nil
 }
 
-func filterGMPayUSDTAssets(assets []GMPayAsset) []GMPayAsset {
-	seen := make(map[string]struct{})
+// filterGMPayStablecoinAssets keeps only explicitly enabled USDT/USDC pairs,
+// merges duplicate network entries, and preserves gateway/network token order.
+// Native gas tokens and arbitrary gateway tokens never reach the wallet UI.
+func filterGMPayStablecoinAssets(assets []GMPayAsset) []GMPayAsset {
 	result := make([]GMPayAsset, 0, len(assets))
+	networkIndex := make(map[string]int, len(assets))
+	seenPairs := make(map[string]struct{}, len(assets)*2)
 	for _, asset := range assets {
 		network, knownNetwork := NormalizeGMPayNetwork(asset.Network)
 		if !knownNetwork {
 			continue
 		}
-		hasUSDT := false
-		for _, token := range asset.Tokens {
-			if strings.EqualFold(strings.TrimSpace(token), "USDT") {
-				hasUSDT = true
-				break
+		idx, exists := networkIndex[network]
+		if !exists {
+			displayName := strings.TrimSpace(asset.DisplayName)
+			if displayName == "" {
+				displayName = network
 			}
+			if len(displayName) > 64 {
+				displayName = displayName[:64]
+			}
+			result = append(result, GMPayAsset{Network: network, DisplayName: displayName, Tokens: make([]string, 0, 2)})
+			idx = len(result) - 1
+			networkIndex[network] = idx
 		}
-		if !hasUSDT {
-			continue
+		for _, rawToken := range asset.Tokens {
+			token := strings.ToUpper(strings.TrimSpace(rawToken))
+			if token != "USDT" && token != "USDC" {
+				continue
+			}
+			pairKey := network + "\x00" + token
+			if _, seen := seenPairs[pairKey]; seen {
+				continue
+			}
+			seenPairs[pairKey] = struct{}{}
+			result[idx].Tokens = append(result[idx].Tokens, token)
 		}
-		if _, ok := seen[network]; ok {
-			continue
-		}
-		seen[network] = struct{}{}
-		displayName := strings.TrimSpace(asset.DisplayName)
-		if displayName == "" {
-			displayName = network
-		}
-		if len(displayName) > 64 {
-			displayName = displayName[:64]
-		}
-		result = append(result, GMPayAsset{
-			Network:     network,
-			DisplayName: displayName,
-			Tokens:      []string{"USDT"},
-		})
 	}
-	// Gateway ordering is not a contract. Keep the selector stable while
-	// retaining the familiar TRON-first ordering for existing deployments.
-	networkRank := map[string]int{"tron": 0, "ethereum": 1, "solana": 2, "binance": 3}
-	sort.SliceStable(result, func(i, j int) bool {
-		return networkRank[result[i].Network] < networkRank[result[j].Network]
-	})
-	return result
+	filtered := result[:0]
+	for _, asset := range result {
+		if len(asset.Tokens) > 0 {
+			filtered = append(filtered, asset)
+		}
+	}
+	return filtered
+}
+
+// filterGMPayUSDTAssets remains as a source-compatible alias for older tests
+// and integrations; it now deliberately includes both supported stablecoins.
+func filterGMPayUSDTAssets(assets []GMPayAsset) []GMPayAsset {
+	return filterGMPayStablecoinAssets(assets)
 }
 
 func normalizeGMPayAsset(token, network string) (string, string, error) {
@@ -660,34 +773,80 @@ func isAbsoluteHTTPURL(value *url.URL) bool {
 	return value != nil && value.IsAbs() && value.Hostname() != "" && (value.Scheme == "http" || value.Scheme == "https")
 }
 
-func rawDecimalString(raw json.RawMessage) (string, error) {
-	value := strings.TrimSpace(string(raw))
-	if value == "" {
-		return "", errors.New("missing decimal")
-	}
-	if strings.HasPrefix(value, "\"") {
-		var decoded string
-		if err := common.Unmarshal(raw, &decoded); err != nil {
-			return "", err
-		}
-		value = strings.TrimSpace(decoded)
-	}
-	if _, err := positiveDecimal(value); err != nil {
-		return "", err
-	}
-	return value, nil
+// ParseGMPayAmount validates a fiat amount at the GMPay boundary.  The
+// endpoint accepts decimal strings or JSON numbers, but unbounded precision
+// and magnitude would make the signed float payload ambiguous and could
+// bypass the normal top-up range checks.  Callers that need a zero fee pass
+// allowZero=true; order totals and base amounts must stay strictly positive.
+func ParseGMPayAmount(value string, allowZero bool) (decimal.Decimal, error) {
+	return parseGMPayDecimalValue(value, allowZero, gmpayNativeAmountMaxScale)
 }
 
-func positiveDecimal(value string) (decimal.Decimal, error) {
-	amount, err := decimal.NewFromString(strings.TrimSpace(value))
-	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
+func ParseGMPayActualAmount(value string) (decimal.Decimal, error) {
+	return parseGMPayDecimalValue(value, false, gmpayNativeActualAmountMaxScale)
+}
+
+func parseGMPayDecimalValue(value string, allowZero bool, maxScale int32) (decimal.Decimal, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > gmpayNativeAmountInputMaxLength {
+		return decimal.Zero, errors.New("decimal is empty or too long")
+	}
+	amount, err := decimal.NewFromString(value)
+	if err != nil || amount.IsNegative() || (!allowZero && !amount.GreaterThan(decimal.Zero)) {
 		return decimal.Zero, errors.New("decimal must be positive")
+	}
+	if amount.Exponent() < -maxScale {
+		return decimal.Zero, errors.New("decimal has too many decimal places")
+	}
+	absoluteLimit, limitErr := decimal.NewFromString(gmpayNativeAmountAbsoluteLimit)
+	if limitErr != nil || amount.GreaterThan(absoluteLimit) {
+		return decimal.Zero, errors.New("decimal is out of range")
 	}
 	floatAmount, _ := amount.Float64()
 	if math.IsNaN(floatAmount) || math.IsInf(floatAmount, 0) {
 		return decimal.Zero, errors.New("decimal must be finite")
 	}
 	return amount, nil
+}
+
+func rawGMPayDecimalString(raw json.RawMessage, allowZero bool, maxScale int32) (string, error) {
+	typ := common.GetJsonType(raw)
+	if typ != "string" && typ != "number" {
+		return "", errors.New("decimal must be a JSON number or string")
+	}
+	value := strings.TrimSpace(common.JsonRawMessageToString(raw))
+	if _, err := parseGMPayDecimalValue(value, allowZero, maxScale); err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+func rawDecimalString(raw json.RawMessage) (string, error) {
+	return rawGMPayDecimalString(raw, false, gmpayNativeActualAmountMaxScale)
+}
+
+func positiveDecimalString(raw json.RawMessage) (decimal.Decimal, error) {
+	value, err := rawGMPayDecimalString(raw, false, gmpayNativeAmountMaxScale)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return ParseGMPayAmount(value, false)
+}
+
+func positiveOrZeroDecimal(value string) (decimal.Decimal, error) {
+	return ParseGMPayAmount(value, true)
+}
+
+func nonNegativeDecimalString(raw json.RawMessage) (decimal.Decimal, error) {
+	value, err := rawGMPayDecimalString(raw, true, gmpayNativeAmountMaxScale)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return ParseGMPayAmount(value, true)
+}
+
+func positiveDecimal(value string) (decimal.Decimal, error) {
+	return ParseGMPayAmount(value, false)
 }
 
 const gmpayBase58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"

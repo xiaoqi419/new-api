@@ -1,0 +1,124 @@
+package service
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseGMPayFeeConfigAndQuote(t *testing.T) {
+	raw := `{"version":1,"enabled":true,"default":{"mode":"fixed","value":"5.00"},"overrides":{"USDC:ERC20":{"mode":"percent","value":"1.50"}},"max_fee":"20.00","max_total":"100000.00"}`
+	cfg, err := ParseGMPayFeeConfig(raw)
+	require.NoError(t, err)
+	assert.True(t, cfg.Enabled)
+	assert.Equal(t, "USDC:ethereum", func() string {
+		for key := range cfg.Overrides {
+			return key
+		}
+		return ""
+	}())
+
+	previous := common.OptionMap
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{GMPayFeeConfigOptionKey: raw}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previous
+		common.OptionMapRWMutex.Unlock()
+	})
+
+	fixed, err := GMPayFeeQuoteForAsset(decimal.NewFromInt(30), "USDT", "tron")
+	require.NoError(t, err)
+	assert.Equal(t, "30.00", fixed.BaseAmount.StringFixed(2))
+	assert.Equal(t, "5.00", fixed.FeeAmount.StringFixed(2))
+	assert.Equal(t, "35.00", fixed.TotalAmount.StringFixed(2))
+	assert.Equal(t, GMPayFeeSourceAdminFixed, fixed.Source)
+
+	percent, err := GMPayFeeQuoteForAsset(decimal.NewFromInt(30), "USDC", "erc20")
+	require.NoError(t, err)
+	assert.Equal(t, "0.45", percent.FeeAmount.StringFixed(2))
+	assert.Equal(t, "30.45", percent.TotalAmount.StringFixed(2))
+	assert.Equal(t, GMPayFeeSourceAdminPercent, percent.Source)
+}
+
+func TestGMPayFeeConfigRejectsUnsafeRules(t *testing.T) {
+	testCases := []string{
+		`{"version":2,"enabled":true}`,
+		`{"version":1,"enabled":true,"default":{"mode":"unknown","value":"1"}}`,
+		`{"version":1,"enabled":true,"default":{"mode":"fixed","value":"-1"}}`,
+		`{"version":1,"enabled":true,"default":{"mode":"percent","value":"100.01"}}`,
+		`{"version":1,"enabled":true,"overrides":{"BTC:tron":{"mode":"fixed","value":"1"}}}`,
+		`{"version":1,"enabled":true,"default":{"mode":"fixed","value":"1.0000001"}}`,
+		`{"version":1,"enabled":true,"overrides":{"USDC:erc20":{"mode":"fixed","value":"1"},"USDC:ethereum":{"mode":"fixed","value":"2"}}}`,
+	}
+	for _, raw := range testCases {
+		_, err := ParseGMPayFeeConfig(raw)
+		assert.Error(t, err, raw)
+	}
+}
+
+func TestNormalizeGMPayFeeSourceIsStrict(t *testing.T) {
+	for _, source := range []string{
+		GMPayFeeSourceGatewayQuote,
+		GMPayFeeSourceGatewayIncluded,
+		GMPayFeeSourceAdminFixed,
+		GMPayFeeSourceAdminPercent,
+		" ADMIN_FIXED ",
+	} {
+		canonical, err := NormalizeGMPayFeeSource(source)
+		require.NoError(t, err)
+		assert.NotEmpty(t, canonical)
+	}
+	canonical, err := NormalizeGMPayFeeSource("")
+	require.NoError(t, err)
+	assert.Equal(t, GMPayFeeSourceGatewayIncluded, canonical)
+	for _, source := range []string{"client", "<script>", "gateway_quote\nextra"} {
+		_, err := NormalizeGMPayFeeSource(source)
+		assert.Error(t, err, source)
+	}
+}
+
+func TestParseGMPayAmountRejectsOutOfRangeAndPrecision(t *testing.T) {
+	for _, value := range []string{
+		"0",
+		"-1",
+		"1.0000001",
+		"1000000000.01",
+		"1e1000",
+		strings.Repeat("9", 129),
+	} {
+		_, err := ParseGMPayAmount(value, false)
+		assert.Error(t, err, value)
+	}
+	zero, err := ParseGMPayAmount("0", true)
+	require.NoError(t, err)
+	assert.True(t, zero.IsZero())
+	valid, err := ParseGMPayAmount("1000000000.00", false)
+	require.NoError(t, err)
+	assert.Equal(t, "1000000000", valid.String())
+}
+
+func TestGMPayFeeDisabledUsesGatewayIncludedAmount(t *testing.T) {
+	previous := common.OptionMap
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{GMPayFeeConfigOptionKey: `{"version":1,"enabled":false}`}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previous
+		common.OptionMapRWMutex.Unlock()
+	})
+
+	base, parseErr := decimal.NewFromString("12.345")
+	require.NoError(t, parseErr)
+	quote, err := GMPayFeeQuoteForAsset(base, "USDT", "tron")
+	require.NoError(t, err)
+	assert.Equal(t, "12.34", quote.BaseAmount.StringFixed(2))
+	assert.True(t, quote.FeeAmount.IsZero())
+	assert.Equal(t, GMPayFeeSourceGatewayIncluded, quote.Source)
+}
