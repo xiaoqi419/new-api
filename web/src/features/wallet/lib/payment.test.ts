@@ -221,7 +221,7 @@ describe('Epay checkout normalization', () => {
     )
   })
 
-  test('preserves validated crypto amount breakdown and fee provenance', () => {
+  test('preserves validated crypto amount breakdown and canonicalizes administrator fallback provenance', () => {
     const checkout = getEpayCheckoutData(
       buildCryptoCheckout({
         base_amount: '30.00',
@@ -237,7 +237,121 @@ describe('Epay checkout normalization', () => {
       base_amount: '30.00',
       fee_amount: '5',
       total_amount: '35.00',
-      fee_source: 'admin_fixed',
+      fee_source: 'admin_fallback',
+    })
+  })
+
+  test('preserves a dynamic network fee quote and its audit metadata', () => {
+    const checkout = getEpayCheckoutData(
+      buildCryptoCheckout({
+        base_amount: '30.00',
+        fee_amount: '0.42',
+        total_amount: '30.42',
+        fee_source: 'chain_network_estimate',
+        native_amount: '0.001234',
+        native_asset: 'trx',
+        settlement_currency: 'usd',
+        quoted_at: '2026-09-01T00:00:00Z',
+        expires_at: '2026-09-01T00:05:00Z',
+        estimator_version: 'gmpay-network-fee/v1',
+        confidence: 'high',
+        subsidized: false,
+        evidence: {
+          rpc_method: 'eth_estimateGas',
+          rpc_methods: ['eth_estimateGas', 'eth_gasPrice'],
+          rpc_source: 'rpc.example',
+          price_source: 'price.example',
+          price_timestamp: 1_756_675_200,
+          gas: '21000',
+          gas_price: '1000000000',
+        },
+      }),
+      { paymentMethod: 'usdt.tron' }
+    )
+
+    expect(checkout).toMatchObject({
+      checkout_type: 'crypto',
+      fee_source: 'chain_network_estimate',
+      native_amount: '0.001234',
+      native_asset: 'TRX',
+      settlement_currency: 'USD',
+      quoted_at: '2026-09-01T00:00:00Z',
+      expires_at: '2026-09-01T00:05:00Z',
+      estimator_version: 'gmpay-network-fee/v1',
+      confidence: 'high',
+      subsidized: false,
+      evidence: {
+        rpc_method: 'eth_estimateGas',
+        rpc_methods: ['eth_estimateGas', 'eth_gasPrice'],
+        rpc_source: 'rpc.example',
+        price_source: 'price.example',
+        price_timestamp: 1_756_675_200,
+        gas: '21000',
+        gas_price: '1000000000',
+      },
+    })
+  })
+
+  test('accepts comma-separated price-source hosts in multi-source evidence', () => {
+    const checkout = getEpayCheckoutData(
+      buildCryptoCheckout({
+        evidence: {
+          price_source: 'prices.one.example,prices.two.example',
+        },
+      }),
+      { paymentMethod: 'usdt.tron' }
+    )
+
+    assert.ok(checkout && checkout.checkout_type === 'crypto')
+    expect(checkout.evidence?.price_source).toBe(
+      'prices.one.example,prices.two.example'
+    )
+  })
+
+  test('rejects unsafe multi-source price evidence without accepting URLs or injected spaces', () => {
+    const invalidPriceSources = [
+      'prices.one.example,',
+      ',prices.two.example',
+      'prices.one.example,,prices.two.example',
+      'prices.one.example, prices.two.example',
+      'https://prices.one.example,prices.two.example',
+      'prices.one.example/path,prices.two.example',
+      `prices.${'a'.repeat(120)}`,
+    ]
+
+    for (const priceSource of invalidPriceSources) {
+      expect(
+        getEpayCheckoutData(
+          buildCryptoCheckout({ evidence: { price_source: priceSource } }),
+          { paymentMethod: 'usdt.tron' }
+        )
+      ).toBeNull()
+    }
+  })
+
+  test('accepts numeric quote timestamps and preserves zero native fees', () => {
+    const checkout = getEpayCheckoutData(
+      buildCryptoCheckout({
+        fee_amount: '0.00',
+        total_amount: '35.00',
+        fee_source: 'chain_network_estimate',
+        native_amount: 0,
+        native_asset: 'SOL',
+        settlement_currency: 'USD',
+        quoted_at: 1_700_000_000,
+        expires_at: 1_700_000_300,
+        subsidized: true,
+      }),
+      { paymentMethod: 'usdt.tron' }
+    )
+
+    expect(checkout).toMatchObject({
+      native_amount: '0',
+      native_asset: 'SOL',
+      settlement_currency: 'USD',
+      quoted_at: 1_700_000_000,
+      expires_at: 1_700_000_300,
+      subsidized: true,
     })
   })
 
@@ -262,6 +376,16 @@ describe('Epay checkout normalization', () => {
       ['total_amount', '1000000000.01'],
       ['fee_source', 'custom_source'],
       ['fee_source', 5],
+      ['native_amount', '-0.1'],
+      ['native_amount', '0.0000000000000000001'],
+      ['native_asset', ''],
+      ['native_asset', 'TRX/USD'],
+      ['settlement_currency', 'US D'],
+      ['quoted_at', 'not-a-timestamp'],
+      ['expires_at', 0],
+      ['estimator_version', 5],
+      ['confidence', ''],
+      ['subsidized', 'false'],
     ]
 
     for (const [field, value] of invalidFields) {
@@ -271,6 +395,19 @@ describe('Epay checkout normalization', () => {
         })
       ).toBeNull()
     }
+  })
+
+  test('rejects a quote whose expiry precedes its quote time', () => {
+    expect(
+      getEpayCheckoutData(
+        buildCryptoCheckout({
+          fee_source: 'chain_network_estimate',
+          quoted_at: '2026-09-01T00:05:00Z',
+          expires_at: '2026-09-01T00:00:00Z',
+        }),
+        { paymentMethod: 'usdt.tron' }
+      )
+    ).toBeNull()
   })
 })
 

@@ -589,6 +589,7 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 	var nativeToken, nativeNetwork string
 	var nativeFeeQuote service.GMPayFeeQuote
+	storedPaymentMethod := req.PaymentMethod
 	if useGMPayNative {
 		nativeToken, nativeNetwork, err = resolveGMPayWalletAsset(c.Request.Context(), epayCfg, req.PaymentMethod, req.Token, req.Network)
 		if err != nil {
@@ -596,13 +597,17 @@ func RequestEpayCheckout(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 			return
 		}
-		nativeFeeQuote, err = service.GMPayFeeQuoteForAsset(basePayMoneyDecimal, nativeToken, nativeNetwork)
+		nativeFeeQuote, err = quoteGMPayWalletFee(c.Request.Context(), basePayMoneyDecimal, nativeToken, nativeNetwork)
 		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值手续费报价失败 user_id=%d token=%s network=%s error=%q", userID, nativeToken, nativeNetwork, err.Error()))
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值手续费报价失败 user_id=%d status=quote_unavailable error=%q", userID, err.Error()))
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该支付组合暂不可用"})
 			return
 		}
 		payMoney = nativeFeeQuote.TotalAmount.InexactFloat64()
+		// Bind the canonical asset before the pending order is inserted. The
+		// callback must never infer a network/token from the request after the
+		// fact; TopUp.PaymentMethod is the durable order-level binding.
+		storedPaymentMethod = gmpayPaymentMethodForQuoteAsset(nativeToken, nativeNetwork, nativeFeeQuote)
 	}
 	if payMoney < 0.01 || (useGMPayNative && payMoney <= 0.01) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
@@ -663,7 +668,7 @@ func RequestEpayCheckout(c *gin.Context) {
 		Amount:          amount,
 		Money:           payMoney,
 		TradeNo:         tradeNo,
-		PaymentMethod:   req.PaymentMethod,
+		PaymentMethod:   storedPaymentMethod,
 		PaymentProvider: model.PaymentProviderEpay,
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
@@ -673,11 +678,23 @@ func RequestEpayCheckout(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return
 	}
+	if useGMPayNative && nativeFeeQuote.Source != service.GMPayFeeSourceGatewayIncluded {
+		if err := service.StoreGMPayQuoteBinding(tradeNo, storedPaymentMethod, nativeToken, nativeNetwork, nativeFeeQuote); err != nil {
+			if updateErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); updateErr != nil &&
+				!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值回收报价订单失败 trade_no=%s error=%q", tradeNo, updateErr.Error()))
+			}
+			service.DeleteGMPayQuoteBinding(tradeNo)
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值保存报价绑定失败 user_id=%d trade_no=%s error=%q", userID, tradeNo, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该支付组合暂不可用"})
+			return
+		}
+	}
 
 	if useGMPayNative {
 		data, clientErr := createGMPayNativeCheckoutWithQuote(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), nativeFeeQuote, notifyURL, returnURL, nativeToken, nativeNetwork)
 		if clientErr == nil {
-			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney))
+			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto %s", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney, gmpayFeeAuditFields(nativeFeeQuote)))
 			c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
 			return
 		}
@@ -685,7 +702,8 @@ func RequestEpayCheckout(c *gin.Context) {
 			!errors.Is(updateErr, model.ErrTopUpStatusInvalid) && !errors.Is(updateErr, model.ErrTopUpNotFound) && !errors.Is(updateErr, model.ErrPaymentMethodMismatch) {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值回收失败订单失败 trade_no=%s error=%q", tradeNo, updateErr.Error()))
 		}
-		logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值创建 checkout 失败 user_id=%d trade_no=%s payment_method=%s error=%q", userID, tradeNo, req.PaymentMethod, clientErr.Error()))
+		service.DeleteGMPayQuoteBinding(tradeNo)
+		logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值创建 checkout 失败 user_id=%d trade_no=%s status=checkout_failed error=%q", userID, tradeNo, clientErr.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 		return
 	}

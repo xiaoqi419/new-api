@@ -32,6 +32,25 @@ func TestUpdateOptionRejectsEffectivePaymentGatewayMode(t *testing.T) {
 	assert.Contains(t, response.Message, "只读")
 }
 
+func TestUpdateOptionRejectsInvalidGMPayFeeConfigBeforePersistence(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPut, "/api/option/", strings.NewReader(
+		`{"key":"GMPayFeeConfig","value":"{\"version\":1,\"enabled\":true,\"default\":{\"mode\":\"percent\",\"value\":\"100.01\"}}"}`,
+	))
+
+	UpdateOption(ctx)
+
+	var response struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.False(t, response.Success)
+	assert.Contains(t, response.Message, "percentage fee")
+}
+
 func TestGetOptionsExposesConfiguredAndEffectiveGatewayModesSeparately(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	restoreMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeEpayLegacy)

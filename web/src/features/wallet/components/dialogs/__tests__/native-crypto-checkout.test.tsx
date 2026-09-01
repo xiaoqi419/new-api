@@ -119,10 +119,41 @@ describe('native GMPay checkout dialog', () => {
     expect(screen.getByText('30.00')).toBeVisible()
     expect(screen.getByText('5.00')).toBeVisible()
     expect(screen.getByText('35.00')).toBeVisible()
-    expect(
-      screen.getByText('Fee source: Administrator fixed fee')
-    ).toBeVisible()
+    expect(screen.getByText('Fee source: Administrator fallback')).toBeVisible()
     expect(screen.queryByText('admin_fixed')).not.toBeInTheDocument()
+  })
+
+  test('shows dynamic network fee metadata without calling it a gateway service fee', async () => {
+    const getStatus = vi.fn(pendingStatus)
+    render(
+      <EpayCheckoutDialog
+        open
+        checkout={{
+          ...cryptoCheckout,
+          base_amount: '30.00',
+          fee_amount: '0.42',
+          total_amount: '30.42',
+          fee_source: 'chain_network_estimate',
+          native_amount: '0.001234',
+          native_asset: 'TRX',
+          settlement_currency: 'USD',
+          quoted_at: '2026-09-01T00:00:00Z',
+          expires_at: '2026-09-01T00:05:00Z',
+        }}
+        getStatus={getStatus}
+        onClose={() => undefined}
+        onSuccess={() => undefined}
+      />
+    )
+
+    expect(
+      screen.getByText('Fee source: Dynamic network fee estimate')
+    ).toBeVisible()
+    expect(screen.getByText('Native amount: 0.001234 TRX')).toBeVisible()
+    expect(screen.getByText('0.42 USD')).toBeVisible()
+    expect(screen.getByText('2026-09-01T00:00:00Z')).toBeVisible()
+    expect(screen.getByText('2026-09-01T00:05:00Z')).toBeVisible()
+    expect(screen.queryByText(/gateway service fee/i)).not.toBeInTheDocument()
   })
 
   test('copies the exact crypto amount and receive address from accessible icon buttons', async () => {

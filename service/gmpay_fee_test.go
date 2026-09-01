@@ -55,11 +55,25 @@ func TestGMPayFeeConfigRejectsUnsafeRules(t *testing.T) {
 		`{"version":1,"enabled":true,"overrides":{"BTC:tron":{"mode":"fixed","value":"1"}}}`,
 		`{"version":1,"enabled":true,"default":{"mode":"fixed","value":"1.0000001"}}`,
 		`{"version":1,"enabled":true,"overrides":{"USDC:erc20":{"mode":"fixed","value":"1"},"USDC:ethereum":{"mode":"fixed","value":"2"}}}`,
+		`{"version":1,"fallback_enabled":true,"fallback_mode":"percent","fallback_value":"1000","max_fee":"100000"}`,
 	}
 	for _, raw := range testCases {
 		_, err := ParseGMPayFeeConfig(raw)
 		assert.Error(t, err, raw)
 	}
+}
+
+func TestParseGMPayFeeConfigInfersLegacyDefaultMode(t *testing.T) {
+	cfg, err := ParseGMPayFeeConfig(`{"version":1,"enabled":true,"default":{"mode":"percent","value":"50"},"max_fee":"100000"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "percent", cfg.FallbackMode)
+	assert.Equal(t, "50", cfg.Default.Value)
+}
+
+func TestParseGMPayFeeConfigRequiresFallbackModeForFallbackValue(t *testing.T) {
+	_, err := ParseGMPayFeeConfig(`{"version":1,"fallback_enabled":true,"fallback_value":"5"}`)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "fallback_mode")
 }
 
 func TestNormalizeGMPayFeeSourceIsStrict(t *testing.T) {

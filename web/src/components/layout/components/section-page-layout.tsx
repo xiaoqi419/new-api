@@ -102,8 +102,8 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
         <div
           className={
             props.fixedContent
-              ? 'min-h-0 flex-1 overflow-hidden px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4'
-              : 'min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3 sm:px-4 sm:pt-1.5 sm:pb-4'
+              ? 'min-h-0 flex-1 overflow-hidden px-3 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-4 sm:pt-1.5 sm:pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]'
+              : 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-4 sm:pt-1.5 sm:pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]'
           }
         >
           {content}
@@ -111,7 +111,7 @@ export function SectionPageLayout(props: SectionPageLayoutProps) {
 
         <div
           ref={setFooterContainer}
-          className='bg-background shrink-0 border-t px-3 py-2.5 empty:hidden sm:px-4 sm:py-3'
+          className='bg-background shrink-0 border-t px-3 pt-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] empty:hidden sm:px-4 sm:pt-3 sm:pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]'
         />
       </Main>
     </PageFooterProvider>

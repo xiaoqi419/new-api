@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260901-gmpay-dynamic-fee-settings',
+    date: '2026-09-01',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'GMPay Native 现支持结构化的管理员编辑器，用于配置动态链上网络费用估算和明确的人工兜底规则。',
+          '支付设置现在可维护受信任的 RPC/价格端点、代表性交易上下文、估算限制以及 USDT/USDC 网络覆盖项，并在保存前生成经过校验的版本化选项。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260901-gmpay-fee-aware-checkout',
     date: '2026-09-01',
     changes: [

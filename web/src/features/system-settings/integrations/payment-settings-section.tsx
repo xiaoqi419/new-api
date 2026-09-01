@@ -70,6 +70,7 @@ import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import {
   DEFAULT_GMPAY_FEE_CONFIG_JSON,
+  GMPayFeeConfigEditor,
   getGMPayFeeConfigError,
 } from './gmpay-fee-config'
 import {
@@ -1744,22 +1745,17 @@ export function PaymentSettingsSection({
                         </Button>
                       </div>
                       <FormControl>
-                        <JsonCodeEditor
+                        <GMPayFeeConfigEditor
                           value={field.value}
                           onChange={field.onChange}
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          textareaRef={field.ref}
-                          placeholder={DEFAULT_GMPAY_FEE_CONFIG_JSON}
-                          heightClassName='h-64 min-h-64 max-h-64'
-                          aria-invalid={Boolean(
+                          ariaInvalid={Boolean(
                             form.formState.errors.GMPayFeeConfig
                           )}
                         />
                       </FormControl>
                       <FormDescription>
                         {t(
-                          'Optional GMPay fee fallback. It is used only when the gateway does not provide a verified fee quote. Keep it disabled unless you have confirmed your provider pricing.'
+                          'Dynamic network estimation is attempted first. The administrator fallback is used only when estimation fails and you explicitly enable it; otherwise checkout is rejected.'
                         )}
                       </FormDescription>
                       <FormDescription>

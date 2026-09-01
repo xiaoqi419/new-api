@@ -52,6 +52,33 @@ export interface EpayLegacyCheckoutData extends EpayCheckoutBase {
   checkout_value: string
 }
 
+export type EpayCheckoutTimestamp = string | number
+
+export type EpayFeeSource =
+  | 'chain_network_estimate'
+  | 'admin_fallback'
+  | 'gateway_quote'
+  | 'gateway_included'
+  // Legacy aliases accepted at the parser boundary and normalized to the
+  // canonical administrator fallback source.
+  | 'admin_fixed'
+  | 'admin_percent'
+
+export interface EpayNetworkFeeEvidence {
+  rpc_method?: string
+  rpc_methods?: string[]
+  rpc_source?: string
+  price_source?: string
+  price_timestamp?: number
+  block?: string
+  slot?: number
+  gas?: string
+  gas_price?: string
+  energy?: string
+  bandwidth?: string
+  lamports?: string
+}
+
 export interface EpayCryptoCheckoutData extends EpayCheckoutBase {
   checkout_type: 'crypto'
   actual_amount: string
@@ -62,12 +89,30 @@ export interface EpayCryptoCheckoutData extends EpayCheckoutBase {
   server_time?: number
   /** Base fiat amount credited to the wallet before any user-paid fee. */
   base_amount?: string
-  /** User-paid gateway/network fee in the checkout currency. */
+  /** User-paid network fee in the settlement currency. */
   fee_amount?: string
-  /** Human-readable origin of the fee quote (gateway/configured fallback). */
-  fee_source?: string
+  /** Server-owned origin of the fee quote. */
+  fee_source?: EpayFeeSource
   /** Total fiat amount charged by the gateway, including the fee. */
   total_amount?: string
+  /** Native chain amount used to derive the settlement fee. */
+  native_amount?: string
+  /** Native chain asset used to derive the settlement fee (for example TRX). */
+  native_asset?: string
+  /** Currency in which the network fee and checkout total are settled. */
+  settlement_currency?: string
+  /** Time at which the server generated the network fee quote. */
+  quoted_at?: EpayCheckoutTimestamp
+  /** Time at which the server quote expires. */
+  expires_at?: EpayCheckoutTimestamp
+  /** Version identifier for the server-side estimator. */
+  estimator_version?: string
+  /** Server-provided confidence classification for the estimate. */
+  confidence?: string
+  /** Whether the network reported a subsidized/zero-resource fee. */
+  subsidized?: boolean
+  /** Sanitized RPC/price evidence for an auditable network estimate. */
+  evidence?: EpayNetworkFeeEvidence
 }
 
 export type EpayCheckoutType = EpayLegacyCheckoutType | 'crypto'
