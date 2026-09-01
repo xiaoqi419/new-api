@@ -550,6 +550,129 @@ func TestRequestEpayCheckoutUsesNativeGMPayForUSDTTron(t *testing.T) {
 	assert.Equal(t, "https://new-api.example/wallet", payload["redirect_url"])
 }
 
+func TestRequestEpayCheckoutUsesNativeGMPayForUSDCOnEthereum(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 711, Username: "gmpay-usdc-checkout-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+
+	requestBodies := make(chan map[string]any, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			require.Equal(t, "/payments/gmpay/v1/config", request.URL.Path)
+			_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"erc20","display_name":"Ethereum","tokens":["USDC"]}]}}`))
+			return
+		}
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "/payments/gmpay/v1/order/create-transaction", request.URL.Path)
+		var payload map[string]any
+		require.NoError(t, common.DecodeJson(request.Body, &payload))
+		requestBodies <- payload
+		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-usdc-order","order_id":%q,"amount":10,"currency":"USD","actual_amount":"10.25","receive_address":"0x1111111111111111111111111111111111111111","token":"USDC","network":"ethereum","status":1,"expiration_time":2000000000}}`, payload["order_id"])))
+	}))
+	t.Cleanup(server.Close)
+	previousClientFactory := newGMPayNativeClient
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() { newGMPayNativeClient = previousClientFactory })
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", user.Id)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron","token":"USDC","network":"erc20"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	RequestEpayCheckout(ctx)
+
+	var response struct {
+		Message string         `json:"message"`
+		Data    map[string]any `json:"data"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	require.Equal(t, "success", response.Message)
+	assert.Equal(t, "USDC", response.Data["token"])
+	assert.Equal(t, "ETHEREUM", response.Data["network"])
+	assert.Equal(t, "usdt.ethereum.usdc", response.Data["asset_payment_method"])
+	assert.Equal(t, "10.00", response.Data["base_amount"])
+	assert.Equal(t, "0.00", response.Data["fee_amount"])
+	assert.Equal(t, "10.00", response.Data["total_amount"])
+	tradeNo, ok := response.Data["trade_no"].(string)
+	require.True(t, ok)
+	stored := model.GetTopUpByTradeNo(tradeNo)
+	require.NotNil(t, stored)
+	assert.Equal(t, "usdt.ethereum.usdc", stored.PaymentMethod)
+	assert.Equal(t, 10.0, stored.Money)
+
+	payload := <-requestBodies
+	assert.Equal(t, "usdc", payload["token"])
+	assert.Equal(t, "ethereum", payload["network"])
+	assert.Equal(t, float64(10), payload["amount"])
+}
+
+func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	previousOptions := common.OptionMap
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{
+		service.GMPayFeeConfigOptionKey: `{"version":1,"enabled":true,"default":{"mode":"fixed","value":"5"},"max_fee":"20","max_total":"100000"}`,
+	}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+	})
+	user := &model.User{Id: 712, Username: "gmpay-fee-checkout-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+
+	requestBodies := make(chan map[string]any, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+			return
+		}
+		var payload map[string]any
+		require.NoError(t, common.DecodeJson(request.Body, &payload))
+		requestBodies <- payload
+		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-fee-order","order_id":%q,"amount":15,"currency":"USD","actual_amount":"15.5","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","status":1,"expiration_time":2000000000}}`, payload["order_id"])))
+	}))
+	t.Cleanup(server.Close)
+	previousClientFactory := newGMPayNativeClient
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() { newGMPayNativeClient = previousClientFactory })
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", user.Id)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(`{"amount":10,"payment_method":"usdt.tron","token":"USDT","network":"tron"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	RequestEpayCheckout(ctx)
+
+	var response struct {
+		Message string         `json:"message"`
+		Data    map[string]any `json:"data"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	require.Equal(t, "success", response.Message)
+	assert.Equal(t, "10.00", response.Data["base_amount"])
+	assert.Equal(t, "5.00", response.Data["fee_amount"])
+	assert.Equal(t, "15.00", response.Data["total_amount"])
+	assert.Equal(t, service.GMPayFeeSourceAdminFixed, response.Data["fee_source"])
+	tradeNo, ok := response.Data["trade_no"].(string)
+	require.True(t, ok)
+	stored := model.GetTopUpByTradeNo(tradeNo)
+	require.NotNil(t, stored)
+	assert.Equal(t, int64(10), stored.Amount)
+	assert.Equal(t, 15.0, stored.Money)
+
+	payload := <-requestBodies
+	assert.Equal(t, float64(15), payload["amount"])
+}
+
 func TestRequestEpayCheckoutRejectsMissingNativeAssetBeforeOrderCreation(t *testing.T) {
 	setupGMPayTopUpTest(t)
 	gin.SetMode(gin.TestMode)
@@ -710,4 +833,126 @@ func TestGMPayCallbackMatchesNetworkAliasToPersistedAsset(t *testing.T) {
 		"receive_address": "0x1111111111111111111111111111111111111111",
 	}
 	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.usdt"))
+}
+
+func TestGMPayCallbackSettlesUSDCAssetsAndChargesOnlyBaseAmount(t *testing.T) {
+	testCases := []struct {
+		name          string
+		network       string
+		address       string
+		paymentMethod string
+	}{
+		{
+			name:          "ethereum",
+			network:       "ethereum",
+			address:       "0x1111111111111111111111111111111111111111",
+			paymentMethod: "usdt.ethereum.usdc",
+		},
+		{
+			name:          "solana",
+			network:       "solana",
+			address:       "11111111111111111111111111111111",
+			paymentMethod: "usdt.solana.usdc",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupGMPayTopUpTest(t)
+			gin.SetMode(gin.TestMode)
+			order := insertGMPayTopUpForTest(t, "gmpay-usdc-callback-"+tc.name, 35, tc.paymentMethod, model.PaymentProviderEpay)
+			order.Amount = 30
+			require.NoError(t, order.Update())
+			params := validGMPayNotifyParams(order.TradeNo)
+			params["amount"] = "35.00"
+			params["actual_amount"] = "35.123456"
+			params["token"] = "USDC"
+			params["network"] = tc.network
+			params["receive_address"] = tc.address
+			params["fee"] = "5.00"
+			params["total_amount"] = "35.00"
+
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = signedGMPayNotifyRequest(t, params)
+			GMPayNotify(ctx)
+			assert.Equal(t, "ok", recorder.Body.String())
+
+			stored := model.GetTopUpByTradeNo(order.TradeNo)
+			require.NotNil(t, stored)
+			assert.Equal(t, common.TopUpStatusSuccess, stored.Status)
+			var user model.User
+			require.NoError(t, model.DB.First(&user, order.UserId).Error)
+			quota, err := topupQuotaFromAmount(30)
+			require.NoError(t, err)
+			assert.Equal(t, quota, user.Quota)
+		})
+	}
+}
+
+func TestGMPayCallbackRejectsFeeAmountMismatches(t *testing.T) {
+	testCases := []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{
+			name: "signed amount below order total",
+			mutate: func(params map[string]any) {
+				params["amount"] = "30.00"
+				params["actual_amount"] = "30.00"
+			},
+		},
+		{
+			name: "signed amount above order total",
+			mutate: func(params map[string]any) {
+				params["amount"] = "40.00"
+				params["actual_amount"] = "40.00"
+			},
+		},
+		{
+			name: "fee fields disagree",
+			mutate: func(params map[string]any) {
+				params["fee"] = "5.00"
+				params["service_fee"] = "4.00"
+			},
+		},
+		{
+			name: "total differs from signed amount",
+			mutate: func(params map[string]any) {
+				params["total_amount"] = "34.00"
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setupGMPayTopUpTest(t)
+			gin.SetMode(gin.TestMode)
+			order := insertGMPayTopUpForTest(t, "gmpay-fee-reject-"+strings.ReplaceAll(tc.name, " ", "-"), 35, "usdt.ethereum.usdc", model.PaymentProviderEpay)
+			params := validGMPayNotifyParams(order.TradeNo)
+			params["token"] = "USDC"
+			params["network"] = "ethereum"
+			params["receive_address"] = "0x1111111111111111111111111111111111111111"
+			tc.mutate(params)
+
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = signedGMPayNotifyRequest(t, params)
+			GMPayNotify(ctx)
+			assert.Equal(t, "fail", recorder.Body.String())
+			stored := model.GetTopUpByTradeNo(order.TradeNo)
+			require.NotNil(t, stored)
+			assert.Equal(t, common.TopUpStatusPending, stored.Status)
+			var user model.User
+			require.NoError(t, model.DB.First(&user, order.UserId).Error)
+			assert.Zero(t, user.Quota)
+		})
+	}
+}
+
+func TestGMPayCallbackKeepsHistoricalNonStablecoinBindingCompatible(t *testing.T) {
+	params := map[string]any{
+		"token":           "DAI",
+		"network":         "ethereum",
+		"receive_address": "0x1111111111111111111111111111111111111111",
+	}
+	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.dai"))
 }

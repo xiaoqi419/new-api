@@ -266,6 +266,13 @@ func epayCallbackAmountMatches(callbackMoney string, orderMoney float64) bool {
 // getPayMoney 计算易支付应付金额。unitPrice 为「元/单位」单价（代理自定义套餐价，
 // 为 0 时回退平台全局 operation_setting.Price）。
 func getPayMoney(amount int64, group string, unitPrice float64) float64 {
+	return getPayMoneyDecimal(amount, group, unitPrice).InexactFloat64()
+}
+
+// getPayMoneyDecimal is the decimal counterpart used by Native checkout fee
+// calculation. Keeping the intermediate amount as decimal avoids a binary
+// float round-trip before the user-paid fee is applied.
+func getPayMoneyDecimal(amount int64, group string, unitPrice float64) decimal.Decimal {
 	if unitPrice <= 0 {
 		unitPrice = operation_setting.Price
 	}
@@ -295,7 +302,7 @@ func getPayMoney(amount int64, group string, unitPrice float64) float64 {
 
 	payMoney := dAmount.Mul(dPrice).Mul(dTopupGroupRatio).Mul(dDiscount)
 
-	return payMoney.InexactFloat64()
+	return payMoney
 }
 
 // topupQuotaFromAmount converts a stored top-up amount (USD-equivalent units)
@@ -572,13 +579,16 @@ func RequestEpayCheckout(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice)
+	basePayMoneyDecimal := getPayMoneyDecimal(req.Amount, group, epayCfg.UnitPrice)
+	basePayMoney := basePayMoneyDecimal.InexactFloat64()
+	payMoney := basePayMoney
 	useGMPayNative := shouldUseGMPayNative(req.PaymentMethod)
-	if payMoney < 0.01 || (useGMPayNative && payMoney <= 0.01) {
+	if math.IsNaN(basePayMoney) || math.IsInf(basePayMoney, 0) || basePayMoney < 0.01 || (useGMPayNative && basePayMoney <= 0.01) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
 	var nativeToken, nativeNetwork string
+	var nativeFeeQuote service.GMPayFeeQuote
 	if useGMPayNative {
 		nativeToken, nativeNetwork, err = resolveGMPayWalletAsset(c.Request.Context(), epayCfg, req.PaymentMethod, req.Token, req.Network)
 		if err != nil {
@@ -586,6 +596,17 @@ func RequestEpayCheckout(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 			return
 		}
+		nativeFeeQuote, err = service.GMPayFeeQuoteForAsset(basePayMoneyDecimal, nativeToken, nativeNetwork)
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值手续费报价失败 user_id=%d token=%s network=%s error=%q", userID, nativeToken, nativeNetwork, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "该支付组合暂不可用"})
+			return
+		}
+		payMoney = nativeFeeQuote.TotalAmount.InexactFloat64()
+	}
+	if payMoney < 0.01 || (useGMPayNative && payMoney <= 0.01) {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
+		return
 	}
 	var mapiClient *service.EpayMAPIClient
 	if !useGMPayNative {
@@ -654,7 +675,7 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 
 	if useGMPayNative {
-		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL, nativeToken, nativeNetwork)
+		data, clientErr := createGMPayNativeCheckoutWithQuote(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), nativeFeeQuote, notifyURL, returnURL, nativeToken, nativeNetwork)
 		if clientErr == nil {
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney))
 			c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})

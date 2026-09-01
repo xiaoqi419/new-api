@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -12,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 func resolveGMPayAsset(ctx context.Context, epayCfg tenantEpayConfig, paymentMethod, token, network string) (string, string, error) {
@@ -74,8 +74,8 @@ func resolveGMPayWalletAsset(ctx context.Context, epayCfg tenantEpayConfig, paym
 	if !validGMPayAssetPart(token) || !validGMPayAssetPart(network) {
 		return "", "", errors.New("gmpay payment asset is invalid")
 	}
-	if token != "usdt" {
-		return "", "", errors.New("gmpay wallet only accepts USDT")
+	if token != "usdt" && token != "usdc" {
+		return "", "", errors.New("gmpay wallet only accepts USDT or USDC")
 	}
 	var networkKnown bool
 	network, networkKnown = service.NormalizeGMPayNetwork(network)
@@ -98,8 +98,8 @@ func resolveGMPayWalletAsset(ctx context.Context, epayCfg tenantEpayConfig, paym
 			continue
 		}
 		for _, supportedToken := range asset.Tokens {
-			if strings.EqualFold(supportedToken, "USDT") {
-				return "usdt", network, nil
+			if strings.EqualFold(supportedToken, token) {
+				return token, network, nil
 			}
 		}
 	}
@@ -157,7 +157,8 @@ func bindGMPayNativeOrderAsset(tradeNo, paymentMethod string) error {
 
 // gmpayPaymentMethodForAsset stores the selected asset in the existing
 // payment_method column, avoiding a schema change while giving callbacks a
-// durable order-level binding. The legacy TRON spelling remains unchanged.
+// durable order-level binding. The legacy TRON spelling remains unchanged;
+// historical extended values use usdt.<network>.<token> and remain readable.
 func gmpayPaymentMethodForAsset(token, network string) string {
 	token = strings.ToLower(strings.TrimSpace(token))
 	if normalizedNetwork, ok := service.NormalizeGMPayNetwork(network); ok {
@@ -176,12 +177,26 @@ func parseGMPayPaymentMethod(paymentMethod string) (token, network string, ok bo
 	if len(parts) == 2 && parts[0] == "usdt" && parts[1] == "tron" {
 		return "usdt", "tron", true
 	}
-	if len(parts) != 3 || parts[0] != "usdt" || parts[1] == "" || parts[2] == "" {
+	// A compact token.network form is accepted for forward compatibility with
+	// operators that stored a clean USDC binding before the extended form was
+	// standardized. New code still writes the historical extended spelling.
+	if len(parts) == 2 && (parts[0] == "usdt" || parts[0] == "usdc") && parts[1] != "" {
+		if !validGMPayAssetPart(parts[0]) || !validGMPayAssetPart(parts[1]) {
+			return "", "", false
+		}
+		return parts[0], parts[1], true
+	}
+	if len(parts) != 3 || (parts[0] != "usdt" && parts[0] != "gmpay") || parts[1] == "" || parts[2] == "" {
 		return "", "", false
 	}
 	if !validGMPayAssetPart(parts[1]) || !validGMPayAssetPart(parts[2]) {
 		return "", "", false
 	}
+	// Keep accepting the historical extended form for tokens that were
+	// enabled before the wallet selector was narrowed to USDT/USDC.  New
+	// ordinary-wallet requests are restricted by resolveGMPayWalletAsset;
+	// this parser must remain broad so already-pending legacy orders can still
+	// be settled safely by their persisted binding.
 	return parts[2], parts[1], true
 }
 
@@ -221,6 +236,31 @@ func createGMPayNativeCheckout(
 	returnURL *url.URL,
 	asset ...string,
 ) (gin.H, error) {
+	baseAmount := decimal.NewFromFloat(payMoney)
+	quote := service.GMPayFeeQuote{
+		BaseAmount:  baseAmount,
+		FeeAmount:   decimal.Zero,
+		TotalAmount: baseAmount,
+		Source:      service.GMPayFeeSourceGatewayIncluded,
+	}
+	return createGMPayNativeCheckoutWithQuote(ctx, epayCfg, paymentMethod, tradeNo, name, quote, notifyURL, returnURL, asset...)
+}
+
+// createGMPayNativeCheckoutWithQuote is the shared Native order path.  The
+// ordinary wallet computes a fee quote before inserting its pending order;
+// specialized Native flows call the wrapper above and therefore retain their
+// historical no-fee amount semantics.
+func createGMPayNativeCheckoutWithQuote(
+	ctx context.Context,
+	epayCfg tenantEpayConfig,
+	paymentMethod string,
+	tradeNo string,
+	name string,
+	quote service.GMPayFeeQuote,
+	notifyURL *url.URL,
+	returnURL *url.URL,
+	asset ...string,
+) (gin.H, error) {
 	if !shouldUseGMPayNative(paymentMethod) || !operation_setting.ContainsPayMethod(paymentMethod) {
 		return nil, errors.New("gmpay native payment method is unavailable")
 	}
@@ -238,6 +278,15 @@ func createGMPayNativeCheckout(
 	if client == nil {
 		return nil, errors.New("gmpay client is not configured")
 	}
+	if quote.BaseAmount.LessThanOrEqual(decimal.Zero) || quote.TotalAmount.LessThanOrEqual(decimal.Zero) || quote.FeeAmount.IsNegative() ||
+		!quote.BaseAmount.Add(quote.FeeAmount).Equal(quote.TotalAmount) {
+		return nil, errors.New("gmpay amount breakdown is invalid")
+	}
+	feeSource, sourceErr := service.NormalizeGMPayFeeSource(quote.Source)
+	if sourceErr != nil {
+		return nil, sourceErr
+	}
+	quote.Source = feeSource
 	var token, network string
 	if len(asset) > 0 {
 		token = asset[0]
@@ -255,7 +304,10 @@ func createGMPayNativeCheckout(
 	}
 	checkout, err := client.CreateOrder(ctx, service.GMPayCreateOrderRequest{
 		OrderID:     tradeNo,
-		Amount:      strconv.FormatFloat(payMoney, 'f', 2, 64),
+		Amount:      quote.TotalAmount.StringFixed(2),
+		BaseAmount:  quote.BaseAmount.StringFixed(2),
+		FeeAmount:   quote.FeeAmount.StringFixed(2),
+		FeeSource:   quote.Source,
 		NotifyURL:   notifyURL,
 		RedirectURL: returnURL,
 		Name:        name,
@@ -270,7 +322,11 @@ func createGMPayNativeCheckout(
 		"gateway_trade_no": checkout.GatewayTradeNo,
 		"checkout_type":    "crypto",
 		"payment_method":   paymentMethod,
-		"money":            strconv.FormatFloat(payMoney, 'f', 2, 64),
+		"money":            checkout.TotalAmount,
+		"base_amount":      checkout.BaseAmount,
+		"fee_amount":       checkout.FeeAmount,
+		"total_amount":     checkout.TotalAmount,
+		"fee_source":       checkout.FeeSource,
 		"actual_amount":    checkout.ActualAmount,
 		"receive_address":  checkout.ReceiveAddress,
 		"token":            checkout.Token,

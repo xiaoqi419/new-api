@@ -110,6 +110,24 @@ function formatCountdown(seconds: number): string {
     .join(':')
 }
 
+function getGMPayFeeSourceLabel(
+  source: string,
+  t: (key: string) => string
+): string {
+  switch (source) {
+    case 'gateway_quote':
+      return t('Gateway quote')
+    case 'gateway_included':
+      return t('Included in gateway amount')
+    case 'admin_fixed':
+      return t('Administrator fixed fee')
+    case 'admin_percent':
+      return t('Administrator percentage fee')
+    default:
+      return t('Unknown')
+  }
+}
+
 export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const { t } = useTranslation()
   const [checkoutStatus, setCheckoutStatus] =
@@ -262,7 +280,7 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
       }}
       title={t('Payment checkout')}
       description={t('Complete this payment without leaving the current page.')}
-      contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-lg'
+      contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-3xl'
       bodyClassName='space-y-5'
       footer={
         <div className='grid w-full grid-cols-1 gap-2 sm:flex sm:justify-between'>
@@ -290,10 +308,51 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
         </div>
       }
     >
-      <div className='grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center'>
+      <div className='grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,260px)] sm:items-center'>
         <div className='order-2 space-y-3 sm:order-1'>
           {isCryptoCheckout ? (
             <dl className='space-y-2 text-sm'>
+              {(checkout.base_amount !== undefined ||
+                checkout.fee_amount !== undefined ||
+                checkout.total_amount !== undefined ||
+                checkout.fee_source !== undefined) && (
+                <>
+                  <div className='flex items-center justify-between gap-4'>
+                    <dt className='text-muted-foreground'>
+                      {t('Base amount')}
+                    </dt>
+                    <dd className='font-semibold'>
+                      {checkout.base_amount ?? checkout.money}
+                    </dd>
+                  </div>
+                  {checkout.fee_amount !== undefined && (
+                    <div className='flex items-start justify-between gap-4'>
+                      <dt className='text-muted-foreground'>{t('Fee')}</dt>
+                      <dd className='text-right font-semibold'>
+                        <span>{checkout.fee_amount}</span>
+                        {checkout.fee_source ? (
+                          <span className='text-muted-foreground block text-xs font-normal'>
+                            {t('Fee source: {{source}}', {
+                              source: getGMPayFeeSourceLabel(
+                                checkout.fee_source,
+                                t
+                              ),
+                            })}
+                          </span>
+                        ) : null}
+                      </dd>
+                    </div>
+                  )}
+                  <div className='flex items-center justify-between gap-4'>
+                    <dt className='text-muted-foreground'>
+                      {t('Total payment')}
+                    </dt>
+                    <dd className='font-semibold'>
+                      {checkout.total_amount ?? checkout.money}
+                    </dd>
+                  </div>
+                </>
+              )}
               <div className='flex items-center justify-between gap-4'>
                 <dt className='text-muted-foreground'>{t('Amount to send')}</dt>
                 <dd className='flex items-center gap-1 font-mono font-semibold'>
@@ -312,14 +371,16 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
               </div>
               <div className='flex items-center justify-between gap-4'>
                 <dt className='text-muted-foreground'>{t('Network')}</dt>
-                <dd className='font-medium'>{checkout.network}</dd>
+                <dd className='max-w-full text-right font-medium break-words'>
+                  {checkout.network}
+                </dd>
               </div>
               <div className='flex items-start justify-between gap-4'>
                 <dt className='text-muted-foreground'>
                   {t('Receive address')}
                 </dt>
-                <dd className='flex min-w-0 items-start gap-1 text-right font-mono text-xs break-all'>
-                  <span className='min-w-0 flex-1'>
+                <dd className='flex max-w-full min-w-0 items-start gap-1 text-right font-mono text-xs [overflow-wrap:anywhere]'>
+                  <span className='min-w-0 flex-1 [overflow-wrap:anywhere]'>
                     {checkout.receive_address}
                   </span>
                   <CopyButton
@@ -336,7 +397,7 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
               </div>
               <div className='flex items-start justify-between gap-4'>
                 <dt className='text-muted-foreground'>{t('Order number')}</dt>
-                <dd className='max-w-[230px] text-right font-mono text-xs break-all'>
+                <dd className='max-w-full text-right font-mono text-xs [overflow-wrap:anywhere]'>
                   {checkout.trade_no}
                 </dd>
               </div>
@@ -379,7 +440,7 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
           </Alert>
         </div>
 
-        <div className='order-1 mx-auto bg-white p-3 sm:order-2'>
+        <div className='order-1 mx-auto shrink-0 bg-white p-3 sm:order-2'>
           <QRCodeSVG
             value={
               isCryptoCheckout

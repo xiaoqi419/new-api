@@ -27,6 +27,12 @@ const assets: CryptoAsset[] = [
   { network: 'ethereum', token: 'USDT', display_name: 'Ethereum' },
 ]
 
+const multiCurrencyAssets: CryptoAsset[] = [
+  { network: 'tron', token: 'USDT', display_name: 'TRON' },
+  { network: 'tron', token: 'USDC', display_name: 'TRON' },
+  { network: 'ethereum', token: 'USDC', display_name: 'Ethereum' },
+]
+
 describe('crypto asset selection dialog', () => {
   test('shows only configured USDT networks and returns the selected pair', async () => {
     const onSelect = vi.fn()
@@ -61,5 +67,104 @@ describe('crypto asset selection dialog', () => {
     )
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  test('shows the currency stage when multiple stablecoins are available', () => {
+    render(
+      <CryptoAssetSelectDialog
+        open
+        assets={multiCurrencyAssets}
+        onOpenChange={() => undefined}
+        onSelect={() => undefined}
+      />
+    )
+
+    expect(
+      screen.getByRole('listbox', { name: 'Payment currency' })
+    ).toBeVisible()
+    expect(screen.getByRole('option', { name: /USDT/ })).toBeVisible()
+    expect(screen.getByRole('option', { name: /USDC/ })).toBeVisible()
+    expect(screen.queryByText('TRC20')).not.toBeInTheDocument()
+  })
+
+  test('does not create an order before the final network selection for one currency', async () => {
+    const onSelect = vi.fn()
+    const singleCurrencyAsset = [multiCurrencyAssets[0]]
+
+    render(
+      <CryptoAssetSelectDialog
+        open
+        assets={singleCurrencyAsset}
+        onOpenChange={() => undefined}
+        onSelect={onSelect}
+      />
+    )
+
+    expect(onSelect).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('option', { name: /TRON.*USDT/ }))
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith(singleCurrencyAsset[0])
+    })
+  })
+
+  test('skips a single network after choosing its currency', async () => {
+    const onSelect = vi.fn()
+
+    render(
+      <CryptoAssetSelectDialog
+        open
+        assets={multiCurrencyAssets}
+        onOpenChange={() => undefined}
+        onSelect={onSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('option', { name: /USDT/ }))
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith(multiCurrencyAssets[0])
+    })
+  })
+
+  test('returns to the currency stage without selecting an asset', () => {
+    const onSelect = vi.fn()
+
+    render(
+      <CryptoAssetSelectDialog
+        open
+        assets={multiCurrencyAssets}
+        onOpenChange={() => undefined}
+        onSelect={onSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('option', { name: /USDC/ }))
+    expect(
+      screen.getByRole('listbox', { name: 'Payment network' })
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(
+      screen.getByRole('listbox', { name: 'Payment currency' })
+    ).toBeVisible()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  test('cancelling the selector never invokes asset selection', () => {
+    const onSelect = vi.fn()
+    const onOpenChange = vi.fn()
+
+    render(
+      <CryptoAssetSelectDialog
+        open
+        assets={multiCurrencyAssets}
+        onOpenChange={onOpenChange}
+        onSelect={onSelect}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

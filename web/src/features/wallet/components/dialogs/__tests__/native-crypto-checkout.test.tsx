@@ -98,6 +98,33 @@ describe('native GMPay checkout dialog', () => {
     expect(window.location.href).toBe(initialLocation)
   })
 
+  test('localizes the fee source while showing the server-authoritative amount breakdown', async () => {
+    const getStatus = vi.fn(pendingStatus)
+    render(
+      <EpayCheckoutDialog
+        open
+        checkout={{
+          ...cryptoCheckout,
+          base_amount: '30.00',
+          fee_amount: '5.00',
+          total_amount: '35.00',
+          fee_source: 'admin_fixed',
+        }}
+        getStatus={getStatus}
+        onClose={() => undefined}
+        onSuccess={() => undefined}
+      />
+    )
+
+    expect(screen.getByText('30.00')).toBeVisible()
+    expect(screen.getByText('5.00')).toBeVisible()
+    expect(screen.getByText('35.00')).toBeVisible()
+    expect(
+      screen.getByText('Fee source: Administrator fixed fee')
+    ).toBeVisible()
+    expect(screen.queryByText('admin_fixed')).not.toBeInTheDocument()
+  })
+
   test('copies the exact crypto amount and receive address from accessible icon buttons', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
@@ -116,7 +143,9 @@ describe('native GMPay checkout dialog', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy payment amount' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Copy payment amount' })
+      )
       await Promise.resolve()
     })
     await act(async () => {

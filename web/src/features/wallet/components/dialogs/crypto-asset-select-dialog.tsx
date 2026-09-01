@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -24,7 +24,7 @@ import { Check, Loader2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-import type { CryptoAsset } from '../../types'
+import type { CryptoAsset, CryptoToken } from '../../types'
 
 interface CryptoAssetSelectDialogProps {
   open: boolean
@@ -61,85 +61,203 @@ function getCryptoNetworkProtocol(network: string): string {
   )
 }
 
-/** Lets users choose a configured native wallet before an order is created. */
+const CRYPTO_TOKENS = new Set<CryptoToken>(['USDT', 'USDC'])
+
+function isCryptoToken(value: string): value is CryptoToken {
+  return CRYPTO_TOKENS.has(value as CryptoToken)
+}
+
+function getAssetKey(asset: CryptoAsset): string {
+  return `${asset.token}:${asset.network}`
+}
+
+/**
+ * Lets users choose a configured stablecoin and network before an order is
+ * created. The component intentionally owns only the selection state; the
+ * parent remains responsible for creating the checkout order.
+ */
 export function CryptoAssetSelectDialog(props: CryptoAssetSelectDialogProps) {
   const { t } = useTranslation()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const usdtAssets = props.assets.filter(
-    (asset) => asset.token.trim().toUpperCase() === 'USDT'
+  const [selectedToken, setSelectedToken] = useState<CryptoToken | null>(null)
+
+  const assets = useMemo(
+    () =>
+      props.assets.filter((asset) =>
+        isCryptoToken(asset.token.trim().toUpperCase())
+      ),
+    [props.assets]
   )
+  const currencies = useMemo(() => {
+    const seen = new Set<CryptoToken>()
+    const result: CryptoToken[] = []
+    for (const asset of assets) {
+      const token = asset.token.trim().toUpperCase()
+      if (!isCryptoToken(token) || seen.has(token)) continue
+      seen.add(token)
+      result.push(token)
+    }
+    return result
+  }, [assets])
+
+  const activeToken =
+    selectedToken ?? (currencies.length === 1 ? currencies[0] : null)
+  const activeAssets = activeToken
+    ? assets.filter((asset) => asset.token.trim().toUpperCase() === activeToken)
+    : []
+  const currencyStage = activeToken === null
 
   useEffect(() => {
     if (!props.open) {
       setSelectedKey(null)
+      setSelectedToken(null)
     }
   }, [props.open])
 
-  if (!usdtAssets.length) return null
+  if (!assets.length) return null
 
   const handleSelect = async (asset: CryptoAsset) => {
-    setSelectedKey(`${asset.network}:${asset.token}`)
+    setSelectedKey(getAssetKey(asset))
     await props.onSelect(asset)
   }
+
+  const handleCurrencySelect = (token: CryptoToken) => {
+    const tokenAssets = assets.filter(
+      (asset) => asset.token.trim().toUpperCase() === token
+    )
+    setSelectedToken(token)
+    if (tokenAssets.length === 1) {
+      void handleSelect(tokenAssets[0])
+    }
+  }
+
+  const handleBack = () => {
+    if (currencies.length > 1) {
+      setSelectedToken(null)
+      setSelectedKey(null)
+    }
+  }
+
+  const dialogTitle = currencyStage
+    ? t('Choose a payment currency')
+    : t('Choose a payment network')
+  const dialogDescription = currencyStage
+    ? t('Select a payment currency.')
+    : t('Select a {{token}} payment network.', { token: activeToken })
 
   return (
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title={t('Choose a payment network')}
-      description={t('Select a USDT payment network.')}
-      contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-md'
+      title={dialogTitle}
+      description={dialogDescription}
+      contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-xl'
       footerClassName='grid grid-cols-1 gap-2 sm:flex sm:justify-end'
       footer={
-        <Button
-          variant='outline'
-          onClick={() => props.onOpenChange(false)}
-          disabled={props.processing}
-        >
-          {t('Cancel')}
-        </Button>
+        <>
+          {!currencyStage && currencies.length > 1 && (
+            <Button
+              variant='outline'
+              onClick={handleBack}
+              disabled={props.processing}
+            >
+              {t('Back')}
+            </Button>
+          )}
+          <Button
+            variant='outline'
+            onClick={() => props.onOpenChange(false)}
+            disabled={props.processing}
+          >
+            {t('Cancel')}
+          </Button>
+        </>
       }
     >
       <div
         className='grid gap-2'
         role='listbox'
-        aria-label={t('Payment network')}
+        aria-label={
+          currencyStage ? t('Payment currency') : t('Payment network')
+        }
       >
-        {usdtAssets.map((asset) => {
-          const key = `${asset.network}:${asset.token}`
-          const selected = selectedKey === key
-          let statusIcon = null
-          if (selected && props.processing) {
-            statusIcon = <Loader2 className='size-4 shrink-0 animate-spin' />
-          } else if (selected) {
-            statusIcon = <Check className='text-primary size-4 shrink-0' />
-          }
-          return (
-            <Button
-              key={key}
-              type='button'
-              variant='outline'
-              role='option'
-              aria-selected={selected}
-              disabled={props.processing}
-              onClick={() => void handleSelect(asset)}
-              className={cn(
-                'h-auto min-h-14 justify-between gap-3 px-4 py-3 text-left',
-                selected && 'border-primary bg-primary/5'
-              )}
-            >
-              <span className='flex min-w-0 flex-col items-start gap-0.5'>
-                <span className='truncate font-medium'>
-                  {asset.display_name}
-                </span>
-                <span className='text-muted-foreground text-xs'>
-                  USDT · {getCryptoNetworkProtocol(asset.network)}
-                </span>
-              </span>
-              {statusIcon}
-            </Button>
-          )
-        })}
+        {currencyStage
+          ? currencies.map((token) => {
+              const tokenAssets = assets.filter(
+                (asset) => asset.token.trim().toUpperCase() === token
+              )
+              const selected = selectedToken === token
+              let statusIcon = null
+              if (selected && props.processing) {
+                statusIcon = (
+                  <Loader2 className='size-4 shrink-0 animate-spin' />
+                )
+              } else if (selected) {
+                statusIcon = <Check className='text-primary size-4 shrink-0' />
+              }
+              return (
+                <Button
+                  key={token}
+                  type='button'
+                  variant='outline'
+                  role='option'
+                  aria-selected={selected}
+                  disabled={props.processing}
+                  onClick={() => handleCurrencySelect(token)}
+                  className={cn(
+                    'h-auto min-h-16 justify-between gap-3 px-4 py-3 text-left',
+                    selected && 'border-primary bg-primary/5'
+                  )}
+                >
+                  <span className='flex min-w-0 flex-col items-start gap-0.5'>
+                    <span className='truncate font-medium'>{token}</span>
+                    <span className='text-muted-foreground text-xs'>
+                      {t('Networks available: {{count}}', {
+                        count: tokenAssets.length,
+                      })}
+                    </span>
+                  </span>
+                  {statusIcon}
+                </Button>
+              )
+            })
+          : activeAssets.map((asset) => {
+              const key = getAssetKey(asset)
+              const selected = selectedKey === key
+              let statusIcon = null
+              if (selected && props.processing) {
+                statusIcon = (
+                  <Loader2 className='size-4 shrink-0 animate-spin' />
+                )
+              } else if (selected) {
+                statusIcon = <Check className='text-primary size-4 shrink-0' />
+              }
+              return (
+                <Button
+                  key={key}
+                  type='button'
+                  variant='outline'
+                  role='option'
+                  aria-selected={selected}
+                  disabled={props.processing}
+                  onClick={() => void handleSelect(asset)}
+                  className={cn(
+                    'h-auto min-h-14 justify-between gap-3 px-4 py-3 text-left',
+                    selected && 'border-primary bg-primary/5'
+                  )}
+                >
+                  <span className='flex min-w-0 flex-col items-start gap-0.5'>
+                    <span className='truncate font-medium'>
+                      {asset.display_name}
+                    </span>
+                    <span className='text-muted-foreground text-xs'>
+                      {asset.token} · {getCryptoNetworkProtocol(asset.network)}
+                    </span>
+                  </span>
+                  {statusIcon}
+                </Button>
+              )
+            })}
       </div>
     </Dialog>
   )

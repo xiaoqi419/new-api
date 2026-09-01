@@ -49,6 +49,23 @@ function buildTopupInfo(overrides: Partial<TopupInfo>): TopupInfo {
   }
 }
 
+function buildCryptoCheckout(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    trade_no: 'TRADE-CRYPTO-1',
+    payment_method: 'usdt.tron',
+    money: '35.00',
+    checkout_type: 'crypto',
+    actual_amount: '35.000000',
+    receive_address: 'TWalletAddress',
+    token: 'usdt',
+    network: 'tron',
+    expiration_time: Math.floor(Date.now() / 1000) + 3600,
+    ...overrides,
+  }
+}
+
 describe('payment type classification', () => {
   test('keeps Waffo and Waffo Pancake on their dedicated flows', () => {
     expect(isWaffoPayment(PAYMENT_TYPES.WAFFO)).toBe(true)
@@ -64,10 +81,7 @@ describe('payment type classification', () => {
   })
 
   test('keeps legacy TRON on EPay when Native asset capabilities are absent', () => {
-    assert.equal(
-      isNativeCryptoPayment('usdt.tron', buildTopupInfo({})),
-      false
-    )
+    assert.equal(isNativeCryptoPayment('usdt.tron', buildTopupInfo({})), false)
     assert.equal(
       isNativeCryptoPayment(
         'usdt.tron',
@@ -79,10 +93,7 @@ describe('payment type classification', () => {
 
   test('recognizes Native crypto when the asset capability is present', () => {
     assert.equal(
-      isNativeCryptoPayment(
-        'usdt.tron',
-        buildTopupInfo({ crypto_assets: [] })
-      ),
+      isNativeCryptoPayment('usdt.tron', buildTopupInfo({ crypto_assets: [] })),
       true
     )
   })
@@ -208,6 +219,58 @@ describe('Epay checkout normalization', () => {
       }),
       null
     )
+  })
+
+  test('preserves validated crypto amount breakdown and fee provenance', () => {
+    const checkout = getEpayCheckoutData(
+      buildCryptoCheckout({
+        base_amount: '30.00',
+        fee_amount: 5,
+        total_amount: '35.00',
+        fee_source: 'admin_fixed',
+      }),
+      { paymentMethod: 'usdt.tron' }
+    )
+
+    expect(checkout).toMatchObject({
+      checkout_type: 'crypto',
+      base_amount: '30.00',
+      fee_amount: '5',
+      total_amount: '35.00',
+      fee_source: 'admin_fixed',
+    })
+  })
+
+  test('keeps optional crypto fields absent when the gateway omits them', () => {
+    const checkout = getEpayCheckoutData(buildCryptoCheckout(), {
+      paymentMethod: 'usdt.tron',
+    })
+
+    expect(checkout).not.toBeNull()
+    expect(checkout && 'base_amount' in checkout).toBe(false)
+    expect(checkout && 'fee_amount' in checkout).toBe(false)
+    expect(checkout && 'total_amount' in checkout).toBe(false)
+    expect(checkout && 'fee_source' in checkout).toBe(false)
+  })
+
+  test('rejects malformed or untrusted optional crypto fee fields', () => {
+    const invalidFields: Array<[string, unknown]> = [
+      ['base_amount', '-1'],
+      ['fee_amount', Number.NaN],
+      ['total_amount', Number.POSITIVE_INFINITY],
+      ['fee_amount', '1.0000001'],
+      ['total_amount', '1000000000.01'],
+      ['fee_source', 'custom_source'],
+      ['fee_source', 5],
+    ]
+
+    for (const [field, value] of invalidFields) {
+      expect(
+        getEpayCheckoutData(buildCryptoCheckout({ [field]: value }), {
+          paymentMethod: 'usdt.tron',
+        })
+      ).toBeNull()
+    }
   })
 })
 

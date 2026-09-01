@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260901-gmpay-fee-aware-checkout',
+    date: '2026-09-01',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          'GMPay Native 充值支持 USDT 与 USDC 的币种和网络分步选择，并在站内收银台展示基础额度、手续费、实际支付金额和支付来源。',
+          '支付设置新增经过校验的 GMPay 手续费兜底配置；动态报价不可用时可按资产覆盖项使用固定金额或百分比规则，手续费由用户承担且不会计入到账额度。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260831-payment-mode-safe-apply-control',
     date: '2026-08-31',
     changes: [

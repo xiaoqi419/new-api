@@ -71,6 +71,18 @@ const defaultBillingSettings: BillingSettings = {
   PayMethods: '',
   'payment_setting.amount_options': '',
   'payment_setting.amount_discount': '',
+  GMPayFeeConfig: JSON.stringify(
+    {
+      version: 1,
+      enabled: false,
+      default: { mode: 'fixed', value: '0.00' },
+      overrides: {},
+      max_fee: '20.00',
+      max_total: '100000.00',
+    },
+    null,
+    2
+  ),
   'payment_setting.compliance_confirmed': false,
   'payment_setting.compliance_terms_version': '',
   'payment_setting.compliance_confirmed_at': 0,

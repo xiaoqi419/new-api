@@ -108,23 +108,27 @@ const GMPAY_NETWORK_DISPLAY_NAMES: Record<string, string> = {
   binance: 'BSC',
 }
 
+const GMPAY_SUPPORTED_TOKENS = new Set(['USDT', 'USDC'])
+
 /**
  * Keep the wallet selector aligned with the international product contract.
- * EPUSDT exposes a network together with every enabled token, while this
- * checkout accepts USDT only. The backend applies the same filter; repeating
- * it here protects the UI from stale or older gateway responses and collapses
- * duplicate network entries into one card.
+ * EPUSDT exposes a network together with every enabled token. The backend
+ * applies the same stablecoin/network allowlist; repeating it here protects
+ * the UI from stale or older gateway responses while preserving each token /
+ * network pair for the two-level selector.
  *
  * The parser accepts both the current flattened `{ token }` response and the
  * grouped `{ tokens }` form used by older gateway versions so a rolling
- * deployment does not briefly expose native assets such as TRX or SOL.
+ * deployment does not briefly expose native assets such as TRX or SOL. The
+ * result is deduplicated by token + network, rather than by network alone, so
+ * USDT and USDC can intentionally coexist on one chain.
  */
 export function parseCryptoAssets(data: unknown): CryptoAsset[] | undefined {
   if (data === undefined || data === null) {
     return undefined
   }
 
-  const assetsByNetwork = new Map<string, CryptoAsset>()
+  const assetsByPair = new Map<string, CryptoAsset>()
 
   for (const item of parseJsonArray(data)) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
@@ -145,21 +149,28 @@ export function parseCryptoAssets(data: unknown): CryptoAsset[] | undefined {
       if (typeof token === 'string') tokens.push(token)
     }
 
-    if (!tokens.some((token) => token.trim().toUpperCase() === 'USDT')) {
-      continue
+    const fallbackDisplayName = GMPAY_NETWORK_DISPLAY_NAMES[network]
+    if (!fallbackDisplayName) continue
+    const configuredDisplayName =
+      typeof record.display_name === 'string' ? record.display_name.trim() : ''
+    const displayName = configuredDisplayName || fallbackDisplayName
+
+    for (const rawToken of tokens) {
+      const token = rawToken.trim().toUpperCase()
+      if (!GMPAY_SUPPORTED_TOKENS.has(token)) continue
+
+      const pairKey = `${token}:${network}`
+      if (assetsByPair.has(pairKey)) continue
+
+      assetsByPair.set(pairKey, {
+        network,
+        token: token as CryptoAsset['token'],
+        display_name: displayName,
+      })
     }
-
-    const displayName = GMPAY_NETWORK_DISPLAY_NAMES[network]
-    if (!displayName || assetsByNetwork.has(network)) continue
-
-    assetsByNetwork.set(network, {
-      network,
-      token: 'USDT',
-      display_name: displayName,
-    })
   }
 
-  return [...assetsByNetwork.values()]
+  return [...assetsByPair.values()]
 }
 
 function parseWaffoPayMethods(data: unknown): WaffoPayMethod[] {

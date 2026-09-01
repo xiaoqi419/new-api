@@ -132,6 +132,74 @@ interface EpayCheckoutFallback {
   money?: string | number
 }
 
+const GMPAY_CHECKOUT_AMOUNT_PATTERN = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+const GMPAY_CHECKOUT_AMOUNT_MAX_LENGTH = 128
+const GMPAY_CHECKOUT_AMOUNT_MAX_SCALE = 6
+const GMPAY_CHECKOUT_AMOUNT_MAX_VALUE = 1_000_000_000
+const GMPAY_FEE_SOURCES = new Set([
+  'gateway_quote',
+  'gateway_included',
+  'admin_fixed',
+  'admin_percent',
+])
+
+/**
+ * Normalize a server-provided GMPay amount while keeping the browser-side
+ * schema aligned with the server boundary. `undefined` means the optional
+ * field was not supplied; `null` means it was supplied but invalid.
+ */
+function normalizeOptionalGmpayAmount(
+  value: unknown
+): string | undefined | null {
+  if (value === undefined) return undefined
+
+  let normalized: string
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0) return null
+    normalized = String(value)
+  } else if (typeof value === 'string') {
+    normalized = value.trim()
+  } else {
+    return null
+  }
+
+  if (
+    !normalized ||
+    normalized.length > GMPAY_CHECKOUT_AMOUNT_MAX_LENGTH ||
+    !GMPAY_CHECKOUT_AMOUNT_PATTERN.test(normalized)
+  ) {
+    return null
+  }
+
+  const numericValue = Number(normalized)
+  if (
+    !Number.isFinite(numericValue) ||
+    numericValue < 0 ||
+    numericValue > GMPAY_CHECKOUT_AMOUNT_MAX_VALUE
+  ) {
+    return null
+  }
+
+  const [mantissa, exponentText] = normalized.toLowerCase().split('e')
+  const exponent = exponentText ? Number(exponentText) : 0
+  if (!Number.isFinite(exponent)) return null
+  const fractionDigits = mantissa.split('.')[1]?.length ?? 0
+  const scale = Math.max(0, fractionDigits - exponent)
+  if (scale > GMPAY_CHECKOUT_AMOUNT_MAX_SCALE) return null
+
+  return normalized
+}
+
+/** Normalize the server-owned fee provenance enum. */
+function normalizeOptionalGmpayFeeSource(
+  value: unknown
+): string | undefined | null {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return GMPAY_FEE_SOURCES.has(normalized) ? normalized : null
+}
+
 export function getEpayCheckoutData(
   value: unknown,
   fallback: EpayCheckoutFallback = {}
@@ -196,6 +264,19 @@ export function getEpayCheckoutData(
       return null
     }
 
+    const baseAmount = normalizeOptionalGmpayAmount(fields.base_amount)
+    const feeAmount = normalizeOptionalGmpayAmount(fields.fee_amount)
+    const totalAmount = normalizeOptionalGmpayAmount(fields.total_amount)
+    const feeSource = normalizeOptionalGmpayFeeSource(fields.fee_source)
+    if (
+      baseAmount === null ||
+      feeAmount === null ||
+      totalAmount === null ||
+      feeSource === null
+    ) {
+      return null
+    }
+
     const gatewayTradeNo = fields.gateway_trade_no
     return {
       trade_no: tradeNo.trim(),
@@ -211,6 +292,10 @@ export function getEpayCheckoutData(
       network: network.trim().toUpperCase(),
       expiration_time: expirationTime,
       ...(typeof serverTime === 'number' ? { server_time: serverTime } : {}),
+      ...(baseAmount !== undefined ? { base_amount: baseAmount } : {}),
+      ...(feeAmount !== undefined ? { fee_amount: feeAmount } : {}),
+      ...(totalAmount !== undefined ? { total_amount: totalAmount } : {}),
+      ...(feeSource !== undefined ? { fee_source: feeSource } : {}),
     }
   }
 

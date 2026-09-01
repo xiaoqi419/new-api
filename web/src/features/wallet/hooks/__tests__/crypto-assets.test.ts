@@ -18,23 +18,18 @@ import { describe, expect, test } from 'vitest'
 
 import { parseCryptoAssets } from '../use-topup-info'
 
-describe('GMPay USDT network parsing', () => {
-  test('keeps one known network per response and drops non-USDT tokens', () => {
+describe('GMPay stablecoin asset parsing', () => {
+  test('keeps configured USDT/USDC pairs and drops native gas tokens', () => {
     const assets = parseCryptoAssets([
       {
         network: 'TRON',
         display_name: 'TRON',
-        tokens: ['TRX', 'USDT'],
+        tokens: ['TRX', 'USDT', 'USDC'],
       },
       {
         network: 'ethereum',
         display_name: 'Ethereum',
-        token: 'usdt',
-      },
-      {
-        network: 'ETH',
-        display_name: 'Ethereum duplicate',
-        tokens: ['USDC', 'USDT'],
+        tokens: ['ETH', 'USDT'],
       },
       {
         network: 'solana',
@@ -44,13 +39,56 @@ describe('GMPay USDT network parsing', () => {
       {
         network: 'unknown-chain',
         display_name: 'Unknown',
-        tokens: ['USDT'],
+        tokens: ['USDT', 'USDC'],
       },
     ])
 
     expect(assets).toEqual([
       { network: 'tron', token: 'USDT', display_name: 'TRON' },
+      { network: 'tron', token: 'USDC', display_name: 'TRON' },
       { network: 'ethereum', token: 'USDT', display_name: 'Ethereum' },
+      { network: 'solana', token: 'USDC', display_name: 'Solana' },
+    ])
+  })
+
+  test('deduplicates aliases by token/network pair without inventing tokens', () => {
+    const assets = parseCryptoAssets([
+      {
+        network: 'ethereum',
+        display_name: 'Ethereum',
+        token: 'USDT',
+      },
+      {
+        network: 'erc20',
+        display_name: 'Ethereum alias',
+        tokens: ['USDT', 'USDC'],
+      },
+      {
+        network: 'bsc',
+        display_name: 'BSC',
+        tokens: ['BNB'],
+      },
+      {
+        network: 'binance-smart-chain',
+        display_name: 'BSC alias',
+        token: 'USDC',
+      },
+      {
+        network: 'polygon',
+        display_name: 'Unsupported Polygon',
+        token: 'USDT',
+      },
+      {
+        network: 'arbitrum',
+        display_name: 'Unsupported Arbitrum',
+        token: 'USDC',
+      },
+    ])
+
+    expect(assets).toEqual([
+      { network: 'ethereum', token: 'USDT', display_name: 'Ethereum' },
+      { network: 'ethereum', token: 'USDC', display_name: 'Ethereum alias' },
+      { network: 'binance', token: 'USDC', display_name: 'BSC alias' },
     ])
   })
 
@@ -61,5 +99,10 @@ describe('GMPay USDT network parsing', () => {
       )
     ).toEqual([{ network: 'binance', token: 'USDT', display_name: 'BSC' }])
     expect(parseCryptoAssets('{"not":"an array"}')).toEqual([])
+  })
+
+  test('returns undefined when the gateway omits the asset field', () => {
+    expect(parseCryptoAssets(undefined)).toBeUndefined()
+    expect(parseCryptoAssets(null)).toBeUndefined()
   })
 })

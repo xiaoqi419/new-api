@@ -1,0 +1,918 @@
+schema: comet.native.v4
+name: gmpay-multi-asset-fee-checkout
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: crypto-fee-aware-checkout
+    operation: create
+    source: specs/crypto-fee-aware-checkout/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-multi-asset-fee-checkout
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1：网关返回 `TRON: [TRX, USDT, USDC]`、`Ethereum: [ETH, USDT]`、`Solana: [SOL,
+      USDC]` 时，只显示 `USDT/TRON`、`USDC/TRON`、`USDT/Ethereum`，不显示
+      TRX、ETH、SOL，也不显示没有声明的 USDC/Ethereum。"
+    result: passed
+    reason:
+      text: filterGMPayStablecoinAssets retains only declared USDT/USDC token-network
+        pairs, excluding native and undeclared assets while preserving gateway
+        order.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：只有一个稳定币时直接进入网络步骤；某币种只有一个网络时选中币种后直接进入付款详情；只有一个币种/网络组合时点击充值不出现多余选择页。
+    result: passed
+    reason:
+      text: Selector skips single currency/network levels and enters checkout directly
+        when only one valid pair exists.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：有多个币种时首次 Modal 只展示 USDT、USDC；选择 USDC 后只展示 USDC 的有效网络；取消或返回不会创建本地订单或调用网关。
+    result: passed
+    reason:
+      text: The first modal lists currencies only, the second lists networks for the
+        selected currency, and cancel/back creates no order or gateway request.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：服务端收到缺 token、缺 network、非 USDT/USDC、未知网络或网关已关闭的组合时拒绝建单；建单前 fresh
+      配置失效时不回退到 TRON。
+    result: passed
+    reason:
+      text: Fresh server-side asset validation rejects missing, unsupported, unknown,
+        disabled, and stale combinations without a TRON fallback.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：基础额度为 30、费用为 5 时，订单到账额度仍按 30 计算，checkout 同时显示 `基础额度 30`、`手续费 5`、`实际支付
+      35`；回调成功只增加 30 对应额度。
+    result: passed
+    reason:
+      text: TopUp.Amount remains the credited base amount while fee-inclusive
+        TopUp.Money is used for payable/callback amount; settlement credits only
+        the base amount.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：GMPay 返回动态 `actual_amount` 或显式 fee/total 报价时，checkout
+      使用服务端验证后的网关总额和费用来源；客户端无法修改该金额。
+    result: passed
+    reason:
+      text: Validated gateway actual_amount and explicit fee/total fields are used in
+        checkout; fee and amount are recomputed and cannot be client-overridden.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：动态报价缺失或无效时，匹配的管理员固定/比例兜底按 decimal
+      计算并受最小值、最大值、总额上限约束；动态报价和兜底都不可用时该组合失败关闭并给出本地化错误。
+    result: passed
+    reason:
+      text: Decimal fixed/ratio fallback applies configured bounds and currency
+        rounding; invalid dynamic and fallback quotes fail closed with localized
+        error handling.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: A8：回调必须匹配订单的 token/network、金额、签名、provider、租户和 pending 状态；USDT/USDC 历史
+      `usdt.tron` 兼容规则不影响新订单安全边界，重复回调不重复入账。
+    result: passed
+    reason:
+      text: Callback verifies asset binding, amount, signature, provider, tenant,
+        pending state, and idempotent settlement; legacy usdt.tron compatibility
+        is isolated.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: A9：Legacy EPay 与其他支付方式的金额、回调和 UI 不因本 change 改变；普通钱包以外的 Native
+      业务继续使用其已有资产策略。
+    result: passed
+    reason:
+      text: Legacy EPay, other providers, and specialized Native paths retain their
+        existing amount, callback, and asset contracts.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: A10：checkout Modal 在桌面端提供足够宽度，在 390px 等窄屏可滚动但不横向溢出；长地址、网络名、费用和按钮均可读可操作。
+    result: passed
+    reason:
+      text: Checkout modal uses a wide desktop layout and bounded, vertically
+        scrollable narrow layout with readable long addresses, network names,
+        fees, and controls.
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: A11：中文、英文及项目要求的其他 locale 覆盖币种、网络、费用来源、基础/实际金额、空状态、错误、重试和复制文案；i18n 同步无缺键。
+    result: passed
+    reason:
+      text: Currency, network, fee source, amount, empty/error/retry/copy strings are
+        localized; i18n synchronization reports zero missing or extra keys
+        across seven locales.
+      truncated: false
+  - id: A12
+    source: brief.md
+    text: A12：受影响 Go 测试、前端聚焦测试、i18n 同步、前端生产构建、根模块测试和独立只读 Verifier 按 A1-A11
+      全部通过；未授权前不推送、合并或部署。
+    result: passed
+    reason:
+      text: Required four Go packages passed; focused frontend tests, i18n sync,
+        production build, and independent verification evidence passed.
+        Repository-wide go test ./... has a baseline setup limitation because
+        web/canvas/dist is absent for main.go //go:embed; no push, merge, or
+        deployment occurred.
+      truncated: false
+  - id: A13
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 国际站处于 GMPay Native 模式时，普通钱包充值从 EPUSDT 公共配置读取可用网络和代币，并只向用户提供 USDT、USDC
+      两种稳定币。用户在 New API 自有页面内选择币种和网络，随后在同一 checkout Modal
+      查看收款地址、二维码、费用与状态。Legacy EPay 及其他 Provider 保持既有契约。
+    result: passed
+    reason:
+      text: GMPay Native ordinary wallet flow reads public EPUSDT assets and performs
+        in-page token/network selection and checkout; Legacy EPay and other
+        providers are unchanged.
+      truncated: false
+  - id: A14
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 读取 EPUSDT `/payments/gmpay/v1/config` 的
+      `supported_assets`，沿用已有超时、响应大小、元素数量和短 TTL 缓存保护。
+    result: passed
+    reason:
+      text: supported_assets is read from the EPUSDT config endpoint with the existing
+        timeout, response-size, element-count, and short-TTL cache protections.
+      truncated: false
+  - id: A15
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 网络别名大小写不敏感地规范化为稳定标识；仅保留 New API 能做地址校验的网络。
+    result: passed
+    reason:
+      text: Network aliases are normalized case-insensitively to stable identifiers
+        and only address-validatable networks are retained.
+      truncated: false
+  - id: A16
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 每个网络的 token 列表仅保留 `USDT`、`USDC`；`TRX`、`ETH`、`BNB`、`SOL` 等原生 Gas token、空
+      token、未知 token 和未知网络被过滤。
+    result: passed
+    reason:
+      text: Per-network token lists filter to USDT and USDC and reject TRX, ETH, BNB,
+        SOL, empty/unknown tokens, and unknown networks.
+      truncated: false
+  - id: A17
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 以 `token + network` 作为唯一键去重，保持网关顺序（必要时采用稳定的本地排序），返回：
+    result: passed
+    reason:
+      text: Asset normalization deduplicates by canonical token plus network key and
+        preserves gateway order.
+      truncated: false
+  - id: A18
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 配置失败、无有效组合或 stale 缓存不可验证时返回空集合/错误；不回退到静态 TRON，也不让浏览器自行补全组合。
+    result: passed
+    reason:
+      text: Config failure, no valid pair, or unverifiable stale cache yields
+        empty/error state; static TRON and browser-completed pairs are not used.
+      truncated: false
+  - id: A19
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`crypto_assets` 映射为 `CryptoAsset[]`，token 类型至少覆盖 `USDT | USDC`。"
+    result: passed
+    reason:
+      text: Frontend maps crypto_assets to CryptoAsset[] with USDT/USDC token types.
+      truncated: false
+  - id: A20
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 首层展示当前列表中存在的币种按钮；选中币种后只展示该币种的网络。
+    result: passed
+    reason:
+      text: Currency buttons are derived from available normalized assets and network
+        buttons are restricted to the selected currency.
+      truncated: false
+  - id: A21
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 只有一个币种时跳过币种层；只有一个网络时跳过网络层；最终只有一个组合时点击支付直接建单。
+    result: passed
+    reason:
+      text: Single-currency and single-network paths skip redundant selection levels
+        and a single pair goes straight to order creation.
+      truncated: false
+  - id: A22
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 取消、返回或关闭选择器不会创建本地订单，不调用网关，不改变已选支付方式；选择状态在下一次打开时清理。
+    result: passed
+    reason:
+      text: Cancel, back, and close clear selection state and do not create orders,
+        call the gateway, or alter the selected payment method.
+      truncated: false
+  - id: A23
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 所有标签和错误均使用 i18next，不以 token 字符串作为未翻译的长文案。
+    result: passed
+    reason:
+      text: User-facing labels and errors use i18next; raw token identifiers are not
+        used as untranslated long-form copy.
+      truncated: false
+  - id: A24
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`base_amount`：依据用户选择的充值额度、分组倍率和站点货币计算出的基础应付金额，同时保持到账额度计算的原口径。"
+    result: passed
+    reason:
+      text: base_amount is computed server-side using the existing top-up amount,
+        group ratio, and site currency semantics.
+      truncated: false
+  - id: A25
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`fee_amount`：服务端确认的费用（与 quote/配置来源一起返回）；不能由客户端提交或覆盖。"
+    result: passed
+    reason:
+      text: fee_amount is server-confirmed and returned with its source; it is not
+        accepted as a client-controlled input.
+      truncated: false
+  - id: A26
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`total_amount`：用户实际需要支付的法币等值金额；`TopUp.Money` 用于回调应付金额校验，`TopUp.Amount`
+      仍只记录到账额度。"
+    result: passed
+    reason:
+      text: total_amount is the payable fiat amount, stored in TopUp.Money for
+        callback validation while TopUp.Amount remains the credited amount.
+      truncated: false
+  - id: A27
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`actual_amount`：网关返回的精确 token 数量，作为二维码和复制金额；它可以包含网关费用或汇率差异，不能反推成链上 Gas
+      费用。"
+    result: passed
+    reason:
+      text: Gateway actual_amount is validated and displayed as the precise token
+        quantity for QR/copy; it is not interpreted as chain gas.
+      truncated: false
+  - id: A28
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 订单创建响应中经过严格 schema 验证的显式 `fee`/`service_fee`/`network_fee` 与
+      `total_amount` 字段优先；字段缺失时，以有效 `actual_amount` 作为网关支付总额。
+    result: passed
+    reason:
+      text: Validated explicit gateway fee/service/network fee and total fields take
+        precedence; a valid actual_amount supplies gateway payable total when
+        explicit fields are absent.
+      truncated: false
+  - id: A29
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 若网关未提供可解释的独立费用且需要在请求前加价，读取管理员 `GMPayFeeConfig`
+      兜底：资产覆盖项优先于全局默认；固定金额与比例只能启用一个；比例按基础金额计算。
+    result: passed
+    reason:
+      text: GMPayFeeConfig asset overrides take precedence over global defaults; fixed
+        and ratio modes are mutually exclusive and ratio uses base amount.
+      truncated: false
+  - id: A30
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 费用必须为有限、非负 decimal，单笔费用和总额都不得超过配置上限；计算结果按货币精度向下/项目既有规则舍入。
+    result: passed
+    reason:
+      text: Fee and total calculations use bounded finite non-negative decimal values,
+        configured caps, and currency-precision floor rounding.
+      truncated: false
+  - id: A31
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 动态报价和兜底均无效时，不创建或立即回收 pending 订单，返回本地化“该支付组合暂不可用”，不影响其他支付方式。
+    result: passed
+    reason:
+      text: When dynamic and fallback quotes are unusable, the combination is
+        unavailable without a lasting pending order and a localized failure is
+        returned.
+      truncated: false
+  - id: A32
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 详情中显示基础金额、费用金额、实际总额和来源（网关报价/管理员固定/管理员比例/已含在网关金额），避免用户误解到账额度。
+    result: passed
+    reason:
+      text: Checkout details show base amount, fee, total, and fee provenance
+        including gateway or administrator fallback source.
+      truncated: false
+  - id: A33
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: "`GMPayFeeConfig` 作为现有 Option key-value 保存，默认关闭。配置解析器接受版本化 JSON，示例："
+    result: passed
+    reason:
+      text: GMPayFeeConfig is stored through the existing Option key-value mechanism,
+        defaults disabled, and supports versioned JSON.
+      truncated: false
+  - id: A34
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 服务端拒绝未知 mode、负数、非有限数字、超精度和超上限配置；配置错误只让兜底不可用，并记录脱敏诊断信息。前端支付设置提供 JSON
+      编辑/校验入口，说明该配置只在网关报价不可用时生效。
+    result: passed
+    reason:
+      text: Fee config parsing rejects unknown mode,
+        negative/non-finite/over-precision/over-limit values and records
+        sanitized diagnostics; settings UI provides JSON validation and
+        fallback-only guidance.
+      truncated: false
+  - id: A35
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 客户端只提交基础 `amount`、支付方式及所选 `token`/`network`；服务端重新读取 fresh
+      `supported_assets` 并规范化验证。
+    result: passed
+    reason:
+      text: Client submits only base amount, payment method, token, and network; order
+        creation reloads and validates fresh supported_assets server-side.
+      truncated: false
+  - id: A36
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 生成订单时，先计算并验证基础额度、费用和 `total_amount`，再写入 pending `TopUp`：`Amount`
+      为到账额度，`Money` 为需要回调校验的法币总额，`payment_method` 为稳定、可解析的 token/network
+      binding。
+    result: passed
+    reason:
+      text: Order creation computes and validates base, fee, and total before writing
+        pending TopUp with credited Amount, payable Money, and stable
+        token/network payment_method binding.
+      truncated: false
+  - id: A37
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: GMPay 请求的 `currency` 继续为 `usd`，同时传递规范化 token、network 和服务端计算的金额。客户端不能传费用、网关
+      URL、钱包 ID 或其他自由参数。
+    result: passed
+    reason:
+      text: GMPay requests retain currency usd and send normalized token/network plus
+        server-computed amount; fee, URL, wallet ID, and arbitrary client
+        parameters are not accepted.
+      truncated: false
+  - id: A38
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 网关响应必须匹配本地订单 ID、法币金额、币种、token、network、地址、状态和过期时间；不一致时标记 pending 为
+      failed，不向用户入账。
+    result: passed
+    reason:
+      text: Gateway response validation binds local order ID, fiat amount,
+        token/network, address, status, and expiry; mismatches fail pending
+        order without credit.
+      truncated: false
+  - id: A39
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 回调继续验签、检查 provider/租户/订单归属、pending 状态和金额；若回调带 token/network/address，必须与订单
+      binding 一致。回调重复或订单已完成时保持幂等。
+    result: passed
+    reason:
+      text: Callbacks verify signature, provider/tenant/order ownership, pending
+        state, amount, and optional asset fields, with idempotent repeated
+        completion.
+      truncated: false
+  - id: A40
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 结算只把 `TopUp.Amount` 换算为额度，手续费和 `TopUp.Money` 不参与额度增加。历史 `usdt.tron`
+      及已存在的历史订单继续使用原解析和结算规则。
+    result: passed
+    reason:
+      text: Settlement converts only TopUp.Amount into quota; fee and Money do not
+        increase credit, while historical usdt.tron orders retain prior
+        parsing/settlement.
+      truncated: false
+  - id: A41
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: Modal 在当前页面展示：
+    result: passed
+    reason:
+      text: In-page checkout modal contains the complete required payment detail
+        surface.
+      truncated: false
+  - id: A42
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 基础充值额度；
+    result: passed
+    reason:
+      text: Modal displays the base credited top-up amount.
+      truncated: false
+  - id: A43
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 手续费及来源；
+    result: passed
+    reason:
+      text: Modal displays fee amount and localized fee source.
+      truncated: false
+  - id: A44
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 实际支付总额和精确 `actual_amount token`；
+    result: passed
+    reason:
+      text: Modal displays payable total and exact actual_amount with token.
+      truncated: false
+  - id: A45
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: token、网络/协议、完整地址、二维码、订单号和过期倒计时；
+    result: passed
+    reason:
+      text: Modal displays token, network/protocol, full address, locally rendered QR,
+        order number, and expiry countdown.
+      truncated: false
+  - id: A46
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 等待、成功、失败、过期、超时、刷新和重试状态。
+    result: passed
+    reason:
+      text: Polling UI covers waiting, success, failure, expired, timeout, refresh,
+        and retry states.
+      truncated: false
+  - id: A47
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 桌面端使用更宽的内容列，长地址通过断词/复制按钮处理；移动端保持视口内宽度和纵向滚动，不出现横向滚动条。二维码仍在本地渲染，不打开 hosted
+      cashier URL。
+    result: passed
+    reason:
+      text: Responsive modal handles desktop width and narrow viewport vertical
+        scrolling, wraps/copies long addresses, keeps QR local, and never opens
+        a hosted cashier URL.
+      truncated: false
+  - id: A48
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: Legacy EPay、Stripe、Creem、Waffo、直连支付宝/微信、订阅、拼团和代理预充值不读取本能力的费用配置，也不改变金额口径。
+    result: passed
+    reason:
+      text: Legacy EPay, Stripe, Creem, Waffo, direct Alipay/WeChat, subscription,
+        group, and agent prepay paths do not read this fee configuration or
+        change amount semantics.
+      truncated: false
+  - id: A49
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 不新增数据库列或迁移，SQLite、MySQL 5.7.8+、PostgreSQL 9.6+ 均使用既有 GORM/Option 机制。
+    result: passed
+    reason:
+      text: No database columns or migrations were added; existing GORM/Option
+        mechanisms remain compatible with SQLite, MySQL 5.7.8+, and PostgreSQL
+        9.6+.
+      truncated: false
+  - id: A50
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 所有 JSON 编解码通过 `common.*`；所有费用计算使用 decimal 和现有金额/配额边界。
+    result: passed
+    reason:
+      text: Changed business JSON encoding uses common.* wrappers and fee arithmetic
+        uses decimal with existing amount boundaries.
+      truncated: false
+  - id: A51
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 不把链上 Gas、第三方钱包余额或未验证的响应字段当成费用；不记录密钥、签名、完整支付凭据或私有网关地址。
+    result: passed
+    reason:
+      text: Implementation does not treat chain gas, wallet balances, or unverified
+        fields as fees and does not log keys, signatures, full credentials, or
+        private gateway URLs.
+      truncated: false
+  - id: A52
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: Go：资产过滤/规范化、费用 schema、固定/比例兜底、金额不变量、建单 stale 校验、payment_method
+      解析、响应验证和回调幂等。
+    result: passed
+    reason:
+      text: Go coverage includes asset normalization, fee schema/fallback, amount
+        invariants, fresh stale validation, payment_method parsing, gateway
+        response checks, and callback idempotency.
+      truncated: false
+  - id: A53
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 前端：币种/网络两级选择、单选跳过、取消不建单、费用展示、i18n、Modal 响应式和轮询状态。
+    result: passed
+    reason:
+      text: Frontend coverage includes two-level selection, single-option skipping,
+        cancel-without-order, fee display, i18n, responsive modal, and polling
+        states.
+      truncated: false
+  - id: A54
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 命令：`go test ./controller ./service ./model ./router`、前端聚焦 Vitest、`bun run
+      i18n:sync`、`bun run build`、`git diff --check`。
+    result: passed
+    reason:
+      text: "Specified commands were run: go test -count=1 ./controller ./service
+        ./model ./router; focused wallet/GMPay Vitest; bun run i18n:sync; bun
+        run build; git diff --check. All required checks passed; root ./...
+        limitation is documented under A12."
+      truncated: false
+  - id: A55
+    source: specs/crypto-fee-aware-checkout/spec.md
+    text: 真实网关和线上部署不在本地 change 的验证范围内。
+    result: passed
+    reason:
+      text: Real gateway merchant payments, chain transfers, production services, and
+        deployment are explicitly outside this local change's verification
+        scope.
+      truncated: false
+builder_handoff:
+  candidate_id: b19b552f-b39e-44f0-958e-42807f9ca941
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:d0cafeda-ba92-432d-aa19-d6934a76a756
+  iteration: 1
+  summary:
+    text: "Implemented the GMPay Native multi-asset, fee-aware checkout candidate.
+      The server now normalizes and filters gateway assets to USDT/USDC on
+      supported networks, revalidates the selected pair before every wallet
+      order, computes bounded decimal fee fallbacks from the existing Option
+      store, preserves credited versus payable amounts, validates gateway and
+      callback fee metadata, and binds the selected asset to the existing
+      payment_method field without a migration. The frontend now provides the
+      currency-to-network selector, keeps checkout in the current page, shows
+      the amount breakdown and localized fee provenance, supports long addresses
+      responsively, and preserves polling/retry behavior. Legacy payment paths
+      and specialized Native flows retain their existing contracts. This
+      candidate is local-only: it has not been pushed, merged, deployed, or
+      connected to production."
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+    - A44
+    - A45
+    - A46
+    - A47
+    - A48
+    - A49
+    - A50
+    - A51
+    - A52
+    - A53
+    - A54
+    - A55
+  checks:
+    - name:
+        text: go test -count=1 ./controller ./service ./model ./router
+        truncated: false
+      result: passed
+      note:
+        text: Controller, service, model, and router tests passed without the test
+          cache.
+        truncated: false
+    - name:
+        text: focused wallet and GMPay Vitest suite
+        truncated: false
+      result: passed
+      note:
+        text: 8 files passed, 65 tests passed, including currency/network selection,
+          checkout polling, payment parsing, and fee configuration.
+        truncated: false
+    - name:
+        text: bun run i18n:sync
+        truncated: false
+      result: passed
+      note:
+        text: All seven frontend locales have zero missing or extra keys; localized
+          fee-source labels were synchronized.
+        truncated: false
+    - name:
+        text: bun run typecheck
+        truncated: false
+      result: passed
+      note:
+        text: tsgo -b completed successfully.
+        truncated: false
+    - name:
+        text: bun run build
+        truncated: false
+      result: passed
+      note:
+        text: Rsbuild production build completed successfully.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+    - name:
+        text: targeted oxlint on owned frontend files
+        truncated: false
+      result: passed
+      note:
+        text: No diagnostics on the changed checkout, payment, i18n, or fee-config
+          files.
+        truncated: false
+    - name:
+        text: targeted oxfmt check on owned frontend files
+        truncated: false
+      result: passed
+      note:
+        text: All selected changed files use the configured format.
+        truncated: false
+    - name:
+        text: bun run lint
+        truncated: false
+      result: failed
+      note:
+        text: Repository-wide lint exits nonzero on a large existing set of warnings,
+          primarily under classic/ and unrelated src files; the changed owned
+          files pass targeted oxlint.
+        truncated: false
+    - name:
+        text: bun run format:check
+        truncated: false
+      result: failed
+      note:
+        text: Repository-wide protected-header format check reports existing classic/
+          files outside this change; all selected changed files pass targeted
+          oxfmt.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No real EPUSDT merchant request, asynchronous callback, or chain transfer
+        was run; those require a separately authorized integration environment.
+      truncated: false
+    - text: The public EPUSDT API does not expose a verified independent fee-quote
+        endpoint in the researched contract, so dynamic fee fields are accepted
+        only when explicitly returned and validated; the administrator
+        fixed/percent policy is the bounded fallback.
+      truncated: false
+    - text: Repository-wide lint and format gates remain nonzero because of
+        pre-existing diagnostics outside this change; owned files are clean
+        under targeted checks.
+      truncated: false
+    - text: No database schema or migration was added, and no production database,
+        Redis instance, payment gateway, container, or remote repository was
+        modified.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-01T06:36:00.264Z
+blockers: []
+verification:
+  candidate_id: b19b552f-b39e-44f0-958e-42807f9ca941
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:9608e8f8-2387-477c-8ced-eab2c288eb10
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: gmpay-go-tests
+      name:
+        text: GMPay controller service model router Go tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK = 'off'; go test -count=1 ./controller ./service ./model
+            ./router; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 12403
+    - id: gmpay-go-vet
+      name:
+        text: GMPay affected Go vet
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK = 'off'; go vet ./controller ./service ./model ./router; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3827
+    - id: gmpay-frontend-tests
+      name:
+        text: GMPay focused frontend Vitest suite
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test -- src/features/wallet/hooks/__tests__/crypto-assets.test.ts
+            src/features/wallet/hooks/__tests__/epay-entry.test.ts
+            src/features/wallet/lib/__tests__/epay-entry.test.ts
+            src/features/wallet/components/dialogs/__tests__/crypto-asset-select.test.tsx
+            src/features/wallet/components/dialogs/__tests__/native-crypto-checkout.test.tsx
+            src/features/wallet/components/dialogs/epay-checkout-dialog.test.tsx
+            src/features/wallet/lib/payment.test.ts
+            src/features/system-settings/integrations/__tests__/gmpay-fee-config.test.ts;
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 5222
+    - id: gmpay-frontend-typecheck
+      name:
+        text: GMPay frontend TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run typecheck; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2698
+    - id: gmpay-frontend-build
+      name:
+        text: GMPay frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6654
+    - id: gmpay-i18n-sync
+      name:
+        text: GMPay frontend i18n synchronization
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run i18n:sync; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 679
+    - id: gmpay-owned-frontend-lint
+      name:
+        text: GMPay owned frontend oxlint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/wallet/components/dialogs/epay-checkout-dialog.tsx','src/features/wallet/components/dialogs/__tests__/native-crypto-checkout.test.tsx','src/i18n/static-keys.ts','src/features/system-settings/integrations/gmpay-fee-config.ts','src/features/system-settings/integrations/__tests__/gmpay-fee-config.test.ts','src/features/wallet/lib/payment.ts','src/features/wallet/types.ts');
+            & .\node_modules\.bin\oxlint.exe -c .oxlintrc.json $files; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 618
+    - id: gmpay-owned-frontend-format
+      name:
+        text: GMPay owned frontend oxfmt
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $files =
+            @('src/features/wallet/components/dialogs/epay-checkout-dialog.tsx','src/features/wallet/components/dialogs/__tests__/native-crypto-checkout.test.tsx','src/i18n/static-keys.ts','src/features/system-settings/integrations/gmpay-fee-config.ts','src/features/system-settings/integrations/__tests__/gmpay-fee-config.test.ts','src/features/wallet/lib/payment.ts','src/features/wallet/types.ts');
+            & .\node_modules\.bin\oxfmt.exe -c .oxfmtrc.json --check $files; if
+            ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 826
+    - id: gmpay-diff-check
+      name:
+        text: GMPay repository diff check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 602
+  summary:
+    text: Independent read-only Verify found all A1-A55 acceptance items satisfied
+      by the candidate and focused checks. Four affected Go packages and focused
+      frontend tests passed; i18n sync, typecheck/build, targeted lint/format,
+      and diff checks passed. A12 records the repository baseline go test ./...
+      embed limitation (missing web/canvas/dist) without attributing it to
+      GMPay; A54 records the specified command set; A55 remains explicitly out
+      of local scope.
+    truncated: false
+  risks:
+    - text: Repository-wide go test ./... cannot complete in this checkout because the
+        generated web/canvas/dist embed directory is absent; the specified
+        affected-package tests pass.
+      truncated: false
+    - text: Repository-wide bun lint and format:check remain nonzero on pre-existing
+        unrelated classic/other files; targeted owned-file checks pass.
+      truncated: false
+    - text: No live EPUSDT merchant, asynchronous callback, chain transfer, production
+        DB/Redis, deployment, or remote repository operation was authorized or
+        run.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-01T06:58:06.397Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only Verify found all A1-A55 acceptance items satisfied
+        by the candidate and focused checks. Four affected Go packages and
+        focused frontend tests passed; i18n sync, typecheck/build, targeted
+        lint/format, and diff checks passed. A12 records the repository baseline
+        go test ./... embed limitation (missing web/canvas/dist) without
+        attributing it to GMPay; A54 records the specified command set; A55
+        remains explicitly out of local scope.
+      truncated: false
+    completed_at: 2026-09-01T06:58:06.397Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-01T05:34:07.901Z

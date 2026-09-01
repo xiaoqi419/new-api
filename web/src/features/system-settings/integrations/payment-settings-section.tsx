@@ -69,6 +69,10 @@ import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import {
+  DEFAULT_GMPAY_FEE_CONFIG_JSON,
+  getGMPayFeeConfigError,
+} from './gmpay-fee-config'
+import {
   createPaymentGatewayModeApplyMutationVariables,
   getPaymentGatewayModes,
   getPaymentGatewayModeStatusForUi,
@@ -152,6 +156,15 @@ const paymentSchema = z.object({
       (parsed) =>
         !!parsed && typeof parsed === 'object' && !Array.isArray(parsed)
     )
+    if (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error,
+      })
+    }
+  }),
+  GMPayFeeConfig: z.string().superRefine((value, ctx) => {
+    const error = getGMPayFeeConfigError(value)
     if (error) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -722,6 +735,8 @@ export function PaymentSettingsSection({
   const initialFormValues = React.useMemo<PaymentFormValues>(
     () => ({
       ...defaultValues,
+      GMPayFeeConfig:
+        defaultValues.GMPayFeeConfig || DEFAULT_GMPAY_FEE_CONFIG_JSON,
       ...waffoDefaultValues,
       ...waffoPancakeDefaultValues,
     }),
@@ -856,6 +871,7 @@ export function PaymentSettingsSection({
       PayMethods: formatJsonForEditor(initialFormValues.PayMethods),
       AmountOptions: formatJsonForEditor(initialFormValues.AmountOptions),
       AmountDiscount: formatJsonForEditor(initialFormValues.AmountDiscount),
+      GMPayFeeConfig: formatJsonForEditor(initialFormValues.GMPayFeeConfig),
       CreemProducts: formatJsonForEditor(initialFormValues.CreemProducts),
     },
   })
@@ -913,6 +929,7 @@ export function PaymentSettingsSection({
       PayMethods: formatJsonForEditor(parsedDefaults.PayMethods),
       AmountOptions: formatJsonForEditor(parsedDefaults.AmountOptions),
       AmountDiscount: formatJsonForEditor(parsedDefaults.AmountDiscount),
+      GMPayFeeConfig: formatJsonForEditor(parsedDefaults.GMPayFeeConfig),
       CreemProducts: formatJsonForEditor(parsedDefaults.CreemProducts),
     })
   }, [defaultsSignature, form])
@@ -928,6 +945,7 @@ export function PaymentSettingsSection({
       PayMethods: values.PayMethods.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
+      GMPayFeeConfig: values.GMPayFeeConfig.trim(),
       StripeApiSecret: values.StripeApiSecret.trim(),
       StripeWebhookSecret: values.StripeWebhookSecret.trim(),
       StripePriceId: values.StripePriceId.trim(),
@@ -972,6 +990,7 @@ export function PaymentSettingsSection({
       PayMethods: initialRef.current.PayMethods.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
+      GMPayFeeConfig: initialRef.current.GMPayFeeConfig.trim(),
       StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
       StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
       StripePriceId: initialRef.current.StripePriceId.trim(),
@@ -1060,6 +1079,16 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'payment_setting.amount_discount',
         value: sanitized.AmountDiscount,
+      })
+    }
+
+    if (
+      normalizeJsonForComparison(sanitized.GMPayFeeConfig) !==
+      normalizeJsonForComparison(initial.GMPayFeeConfig)
+    ) {
+      updates.push({
+        key: 'GMPayFeeConfig',
+        value: sanitized.GMPayFeeConfig,
       })
     }
 
@@ -1692,6 +1721,55 @@ export function PaymentSettingsSection({
                       )
                     )
                   }}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='GMPayFeeConfig'
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className='mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                        <FormLabel>{t('GMPay fee fallback')}</FormLabel>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() =>
+                            field.onChange(DEFAULT_GMPAY_FEE_CONFIG_JSON)
+                          }
+                          className='w-full sm:w-auto'
+                        >
+                          <RefreshCw className='mr-2 h-3 w-3' />
+                          {t('Reset to safe default')}
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <JsonCodeEditor
+                          value={field.value}
+                          onChange={field.onChange}
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          textareaRef={field.ref}
+                          placeholder={DEFAULT_GMPAY_FEE_CONFIG_JSON}
+                          heightClassName='h-64 min-h-64 max-h-64'
+                          aria-invalid={Boolean(
+                            form.formState.errors.GMPayFeeConfig
+                          )}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Optional GMPay fee fallback. It is used only when the gateway does not provide a verified fee quote. Keep it disabled unless you have confirmed your provider pricing.'
+                        )}
+                      </FormDescription>
+                      <FormDescription>
+                        {t(
+                          'Use fixed or percent rules in USD. Asset overrides use TOKEN:network keys such as USDT:tron. The user pays the fee; the configured top-up amount remains the credited balance.'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
                 <div>

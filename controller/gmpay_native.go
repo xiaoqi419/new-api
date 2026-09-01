@@ -85,6 +85,10 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	status, statusOK := service.GMPayCanonicalParameter(params["status"])
 	signature, signatureOK := params["signature"].(string)
 	if err == nil {
+		if !gmpayCallbackFeeFieldsMatch(params) {
+			writeGMPayNotifyResult(c, false)
+			return
+		}
 		// New EPUSDT callbacks include the selected network. Keep accepting
 		// legacy TRON callbacks that omitted it, but validate any supplied
 		// asset/address before settlement.
@@ -238,6 +242,10 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 		"block_transaction_id": {},
 		"signature":            {},
 		"status":               {},
+		"fee":                  {},
+		"service_fee":          {},
+		"network_fee":          {},
+		"total_amount":         {},
 	}
 	for key, value := range params {
 		if _, ok := allowed[key]; !ok {
@@ -266,7 +274,7 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 	networkValue, networkPresent := params["network"]
 	network, networkOK := networkValue.(string)
 	if !amountOK || !actualAmountOK || !receiveAddressOK || !tokenOK || !gmpayPositiveDecimal(amount) ||
-		!gmpayPositiveDecimal(actualAmount) || strings.TrimSpace(token) == "" {
+		!gmpayPositiveActualDecimal(actualAmount) || strings.TrimSpace(token) == "" {
 		return nil, errors.New("invalid gmpay callback audit data")
 	}
 	if networkPresent {
@@ -277,6 +285,57 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 		return nil, errors.New("invalid gmpay callback receive address")
 	}
 	return params, nil
+}
+
+// gmpayCallbackFeeFieldsMatch validates optional fee metadata without ever
+// trusting it as the settlement amount.  The signed amount and the persisted
+// TopUp.Money remain authoritative; optional fields are accepted only when
+// they are finite, non-negative, mutually consistent, and (when supplied)
+// total_amount equals amount.
+func gmpayCallbackFeeFieldsMatch(params map[string]any) bool {
+	amountText, ok := service.GMPayCanonicalParameter(params["amount"])
+	if !ok {
+		return false
+	}
+	amount, err := service.ParseGMPayAmount(amountText, false)
+	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
+		return false
+	}
+	var fee decimal.Decimal
+	feePresent := false
+	for _, key := range []string{"fee", "service_fee", "network_fee"} {
+		value, present := params[key]
+		if !present {
+			continue
+		}
+		text, valid := service.GMPayCanonicalParameter(value)
+		if !valid {
+			return false
+		}
+		parsed, parseErr := service.ParseGMPayAmount(text, true)
+		if parseErr != nil || parsed.IsNegative() {
+			return false
+		}
+		if feePresent && !fee.Equal(parsed) {
+			return false
+		}
+		fee = parsed
+		feePresent = true
+	}
+	if totalValue, present := params["total_amount"]; present {
+		text, valid := service.GMPayCanonicalParameter(totalValue)
+		if !valid {
+			return false
+		}
+		total, parseErr := service.ParseGMPayAmount(text, false)
+		if parseErr != nil || total.LessThanOrEqual(decimal.Zero) || !total.Equal(amount) {
+			return false
+		}
+	}
+	if feePresent && fee.GreaterThan(amount) {
+		return false
+	}
+	return true
 }
 
 // gmpayCallbackMatchesOrderAsset binds the callback to the asset encoded in
@@ -316,7 +375,12 @@ func gmpayNetworksMatch(actual, expected string) bool {
 }
 
 func gmpayPositiveDecimal(value string) bool {
-	amount, err := decimal.NewFromString(value)
+	amount, err := service.ParseGMPayAmount(value, false)
+	return err == nil && amount.GreaterThan(decimal.Zero)
+}
+
+func gmpayPositiveActualDecimal(value string) bool {
+	amount, err := service.ParseGMPayActualAmount(value)
 	return err == nil && amount.GreaterThan(decimal.Zero)
 }
 

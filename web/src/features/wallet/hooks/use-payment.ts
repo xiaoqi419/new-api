@@ -177,7 +177,10 @@ export function usePayment() {
           amount: requestAmount,
           payment_method: paymentType,
           ...(cryptoAsset
-            ? { network: cryptoAsset.network, token: 'usdt' }
+            ? {
+                network: cryptoAsset.network,
+                token: cryptoAsset.token.toLowerCase(),
+              }
             : {}),
         })
 
@@ -190,7 +193,11 @@ export function usePayment() {
           response.data,
           {
             paymentMethod: paymentType,
-            ...(amount > 0 ? { money: amount } : {}),
+            // Native GMPay responses include the server-calculated total,
+            // which may include a user-paid fee. Do not compare that total to
+            // the pre-fee amount held in the legacy calculator state. Legacy
+            // EPay responses keep the historical amount consistency check.
+            ...(!cryptoAsset && amount > 0 ? { money: amount } : {}),
           },
           setEpayCheckout
         )
