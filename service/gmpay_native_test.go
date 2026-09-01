@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -138,11 +137,60 @@ func TestGMPayClientCreatesEthereumCheckoutWithSelectedAsset(t *testing.T) {
 	assert.Equal(t, "ETHEREUM", checkout.Network)
 }
 
-func TestGMPayClientAcceptsConsistentGatewayFeeQuote(t *testing.T) {
+func TestGMPayClientUsesAndValidatesConfiguredSettlementCurrency(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var payload map[string]any
 		require.NoError(t, common.DecodeJson(request.Body, &payload))
-		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"order_id":%q,"trade_id":"FEE-TRADE","amount":35,"currency":"USD","status":1,"actual_amount":"35.5","fee":"5.00","service_fee":5,"network_fee":"5","total_amount":35,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","expiration_time":2000000000}}`, payload["order_id"])))
+		assert.Equal(t, "eur", payload["currency"])
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"EUR-ORDER","trade_id":"EUR-TRADE","amount":10,"currency":"EUR","status":1,"actual_amount":"10.1","receive_address":"0x1111111111111111111111111111111111111111","token":"USDT","network":"ethereum","expiration_time":2000000000}}`))
+	}))
+	defer server.Close()
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	notifyURL, err := url.Parse("https://new-api.example/api/user/gmpay/notify")
+	require.NoError(t, err)
+	redirectURL, err := url.Parse("https://new-api.example/wallet")
+	require.NoError(t, err)
+	checkout, err := client.CreateOrder(context.Background(), GMPayCreateOrderRequest{
+		OrderID:            "EUR-ORDER",
+		Amount:             "10",
+		NotifyURL:          notifyURL,
+		RedirectURL:        redirectURL,
+		Token:              "USDT",
+		Network:            "ethereum",
+		SettlementCurrency: "eur",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "EUR", checkout.SettlementCurrency)
+}
+
+func TestGMPayClientRejectsMismatchedConfiguredSettlementCurrency(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"EUR-ORDER","trade_id":"EUR-TRADE","amount":10,"currency":"USD","status":1,"actual_amount":"10.1","receive_address":"0x1111111111111111111111111111111111111111","token":"USDT","network":"ethereum","expiration_time":2000000000}}`))
+	}))
+	defer server.Close()
+	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
+	require.NoError(t, err)
+	notifyURL, err := url.Parse("https://new-api.example/api/user/gmpay/notify")
+	require.NoError(t, err)
+	redirectURL, err := url.Parse("https://new-api.example/wallet")
+	require.NoError(t, err)
+	checkout, err := client.CreateOrder(context.Background(), GMPayCreateOrderRequest{
+		OrderID:            "EUR-ORDER",
+		Amount:             "10",
+		NotifyURL:          notifyURL,
+		RedirectURL:        redirectURL,
+		Token:              "USDT",
+		Network:            "ethereum",
+		SettlementCurrency: "EUR",
+	})
+	require.Error(t, err)
+	assert.Nil(t, checkout)
+}
+
+func TestGMPayClientIgnoresProviderFeeFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"order_id":"FEE-ORDER","trade_id":"FEE-TRADE","amount":35,"currency":"USD","status":1,"actual_amount":"35.5","fee":"999.00","service_fee":-1,"network_fee":"not-a-fee","total_amount":1,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","expiration_time":2000000000}}`))
 	}))
 	t.Cleanup(server.Close)
 	client, err := NewGMPayClient(server.URL, "merchant-001", "merchant-secret", server.Client())
@@ -159,7 +207,7 @@ func TestGMPayClientAcceptsConsistentGatewayFeeQuote(t *testing.T) {
 	assert.Equal(t, "30.00", checkout.BaseAmount)
 	assert.Equal(t, "5.00", checkout.FeeAmount)
 	assert.Equal(t, "35.00", checkout.TotalAmount)
-	assert.Equal(t, GMPayFeeSourceGatewayQuote, checkout.FeeSource)
+	assert.Equal(t, GMPayFeeSourceAdminFallback, checkout.FeeSource)
 }
 
 func TestGMPayClientRejectsUnsafeOrUnusableResponse(t *testing.T) {
@@ -195,18 +243,6 @@ func TestGMPayClientRejectsUnsafeOrUnusableResponse(t *testing.T) {
 		{
 			name: "invalid response currency",
 			body: `{"status_code":200,"message":"success","data":{"order_id":"WALLET-ORDER-1","trade_id":"GMPAY-ORDER-1","amount":10,"currency":"EUR","status":1,"actual_amount":"10.0123","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","expiration_time":2000000000}}`,
-		},
-		{
-			name: "negative response fee",
-			body: `{"status_code":200,"message":"success","data":{"order_id":"WALLET-ORDER-1","trade_id":"GMPAY-ORDER-1","amount":10,"currency":"USD","status":1,"actual_amount":"10.0123","fee":-1,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","expiration_time":2000000000}}`,
-		},
-		{
-			name: "disagreeing response fee fields",
-			body: `{"status_code":200,"message":"success","data":{"order_id":"WALLET-ORDER-1","trade_id":"GMPAY-ORDER-1","amount":10,"currency":"USD","status":1,"actual_amount":"10.0123","fee":1,"service_fee":2,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","expiration_time":2000000000}}`,
-		},
-		{
-			name: "mismatched response total",
-			body: `{"status_code":200,"message":"success","data":{"order_id":"WALLET-ORDER-1","trade_id":"GMPAY-ORDER-1","amount":10,"currency":"USD","status":1,"actual_amount":"10.0123","total_amount":11,"receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","expiration_time":2000000000}}`,
 		},
 		{
 			name: "fiat amount over hard limit",

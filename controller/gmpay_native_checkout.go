@@ -3,8 +3,11 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -123,7 +126,7 @@ func bindGMPayNativeOrderAsset(tradeNo, paymentMethod string) error {
 		if topUp.PaymentProvider != model.PaymentProviderEpay || topUp.Status != common.TopUpStatusPending {
 			return errors.New("gmpay top-up order is not pending")
 		}
-		if isGMPayNativeOrderPaymentMethod(topUp.PaymentMethod) && topUp.PaymentMethod != gmpayNativePaymentMethod && topUp.PaymentMethod != paymentMethod {
+		if isGMPayNativeOrderPaymentMethod(topUp.PaymentMethod) && !gmpayPaymentMethodsShareAsset(topUp.PaymentMethod, paymentMethod) {
 			return errors.New("gmpay top-up asset is already bound")
 		}
 		topUp.PaymentMethod = paymentMethod
@@ -136,7 +139,7 @@ func bindGMPayNativeOrderAsset(tradeNo, paymentMethod string) error {
 		if order.PaymentProvider != model.PaymentProviderEpay || order.Status != common.TopUpStatusPending {
 			return errors.New("gmpay subscription order is not pending")
 		}
-		if isGMPayNativeOrderPaymentMethod(order.PaymentMethod) && order.PaymentMethod != gmpayNativePaymentMethod && order.PaymentMethod != paymentMethod {
+		if isGMPayNativeOrderPaymentMethod(order.PaymentMethod) && !gmpayPaymentMethodsShareAsset(order.PaymentMethod, paymentMethod) {
 			return errors.New("gmpay subscription asset is already bound")
 		}
 		order.PaymentMethod = paymentMethod
@@ -153,6 +156,15 @@ func bindGMPayNativeOrderAsset(tradeNo, paymentMethod string) error {
 		return nil
 	}
 	return nil
+}
+
+func gmpayPaymentMethodsShareAsset(left, right string) bool {
+	leftToken, leftNetwork, leftOK := parseGMPayPaymentMethod(left)
+	rightToken, rightNetwork, rightOK := parseGMPayPaymentMethod(right)
+	if !leftOK || !rightOK {
+		return false
+	}
+	return leftToken == rightToken && gmpayNetworksMatch(leftNetwork, rightNetwork)
 }
 
 // gmpayPaymentMethodForAsset stores the selected asset in the existing
@@ -218,8 +230,262 @@ func isGMPayNativeOrderPaymentMethod(paymentMethod string) bool {
 	return ok
 }
 
+// gmpayQuotedPaymentMethodPrefix is deliberately distinct from the public
+// payment-method value (`usdt.tron`).  It is persisted only on ordinary wallet
+// orders whose amount contains a server-generated dynamic/fallback quote.  A
+// callback can therefore fail closed after a process restart instead of
+// silently treating a lost in-memory quote as a zero-fee legacy order.
+const gmpayQuotedPaymentMethodPrefix = "gmpay"
+
+func gmpayPaymentMethodForQuotedAsset(token, network string) string {
+	token = strings.ToLower(strings.TrimSpace(token))
+	if normalizedNetwork, ok := service.NormalizeGMPayNetwork(network); ok {
+		network = normalizedNetwork
+	} else {
+		network = strings.ToLower(strings.TrimSpace(network))
+	}
+	return gmpayQuotedPaymentMethodPrefix + "." + network + "." + token
+}
+
+func isGMPayQuotedPaymentMethod(paymentMethod string) bool {
+	parts := strings.Split(strings.ToLower(strings.TrimSpace(paymentMethod)), ".")
+	if len(parts) != 3 || parts[0] != gmpayQuotedPaymentMethodPrefix {
+		return false
+	}
+	token, network, ok := parseGMPayPaymentMethod(paymentMethod)
+	return ok && token != "" && network != ""
+}
+
+// gmpayPaymentMethodForQuoteAsset chooses the durable order marker according
+// to fee provenance.  Specialized subscription/group-buy/agent flows pass the
+// gateway-included quote and retain their historical payment-method values;
+// only ordinary wallet dynamic/fallback quotes receive the quoted marker.
+func gmpayPaymentMethodForQuoteAsset(token, network string, quote service.GMPayFeeQuote) string {
+	source, err := service.NormalizeGMPayFeeSource(quote.Source)
+	if err == nil && source != service.GMPayFeeSourceGatewayIncluded {
+		return gmpayPaymentMethodForQuotedAsset(token, network)
+	}
+	return gmpayPaymentMethodForAsset(token, network)
+}
+
 func shouldUseGMPayNative(paymentMethod string) bool {
 	return operation_setting.IsGMPayNativePaymentGatewayMode() && paymentMethod == gmpayNativePaymentMethod
+}
+
+// quoteGMPayWalletFee applies the server-owned fee source precedence for the
+// ordinary wallet: a fresh chain estimate first, the explicitly enabled
+// administrator fallback second, and a legacy gateway-included quote only
+// when dynamic estimation is disabled. It is intentionally separate from the
+// shared Native checkout wrapper so subscriptions, group buys, and agent
+// prepayment retain their existing no-fee semantics.
+func quoteGMPayWalletFee(ctx context.Context, baseAmount decimal.Decimal, token, network string) (service.GMPayFeeQuote, error) {
+	baseAmount = baseAmount.RoundDown(2)
+	cfg, err := service.CurrentGMPayFeeConfig()
+	if err != nil {
+		return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+	}
+	settlementCurrency, currencyErr := gmpaySettlementCurrencyForNetwork(network, cfg)
+	if currencyErr != nil && (cfg.IsDynamicEnabled() || cfg.HasFallbackPolicy()) {
+		return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+	}
+
+	if cfg.IsDynamicEnabled() {
+		estimator, estimatorErr := newGMPayNetworkFeeEstimator()
+		if estimatorErr == nil && estimator != nil {
+			networkQuote, estimateErr := estimator.Estimate(ctx, service.NetworkFeeEstimateInput{
+				Token:              token,
+				Network:            network,
+				SettlementCurrency: settlementCurrency,
+				BaseAmount:         baseAmount,
+			})
+			if estimateErr == nil {
+				quote, convertErr := service.GMPayFeeQuoteFromNetworkQuote(
+					networkQuote,
+					baseAmount,
+					token,
+					network,
+					settlementCurrency,
+				)
+				if convertErr == nil {
+					return quote, nil
+				}
+			}
+		}
+		if !cfg.HasFallbackPolicy() {
+			return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+		}
+	}
+
+	// This call is the only fallback calculator. When dynamic mode is
+	// disabled and no fallback is configured it deliberately returns the
+	// legacy gateway-included zero-fee quote.
+	quote, err := service.GMPayFeeQuoteForAsset(baseAmount, token, network)
+	if err != nil {
+		return service.GMPayFeeQuote{}, err
+	}
+	if quote.Source != service.GMPayFeeSourceGatewayIncluded {
+		if currencyErr != nil || strings.TrimSpace(settlementCurrency) == "" {
+			return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+		}
+		quote.SettlementCurrency = settlementCurrency
+	}
+	return quote, nil
+}
+
+// gmpaySettlementCurrencyForNetwork resolves the currency used by a quote
+// from the administrator's chain configuration first, then the site's general
+// display setting.  There is intentionally no silent USD fallback: a custom
+// display currency without an ISO code must be configured on the chain before
+// a dynamic/fallback quote can be accepted.
+func gmpaySettlementCurrencyForNetwork(network string, cfg service.GMPayFeeConfig) (string, error) {
+	canonicalNetwork, ok := service.NormalizeGMPayNetwork(network)
+	if !ok {
+		return "", errors.New("gmpay payment network is unavailable")
+	}
+	if chain, exists := cfg.Chains[canonicalNetwork]; exists {
+		if currency := strings.ToUpper(strings.TrimSpace(chain.SettlementCurrency)); currency != "" {
+			return currency, nil
+		}
+	}
+	// The protocol's ordinary site modes are ISO currencies.  CUSTOM uses a
+	// display symbol only and is not safe to send to a payment gateway.
+	switch operation_setting.GetQuotaDisplayType() {
+	case operation_setting.QuotaDisplayTypeUSD:
+		return operation_setting.QuotaDisplayTypeUSD, nil
+	case operation_setting.QuotaDisplayTypeCNY:
+		return operation_setting.QuotaDisplayTypeCNY, nil
+	default:
+		return "", errors.New("gmpay settlement currency is not configured")
+	}
+}
+
+// validateGMPayFeeQuoteExpiry keeps a quote from being used after its
+// server-owned validity window.  The legacy gateway-included quote has no
+// independent quote clock and is intentionally exempt; dynamic and
+// administrator fallback quotes must carry both timestamps.
+func validateGMPayFeeQuoteExpiry(quote service.GMPayFeeQuote) error {
+	source, err := service.NormalizeGMPayFeeSource(quote.Source)
+	if err != nil {
+		return err
+	}
+	if source == service.GMPayFeeSourceGatewayIncluded {
+		return nil
+	}
+	now := time.Now().UTC()
+	if quote.QuotedAt.IsZero() || quote.ExpiresAt.IsZero() ||
+		quote.QuotedAt.After(now) || !quote.ExpiresAt.After(quote.QuotedAt) ||
+		!quote.ExpiresAt.After(now) {
+		return errors.New("gmpay fee quote is expired or invalid")
+	}
+	return nil
+}
+
+// addGMPayFeeQuoteMetadata appends only the server-generated fee quote
+// context to a checkout response. Provider response fields (including
+// actual_amount) remain separate and are never interpreted as a fee quote.
+// Evidence is rebuilt as a small allowlisted map because NetworkFeeEvidence
+// intentionally has required JSON fields whose zero values should be omitted
+// from the browser response.
+func addGMPayFeeQuoteMetadata(data gin.H, quote service.GMPayFeeQuote) {
+	source, err := service.NormalizeGMPayFeeSource(quote.Source)
+	if err != nil || source == service.GMPayFeeSourceGatewayIncluded {
+		return
+	}
+
+	if source == service.GMPayFeeSourceChainNetworkEstimate {
+		data["native_amount"] = quote.NativeAmount.String()
+		if nativeAsset := strings.TrimSpace(quote.NativeAsset); nativeAsset != "" {
+			data["native_asset"] = strings.ToUpper(nativeAsset)
+		}
+		data["subsidized"] = quote.Subsidized
+		data["evidence"] = gmpayNetworkFeeEvidenceSummary(quote.Evidence)
+		if estimatorVersion := strings.TrimSpace(quote.EstimatorVersion); estimatorVersion != "" {
+			data["estimator_version"] = estimatorVersion
+		}
+		if confidence := strings.TrimSpace(quote.Confidence); confidence != "" {
+			data["confidence"] = confidence
+		}
+	}
+
+	currency := strings.ToUpper(strings.TrimSpace(quote.SettlementCurrency))
+	if currency != "" {
+		data["settlement_currency"] = currency
+	}
+	if !quote.QuotedAt.IsZero() {
+		data["quoted_at"] = quote.QuotedAt.UTC().Format(time.RFC3339Nano)
+	}
+	if !quote.ExpiresAt.IsZero() {
+		data["expires_at"] = quote.ExpiresAt.UTC().Format(time.RFC3339Nano)
+	}
+}
+
+// gmpayFeeAuditFields returns a compact, allowlisted log fragment for a quote.
+// It intentionally excludes token/network, addresses, RPC URLs, calldata and
+// all provider credentials; those values are not needed to audit the fee
+// provenance and would make payment logs unnecessarily sensitive.
+func gmpayFeeAuditFields(quote service.GMPayFeeQuote) string {
+	source, err := service.NormalizeGMPayFeeSource(quote.Source)
+	if err != nil {
+		source = "unknown"
+	}
+	feeAmount := "0.00"
+	if !quote.FeeAmount.IsNegative() && decimalFiniteForAudit(quote.FeeAmount) {
+		feeAmount = quote.FeeAmount.Round(2).StringFixed(2)
+	}
+	currency := strings.ToUpper(strings.TrimSpace(quote.SettlementCurrency))
+	if currency == "" {
+		currency = "-"
+	}
+	quotedAt := "-"
+	if !quote.QuotedAt.IsZero() {
+		quotedAt = quote.QuotedAt.UTC().Format(time.RFC3339Nano)
+	}
+	expiresAt := "-"
+	if !quote.ExpiresAt.IsZero() {
+		expiresAt = quote.ExpiresAt.UTC().Format(time.RFC3339Nano)
+	}
+	return fmt.Sprintf("fee_source=%s fee_amount=%s settlement_currency=%s quote_quoted_at=%s quote_expires_at=%s", source, feeAmount, currency, quotedAt, expiresAt)
+}
+
+func decimalFiniteForAudit(value decimal.Decimal) bool {
+	f, _ := value.Float64()
+	return !math.IsNaN(f) && !math.IsInf(f, 0)
+}
+
+func gmpayNetworkFeeEvidenceSummary(evidence service.NetworkFeeEvidence) gin.H {
+	result := gin.H{}
+	addString := func(key, value string) {
+		if value = strings.TrimSpace(value); value != "" {
+			result[key] = value
+		}
+	}
+	addString("rpc_method", evidence.RPCMethod)
+	if len(evidence.RPCMethods) > 0 {
+		methods := make([]string, 0, len(evidence.RPCMethods))
+		for _, method := range evidence.RPCMethods {
+			if method = strings.TrimSpace(method); method != "" {
+				methods = append(methods, method)
+			}
+		}
+		if len(methods) > 0 {
+			result["rpc_methods"] = methods
+		}
+	}
+	addString("rpc_source", evidence.RPCSource)
+	addString("price_source", evidence.PriceSource)
+	if evidence.PriceTimestamp > 0 {
+		result["price_timestamp"] = evidence.PriceTimestamp
+	}
+	addString("block", evidence.Block)
+	if evidence.Slot > 0 {
+		result["slot"] = evidence.Slot
+	}
+	addString("gas", evidence.Gas)
+	addString("gas_price", evidence.GasPrice)
+	addString("energy", evidence.Energy)
+	addString("bandwidth", evidence.Bandwidth)
+	addString("lamports", evidence.Lamports)
+	return result
 }
 
 // createGMPayNativeCheckout is the shared server-side Native checkout path for
@@ -287,6 +553,9 @@ func createGMPayNativeCheckoutWithQuote(
 		return nil, sourceErr
 	}
 	quote.Source = feeSource
+	if err := validateGMPayFeeQuoteExpiry(quote); err != nil {
+		return nil, err
+	}
 	var token, network string
 	if len(asset) > 0 {
 		token = asset[0]
@@ -298,23 +567,31 @@ func createGMPayNativeCheckoutWithQuote(
 	if err != nil {
 		return nil, err
 	}
-	assetPaymentMethod := gmpayPaymentMethodForAsset(token, network)
+	assetPaymentMethod := gmpayPaymentMethodForQuoteAsset(token, network, quote)
 	if err := bindGMPayNativeOrderAsset(tradeNo, assetPaymentMethod); err != nil {
 		return nil, err
 	}
 	checkout, err := client.CreateOrder(ctx, service.GMPayCreateOrderRequest{
-		OrderID:     tradeNo,
-		Amount:      quote.TotalAmount.StringFixed(2),
-		BaseAmount:  quote.BaseAmount.StringFixed(2),
-		FeeAmount:   quote.FeeAmount.StringFixed(2),
-		FeeSource:   quote.Source,
-		NotifyURL:   notifyURL,
-		RedirectURL: returnURL,
-		Name:        name,
-		Token:       token,
-		Network:     network,
+		OrderID:            tradeNo,
+		Amount:             quote.TotalAmount.StringFixed(2),
+		BaseAmount:         quote.BaseAmount.StringFixed(2),
+		FeeAmount:          quote.FeeAmount.StringFixed(2),
+		FeeSource:          quote.Source,
+		SettlementCurrency: strings.ToUpper(strings.TrimSpace(quote.SettlementCurrency)),
+		NotifyURL:          notifyURL,
+		RedirectURL:        returnURL,
+		Name:               name,
+		Token:              token,
+		Network:            network,
 	})
 	if err != nil {
+		return nil, err
+	}
+	if expectedCurrency := strings.ToUpper(strings.TrimSpace(quote.SettlementCurrency)); expectedCurrency != "" &&
+		strings.ToUpper(strings.TrimSpace(checkout.SettlementCurrency)) != expectedCurrency {
+		return nil, errors.New("gmpay checkout settlement currency does not match quote")
+	}
+	if err := validateGMPayFeeQuoteExpiry(quote); err != nil {
 		return nil, err
 	}
 	data := gin.H{
@@ -333,6 +610,10 @@ func createGMPayNativeCheckoutWithQuote(
 		"network":          checkout.Network,
 		"expiration_time":  checkout.ExpirationTime,
 	}
+	if currency := strings.ToUpper(strings.TrimSpace(checkout.SettlementCurrency)); currency != "" {
+		data["gateway_settlement_currency"] = currency
+	}
+	addGMPayFeeQuoteMetadata(data, quote)
 	if checkout.ServerTime > 0 {
 		data["server_time"] = checkout.ServerTime
 	}

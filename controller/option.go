@@ -10,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/console_setting"
 	"github.com/QuantumNous/new-api/setting/model_setting"
@@ -163,6 +164,19 @@ func UpdateOption(c *gin.Context) {
 		}
 	}
 	switch option.Key {
+	case service.GMPayFeeConfigOptionKey:
+		// Keep the fee policy as an opaque option value, but validate it before
+		// it reaches the database.  The checkout path treats malformed policy
+		// data as unavailable; accepting it here would make an administrator
+		// believe that dynamic Native checkout is enabled while every order
+		// silently falls back to an unsafe zero-fee quote.
+		if _, validateErr := service.ParseGMPayFeeConfig(option.Value.(string)); validateErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": validateErr.Error(),
+			})
+			return
+		}
 	case "GitHubOAuthEnabled":
 		if option.Value == "true" && common.GitHubClientId == "" {
 			c.JSON(http.StatusOK, gin.H{

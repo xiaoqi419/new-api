@@ -24,6 +24,9 @@ import {
 } from '../constants'
 import type {
   EpayCheckoutData,
+  EpayCheckoutTimestamp,
+  EpayFeeSource,
+  EpayNetworkFeeEvidence,
   PaymentMethod,
   PresetAmount,
   TopupInfo,
@@ -136,12 +139,13 @@ const GMPAY_CHECKOUT_AMOUNT_PATTERN = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
 const GMPAY_CHECKOUT_AMOUNT_MAX_LENGTH = 128
 const GMPAY_CHECKOUT_AMOUNT_MAX_SCALE = 6
 const GMPAY_CHECKOUT_AMOUNT_MAX_VALUE = 1_000_000_000
-const GMPAY_FEE_SOURCES = new Set([
-  'gateway_quote',
-  'gateway_included',
-  'admin_fixed',
-  'admin_percent',
-])
+const GMPAY_NATIVE_AMOUNT_MAX_SCALE = 18
+const GMPAY_QUOTE_METADATA_MAX_LENGTH = 128
+const GMPAY_EVIDENCE_MAX_METHODS = 16
+const GMPAY_EVIDENCE_MAX_PRICE_SOURCES = 8
+const GMPAY_TIMESTAMP_MAX_MILLISECONDS = 8.64e15
+const GMPAY_HOST_LABEL_PATTERN =
+  /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/
 
 /**
  * Normalize a server-provided GMPay amount while keeping the browser-side
@@ -149,7 +153,8 @@ const GMPAY_FEE_SOURCES = new Set([
  * field was not supplied; `null` means it was supplied but invalid.
  */
 function normalizeOptionalGmpayAmount(
-  value: unknown
+  value: unknown,
+  maxScale = GMPAY_CHECKOUT_AMOUNT_MAX_SCALE
 ): string | undefined | null {
   if (value === undefined) return undefined
 
@@ -185,7 +190,7 @@ function normalizeOptionalGmpayAmount(
   if (!Number.isFinite(exponent)) return null
   const fractionDigits = mantissa.split('.')[1]?.length ?? 0
   const scale = Math.max(0, fractionDigits - exponent)
-  if (scale > GMPAY_CHECKOUT_AMOUNT_MAX_SCALE) return null
+  if (scale > maxScale) return null
 
   return normalized
 }
@@ -193,11 +198,202 @@ function normalizeOptionalGmpayAmount(
 /** Normalize the server-owned fee provenance enum. */
 function normalizeOptionalGmpayFeeSource(
   value: unknown
+): EpayFeeSource | undefined | null {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase()
+  switch (normalized) {
+    case 'chain_network_estimate':
+      return 'chain_network_estimate'
+    case 'admin_fallback':
+    case 'admin_fixed':
+    case 'admin_percent':
+      return 'admin_fallback'
+    case 'gateway_quote':
+      return 'gateway_quote'
+    case 'gateway_included':
+    case 'gateway-included':
+      return 'gateway_included'
+    default:
+      return null
+  }
+}
+
+function normalizeOptionalGmpayIdentifier(
+  value: unknown,
+  pattern: RegExp,
+  uppercase = false
 ): string | undefined | null {
   if (value === undefined) return undefined
   if (typeof value !== 'string') return null
   const normalized = value.trim()
-  return GMPAY_FEE_SOURCES.has(normalized) ? normalized : null
+  if (
+    !normalized ||
+    normalized.length > GMPAY_QUOTE_METADATA_MAX_LENGTH ||
+    !pattern.test(normalized)
+  ) {
+    return null
+  }
+  return uppercase ? normalized.toUpperCase() : normalized
+}
+
+function normalizeOptionalGmpayTimestamp(
+  value: unknown
+): EpayCheckoutTimestamp | undefined | null {
+  if (value === undefined) return undefined
+  if (typeof value === 'number') {
+    return isValidGmpayTimestamp(value) ? value : null
+  }
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  if (
+    !normalized ||
+    normalized.length > GMPAY_QUOTE_METADATA_MAX_LENGTH ||
+    !isValidGmpayTimestamp(normalized)
+  ) {
+    return null
+  }
+  return normalized
+}
+
+function gmpayTimestampToMilliseconds(
+  value: EpayCheckoutTimestamp
+): number | null {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value <= 0) return null
+    const milliseconds = value < 10_000_000_000 ? value * 1000 : value
+    return Number.isFinite(milliseconds) ? milliseconds : null
+  }
+
+  const normalized = value.trim()
+  if (/^\d+$/.test(normalized)) {
+    const numericValue = Number(normalized)
+    if (!Number.isFinite(numericValue) || numericValue <= 0) return null
+    return numericValue < 10_000_000_000 ? numericValue * 1000 : numericValue
+  }
+  const parsed = Date.parse(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function isValidGmpayTimestamp(value: EpayCheckoutTimestamp): boolean {
+  const milliseconds = gmpayTimestampToMilliseconds(value)
+  return (
+    milliseconds !== null &&
+    milliseconds > 0 &&
+    milliseconds <= GMPAY_TIMESTAMP_MAX_MILLISECONDS
+  )
+}
+
+function isValidGmpayPriceSourceHost(value: string): boolean {
+  if (value.includes(':')) {
+    try {
+      const parsed = new URL(`https://[${value}]`)
+      return parsed.hostname.startsWith('[') && parsed.hostname.endsWith(']')
+    } catch {
+      return false
+    }
+  }
+
+  return value.split('.').every((label) => GMPAY_HOST_LABEL_PATTERN.test(label))
+}
+
+function normalizeOptionalGmpayPriceSource(
+  value: unknown
+): string | undefined | null {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string') return null
+
+  const normalized = value.trim()
+  if (
+    !normalized ||
+    normalized.length > GMPAY_QUOTE_METADATA_MAX_LENGTH ||
+    /\s/.test(normalized)
+  ) {
+    return null
+  }
+
+  const sources = normalized.split(',')
+  if (
+    sources.length > GMPAY_EVIDENCE_MAX_PRICE_SOURCES ||
+    sources.some((source) => !source || !isValidGmpayPriceSourceHost(source))
+  ) {
+    return null
+  }
+
+  return sources.join(',')
+}
+
+function normalizeOptionalGmpayEvidence(
+  value: unknown
+): EpayNetworkFeeEvidence | undefined | null {
+  if (value === undefined) return undefined
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const fields = value as Record<string, unknown>
+  const evidence: EpayNetworkFeeEvidence = {}
+  const stringFields = [
+    'rpc_method',
+    'rpc_source',
+    'price_source',
+    'block',
+    'gas',
+    'gas_price',
+    'energy',
+    'bandwidth',
+    'lamports',
+  ] as const
+  const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/
+  for (const key of stringFields) {
+    if (!(key in fields)) continue
+    const normalized =
+      key === 'price_source'
+        ? normalizeOptionalGmpayPriceSource(fields[key])
+        : normalizeOptionalGmpayIdentifier(fields[key], identifierPattern)
+    if (normalized === null || normalized === undefined) return null
+    evidence[key] = normalized
+  }
+
+  if ('rpc_methods' in fields) {
+    const methods = fields.rpc_methods
+    if (
+      !Array.isArray(methods) ||
+      methods.length > GMPAY_EVIDENCE_MAX_METHODS
+    ) {
+      return null
+    }
+    const normalizedMethods: string[] = []
+    for (const method of methods) {
+      const normalized = normalizeOptionalGmpayIdentifier(
+        method,
+        identifierPattern
+      )
+      if (normalized === null || normalized === undefined) return null
+      normalizedMethods.push(normalized)
+    }
+    evidence.rpc_methods = normalizedMethods
+  }
+
+  if ('price_timestamp' in fields) {
+    const timestamp = fields.price_timestamp
+    if (
+      typeof timestamp !== 'number' ||
+      !Number.isSafeInteger(timestamp) ||
+      timestamp <= 0
+    ) {
+      return null
+    }
+    evidence.price_timestamp = timestamp
+  }
+
+  if ('slot' in fields) {
+    const slot = fields.slot
+    if (typeof slot !== 'number' || !Number.isSafeInteger(slot) || slot < 0) {
+      return null
+    }
+    evidence.slot = slot
+  }
+
+  return evidence
 }
 
 export function getEpayCheckoutData(
@@ -268,13 +464,59 @@ export function getEpayCheckoutData(
     const feeAmount = normalizeOptionalGmpayAmount(fields.fee_amount)
     const totalAmount = normalizeOptionalGmpayAmount(fields.total_amount)
     const feeSource = normalizeOptionalGmpayFeeSource(fields.fee_source)
+    const nativeAmount = normalizeOptionalGmpayAmount(
+      fields.native_amount,
+      GMPAY_NATIVE_AMOUNT_MAX_SCALE
+    )
+    const nativeAsset = normalizeOptionalGmpayIdentifier(
+      fields.native_asset,
+      /^[A-Za-z][A-Za-z0-9._-]{0,31}$/,
+      true
+    )
+    const settlementCurrency = normalizeOptionalGmpayIdentifier(
+      fields.settlement_currency,
+      /^[A-Za-z][A-Za-z0-9._-]{2,7}$/,
+      true
+    )
+    const quotedAt = normalizeOptionalGmpayTimestamp(fields.quoted_at)
+    const expiresAt = normalizeOptionalGmpayTimestamp(fields.expires_at)
+    const estimatorVersion = normalizeOptionalGmpayIdentifier(
+      fields.estimator_version,
+      /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/
+    )
+    const confidence = normalizeOptionalGmpayIdentifier(
+      fields.confidence,
+      /^[A-Za-z][A-Za-z0-9._-]{0,31}$/
+    )
+    const subsidized = fields.subsidized
+    const evidence = normalizeOptionalGmpayEvidence(fields.evidence)
     if (
       baseAmount === null ||
       feeAmount === null ||
       totalAmount === null ||
-      feeSource === null
+      feeSource === null ||
+      nativeAmount === null ||
+      nativeAsset === null ||
+      settlementCurrency === null ||
+      quotedAt === null ||
+      expiresAt === null ||
+      estimatorVersion === null ||
+      confidence === null ||
+      evidence === null ||
+      (subsidized !== undefined && typeof subsidized !== 'boolean')
     ) {
       return null
+    }
+
+    if (quotedAt !== undefined && expiresAt !== undefined) {
+      const quotedAtMs = gmpayTimestampToMilliseconds(quotedAt)
+      const expiresAtMs = gmpayTimestampToMilliseconds(expiresAt)
+      if (quotedAtMs === null || expiresAtMs === null) {
+        return null
+      }
+      if (expiresAtMs <= quotedAtMs) {
+        return null
+      }
     }
 
     const gatewayTradeNo = fields.gateway_trade_no
@@ -296,6 +538,19 @@ export function getEpayCheckoutData(
       ...(feeAmount !== undefined ? { fee_amount: feeAmount } : {}),
       ...(totalAmount !== undefined ? { total_amount: totalAmount } : {}),
       ...(feeSource !== undefined ? { fee_source: feeSource } : {}),
+      ...(nativeAmount !== undefined ? { native_amount: nativeAmount } : {}),
+      ...(nativeAsset !== undefined ? { native_asset: nativeAsset } : {}),
+      ...(settlementCurrency !== undefined
+        ? { settlement_currency: settlementCurrency }
+        : {}),
+      ...(quotedAt !== undefined ? { quoted_at: quotedAt } : {}),
+      ...(expiresAt !== undefined ? { expires_at: expiresAt } : {}),
+      ...(estimatorVersion !== undefined
+        ? { estimator_version: estimatorVersion }
+        : {}),
+      ...(confidence !== undefined ? { confidence } : {}),
+      ...(subsidized !== undefined ? { subsidized } : {}),
+      ...(evidence !== undefined ? { evidence } : {}),
     }
   }
 

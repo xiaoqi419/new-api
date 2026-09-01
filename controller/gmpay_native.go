@@ -28,6 +28,11 @@ var newGMPayNativeClient = func(gatewayAddress string, pid string, secret string
 	return service.NewGMPayClient(gatewayAddress, pid, secret, nil)
 }
 
+// newGMPayNetworkFeeEstimator is a test seam around the server-owned option
+// loader. RequestEpayCheckout must never construct an estimator from request
+// fields or from GMPay's create-order response.
+var newGMPayNetworkFeeEstimator = service.CurrentNetworkFeeEstimator
+
 // GMPayNotify handles callbacks sent to the platform's configured GMPay
 // merchant account. Agent callbacks use their own route and credentials.
 func GMPayNotify(c *gin.Context) {
@@ -85,10 +90,6 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	status, statusOK := service.GMPayCanonicalParameter(params["status"])
 	signature, signatureOK := params["signature"].(string)
 	if err == nil {
-		if !gmpayCallbackFeeFieldsMatch(params) {
-			writeGMPayNotifyResult(c, false)
-			return
-		}
 		// New EPUSDT callbacks include the selected network. Keep accepting
 		// legacy TRON callbacks that omitted it, but validate any supplied
 		// asset/address before settlement.
@@ -191,6 +192,35 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 		writeGMPayNotifyResult(c, true)
 		return
 	}
+	// Dynamic/fallback quotes are bound to ordinary wallet orders.  The quoted
+	// payment-method marker is durable, so a process restart (or an expired
+	// in-memory registry entry) fails closed instead of silently settling a
+	// quote as a zero-fee legacy order.  Historical non-marker orders remain
+	// compatible; when a binding is present it is still validated.
+	var feeQuote service.GMPayFeeQuote
+	quoteBindingPresent := false
+	quotedOrder := isGMPayQuotedPaymentMethod(topUp.PaymentMethod)
+	if binding, ok := service.GetGMPayQuoteBinding(topUp.TradeNo); ok {
+		token, network, parsed := parseGMPayPaymentMethod(topUp.PaymentMethod)
+		if !parsed || !service.ValidateGMPayQuoteBinding(binding, topUp.PaymentMethod, token, network, decimal.NewFromFloat(topUp.Money)) {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("GMPay 充值报价绑定校验失败 trade_no=%s status=quote_binding_invalid", topUp.TradeNo))
+			writeGMPayNotifyResult(c, false)
+			return
+		}
+		feeQuote = binding.Quote
+		quoteBindingPresent = true
+	} else if quotedOrder {
+		logger.LogWarn(c.Request.Context(), fmt.Sprintf("GMPay 充值报价绑定缺失 trade_no=%s status=quote_binding_missing", topUp.TradeNo))
+		writeGMPayNotifyResult(c, false)
+		return
+	}
+	if !quoteBindingPresent {
+		feeQuote = service.GMPayFeeQuote{
+			BaseAmount:  decimal.NewFromFloat(topUp.Money),
+			TotalAmount: decimal.NewFromFloat(topUp.Money),
+			Source:      service.GMPayFeeSourceGatewayIncluded,
+		}
+	}
 
 	quotaToAdd, err := topupQuotaFromAmount(topUp.Amount)
 	if err != nil || quotaToAdd <= 0 {
@@ -206,15 +236,51 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 		writeGMPayNotifyResult(c, false)
 		return
 	}
+	if quoteBindingPresent {
+		service.DeleteGMPayQuoteBinding(topUp.TradeNo)
+	}
 	if credited {
-		model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "gmpay")
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 充值回调结算 trade_no=%s user_id=%d status=settled %s", topUp.TradeNo, topUp.UserId, gmpayFeeAuditFields(feeQuote)))
+		model.RecordTopupLog(topUp.UserId, gmpayTopupLogContent(quotaToAdd, topUp.Money, feeQuote), c.ClientIP(), topUp.PaymentMethod, "gmpay")
 		model.CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		model.GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 		if model.OnTopUpSuccess != nil {
 			model.OnTopUpSuccess(topUp, quotaToAdd)
 		}
+	} else {
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 充值回调幂等确认 trade_no=%s user_id=%d status=idempotent %s", topUp.TradeNo, topUp.UserId, gmpayFeeAuditFields(feeQuote)))
 	}
 	writeGMPayNotifyResult(c, true)
+}
+
+// gmpayTopupLogContent keeps the historical top-up log text intact for
+// gateway-included/legacy orders.  Quotes produced by the new wallet fee path
+// append a human-readable provenance label plus the allowlisted source,
+// amount, currency, and quote-window fields from gmpayFeeAuditFields.  The
+// suffix intentionally contains no asset addresses, RPC URLs, calldata, or
+// merchant credentials.
+func gmpayTopupLogContent(quotaToAdd int, payMoney float64, quote service.GMPayFeeQuote) string {
+	content := fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), payMoney)
+	return content + gmpayTopupLogQuoteSuffix(quote)
+}
+
+func gmpayTopupLogQuoteSuffix(quote service.GMPayFeeQuote) string {
+	source, err := service.NormalizeGMPayFeeSource(quote.Source)
+	if err != nil {
+		return ""
+	}
+	var label string
+	switch source {
+	case service.GMPayFeeSourceChainNetworkEstimate:
+		label = "动态网络费用估算"
+	case service.GMPayFeeSourceAdminFallback:
+		label = "人工兜底"
+	default:
+		// Preserve the historical log wording for gateway-included quotes and
+		// any unknown source rather than presenting an unverifiable label.
+		return ""
+	}
+	return fmt.Sprintf("，费用来源：%s（%s）", label, gmpayFeeAuditFields(quote))
 }
 
 func isDerivedSubscriptionTopUp(topUp *model.TopUp, order *model.SubscriptionOrder) bool {
@@ -242,10 +308,6 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 		"block_transaction_id": {},
 		"signature":            {},
 		"status":               {},
-		"fee":                  {},
-		"service_fee":          {},
-		"network_fee":          {},
-		"total_amount":         {},
 	}
 	for key, value := range params {
 		if _, ok := allowed[key]; !ok {
@@ -285,57 +347,6 @@ func gmpayCallbackSignatureParams(body []byte) (map[string]any, error) {
 		return nil, errors.New("invalid gmpay callback receive address")
 	}
 	return params, nil
-}
-
-// gmpayCallbackFeeFieldsMatch validates optional fee metadata without ever
-// trusting it as the settlement amount.  The signed amount and the persisted
-// TopUp.Money remain authoritative; optional fields are accepted only when
-// they are finite, non-negative, mutually consistent, and (when supplied)
-// total_amount equals amount.
-func gmpayCallbackFeeFieldsMatch(params map[string]any) bool {
-	amountText, ok := service.GMPayCanonicalParameter(params["amount"])
-	if !ok {
-		return false
-	}
-	amount, err := service.ParseGMPayAmount(amountText, false)
-	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
-		return false
-	}
-	var fee decimal.Decimal
-	feePresent := false
-	for _, key := range []string{"fee", "service_fee", "network_fee"} {
-		value, present := params[key]
-		if !present {
-			continue
-		}
-		text, valid := service.GMPayCanonicalParameter(value)
-		if !valid {
-			return false
-		}
-		parsed, parseErr := service.ParseGMPayAmount(text, true)
-		if parseErr != nil || parsed.IsNegative() {
-			return false
-		}
-		if feePresent && !fee.Equal(parsed) {
-			return false
-		}
-		fee = parsed
-		feePresent = true
-	}
-	if totalValue, present := params["total_amount"]; present {
-		text, valid := service.GMPayCanonicalParameter(totalValue)
-		if !valid {
-			return false
-		}
-		total, parseErr := service.ParseGMPayAmount(text, false)
-		if parseErr != nil || total.LessThanOrEqual(decimal.Zero) || !total.Equal(amount) {
-			return false
-		}
-	}
-	if feePresent && fee.GreaterThan(amount) {
-		return false
-	}
-	return true
 }
 
 // gmpayCallbackMatchesOrderAsset binds the callback to the asset encoded in

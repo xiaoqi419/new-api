@@ -11,12 +11,14 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -668,6 +670,9 @@ func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *tes
 	require.NotNil(t, stored)
 	assert.Equal(t, int64(10), stored.Amount)
 	assert.Equal(t, 15.0, stored.Money)
+	assert.Equal(t, "gmpay.tron.usdt", stored.PaymentMethod)
+	_, bindingPresent := service.GetGMPayQuoteBinding(tradeNo)
+	assert.True(t, bindingPresent)
 
 	payload := <-requestBodies
 	assert.Equal(t, float64(15), payload["amount"])
@@ -868,8 +873,6 @@ func TestGMPayCallbackSettlesUSDCAssetsAndChargesOnlyBaseAmount(t *testing.T) {
 			params["token"] = "USDC"
 			params["network"] = tc.network
 			params["receive_address"] = tc.address
-			params["fee"] = "5.00"
-			params["total_amount"] = "35.00"
 
 			recorder := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(recorder)
@@ -889,7 +892,7 @@ func TestGMPayCallbackSettlesUSDCAssetsAndChargesOnlyBaseAmount(t *testing.T) {
 	}
 }
 
-func TestGMPayCallbackRejectsFeeAmountMismatches(t *testing.T) {
+func TestGMPayCallbackRejectsSignedAmountMismatches(t *testing.T) {
 	testCases := []struct {
 		name   string
 		mutate func(map[string]any)
@@ -906,19 +909,6 @@ func TestGMPayCallbackRejectsFeeAmountMismatches(t *testing.T) {
 			mutate: func(params map[string]any) {
 				params["amount"] = "40.00"
 				params["actual_amount"] = "40.00"
-			},
-		},
-		{
-			name: "fee fields disagree",
-			mutate: func(params map[string]any) {
-				params["fee"] = "5.00"
-				params["service_fee"] = "4.00"
-			},
-		},
-		{
-			name: "total differs from signed amount",
-			mutate: func(params map[string]any) {
-				params["total_amount"] = "34.00"
 			},
 		},
 	}
@@ -955,4 +945,108 @@ func TestGMPayCallbackKeepsHistoricalNonStablecoinBindingCompatible(t *testing.T
 		"receive_address": "0x1111111111111111111111111111111111111111",
 	}
 	assert.True(t, gmpayCallbackMatchesOrderAsset(params, "usdt.ethereum.dai"))
+}
+
+func TestGMPayNotifyFailsClosedWhenQuotedOrderBindingIsMissing(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	order := insertGMPayTopUpForTest(t, "gmpay-quoted-binding-missing", 15, "gmpay.tron.usdt", model.PaymentProviderEpay)
+	params := validGMPayNotifyParams(order.TradeNo)
+	params["amount"] = "15.00"
+	params["actual_amount"] = "15.00"
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = signedGMPayNotifyRequest(t, params)
+	GMPayNotify(ctx)
+
+	assert.Equal(t, "fail", recorder.Body.String())
+	stored := model.GetTopUpByTradeNo(order.TradeNo)
+	require.NotNil(t, stored)
+	assert.Equal(t, common.TopUpStatusPending, stored.Status)
+	var user model.User
+	require.NoError(t, model.DB.First(&user, order.UserId).Error)
+	assert.Zero(t, user.Quota)
+}
+
+func TestGMPayNotifyAcceptsValidQuotedBindingAndSettlesOnce(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	order := insertGMPayTopUpForTest(t, "gmpay-quoted-binding-valid", 15, "gmpay.tron.usdt", model.PaymentProviderEpay)
+	now := time.Now().UTC()
+	quote := service.GMPayFeeQuote{
+		BaseAmount:         decimal.NewFromInt(10),
+		FeeAmount:          decimal.NewFromInt(5),
+		TotalAmount:        decimal.NewFromInt(15),
+		Source:             service.GMPayFeeSourceAdminFallback,
+		SettlementCurrency: "USD",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(5 * time.Minute),
+	}
+	require.NoError(t, service.StoreGMPayQuoteBinding(order.TradeNo, order.PaymentMethod, "USDT", "tron", quote))
+	params := validGMPayNotifyParams(order.TradeNo)
+	params["amount"] = "15.00"
+	params["actual_amount"] = "15.00"
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = signedGMPayNotifyRequest(t, params)
+	GMPayNotify(ctx)
+
+	assert.Equal(t, "ok", recorder.Body.String())
+	_, bindingPresent := service.GetGMPayQuoteBinding(order.TradeNo)
+	assert.False(t, bindingPresent)
+	stored := model.GetTopUpByTradeNo(order.TradeNo)
+	require.NotNil(t, stored)
+	assert.Equal(t, common.TopUpStatusSuccess, stored.Status)
+}
+
+func TestGMPayTopupLogContentLabelsQuoteProvenance(t *testing.T) {
+	quotedAt := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+	expiresAt := quotedAt.Add(5 * time.Minute)
+	tests := []struct {
+		name   string
+		source string
+		label  string
+	}{
+		{
+			name:   "dynamic network estimate",
+			source: service.GMPayFeeSourceChainNetworkEstimate,
+			label:  "动态网络费用估算",
+		},
+		{
+			name:   "administrator fallback",
+			source: service.GMPayFeeSourceAdminFallback,
+			label:  "人工兜底",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			quote := service.GMPayFeeQuote{
+				FeeAmount:          decimal.NewFromFloat(0.42),
+				Source:             tc.source,
+				SettlementCurrency: "usd",
+				QuotedAt:           quotedAt,
+				ExpiresAt:          expiresAt,
+			}
+
+			suffix := gmpayTopupLogQuoteSuffix(quote)
+			require.Contains(t, suffix, "费用来源："+tc.label)
+			require.Contains(t, suffix, "fee_source="+tc.source)
+			require.Contains(t, suffix, "fee_amount=0.42")
+			require.Contains(t, suffix, "settlement_currency=USD")
+			content := gmpayTopupLogContent(1, 10.42, quote)
+			assert.Contains(t, content, suffix)
+			assert.NotContains(t, content, "网关服务费")
+		})
+	}
+}
+
+func TestGMPayTopupLogContentPreservesLegacyWording(t *testing.T) {
+	content := gmpayTopupLogContent(1, 10, service.GMPayFeeQuote{
+		Source: service.GMPayFeeSourceGatewayIncluded,
+	})
+	assert.Equal(t, "使用在线充值成功，充值金额: "+logger.LogQuota(1)+"，支付金额：10.000000", content)
+	assert.NotContains(t, content, "费用来源")
 }

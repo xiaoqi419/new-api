@@ -59,6 +59,11 @@ type GMPayCreateOrderRequest struct {
 	Name        string
 	Token       string
 	Network     string
+	// SettlementCurrency is the fiat currency requested from the gateway.
+	// Existing callers may leave it empty, which preserves the historical USD
+	// contract; non-empty values are normalized and echoed back from the
+	// provider response before a checkout is accepted.
+	SettlementCurrency string
 }
 
 // GMPayAsset describes one enabled network and its available tokens as
@@ -98,18 +103,19 @@ func NormalizeGMPayNetwork(value string) (string, bool) {
 // GMPayCheckout contains only checkout data that is safe to return to a
 // browser. It deliberately omits the hosted cashier URL and all credentials.
 type GMPayCheckout struct {
-	OrderID        string
-	GatewayTradeNo string
-	BaseAmount     string
-	FeeAmount      string
-	TotalAmount    string
-	FeeSource      string
-	ActualAmount   string
-	ReceiveAddress string
-	Token          string
-	Network        string
-	ExpirationTime int64
-	ServerTime     int64
+	OrderID            string
+	GatewayTradeNo     string
+	BaseAmount         string
+	FeeAmount          string
+	TotalAmount        string
+	FeeSource          string
+	ActualAmount       string
+	ReceiveAddress     string
+	Token              string
+	Network            string
+	SettlementCurrency string
+	ExpirationTime     int64
+	ServerTime         int64
 }
 
 // GMPayClient creates native GMPay orders using the configured merchant PID
@@ -273,11 +279,18 @@ func (client *GMPayClient) CreateOrder(ctx context.Context, args GMPayCreateOrde
 	if err != nil {
 		return nil, err
 	}
+	settlementCurrency := strings.ToUpper(strings.TrimSpace(args.SettlementCurrency))
+	if settlementCurrency == "" {
+		settlementCurrency = "USD"
+	}
+	if !currencyPattern.MatchString(settlementCurrency) {
+		return nil, errors.New("gmpay settlement currency is invalid")
+	}
 
 	params := map[string]any{
 		"pid":          client.pid,
 		"order_id":     args.OrderID,
-		"currency":     "usd",
+		"currency":     strings.ToLower(settlementCurrency),
 		"token":        token,
 		"network":      network,
 		"amount":       amountNumber,
@@ -327,7 +340,7 @@ func (client *GMPayClient) CreateOrder(ctx context.Context, args GMPayCreateOrde
 	if err := common.Unmarshal(envelope.Data, &result); err != nil {
 		return nil, errors.New("invalid gmpay checkout data")
 	}
-	return result.checkout(args.OrderID, amount, baseAmount, feeAmount, feeSource, token, network)
+	return result.checkoutWithCurrency(args.OrderID, amount, baseAmount, feeAmount, feeSource, token, network, settlementCurrency)
 }
 
 type gmpayCreateOrderEnvelope struct {
@@ -343,10 +356,6 @@ type gmpayCreateOrderResponse struct {
 	Currency       string          `json:"currency"`
 	Status         int             `json:"status"`
 	ActualAmount   json.RawMessage `json:"actual_amount"`
-	Fee            json.RawMessage `json:"fee"`
-	ServiceFee     json.RawMessage `json:"service_fee"`
-	NetworkFee     json.RawMessage `json:"network_fee"`
-	TotalAmount    json.RawMessage `json:"total_amount"`
 	ReceiveAddress string          `json:"receive_address"`
 	Token          string          `json:"token"`
 	Network        string          `json:"network"`
@@ -354,7 +363,14 @@ type gmpayCreateOrderResponse struct {
 	ServerTime     int64           `json:"server_time"`
 }
 
+// checkout preserves the historical USD-only helper signature for in-package
+// callers and tests. New order creation uses checkoutWithCurrency so a
+// server-selected settlement currency is checked end-to-end.
 func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expectedAmount, expectedBaseAmount, expectedFeeAmount decimal.Decimal, expectedFeeSource, expectedToken string, expectedNetwork string) (*GMPayCheckout, error) {
+	return response.checkoutWithCurrency(expectedOrderID, expectedAmount, expectedBaseAmount, expectedFeeAmount, expectedFeeSource, expectedToken, expectedNetwork, "USD")
+}
+
+func (response gmpayCreateOrderResponse) checkoutWithCurrency(expectedOrderID string, expectedAmount, expectedBaseAmount, expectedFeeAmount decimal.Decimal, expectedFeeSource, expectedToken string, expectedNetwork, expectedCurrency string) (*GMPayCheckout, error) {
 	if strings.TrimSpace(response.OrderID) != expectedOrderID || strings.TrimSpace(response.TradeID) == "" || response.Status != 1 {
 		return nil, errors.New("gmpay checkout response does not describe a waiting order")
 	}
@@ -363,35 +379,12 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 		return nil, errors.New("gmpay checkout response has an invalid fiat amount")
 	}
 	parsedFiatAmount, err := ParseGMPayAmount(fiatAmount, false)
-	if err != nil || !parsedFiatAmount.Equal(expectedAmount) || strings.ToUpper(strings.TrimSpace(response.Currency)) != "USD" {
+	if err != nil || !parsedFiatAmount.Equal(expectedAmount) || strings.ToUpper(strings.TrimSpace(response.Currency)) != strings.ToUpper(strings.TrimSpace(expectedCurrency)) {
 		return nil, errors.New("gmpay checkout response does not match the requested fiat amount")
-	}
-	responseFee, responseFeePresent, err := gmpayResponseFee(response)
-	if err != nil {
-		return nil, errors.New("gmpay checkout response has an invalid fee")
-	}
-	responseTotal, responseTotalPresent, err := gmpayResponseTotal(response)
-	if err != nil {
-		return nil, errors.New("gmpay checkout response has an invalid total amount")
-	}
-	if responseTotalPresent && !responseTotal.Equal(parsedFiatAmount) {
-		return nil, errors.New("gmpay checkout response total does not match fiat amount")
 	}
 	baseAmount := expectedBaseAmount
 	feeAmount := expectedFeeAmount
 	feeSource := expectedFeeSource
-	if responseFeePresent {
-		if responseTotalPresent && !baseAmount.Add(responseFee).Equal(responseTotal) {
-			return nil, errors.New("gmpay checkout response fee does not match total")
-		}
-		if !baseAmount.Add(responseFee).Equal(expectedAmount) {
-			return nil, errors.New("gmpay checkout response fee changes the requested amount")
-		}
-		feeAmount = responseFee
-		feeSource = GMPayFeeSourceGatewayQuote
-	} else if responseTotalPresent && !baseAmount.Add(feeAmount).Equal(responseTotal) {
-		return nil, errors.New("gmpay checkout response total changes the requested amount")
-	}
 	actualAmount, err := rawGMPayDecimalString(response.ActualAmount, false, gmpayNativeActualAmountMaxScale)
 	if err != nil {
 		return nil, errors.New("gmpay checkout response has an invalid actual amount")
@@ -409,47 +402,20 @@ func (response gmpayCreateOrderResponse) checkout(expectedOrderID string, expect
 		return nil, errors.New("gmpay checkout response is incomplete")
 	}
 	return &GMPayCheckout{
-		OrderID:        expectedOrderID,
-		GatewayTradeNo: strings.TrimSpace(response.TradeID),
-		BaseAmount:     baseAmount.StringFixed(2),
-		FeeAmount:      feeAmount.StringFixed(2),
-		TotalAmount:    parsedFiatAmount.StringFixed(2),
-		FeeSource:      feeSource,
-		ActualAmount:   actualAmount,
-		ReceiveAddress: strings.TrimSpace(response.ReceiveAddress),
-		Token:          responseToken,
-		Network:        strings.ToUpper(expectedNetwork),
-		ExpirationTime: response.ExpirationTime,
-		ServerTime:     response.ServerTime,
+		OrderID:            expectedOrderID,
+		GatewayTradeNo:     strings.TrimSpace(response.TradeID),
+		BaseAmount:         baseAmount.StringFixed(2),
+		FeeAmount:          feeAmount.StringFixed(2),
+		TotalAmount:        parsedFiatAmount.StringFixed(2),
+		FeeSource:          feeSource,
+		ActualAmount:       actualAmount,
+		ReceiveAddress:     strings.TrimSpace(response.ReceiveAddress),
+		Token:              responseToken,
+		Network:            strings.ToUpper(expectedNetwork),
+		SettlementCurrency: strings.ToUpper(strings.TrimSpace(expectedCurrency)),
+		ExpirationTime:     response.ExpirationTime,
+		ServerTime:         response.ServerTime,
 	}, nil
-}
-
-func gmpayResponseFee(response gmpayCreateOrderResponse) (decimal.Decimal, bool, error) {
-	var fee decimal.Decimal
-	present := false
-	for _, raw := range []json.RawMessage{response.Fee, response.ServiceFee, response.NetworkFee} {
-		if len(raw) == 0 {
-			continue
-		}
-		value, err := nonNegativeDecimalString(raw)
-		if err != nil {
-			return decimal.Zero, false, err
-		}
-		if present && !fee.Equal(value) {
-			return decimal.Zero, false, errors.New("gmpay fee fields disagree")
-		}
-		fee = value
-		present = true
-	}
-	return fee, present, nil
-}
-
-func gmpayResponseTotal(response gmpayCreateOrderResponse) (decimal.Decimal, bool, error) {
-	if len(response.TotalAmount) == 0 {
-		return decimal.Zero, false, nil
-	}
-	value, err := positiveDecimalString(response.TotalAmount)
-	return value, true, err
 }
 
 // SupportedAssets fetches EPUSDT's public configuration and returns only the

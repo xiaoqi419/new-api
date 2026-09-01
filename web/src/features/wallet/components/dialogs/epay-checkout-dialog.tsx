@@ -35,7 +35,11 @@ import { Button } from '@/components/ui/button'
 
 import { isApiSuccess } from '../../api'
 import { POLL_INTERVAL_MS, POLL_MAX_SECONDS } from '../../constants'
-import type { EpayCheckoutData, TradeStatusResponse } from '../../types'
+import type {
+  EpayCheckoutData,
+  EpayCheckoutTimestamp,
+  TradeStatusResponse,
+} from '../../types'
 
 type CheckoutStatus = 'waiting' | 'success' | 'failed' | 'expired' | 'timeout'
 
@@ -114,18 +118,32 @@ function getGMPayFeeSourceLabel(
   source: string,
   t: (key: string) => string
 ): string {
-  switch (source) {
+  switch (source.trim().toLowerCase()) {
+    case 'chain_network_estimate':
+      return t('Dynamic network fee estimate')
+    case 'admin_fallback':
+    case 'admin_fixed':
+    case 'admin_percent':
+      return t('Administrator fallback')
     case 'gateway_quote':
       return t('Gateway quote')
     case 'gateway_included':
+    case 'gateway-included':
       return t('Included in gateway amount')
-    case 'admin_fixed':
-      return t('Administrator fixed fee')
-    case 'admin_percent':
-      return t('Administrator percentage fee')
     default:
       return t('Unknown')
   }
+}
+
+function formatQuoteTimestamp(timestamp: EpayCheckoutTimestamp): string {
+  if (typeof timestamp === 'string') {
+    const normalized = timestamp.trim()
+    if (!/^\d+$/.test(normalized)) return normalized
+    timestamp = Number(normalized)
+  }
+  const milliseconds = toEpochMilliseconds(timestamp)
+  const date = new Date(milliseconds)
+  return Number.isNaN(date.getTime()) ? String(timestamp) : date.toISOString()
 }
 
 export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
@@ -271,6 +289,10 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
   const statusContent = getStatusContent(checkoutStatus, t, isCryptoCheckout)
   const StatusIcon = statusContent.icon
   const canRetry = checkoutStatus === 'failed' || checkoutStatus === 'expired'
+  const feeSourceLabel =
+    isCryptoCheckout && checkout.fee_source
+      ? getGMPayFeeSourceLabel(checkout.fee_source, t)
+      : null
 
   return (
     <Dialog
@@ -315,7 +337,12 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
               {(checkout.base_amount !== undefined ||
                 checkout.fee_amount !== undefined ||
                 checkout.total_amount !== undefined ||
-                checkout.fee_source !== undefined) && (
+                checkout.fee_source !== undefined ||
+                checkout.native_amount !== undefined ||
+                checkout.native_asset !== undefined ||
+                checkout.settlement_currency !== undefined ||
+                checkout.quoted_at !== undefined ||
+                checkout.expires_at !== undefined) && (
                 <>
                   <div className='flex items-center justify-between gap-4'>
                     <dt className='text-muted-foreground'>
@@ -329,15 +356,23 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
                     <div className='flex items-start justify-between gap-4'>
                       <dt className='text-muted-foreground'>{t('Fee')}</dt>
                       <dd className='text-right font-semibold'>
-                        <span>{checkout.fee_amount}</span>
-                        {checkout.fee_source ? (
+                        <span>
+                          {checkout.fee_amount}
+                          {checkout.settlement_currency
+                            ? ` ${checkout.settlement_currency}`
+                            : ''}
+                        </span>
+                        {feeSourceLabel ? (
                           <span className='text-muted-foreground block text-xs font-normal'>
                             {t('Fee source: {{source}}', {
-                              source: getGMPayFeeSourceLabel(
-                                checkout.fee_source,
-                                t
-                              ),
+                              source: feeSourceLabel,
                             })}
+                          </span>
+                        ) : null}
+                        {checkout.native_amount !== undefined ||
+                        checkout.native_asset !== undefined ? (
+                          <span className='text-muted-foreground block text-xs font-normal'>
+                            {`${t('Native amount')}: ${checkout.native_amount ?? '—'}${checkout.native_asset ? ` ${checkout.native_asset}` : ''}`}
                           </span>
                         ) : null}
                       </dd>
@@ -351,6 +386,36 @@ export function EpayCheckoutDialog(props: EpayCheckoutDialogProps) {
                       {checkout.total_amount ?? checkout.money}
                     </dd>
                   </div>
+                  {checkout.settlement_currency ? (
+                    <div className='flex items-center justify-between gap-4'>
+                      <dt className='text-muted-foreground'>
+                        {t('Settlement currency')}
+                      </dt>
+                      <dd className='font-medium'>
+                        {checkout.settlement_currency}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {checkout.quoted_at !== undefined ? (
+                    <div className='flex items-center justify-between gap-4'>
+                      <dt className='text-muted-foreground'>
+                        {t('Quoted at')}
+                      </dt>
+                      <dd className='text-right font-mono text-xs'>
+                        {formatQuoteTimestamp(checkout.quoted_at)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {checkout.expires_at !== undefined ? (
+                    <div className='flex items-center justify-between gap-4'>
+                      <dt className='text-muted-foreground'>
+                        {t('Quote expires at')}
+                      </dt>
+                      <dd className='text-right font-mono text-xs'>
+                        {formatQuoteTimestamp(checkout.expires_at)}
+                      </dd>
+                    </div>
+                  ) : null}
                 </>
               )}
               <div className='flex items-center justify-between gap-4'>
