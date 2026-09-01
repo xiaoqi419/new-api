@@ -6,6 +6,7 @@ package service
 // or wallet addresses merely to enable dynamic GMPay pricing.
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -246,7 +247,8 @@ func (estimator *BuiltinNetworkFeeEstimator) refreshBuiltinSolanaBlockhash(ctx c
 		return transaction, 0, errors.New("solana latest blockhash is missing")
 	}
 	blockhash := strings.TrimSpace(common.JsonRawMessageToString(blockhashRaw))
-	if _, err := solanaAddressBytes(blockhash); err != nil {
+	decoded, err := solanaAddressBytes(blockhash)
+	if err != nil || bytes.Equal(decoded, make([]byte, 32)) {
 		return transaction, 0, errors.New("solana latest blockhash is invalid")
 	}
 	transaction.RecentBlockhash = blockhash
