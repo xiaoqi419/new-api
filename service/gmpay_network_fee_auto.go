@@ -323,6 +323,10 @@ func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Conte
 		if response == nil || response.Body == nil {
 			return decimal.Zero, time.Time{}, "", errors.New("price source response is invalid")
 		}
+		if responseErr := validateNetworkFeeResponse(response, chain.priceURL); responseErr != nil {
+			response.Body.Close()
+			return decimal.Zero, time.Time{}, "", responseErr
+		}
 		body, err = io.ReadAll(io.LimitReader(response.Body, estimator.configured.config.responseLimit+1))
 		status := response.StatusCode
 		response.Body.Close()
