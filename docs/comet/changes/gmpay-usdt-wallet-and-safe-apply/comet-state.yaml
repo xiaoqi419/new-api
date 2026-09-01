@@ -3,7 +3,7 @@ name: gmpay-usdt-wallet-and-safe-apply
 language: zh-CN
 phase: archive
 status: active
-state_version: 6
+state_version: 7
 brief: brief.md
 children_contract_hash: 6536c829a1548aa9f9e4e9e958b5d10c7949b0683ca819842c595b84103ef69f
 spec_changes:
@@ -17,7 +17,7 @@ workspace:
   isolation: worktree
   change_branch: comet/gmpay-usdt-wallet-and-safe-apply
   target_branch: main
-  finish: null
+  finish: merge
 loop:
   stage: archive-ready
   goal_cycle: 1
