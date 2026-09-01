@@ -240,6 +240,22 @@ func main() {
 		Handler: server,
 	}
 
+	// The payment-mode administrator API can only request this process's
+	// existing graceful shutdown path.  It cannot select a service, host,
+	// container, database, or command.  A buffered signal channel lets the
+	// asynchronous handler trigger return immediately after its HTTP response
+	// is flushed while the normal shutdown sequence below remains the sole owner
+	// of http.Server.Shutdown and the existing timeout.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	restorePaymentGatewayModeShutdownTrigger := service.SetPaymentGatewayModeShutdownTrigger(func() {
+		select {
+		case quit <- syscall.SIGTERM:
+		default:
+		}
+	})
+	defer restorePaymentGatewayModeShutdownTrigger()
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			common.FatalLog("failed to start HTTP server: " + err.Error())
@@ -250,8 +266,6 @@ func main() {
 
 	common.LogStartupSuccess(startTime, port)
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
 	common.SysLog(fmt.Sprintf("received signal: %v, shutting down...", sig))
 

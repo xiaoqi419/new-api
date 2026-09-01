@@ -18,6 +18,26 @@ func DecodeJson(reader io.Reader, v any) error {
 	return json.NewDecoder(reader).Decode(v)
 }
 
+// DecodeJsonStrict decodes exactly one JSON value and rejects unknown fields
+// on struct destinations.  Request handlers that expose a security-sensitive
+// fixed schema should use this wrapper instead of accepting an open-ended
+// object through DecodeJson.
+func DecodeJsonStrict(reader io.Reader, v any) error {
+	decoder := json.NewDecoder(reader)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(v); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return io.ErrUnexpectedEOF
+		}
+		return err
+	}
+	return nil
+}
+
 func Marshal(v any) ([]byte, error) {
 	return json.Marshal(v)
 }

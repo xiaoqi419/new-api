@@ -1,9 +1,11 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -15,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/QuantumNous/new-api/setting/ui_setting"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Option struct {
@@ -22,11 +25,266 @@ type Option struct {
 	Value string `json:"value"`
 }
 
+// paymentGatewayModeOptionWriteMu serializes desired-mode writes within this
+// process.  Apply also uses a database-side expected-value condition, because
+// another process can still race between its read and conditional write.
+var paymentGatewayModeOptionWriteMu sync.Mutex
+
+// paymentGatewayModeApplyReservationOptionKey is an internal lease row used
+// to coordinate save-and-apply with generic PaymentGatewayMode writes across
+// processes.  It is deliberately kept in Options so it follows the existing
+// database isolation without adding a payment-specific table or column.
+const paymentGatewayModeApplyReservationOptionKey = "__internal.payment_gateway_mode_apply_reservation"
+
+const paymentGatewayModeApplyReservationLeaseSeconds int64 = 5 * 60
+
+var (
+	ErrPaymentGatewayModeApplyReservationActive  = errors.New("payment gateway mode apply reservation is active")
+	ErrPaymentGatewayModeApplyReservationInvalid = errors.New("payment gateway mode apply reservation is invalid")
+)
+
+type paymentGatewayModeApplyReservation struct {
+	RequestID string `json:"request_id"`
+	ExpiresAt int64  `json:"expires_at"`
+}
+
 func AllOption() ([]*Option, error) {
 	var options []*Option
 	var err error
 	err = DB.Find(&options).Error
 	return options, err
+}
+
+func isPaymentGatewayModeApplyReservationOption(key string) bool {
+	return key == paymentGatewayModeApplyReservationOptionKey
+}
+
+func ensurePaymentGatewayModeApplyReservationRow(tx *gorm.DB) error {
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&Option{
+		Key: paymentGatewayModeApplyReservationOptionKey,
+	}).Error
+}
+
+func decodePaymentGatewayModeApplyReservation(value string) (paymentGatewayModeApplyReservation, error) {
+	if strings.TrimSpace(value) == "" {
+		return paymentGatewayModeApplyReservation{}, nil
+	}
+	var reservation paymentGatewayModeApplyReservation
+	if err := common.Unmarshal([]byte(value), &reservation); err != nil {
+		return paymentGatewayModeApplyReservation{}, fmt.Errorf("%w: %v", ErrPaymentGatewayModeApplyReservationInvalid, err)
+	}
+	if strings.TrimSpace(reservation.RequestID) == "" || reservation.ExpiresAt <= 0 {
+		return paymentGatewayModeApplyReservation{}, ErrPaymentGatewayModeApplyReservationInvalid
+	}
+	return reservation, nil
+}
+
+func paymentGatewayModeApplyReservationActive(value string, now int64) (bool, error) {
+	reservation, err := decodePaymentGatewayModeApplyReservation(value)
+	if err != nil {
+		return false, err
+	}
+	return reservation.RequestID != "" && reservation.ExpiresAt > now, nil
+}
+
+// lockPaymentGatewayModeApplyReservation returns the durable reservation row
+// while holding its row lock for the surrounding transaction.  The insert is
+// an idempotent upsert so two fresh installations can race to create it on all
+// supported dialects without a read-then-create gap.
+func lockPaymentGatewayModeApplyReservation(tx *gorm.DB) (*Option, error) {
+	if err := ensurePaymentGatewayModeApplyReservationRow(tx); err != nil {
+		return nil, err
+	}
+	var reservation Option
+	if err := lockForUpdate(tx).
+		Where("key = ?", paymentGatewayModeApplyReservationOptionKey).
+		First(&reservation).Error; err != nil {
+		return nil, err
+	}
+	return &reservation, nil
+}
+
+func clearExpiredPaymentGatewayModeApplyReservation(tx *gorm.DB, reservation *Option, now int64) error {
+	if reservation == nil || strings.TrimSpace(reservation.Value) == "" {
+		return nil
+	}
+	active, err := paymentGatewayModeApplyReservationActive(reservation.Value, now)
+	if err != nil {
+		return err
+	}
+	if active {
+		return nil
+	}
+	reservation.Value = ""
+	return tx.Save(reservation).Error
+}
+
+// ReservePaymentGatewayModeApply atomically reserves the desired-mode option
+// and writes the target value.  The reservation remains durable until the
+// caller releases it after the response-trigger handoff (or until its bounded
+// lease expires), preventing generic writers in another process from opening
+// the CAS-to-trigger window.
+func ReservePaymentGatewayModeApply(expectedValue, value, requestID string) (bool, error) {
+	expectedValue, err := operation_setting.NormalizePaymentGatewayMode(expectedValue)
+	if err != nil {
+		return false, err
+	}
+	normalizedValue, err := operation_setting.NormalizePaymentGatewayMode(value)
+	if err != nil {
+		return false, err
+	}
+	requestID = strings.TrimSpace(requestID)
+	if requestID == "" || len(requestID) > 128 {
+		return false, ErrPaymentGatewayModeApplyReservationInvalid
+	}
+
+	paymentGatewayModeOptionWriteMu.Lock()
+	defer paymentGatewayModeOptionWriteMu.Unlock()
+
+	reserved := false
+	now := common.GetTimestamp()
+	reservationValue, err := common.Marshal(paymentGatewayModeApplyReservation{
+		RequestID: requestID,
+		ExpiresAt: now + paymentGatewayModeApplyReservationLeaseSeconds,
+	})
+	if err != nil {
+		return false, err
+	}
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		reservation, err := lockPaymentGatewayModeApplyReservation(tx)
+		if err != nil {
+			return err
+		}
+		active, err := paymentGatewayModeApplyReservationActive(reservation.Value, now)
+		if err != nil {
+			return err
+		}
+		if active {
+			return ErrPaymentGatewayModeApplyReservationActive
+		}
+		if err := clearExpiredPaymentGatewayModeApplyReservation(tx, reservation, now); err != nil {
+			return err
+		}
+
+		var option Option
+		err = lockForUpdate(tx).
+			Where("key = ?", operation_setting.PaymentGatewayModeOptionKey).
+			First(&option).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if expectedValue != operation_setting.PaymentGatewayModeEpayLegacy {
+				return nil
+			}
+			option = Option{
+				Key:   operation_setting.PaymentGatewayModeOptionKey,
+				Value: normalizedValue,
+			}
+			if err := tx.Create(&option).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			currentValue, err := operation_setting.NormalizePaymentGatewayMode(option.Value)
+			if err != nil {
+				return err
+			}
+			if currentValue != expectedValue {
+				return nil
+			}
+			option.Value = normalizedValue
+			if err := tx.Save(&option).Error; err != nil {
+				return err
+			}
+		}
+
+		reservation.Value = string(reservationValue)
+		if err := tx.Save(reservation).Error; err != nil {
+			return err
+		}
+		reserved = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	if !reserved {
+		return false, nil
+	}
+	if err := updateOptionMap(operation_setting.PaymentGatewayModeOptionKey, normalizedValue); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// ReleasePaymentGatewayModeApplyReservation clears only the lease owned by
+// requestID.  An expired or missing lease is harmless, while another active
+// request cannot be released by a stale completion callback.
+func ReleasePaymentGatewayModeApplyReservation(requestID string) error {
+	requestID = strings.TrimSpace(requestID)
+	if requestID == "" {
+		return ErrPaymentGatewayModeApplyReservationInvalid
+	}
+	paymentGatewayModeOptionWriteMu.Lock()
+	defer paymentGatewayModeOptionWriteMu.Unlock()
+
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var reservation Option
+		err := lockForUpdate(tx).
+			Where("key = ?", paymentGatewayModeApplyReservationOptionKey).
+			First(&reservation).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		decoded, err := decodePaymentGatewayModeApplyReservation(reservation.Value)
+		if err != nil {
+			return err
+		}
+		if decoded.RequestID != requestID {
+			return nil
+		}
+		reservation.Value = ""
+		return tx.Save(&reservation).Error
+	})
+}
+
+// PaymentGatewayModeApplyReservationOwnedBy checks that a caller still owns a
+// live lease before it proceeds from the database write into audit/trigger.
+func PaymentGatewayModeApplyReservationOwnedBy(requestID string) (bool, error) {
+	requestID = strings.TrimSpace(requestID)
+	if requestID == "" {
+		return false, ErrPaymentGatewayModeApplyReservationInvalid
+	}
+	var reservation Option
+	err := DB.Where("key = ?", paymentGatewayModeApplyReservationOptionKey).First(&reservation).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	decoded, err := decodePaymentGatewayModeApplyReservation(reservation.Value)
+	if err != nil {
+		return false, err
+	}
+	return decoded.RequestID == requestID && decoded.ExpiresAt > common.GetTimestamp(), nil
+}
+
+// PaymentGatewayModeApplyReservationActive reports whether another process is
+// currently holding the durable apply lease.  It is used to make status and
+// capability responses fail closed across process boundaries.
+func PaymentGatewayModeApplyReservationActive() (bool, error) {
+	var reservation Option
+	err := DB.Where("key = ?", paymentGatewayModeApplyReservationOptionKey).First(&reservation).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return paymentGatewayModeApplyReservationActive(reservation.Value, common.GetTimestamp())
 }
 
 func InitOptionMap() error {
@@ -275,6 +533,9 @@ func validateOptionValue(key string, value string) error {
 }
 
 func normalizeOptionValue(key string, value string) (string, error) {
+	if isPaymentGatewayModeApplyReservationOption(key) {
+		return "", ErrPaymentGatewayModeApplyReservationInvalid
+	}
 	if key == operation_setting.PaymentGatewayModeOptionKey {
 		return operation_setting.NormalizePaymentGatewayMode(value)
 	}
@@ -290,19 +551,164 @@ func UpdateOption(key string, value string) error {
 		return err
 	}
 	value = normalizedValue
-	// Save to database first
-	option := Option{
-		Key: key,
+	if key == operation_setting.PaymentGatewayModeOptionKey {
+		paymentGatewayModeOptionWriteMu.Lock()
+		defer paymentGatewayModeOptionWriteMu.Unlock()
 	}
-	// https://gorm.io/docs/update.html#Save-All-Fields
-	DB.FirstOrCreate(&option, Option{Key: key})
-	option.Value = value
-	// Save is a combination function.
-	// If save value does not contain primary key, it will execute Create,
-	// otherwise it will execute Update (with all fields).
-	DB.Save(&option)
+	// FirstOrCreate followed by Save must be one transaction.  Besides making
+	// the two writes atomic for a newly-created option, this keeps the
+	// in-memory OptionMap untouched when either database operation fails.
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		if key == operation_setting.PaymentGatewayModeOptionKey {
+			reservation, err := lockPaymentGatewayModeApplyReservation(tx)
+			if err != nil {
+				return err
+			}
+			active, err := paymentGatewayModeApplyReservationActive(reservation.Value, common.GetTimestamp())
+			if err != nil {
+				return err
+			}
+			if active {
+				return ErrPaymentGatewayModeApplyReservationActive
+			}
+			if err := clearExpiredPaymentGatewayModeApplyReservation(tx, reservation, common.GetTimestamp()); err != nil {
+				return err
+			}
+		}
+		option := Option{
+			Key: key,
+		}
+		// https://gorm.io/docs/update.html#Save-All-Fields
+		if err := tx.FirstOrCreate(&option, Option{Key: key}).Error; err != nil {
+			return err
+		}
+		option.Value = value
+		// Save is a combination function.
+		// If save value does not contain primary key, it will execute Create,
+		// otherwise it will execute Update (with all fields).
+		if err := tx.Save(&option).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	// Update OptionMap
 	return updateOptionMap(key, value)
+}
+
+// GetPaymentGatewayModeOption reads the persisted desired mode.  Older
+// installations do not have an Option row yet, so a missing row is the
+// documented legacy default.  Unlike OptionMap, this is intentionally a
+// database read so save-and-apply can perform an optimistic check against the
+// latest value rather than a possibly stale in-memory snapshot.
+func GetPaymentGatewayModeOption() (string, error) {
+	var option Option
+	err := DB.Where("key = ?", operation_setting.PaymentGatewayModeOptionKey).First(&option).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return operation_setting.PaymentGatewayModeEpayLegacy, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return operation_setting.NormalizePaymentGatewayMode(option.Value)
+}
+
+// UpdatePaymentGatewayModeOptionIf performs a compare-and-swap on the
+// persisted desired payment gateway mode.  It returns false when the current
+// mode no longer matches expectedValue, allowing save-and-apply to fail with a
+// state conflict instead of overwriting a newer generic Root update.
+func UpdatePaymentGatewayModeOptionIf(expectedValue, value string) (bool, error) {
+	expectedValue, err := operation_setting.NormalizePaymentGatewayMode(expectedValue)
+	if err != nil {
+		return false, err
+	}
+	normalizedValue, err := operation_setting.NormalizePaymentGatewayMode(value)
+	if err != nil {
+		return false, err
+	}
+
+	paymentGatewayModeOptionWriteMu.Lock()
+	defer paymentGatewayModeOptionWriteMu.Unlock()
+
+	updated := false
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		reservation, err := lockPaymentGatewayModeApplyReservation(tx)
+		if err != nil {
+			return err
+		}
+		active, err := paymentGatewayModeApplyReservationActive(reservation.Value, common.GetTimestamp())
+		if err != nil {
+			return err
+		}
+		if active {
+			return ErrPaymentGatewayModeApplyReservationActive
+		}
+		if err := clearExpiredPaymentGatewayModeApplyReservation(tx, reservation, common.GetTimestamp()); err != nil {
+			return err
+		}
+		var option Option
+		err = lockForUpdate(tx).
+			Where("key = ?", operation_setting.PaymentGatewayModeOptionKey).
+			First(&option).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if expectedValue != operation_setting.PaymentGatewayModeEpayLegacy {
+				return nil
+			}
+			if err := tx.Create(&Option{
+				Key:   operation_setting.PaymentGatewayModeOptionKey,
+				Value: normalizedValue,
+			}).Error; err != nil {
+				return err
+			}
+			updated = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		currentValue, err := operation_setting.NormalizePaymentGatewayMode(option.Value)
+		if err != nil {
+			return err
+		}
+		if currentValue != expectedValue {
+			return nil
+		}
+
+		result := tx.Model(&Option{}).
+			Where("key = ? AND value = ?", operation_setting.PaymentGatewayModeOptionKey, option.Value).
+			Update("value", normalizedValue)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected > 0 {
+			updated = true
+			return nil
+		}
+
+		// MySQL may report zero affected rows for a no-op update.  Re-read the
+		// row before treating that result as a lost compare-and-swap.
+		var latest Option
+		if err := lockForUpdate(tx).
+			Where("key = ?", operation_setting.PaymentGatewayModeOptionKey).
+			First(&latest).Error; err != nil {
+			return err
+		}
+		latestValue, err := operation_setting.NormalizePaymentGatewayMode(latest.Value)
+		if err != nil {
+			return err
+		}
+		updated = latestValue == expectedValue
+		return nil
+	})
+	if err != nil || !updated {
+		return updated, err
+	}
+	if err := updateOptionMap(operation_setting.PaymentGatewayModeOptionKey, normalizedValue); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // UpdateOptionsBulk persists multiple key/value pairs in a single database
@@ -322,7 +728,27 @@ func UpdateOptionsBulk(values map[string]string) error {
 		}
 		normalizedValues[key] = normalizedValue
 	}
+	if _, ok := normalizedValues[operation_setting.PaymentGatewayModeOptionKey]; ok {
+		paymentGatewayModeOptionWriteMu.Lock()
+		defer paymentGatewayModeOptionWriteMu.Unlock()
+	}
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		if _, ok := normalizedValues[operation_setting.PaymentGatewayModeOptionKey]; ok {
+			reservation, err := lockPaymentGatewayModeApplyReservation(tx)
+			if err != nil {
+				return err
+			}
+			active, err := paymentGatewayModeApplyReservationActive(reservation.Value, common.GetTimestamp())
+			if err != nil {
+				return err
+			}
+			if active {
+				return ErrPaymentGatewayModeApplyReservationActive
+			}
+			if err := clearExpiredPaymentGatewayModeApplyReservation(tx, reservation, common.GetTimestamp()); err != nil {
+				return err
+			}
+		}
 		for k, v := range normalizedValues {
 			option := Option{Key: k}
 			if err := tx.FirstOrCreate(&option, Option{Key: k}).Error; err != nil {
@@ -405,6 +831,9 @@ func validateChannelRoutingPoolMembers(setting operation_setting.ChannelRoutingP
 }
 
 func updateOptionMap(key string, value string) (err error) {
+	if isPaymentGatewayModeApplyReservationOption(key) {
+		return nil
+	}
 	if key == operation_setting.EffectivePaymentGatewayModeOptionKey {
 		return fmt.Errorf("%s is read-only", operation_setting.EffectivePaymentGatewayModeOptionKey)
 	}

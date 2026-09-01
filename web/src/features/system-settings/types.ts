@@ -41,6 +41,67 @@ export type UpdateOptionResponse = {
 
 export type PaymentGatewayMode = 'epay_legacy' | 'gmpay_native'
 
+export type PaymentGatewayModeCapability = {
+  self_restart_enabled: boolean
+  graceful_shutdown_supported: boolean
+  shutdown_trigger_ready: boolean
+  single_instance_eligible: boolean
+  active_instance_count: number
+  instance_check_known: boolean
+  can_self_restart: boolean
+  unavailable_reason?: string
+}
+
+export type PaymentGatewayModeApplyOperation = {
+  state: 'idle' | 'applying' | 'failed' | string
+  request_id?: string
+  target_mode?: PaymentGatewayMode
+  accepted_at?: number
+  reason?: string
+}
+
+export type PaymentGatewayModeStatus = {
+  /** Mode for which the server evaluated capability. */
+  target_mode: PaymentGatewayMode
+  desired_mode: PaymentGatewayMode
+  effective_mode: PaymentGatewayMode
+  started_at: number
+  healthy: boolean
+  capability: PaymentGatewayModeCapability
+  operation: PaymentGatewayModeApplyOperation
+}
+
+export type PaymentGatewayModeStatusResponse = {
+  success: boolean
+  message: string
+  data: PaymentGatewayModeStatus
+}
+
+export type PaymentGatewayModeApplyRequest = {
+  target_mode: PaymentGatewayMode
+  expected_effective_mode: PaymentGatewayMode
+  expected_desired_mode: PaymentGatewayMode
+  request_id: string
+}
+
+export type PaymentGatewayModeApplyResult = {
+  outcome: 'accepted' | 'already_applied' | 'conflict' | 'rejected' | string
+  code?: string
+  message?: string
+  request_id?: string
+  target_mode?: PaymentGatewayMode
+  desired_mode?: PaymentGatewayMode
+  effective_mode?: PaymentGatewayMode
+  started_at?: number
+  trigger_pending?: boolean
+}
+
+export type PaymentGatewayModeApplyResponse = {
+  success: boolean
+  message: string
+  data?: PaymentGatewayModeApplyResult
+}
+
 export type SendTestEmailResponse = {
   success: boolean
   message: string
