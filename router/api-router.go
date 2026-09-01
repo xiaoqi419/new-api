@@ -252,6 +252,8 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.PUT("/", controller.UpdateOption)
 			optionRoute.GET("/payment_gateway_mode/status", controller.GetPaymentGatewayModeStatus)
+			optionRoute.GET("/gmpay_fee/status", controller.GetGMPayFeeStatus)
+			optionRoute.POST("/gmpay_fee/test", controller.TestGMPayFeeEstimate)
 			optionRoute.POST("/payment_gateway_mode/apply", middleware.UserCriticalRateLimit("payment-gateway-mode-apply"), controller.ApplyPaymentGatewayMode)
 			optionRoute.POST("/payment_compliance", controller.ConfirmPaymentCompliance)
 			optionRoute.POST("/test_email", middleware.CriticalRateLimit(), controller.SendTestEmail)

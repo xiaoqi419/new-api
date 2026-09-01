@@ -71,7 +71,9 @@ import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import {
   DEFAULT_GMPAY_FEE_CONFIG_JSON,
   GMPayFeeConfigEditor,
+  getGMPayDiscoveryStatus,
   getGMPayFeeConfigError,
+  testGMPayFeeEstimate,
 } from './gmpay-fee-config'
 import {
   createPaymentGatewayModeApplyMutationVariables,
@@ -603,6 +605,38 @@ export function PaymentSettingsSection({
     paymentGatewayModeStatusQuery.isError ||
     (paymentGatewayModeStatusQuery.data !== undefined &&
       paymentGatewayModeStatus === undefined)
+  const gmpayFeeStatusQuery = useQuery({
+    queryKey: ['gmpay-fee-status'],
+    queryFn: getGMPayDiscoveryStatus,
+    staleTime: 15_000,
+    retry: 1,
+    refetchInterval: 30_000,
+  })
+  const gmpayDiscoveryStatus = React.useMemo(() => {
+    if (gmpayFeeStatusQuery.data) return gmpayFeeStatusQuery.data
+    if (gmpayFeeStatusQuery.isFetching) return { state: 'syncing' as const }
+    if (gmpayFeeStatusQuery.isError) {
+      return {
+        state: 'error' as const,
+        error: t('Discovery status request failed. Please retry.'),
+      }
+    }
+    return undefined
+  }, [
+    gmpayFeeStatusQuery.data,
+    gmpayFeeStatusQuery.isError,
+    gmpayFeeStatusQuery.isFetching,
+    t,
+  ])
+  const gmpayFeeEstimateMutation = useMutation({
+    mutationFn: testGMPayFeeEstimate,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['gmpay-fee-status'],
+        refetchType: 'active',
+      })
+    },
+  })
   const paymentGatewayModes = React.useMemo(
     () =>
       paymentGatewayModeStatus
@@ -1751,6 +1785,19 @@ export function PaymentSettingsSection({
                           ariaInvalid={Boolean(
                             form.formState.errors.GMPayFeeConfig
                           )}
+                          discoveryStatus={gmpayDiscoveryStatus}
+                          onTestEstimate={async () => {
+                            const status =
+                              await gmpayFeeEstimateMutation.mutateAsync()
+                            return {
+                              ...(gmpayDiscoveryStatus ?? {
+                                state: 'ready' as const,
+                              }),
+                              ...status,
+                              error: undefined,
+                            }
+                          }}
+                          testingEstimate={gmpayFeeEstimateMutation.isPending}
                         />
                       </FormControl>
                       <FormDescription>

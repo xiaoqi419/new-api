@@ -18,6 +18,14 @@ import (
 )
 
 func resolveGMPayAsset(ctx context.Context, epayCfg tenantEpayConfig, paymentMethod, token, network string) (string, string, error) {
+	return resolveGMPayAssetWithBuiltinFallback(ctx, epayCfg, paymentMethod, token, network, false)
+}
+
+// resolveGMPayAssetWithBuiltinFallback is shared by the checkout boundary and
+// the legacy Native callers. The fallback flag is enabled only by the ordinary
+// wallet's server-generated dynamic/fallback quote; specialized flows retain
+// strict SupportedAssetsAllFresh validation.
+func resolveGMPayAssetWithBuiltinFallback(ctx context.Context, epayCfg tenantEpayConfig, paymentMethod, token, network string, allowBuiltinFallback bool) (string, string, error) {
 	if !shouldUseGMPayNative(paymentMethod) || !operation_setting.ContainsPayMethod(paymentMethod) {
 		return "", "", errors.New("gmpay native payment method is unavailable")
 	}
@@ -42,6 +50,18 @@ func resolveGMPayAsset(ctx context.Context, epayCfg tenantEpayConfig, paymentMet
 	}
 	assets, err := client.SupportedAssetsAllFresh(ctx)
 	if err != nil {
+		if allowBuiltinFallback {
+			fallbackToken := strings.ToLower(strings.TrimSpace(token))
+			fallbackNetwork := strings.ToLower(strings.TrimSpace(network))
+			if validGMPayAssetPart(fallbackToken) && validGMPayAssetPart(fallbackNetwork) {
+				if normalizedNetwork, ok := service.NormalizeGMPayNetwork(fallbackNetwork); ok {
+					fallbackNetwork = normalizedNetwork
+				}
+				if gmpayWalletBuiltinAssetFallbackAllowed(fallbackToken, fallbackNetwork) {
+					return fallbackToken, fallbackNetwork, nil
+				}
+			}
+		}
 		return "", "", err
 	}
 	token = strings.ToLower(token)
@@ -94,6 +114,14 @@ func resolveGMPayWalletAsset(ctx context.Context, epayCfg tenantEpayConfig, paym
 	}
 	assets, err := client.SupportedAssetsFresh(ctx)
 	if err != nil {
+		// In automatic mode, a temporarily unavailable EPUSDT config endpoint
+		// must not strand a wallet checkout when the requested pair is covered
+		// by the closed built-in estimator preset.  Keep explicit dynamic
+		// policies fail-closed: dynamic_enabled=true uses the configured
+		// estimator and dynamic_enabled=false deliberately opts out.
+		if gmpayWalletBuiltinAssetFallbackAllowed(token, network) {
+			return token, network, nil
+		}
 		return "", "", err
 	}
 	for _, asset := range assets {
@@ -107,6 +135,23 @@ func resolveGMPayWalletAsset(ctx context.Context, epayCfg tenantEpayConfig, paym
 		}
 	}
 	return "", "", errors.New("gmpay wallet payment asset is unavailable")
+}
+
+// gmpayWalletBuiltinAssetFallbackAllowed permits asset resolution to continue
+// after a fresh gateway supported-assets read fails only for the automatic
+// (dynamic_enabled omitted) wallet mode.  The built-in estimator owns a closed
+// network/token allowlist; this check must not broaden that allowlist or bypass
+// settlement-currency validation performed before quoting.
+func gmpayWalletBuiltinAssetFallbackAllowed(token, network string) bool {
+	if !service.BuiltinNetworkFeeSupported(network, token) {
+		return false
+	}
+	cfg, err := service.CurrentGMPayFeeConfig()
+	if err != nil || cfg.IsDynamicConfigured() {
+		return false
+	}
+	_, err = gmpaySettlementCurrencyForNetwork(network, cfg)
+	return err == nil
 }
 
 // bindGMPayNativeOrderAsset persists the selected network/token using the
@@ -272,13 +317,54 @@ func shouldUseGMPayNative(paymentMethod string) bool {
 	return operation_setting.IsGMPayNativePaymentGatewayMode() && paymentMethod == gmpayNativePaymentMethod
 }
 
+type gmpayWalletEstimatorProvenance uint8
+
+const (
+	gmpayWalletEstimatorConfigured gmpayWalletEstimatorProvenance = iota + 1
+	gmpayWalletEstimatorPrivate
+	gmpayWalletEstimatorBuiltin
+)
+
+// resolveGMPayWalletEstimatorWithProvenance keeps the wallet's automatic
+// estimator ordering explicit. An omitted dynamic_enabled value first probes
+// the gateway's private context and then uses the process-cached built-in
+// estimator; explicit enable/disable retain their administrator-controlled
+// semantics. The provenance lets the caller retry the built-in estimator only
+// after a private estimate fails, without probing it on a successful quote.
+func resolveGMPayWalletEstimatorWithProvenance(ctx context.Context, epayCfg tenantEpayConfig, cfg service.GMPayFeeConfig) (service.NetworkFeeEstimator, gmpayWalletEstimatorProvenance, error) {
+	if cfg.IsDynamicEnabled() {
+		estimator, err := newGMPayNetworkFeeEstimator()
+		return estimator, gmpayWalletEstimatorConfigured, err
+	}
+	if cfg.IsDynamicConfigured() {
+		return nil, 0, service.ErrNetworkFeeUnavailable
+	}
+
+	var client *service.GMPayClient
+	if epayCfg.Client != nil && epayCfg.Client.Config != nil && epayCfg.Client.BaseUrl != nil {
+		client, _ = newGMPayNativeClient(epayCfg.Client.BaseUrl.String(), epayCfg.Client.Config.PartnerID, epayCfg.Client.Config.Key)
+	}
+	if client != nil {
+		if estimator, err := discoverGMPayNetworkFeeEstimatorFromClient(ctx, client); err == nil && estimator != nil {
+			return estimator, gmpayWalletEstimatorPrivate, nil
+		}
+	}
+	estimator, err := cachedAutomaticGMPayNetworkFeeEstimator()
+	return estimator, gmpayWalletEstimatorBuiltin, err
+}
+
+func resolveGMPayWalletEstimator(ctx context.Context, epayCfg tenantEpayConfig, cfg service.GMPayFeeConfig) (service.NetworkFeeEstimator, error) {
+	estimator, _, err := resolveGMPayWalletEstimatorWithProvenance(ctx, epayCfg, cfg)
+	return estimator, err
+}
+
 // quoteGMPayWalletFee applies the server-owned fee source precedence for the
 // ordinary wallet: a fresh chain estimate first, the explicitly enabled
 // administrator fallback second, and a legacy gateway-included quote only
 // when dynamic estimation is disabled. It is intentionally separate from the
 // shared Native checkout wrapper so subscriptions, group buys, and agent
 // prepayment retain their existing no-fee semantics.
-func quoteGMPayWalletFee(ctx context.Context, baseAmount decimal.Decimal, token, network string) (service.GMPayFeeQuote, error) {
+func quoteGMPayWalletFee(ctx context.Context, epayCfg tenantEpayConfig, baseAmount decimal.Decimal, token, network string) (service.GMPayFeeQuote, error) {
 	baseAmount = baseAmount.RoundDown(2)
 	cfg, err := service.CurrentGMPayFeeConfig()
 	if err != nil {
@@ -289,25 +375,48 @@ func quoteGMPayWalletFee(ctx context.Context, baseAmount decimal.Decimal, token,
 		return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
 	}
 
-	if cfg.IsDynamicEnabled() {
-		estimator, estimatorErr := newGMPayNetworkFeeEstimator()
-		if estimatorErr == nil && estimator != nil {
-			networkQuote, estimateErr := estimator.Estimate(ctx, service.NetworkFeeEstimateInput{
+	// Dynamic estimation is turnkey for GMPay Native wallet checkout when the
+	// administrator has not supplied a legacy chain config. In that default
+	// mode, obtain the EPUSDT context server-to-server using the existing
+	// merchant credentials. An explicit dynamic_enabled=false remains a
+	// deliberate opt-out and falls through to the optional administrator
+	// fallback/legacy gateway-included behavior.
+	dynamicRequested := cfg.IsDynamicEnabled() || !cfg.IsDynamicConfigured()
+	if dynamicRequested {
+		estimator, provenance, estimatorErr := resolveGMPayWalletEstimatorWithProvenance(ctx, epayCfg, cfg)
+		estimate := func(candidate service.NetworkFeeEstimator) (service.GMPayFeeQuote, error) {
+			if candidate == nil {
+				return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+			}
+			networkQuote, estimateErr := candidate.Estimate(ctx, service.NetworkFeeEstimateInput{
 				Token:              token,
 				Network:            network,
 				SettlementCurrency: settlementCurrency,
 				BaseAmount:         baseAmount,
 			})
-			if estimateErr == nil {
-				quote, convertErr := service.GMPayFeeQuoteFromNetworkQuote(
-					networkQuote,
-					baseAmount,
-					token,
-					network,
-					settlementCurrency,
-				)
-				if convertErr == nil {
-					return quote, nil
+			if estimateErr != nil {
+				return service.GMPayFeeQuote{}, estimateErr
+			}
+			return service.GMPayFeeQuoteFromNetworkQuote(
+				networkQuote,
+				baseAmount,
+				token,
+				network,
+				settlementCurrency,
+			)
+		}
+		if estimatorErr == nil && estimator != nil {
+			if quote, quoteErr := estimate(estimator); quoteErr == nil {
+				return quote, nil
+			}
+			// A private gateway context can become stale independently of the
+			// checkout request. If its estimate fails, retry the cached built-in
+			// estimator before considering the explicit administrator fallback.
+			if provenance == gmpayWalletEstimatorPrivate {
+				if fallbackEstimator, fallbackErr := cachedAutomaticGMPayNetworkFeeEstimator(); fallbackErr == nil {
+					if quote, quoteErr := estimate(fallbackEstimator); quoteErr == nil {
+						return quote, nil
+					}
 				}
 			}
 		}
@@ -563,7 +672,8 @@ func createGMPayNativeCheckoutWithQuote(
 	if len(asset) > 1 {
 		network = asset[1]
 	}
-	token, network, err = resolveGMPayAsset(ctx, epayCfg, paymentMethod, token, network)
+	allowBuiltinAssetFallback := quote.Source != service.GMPayFeeSourceGatewayIncluded
+	token, network, err = resolveGMPayAssetWithBuiltinFallback(ctx, epayCfg, paymentMethod, token, network, allowBuiltinAssetFallback)
 	if err != nil {
 		return nil, err
 	}

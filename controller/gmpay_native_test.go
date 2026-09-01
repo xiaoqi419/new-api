@@ -2,10 +2,13 @@ package controller
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,6 +26,206 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+type gmpayEstimatorPriorityStub struct{ name string }
+
+func (stub gmpayEstimatorPriorityStub) Estimate(context.Context, service.NetworkFeeEstimateInput) (service.NetworkFeeQuote, error) {
+	return service.NetworkFeeQuote{}, errors.New(stub.name)
+}
+
+type gmpayEstimatorQuoteStub struct{ quote service.NetworkFeeQuote }
+
+func (stub gmpayEstimatorQuoteStub) Estimate(context.Context, service.NetworkFeeEstimateInput) (service.NetworkFeeQuote, error) {
+	return stub.quote, nil
+}
+
+type gmpayEstimatorCountingStub struct {
+	calls *atomic.Int32
+	quote service.NetworkFeeQuote
+	err   error
+}
+
+func (stub gmpayEstimatorCountingStub) Estimate(context.Context, service.NetworkFeeEstimateInput) (service.NetworkFeeQuote, error) {
+	if stub.calls != nil {
+		stub.calls.Add(1)
+	}
+	return stub.quote, stub.err
+}
+
+func gmpayTestNetworkFeeQuote(fee string) service.NetworkFeeQuote {
+	now := time.Now().UTC()
+	return service.NetworkFeeQuote{
+		Token:              "USDT",
+		Network:            "tron",
+		SettlementCurrency: "USD",
+		BaseAmount:         decimal.NewFromInt(10),
+		FeeAmount:          decimal.RequireFromString(fee),
+		TotalAmount:        decimal.NewFromInt(10).Add(decimal.RequireFromString(fee)),
+		NativeAsset:        "TRX",
+		NativeAmount:       decimal.NewFromFloat(0.1),
+		Source:             service.GMPayFeeSourceChainNetworkEstimate,
+		EstimatorVersion:   "test",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(time.Minute),
+		Evidence: service.NetworkFeeEvidence{
+			RPCMethod:      "wallet/estimateenergy",
+			RPCSource:      "api.trongrid.io",
+			PriceSource:    "api.coingecko.com",
+			PriceTimestamp: now.Unix(),
+		},
+	}
+}
+
+func TestGMPayWalletAutomaticEstimatorFallback(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1}`}
+	common.OptionMapRWMutex.Unlock()
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return &service.GMPayClient{}, nil
+	}
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient("https://pay.example.test", "pid", "secret")}
+	require.NotNil(t, epCfg.Client)
+
+	t.Run("private success does not construct builtin", func(t *testing.T) {
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+		var privateCalls, builtinConstructs atomic.Int32
+		private := gmpayEstimatorCountingStub{calls: &privateCalls, quote: gmpayTestNetworkFeeQuote("1")}
+		discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+			return private, nil
+		}
+		newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+			builtinConstructs.Add(1)
+			return gmpayEstimatorCountingStub{quote: gmpayTestNetworkFeeQuote("2")}, nil
+		}
+
+		quote, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(10), "USDT", "tron")
+		require.NoError(t, err)
+		assert.Equal(t, service.GMPayFeeSourceChainNetworkEstimate, quote.Source)
+		assert.Equal(t, int32(1), privateCalls.Load())
+		assert.Equal(t, int32(0), builtinConstructs.Load())
+	})
+
+	t.Run("private estimate failure retries builtin", func(t *testing.T) {
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+		var privateCalls, builtinCalls atomic.Int32
+		private := gmpayEstimatorCountingStub{calls: &privateCalls, err: errors.New("private estimate failed")}
+		builtin := gmpayEstimatorCountingStub{calls: &builtinCalls, quote: gmpayTestNetworkFeeQuote("2")}
+		discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+			return private, nil
+		}
+		newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+			return builtin, nil
+		}
+
+		quote, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(10), "USDT", "tron")
+		require.NoError(t, err)
+		assert.Equal(t, service.GMPayFeeSourceChainNetworkEstimate, quote.Source)
+		assert.Equal(t, int32(1), privateCalls.Load())
+		assert.Equal(t, int32(1), builtinCalls.Load())
+	})
+
+	t.Run("private discovery failure uses builtin directly", func(t *testing.T) {
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+		var discoveryCalls, builtinCalls atomic.Int32
+		builtin := gmpayEstimatorCountingStub{calls: &builtinCalls, quote: gmpayTestNetworkFeeQuote("3")}
+		discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+			discoveryCalls.Add(1)
+			return nil, errors.New("private discovery failed")
+		}
+		newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+			return builtin, nil
+		}
+
+		quote, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(10), "USDT", "tron")
+		require.NoError(t, err)
+		assert.Equal(t, service.GMPayFeeSourceChainNetworkEstimate, quote.Source)
+		assert.Equal(t, int32(1), discoveryCalls.Load())
+		assert.Equal(t, int32(1), builtinCalls.Load())
+	})
+}
+
+func TestResolveGMPayEstimatorPriority(t *testing.T) {
+	originalConfigured := newGMPayNetworkFeeEstimator
+	originalDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	originalAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	t.Cleanup(func() {
+		newGMPayNetworkFeeEstimator = originalConfigured
+		discoverGMPayNetworkFeeEstimatorFromClient = originalDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = originalAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+
+	configured := gmpayEstimatorPriorityStub{"configured"}
+	private := gmpayEstimatorPriorityStub{"private"}
+	builtin := gmpayEstimatorPriorityStub{"builtin"}
+	newGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) { return configured, nil }
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) { return private, nil }
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) { return builtin, nil }
+
+	// Explicit enable uses the configured estimator and does not probe private
+	// discovery or the built-in fallback.
+	enabled := service.GMPayFeeConfig{DynamicEnabled: true}
+	estimator, err := resolveGMPayEstimatorWithClient(context.Background(), enabled, &service.GMPayClient{})
+	require.NoError(t, err)
+	assert.Equal(t, configured, estimator)
+
+	// Omitted dynamic_enabled prefers private discovery.
+	omitted, err := service.ParseGMPayFeeConfig("")
+	require.NoError(t, err)
+	estimator, err = resolveGMPayEstimatorWithClient(context.Background(), omitted, &service.GMPayClient{})
+	require.NoError(t, err)
+	assert.Equal(t, private, estimator)
+
+	// Omitted dynamic_enabled falls back to the built-in preset when discovery
+	// is unavailable; the result is cached for checkout/status/test reuse.
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return nil, errors.New("discovery unavailable")
+	}
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+	estimator, err = resolveGMPayEstimatorWithClient(context.Background(), omitted, &service.GMPayClient{})
+	require.NoError(t, err)
+	assert.Equal(t, builtin, estimator)
+
+	// Explicit disable never performs dynamic estimation.
+	disabled, err := service.ParseGMPayFeeConfig(`{"version":1,"dynamic_enabled":false}`)
+	require.NoError(t, err)
+	_, err = resolveGMPayEstimatorWithClient(context.Background(), disabled, &service.GMPayClient{})
+	require.Error(t, err)
+}
+
+func TestGMPayEstimatorProbeRequiresSuccessfulBuiltinQuote(t *testing.T) {
+	cfg, err := service.ParseGMPayFeeConfig("")
+	require.NoError(t, err)
+	assets := []service.GMPayAsset{{Network: "ethereum", Tokens: []string{"USDC"}}}
+	assert.False(t, gmpayEstimatorHasQuote(context.Background(), gmpayEstimatorPriorityStub{"unavailable"}, assets, cfg))
+
+	now := time.Now().UTC()
+	quote := service.NetworkFeeQuote{
+		Token: "USDC", Network: "ethereum", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1),
+		FeeAmount: decimal.NewFromFloat(0.01), TotalAmount: decimal.NewFromFloat(1.01), NativeAsset: "ETH",
+		NativeAmount: decimal.NewFromFloat(0.00001), Source: service.GMPayFeeSourceChainNetworkEstimate,
+		EstimatorVersion: "test", QuotedAt: now, ExpiresAt: now.Add(time.Minute),
+		Evidence: service.NetworkFeeEvidence{RPCMethod: "eth_estimateGas", RPCSource: "cloudflare-eth.com", PriceSource: "api.coingecko.com", PriceTimestamp: now.Unix()},
+	}
+	assert.True(t, gmpayEstimatorHasQuote(context.Background(), gmpayEstimatorQuoteStub{quote: quote}, assets, cfg))
+}
 
 func setupGMPayTopUpTest(t *testing.T) {
 	t.Helper()
@@ -57,6 +260,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 	previousMinTopUp := operation_setting.MinTopUp
 	previousCallbackAddress := operation_setting.CustomCallbackAddress
 	previousServerAddress := system_setting.ServerAddress
+	previousOptions := common.OptionMap
 	operation_setting.PayAddress = "https://pay.example.test/payments/epay/v1/order/create-transaction"
 	operation_setting.EpayId = "gmpay-test-pid"
 	operation_setting.EpayKey = "gmpay-test-secret"
@@ -65,6 +269,12 @@ func setupGMPayTopUpTest(t *testing.T) {
 	operation_setting.MinTopUp = 1
 	operation_setting.CustomCallbackAddress = "https://new-api.example"
 	system_setting.ServerAddress = "https://new-api.example"
+	// Ordinary wallet fee discovery is opt-out by default in production. The
+	// legacy checkout fixtures explicitly disable dynamic discovery so these
+	// tests continue to exercise the historical gateway-included path.
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1,"dynamic_enabled":false}`}
+	common.OptionMapRWMutex.Unlock()
 	restoreGatewayMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
 	t.Cleanup(func() {
 		restoreGatewayMode()
@@ -76,6 +286,9 @@ func setupGMPayTopUpTest(t *testing.T) {
 		operation_setting.MinTopUp = previousMinTopUp
 		operation_setting.CustomCallbackAddress = previousCallbackAddress
 		system_setting.ServerAddress = previousServerAddress
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
 		model.DB, model.LOG_DB = previousDB, previousLogDB
 		common.RedisEnabled = previousRedisEnabled
 		common.SetDatabaseTypes(previousMainDatabaseType, previousLogDatabaseType)
@@ -84,6 +297,208 @@ func setupGMPayTopUpTest(t *testing.T) {
 			require.NoError(t, sqlDB.Close())
 		}
 	})
+}
+
+func TestChooseGMPayFeeStatusAssetOnlyReturnsSupportedStablecoin(t *testing.T) {
+	assets := []service.GMPayAsset{{Network: "ethereum", Tokens: []string{"USDC"}}}
+	token, network, err := chooseGMPayFeeStatusAsset(assets, "usdc", "erc20")
+	require.NoError(t, err)
+	assert.Equal(t, "USDC", token)
+	assert.Equal(t, "ethereum", network)
+
+	_, _, err = chooseGMPayFeeStatusAsset(assets, "USDT", "ethereum")
+	assert.Error(t, err)
+}
+
+func TestResolveGMPayWalletAssetFallsBackToBuiltinWhenGatewayUnavailable(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayMethods := operation_setting.PayMethods
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1}`}
+	common.OptionMapRWMutex.Unlock()
+	operation_setting.PayMethods = []map[string]string{{"type": "usdt.tron"}}
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	restoreMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
+
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestCount.Add(1)
+		writer.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() {
+		restoreMode()
+		operation_setting.PayMethods = previousPayMethods
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		newGMPayNativeClient = previousClientFactory
+	})
+
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient(server.URL, "pid", "secret")}
+	require.NotNil(t, epCfg.Client)
+	token, network, err := resolveGMPayWalletAsset(context.Background(), epCfg, gmpayNativePaymentMethod, "USDC", "erc20")
+	require.NoError(t, err)
+	assert.Equal(t, "usdc", token)
+	assert.Equal(t, "ethereum", network)
+	assert.GreaterOrEqual(t, requestCount.Load(), int32(1))
+
+	// The second checkout-boundary resolver receives the selected pair again;
+	// its outage fallback must preserve the same canonical spelling as the
+	// wallet resolver even when called with an unnormalized pair.
+	token, network, err = resolveGMPayAssetWithBuiltinFallback(context.Background(), epCfg, gmpayNativePaymentMethod, "USDC", "erc20", true)
+	require.NoError(t, err)
+	assert.Equal(t, "usdc", token)
+	assert.Equal(t, "ethereum", network)
+}
+
+func TestResolveGMPayWalletAssetRejectsUnsupportedAssetWhenGatewayUnavailable(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayMethods := operation_setting.PayMethods
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1}`}
+	common.OptionMapRWMutex.Unlock()
+	operation_setting.PayMethods = []map[string]string{{"type": "usdt.tron"}}
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	restoreMode := operation_setting.SetEffectivePaymentGatewayModeForTest(operation_setting.PaymentGatewayModeGMPayNative)
+
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requestCount.Add(1)
+		writer.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+	t.Cleanup(func() {
+		restoreMode()
+		operation_setting.PayMethods = previousPayMethods
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		newGMPayNativeClient = previousClientFactory
+	})
+
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient(server.URL, "pid", "secret")}
+	require.NotNil(t, epCfg.Client)
+	_, _, err := resolveGMPayWalletAsset(context.Background(), epCfg, gmpayNativePaymentMethod, "DAI", "ethereum")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "USDT or USDC")
+	assert.Zero(t, requestCount.Load())
+}
+
+func TestRequestEpayCheckoutBuiltinAssetFallbackReachesCreateOrder(t *testing.T) {
+	setupGMPayTopUpTest(t)
+	gin.SetMode(gin.TestMode)
+	user := &model.User{Id: 713, Username: "gmpay-builtin-fallback-user", Status: common.UserStatusEnabled, Group: "default"}
+	require.NoError(t, model.DB.Create(user).Error)
+
+	previousOptions := common.OptionMap
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1}`}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+	})
+
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+	now := time.Now().UTC()
+	builtinQuote := service.NetworkFeeQuote{
+		Token:              "USDC",
+		Network:            "ethereum",
+		SettlementCurrency: "USD",
+		BaseAmount:         decimal.NewFromInt(10),
+		FeeAmount:          decimal.NewFromFloat(0.25),
+		TotalAmount:        decimal.NewFromFloat(10.25),
+		NativeAsset:        "ETH",
+		NativeAmount:       decimal.NewFromFloat(0.0001),
+		Source:             service.GMPayFeeSourceChainNetworkEstimate,
+		EstimatorVersion:   "test-builtin",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(time.Minute),
+		Evidence: service.NetworkFeeEvidence{
+			RPCMethod:      "eth_estimateGas",
+			RPCSource:      "cloudflare-eth.com",
+			PriceSource:    "api.coingecko.com",
+			PriceTimestamp: now.Unix(),
+		},
+	}
+	builtin := gmpayEstimatorQuoteStub{quote: builtinQuote}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return nil, errors.New("gateway unavailable")
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return builtin, nil
+	}
+	t.Cleanup(func() {
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+
+	var getCount, createCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.Method == http.MethodGet:
+			getCount.Add(1)
+			writer.WriteHeader(http.StatusServiceUnavailable)
+		case request.Method == http.MethodPost:
+			createCount.Add(1)
+			var payload map[string]any
+			require.NoError(t, common.DecodeJson(request.Body, &payload))
+			assert.Equal(t, "usdc", payload["token"])
+			assert.Equal(t, "ethereum", payload["network"])
+			_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"builtin-fallback-order","order_id":%q,"amount":10.25,"currency":"USD","actual_amount":"10.25","receive_address":"0x1111111111111111111111111111111111111111","token":"USDC","network":"ethereum","status":1,"expiration_time":2000000000}}`, payload["order_id"])))
+		default:
+			t.Errorf("unexpected GMPay request: %s %s", request.Method, request.URL.Path)
+			writer.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+	newGMPayNativeClient = func(gatewayAddress, pid, secret string) (*service.GMPayClient, error) {
+		return service.NewGMPayClient(server.URL, pid, secret, server.Client())
+	}
+
+	newCheckoutRequest := func(token, network string) (*gin.Context, *httptest.ResponseRecorder) {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Set("id", user.Id)
+		ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/epay/checkout", strings.NewReader(fmt.Sprintf(`{"amount":10,"payment_method":"usdt.tron","token":%q,"network":%q}`, token, network)))
+		ctx.Request.Header.Set("Content-Type", "application/json")
+		return ctx, recorder
+	}
+	// RequestEpayCheckout resolves the selected asset before quoting, then the
+	// shared checkout path resolves it again before CreateOrder. Both fresh
+	// gateway reads fail, but the automatic builtin allowlist keeps the order
+	// creation path alive.
+	ctx, recorder := newCheckoutRequest("USDC", "erc20")
+	RequestEpayCheckout(ctx)
+	assert.Contains(t, recorder.Body.String(), `"message":"success"`)
+	assert.Equal(t, int32(1), createCount.Load())
+	assert.GreaterOrEqual(t, getCount.Load(), int32(2))
+
+	getsBeforeReject := getCount.Load()
+	ctx, recorder = newCheckoutRequest("DAI", "erc20")
+	RequestEpayCheckout(ctx)
+	assert.Contains(t, recorder.Body.String(), "拉起支付失败")
+	assert.Equal(t, getsBeforeReject, getCount.Load())
+	assert.Equal(t, int32(1), createCount.Load())
 }
 
 func TestGMPayNotifyRejectsLegacyModeBeforeReadingConfigurationOrDatabase(t *testing.T) {

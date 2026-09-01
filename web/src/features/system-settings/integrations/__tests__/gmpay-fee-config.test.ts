@@ -16,9 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import {
   DEFAULT_GMPAY_FEE_CONFIG_JSON,
@@ -32,6 +32,9 @@ import {
 describe('GMPay fee fallback configuration', () => {
   test('accepts the safe default and keeps the fallback disabled', () => {
     expect(getGMPayFeeConfigError(DEFAULT_GMPAY_FEE_CONFIG_JSON)).toBeNull()
+    expect(JSON.parse(DEFAULT_GMPAY_FEE_CONFIG_JSON)).not.toHaveProperty(
+      'dynamic_enabled'
+    )
     expect(parseGMPayFeeConfig(DEFAULT_GMPAY_FEE_CONFIG_JSON)).toMatchObject({
       version: 1,
       enabled: false,
@@ -402,7 +405,7 @@ describe('GMPay fee fallback configuration', () => {
     ).toBeNull()
   })
 
-  test('masks saved RPC and transaction values until an explicit reveal action', () => {
+  test('does not render saved RPC and transaction values in the admin editor', () => {
     const value = JSON.stringify({
       version: 1,
       rpc_references: { tron: 'https://rpc.example.test/key=secret' },
@@ -424,20 +427,78 @@ describe('GMPay fee fallback configuration', () => {
       })
     )
 
-    const rpcInput = screen.getAllByLabelText('RPC endpoint URL')[0]
-    expect(rpcInput).toHaveAttribute('type', 'password')
-    const rpcField = rpcInput.parentElement
-    expect(rpcField).not.toBeNull()
-    if (!rpcField) throw new Error('expected RPC field wrapper')
-    const reveal = within(rpcField).getByRole('button', {
-      name: 'Show sensitive data',
-    })
-    fireEvent.click(reveal)
-    expect(rpcInput).toHaveAttribute('type', 'text')
-    expect(rpcInput).toHaveValue('https://rpc.example.test/key=secret')
+    expect(screen.queryByLabelText('RPC endpoint URL')).toBeNull()
+    expect(screen.queryByLabelText('Price source URL')).toBeNull()
+    expect(screen.queryByDisplayValue('deadbeef')).toBeNull()
+    expect(screen.getByText('Automatic GMPay network fee discovery')).toBeInTheDocument()
+  })
 
-    const calldata = screen.getByDisplayValue('deadbeef')
-    expect(calldata).toHaveAttribute('type', 'password')
+  test('renders server discovery status with supported networks and sanitized estimate', async () => {
+    const onTestEstimate = vi.fn().mockResolvedValue({
+      state: 'ready',
+      networks: [
+        { network: 'tron', tokens: ['USDT'] },
+        { network: 'ethereum', tokens: ['USDT', 'USDC'] },
+      ],
+      lastSyncedAt: '2026-09-02T08:00:00.000Z',
+      lastEstimate: {
+        network: 'ethereum',
+        token: 'USDT',
+        feeAmount: '0.12 USD',
+        nativeAmount: '0.00004 ETH',
+        nativeAsset: 'ETH',
+        settlementCurrency: 'USD',
+        quotedAt: '2026-09-02T08:01:00.000Z',
+        expiresAt: '2026-09-02T08:06:00.000Z',
+      },
+    })
+
+    render(
+      React.createElement(GMPayFeeConfigEditor, {
+        value: DEFAULT_GMPAY_FEE_CONFIG_JSON,
+        onChange: () => undefined,
+        discoveryStatus: {
+          state: 'ready',
+          networks: [{ network: 'tron', tokens: ['USDT'] }],
+          lastSyncedAt: '2026-09-02T08:00:00.000Z',
+          lastSuccessAt: '2026-09-02T08:00:00.000Z',
+        },
+        onTestEstimate,
+      })
+    )
+
+    expect(screen.getByText('Ready')).toBeInTheDocument()
+    expect(screen.getByText(/TRON/)).toBeInTheDocument()
+    expect(screen.getByText(/\(USDT\)/)).toBeInTheDocument()
+    expect(screen.getByText('Last successful estimate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Test estimate' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test estimate' }))
+    await waitFor(() => expect(onTestEstimate).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByText('Latest test estimate')).toBeInTheDocument())
+    expect(screen.getByText('0.12 USD')).toBeInTheDocument()
+    expect(screen.queryByText('https://rpc.example.test')).toBeNull()
+  })
+
+  test('surfaces a failed test estimate without exposing low-level context', async () => {
+    const onTestEstimate = vi
+      .fn()
+      .mockRejectedValue(new Error('gateway unavailable'))
+
+    render(
+      React.createElement(GMPayFeeConfigEditor, {
+        value: DEFAULT_GMPAY_FEE_CONFIG_JSON,
+        onChange: () => undefined,
+        onTestEstimate,
+      })
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test estimate' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to run estimate. Please retry.'
+    )
+    expect(screen.queryByLabelText('RPC endpoint URL')).toBeNull()
+    expect(screen.queryByLabelText('Price source URL')).toBeNull()
   })
 
   test('requires the version marker used by the backend schema', () => {

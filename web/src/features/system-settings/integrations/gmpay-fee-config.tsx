@@ -23,7 +23,16 @@ For commercial licensing, please contact support@quantumnous.com
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { CircleAlert, Eye, EyeOff, Plus, Trash2 } from '@/components/icons'
+import {
+  CheckCircle2,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 /**
@@ -118,6 +128,29 @@ export type GMPayFeeConfig = {
   max_total: string
   /** Legacy alias retained for callers that still inspect the old shape. */
   enabled: boolean
+}
+
+export type GMPayDiscoveryNetwork = {
+  network: string
+  tokens: string[]
+}
+
+export type GMPayDiscoveryStatus = {
+  state: 'idle' | 'syncing' | 'ready' | 'unavailable' | 'error'
+  networks?: GMPayDiscoveryNetwork[]
+  lastSyncedAt?: string
+  lastSuccessAt?: string
+  lastEstimate?: {
+    network: string
+    token: string
+    feeAmount?: string
+    nativeAmount?: string
+    nativeAsset?: string
+    settlementCurrency?: string
+    quotedAt?: string
+    expiresAt?: string
+  }
+  error?: string
 }
 
 export const GMPAY_NETWORKS: readonly GMPayNetwork[] = [
@@ -1481,7 +1514,6 @@ export function serializeGMPayFeeConfig(
   const contexts = cleanContexts(config.contexts)
   const serialized: Record<string, unknown> = {
     version: 1,
-    dynamic_enabled: config.dynamic_enabled,
     estimator_mode: config.estimator_mode,
     rpc_references: cleanReferences(config.rpc_references),
     price_source_references: cleanPriceReferences(config),
@@ -1507,6 +1539,9 @@ export function serializeGMPayFeeConfig(
     max_fee: config.max_fee,
     max_total: config.max_total,
   }
+  // Omit a false value so the server can use its automatic-discovery mode.
+  // An explicit true still opts into the configured estimator path.
+  if (config.dynamic_enabled) serialized.dynamic_enabled = true
   if (options.includeLegacyEnabled) serialized.enabled = config.fallback_enabled
   return JSON.stringify(serialized, null, 2)
 }
@@ -1519,6 +1554,162 @@ type ConfigEditorProps = {
   value: string
   onChange: (value: string) => void
   ariaInvalid?: boolean
+  /** Optional server-provided discovery snapshot for deployments that expose
+   * the authenticated GMPay capability status endpoint. */
+  discoveryStatus?: GMPayDiscoveryStatus
+  /** Optional callback used by the "test estimate" action. It must perform
+   * the server-side request; browser code never receives RPC credentials. */
+  onTestEstimate?: () =>
+    | GMPayDiscoveryStatus
+    | void
+    | Promise<GMPayDiscoveryStatus | void>
+  testingEstimate?: boolean
+}
+
+function deriveDiscoveryStatus(config: GMPayFeeConfig): GMPayDiscoveryStatus {
+  const networks = GMPAY_NETWORKS.filter(
+    (network) =>
+      Boolean(config.rpc_references[network]?.trim()) ||
+      Boolean(config.price_source_references[network]?.trim()) ||
+      Boolean(config.contexts[network])
+  ).map((network) => ({
+    network,
+    // EPUSDT is the only asset currently supported by this integration. Keep
+    // the token list conservative when the gateway snapshot is unavailable.
+    tokens: ['USDT'],
+  }))
+
+  return {
+    state: networks.length > 0 ? 'idle' : 'unavailable',
+    networks,
+  }
+}
+
+function formatDiscoveryTimestamp(value: string | undefined) {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toLocaleString()
+}
+
+function discoveryStateLabel(
+  state: GMPayDiscoveryStatus['state'],
+  t: (key: string) => string
+) {
+  switch (state) {
+    case 'ready':
+      return t('Ready')
+    case 'syncing':
+      return t('Syncing')
+    case 'error':
+      return t('Error')
+    case 'unavailable':
+      return t('Unavailable')
+    default:
+      return t('Waiting for gateway sync')
+  }
+}
+
+type GMPayFeeStatusApiResponse = {
+  success: boolean
+  data?: {
+    configured?: boolean
+    capability?: boolean
+    healthy?: boolean
+    quote_available?: boolean
+    reason?: string
+    supported_assets?: Array<{
+      network?: string
+      token?: string
+      display_name?: string
+    }>
+    last_sync_at?: number
+    last_success_at?: number
+  }
+}
+
+type GMPayFeeEstimateApiResponse = {
+  success: boolean
+  data?: {
+    token?: string
+    network?: string
+    native_asset?: string
+    native_amount?: string
+    fee_amount?: string
+    settlement_currency?: string
+    quoted_at?: string
+    expires_at?: string
+  }
+  message?: string
+}
+
+function mapGMPayFeeStatusResponse(
+  response: GMPayFeeStatusApiResponse
+): GMPayDiscoveryStatus {
+  const data = response.data
+  const grouped = new Map<string, Set<string>>()
+  for (const asset of data?.supported_assets ?? []) {
+    const rawNetwork = asset.network?.trim().toLowerCase()
+    if (!rawNetwork) continue
+    const network = NETWORK_ALIASES[rawNetwork] ?? rawNetwork
+    const tokens = grouped.get(network) ?? new Set<string>()
+    if (asset.token?.trim()) tokens.add(asset.token.trim().toUpperCase())
+    grouped.set(network, tokens)
+  }
+  const networks = Array.from(grouped, ([network, tokens]) => ({
+    network,
+    tokens: [...tokens],
+  }))
+  let state: GMPayDiscoveryStatus['state'] = 'unavailable'
+  if (data?.healthy && data.quote_available) state = 'ready'
+  else if (data?.configured && data.capability) state = 'error'
+
+  return {
+    state,
+    networks,
+    lastSyncedAt: data?.last_sync_at
+      ? new Date(data.last_sync_at * 1000).toISOString()
+      : undefined,
+    lastSuccessAt: data?.last_success_at
+      ? new Date(data.last_success_at * 1000).toISOString()
+      : undefined,
+    error: state === 'ready' ? undefined : data?.reason,
+  }
+}
+
+export async function getGMPayDiscoveryStatus() {
+  const response = await api.get<GMPayFeeStatusApiResponse>(
+    '/api/option/gmpay_fee/status'
+  )
+  if (!response.data?.success) {
+    throw new Error(response.data?.data?.reason ?? 'GMPay status unavailable')
+  }
+  return mapGMPayFeeStatusResponse(response.data)
+}
+
+export async function testGMPayFeeEstimate() {
+  const response = await api.post<GMPayFeeEstimateApiResponse>(
+    '/api/option/gmpay_fee/test'
+  )
+  if (!response.data?.success || !response.data.data) {
+    throw new Error(response.data?.message ?? 'GMPay estimate unavailable')
+  }
+  const estimate = response.data.data
+  return {
+    state: 'ready' as const,
+    lastEstimate: {
+      network:
+        NETWORK_ALIASES[estimate.network?.trim().toLowerCase() ?? ''] ??
+        estimate.network ?? '',
+      token: estimate.token ?? '',
+      feeAmount: estimate.fee_amount,
+      nativeAmount: estimate.native_amount,
+      nativeAsset: estimate.native_asset,
+      settlementCurrency: estimate.settlement_currency,
+      quotedAt: estimate.quoted_at,
+      expiresAt: estimate.expires_at,
+    },
+  }
 }
 
 type ConfigInputProps = {
@@ -1987,12 +2178,38 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
     () => parsedValue ?? DEFAULT_GMPAY_FEE_CONFIG
   )
   const lastEmittedValue = React.useRef(props.value)
+  const [runtimeStatus, setRuntimeStatus] =
+    React.useState<GMPayDiscoveryStatus>()
+  const [localTesting, setLocalTesting] = React.useState(false)
 
   React.useEffect(() => {
     if (props.value === lastEmittedValue.current || !parsedValue) return
     setDraft(parsedValue)
     lastEmittedValue.current = props.value
   }, [parsedValue, props.value])
+
+  React.useEffect(() => {
+    setRuntimeStatus(undefined)
+  }, [props.value])
+
+  const effectiveDiscoveryStatus =
+    runtimeStatus ?? props.discoveryStatus ?? deriveDiscoveryStatus(draft)
+  const isTestingEstimate = props.testingEstimate ?? localTesting
+  const runTestEstimate = async () => {
+    if (!props.onTestEstimate || isTestingEstimate) return
+    setLocalTesting(true)
+    try {
+      const result = await props.onTestEstimate()
+      if (result) setRuntimeStatus(result)
+    } catch {
+      setRuntimeStatus({
+        state: 'error',
+        error: 'Unable to run estimate. Please retry.',
+      })
+    } finally {
+      setLocalTesting(false)
+    }
+  }
 
   const updateDraft = (next: GMPayFeeConfig) => {
     setDraft(next)
@@ -2054,6 +2271,22 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
   }
 
   const networkCount = Object.keys(draft.overrides).length
+  // Endpoint URLs and representative transaction context are server-owned
+  // discovery data. Keep the fields in the draft/serializer for backwards
+  // compatibility, but never render the low-level editor in the admin UI.
+  const showAdvancedEstimatorEditor = false
+  let discoveryStatusIcon = (
+    <CircleAlert className='size-3.5' aria-hidden='true' />
+  )
+  if (effectiveDiscoveryStatus.state === 'ready') {
+    discoveryStatusIcon = (
+      <CheckCircle2 className='size-3.5' aria-hidden='true' />
+    )
+  } else if (effectiveDiscoveryStatus.state === 'syncing') {
+    discoveryStatusIcon = (
+      <Loader2 className='size-3.5 animate-spin' aria-hidden='true' />
+    )
+  }
 
   return (
     <div
@@ -2075,6 +2308,207 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
         </p>
       </div>
 
+      <section
+        className='space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4'
+        aria-labelledby='gmpay-discovery-heading'
+      >
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='min-w-0'>
+            <h3 id='gmpay-discovery-heading' className='font-medium'>
+              {t('Automatic GMPay network fee discovery')}
+            </h3>
+            <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>
+              {t(
+                'The server discovers EPUSDT networks, settlement context, and trusted price data from the configured GMPay gateway. No RPC URLs, wallet addresses, contracts, or calldata are required here.'
+              )}
+            </p>
+            <p className='text-muted-foreground mt-2 text-xs leading-relaxed'>
+              {t(
+                'Automatic estimates are attempted for Native wallet checkout and fail closed when the gateway cannot provide reliable context. Use the optional administrator fallback below only when explicitly needed.'
+              )}
+            </p>
+          </div>
+          <div
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-2.5 py-1 text-xs font-medium',
+              effectiveDiscoveryStatus.state === 'ready' &&
+                'border-emerald-500/40 bg-emerald-500/10 text-emerald-700',
+              effectiveDiscoveryStatus.state === 'syncing' &&
+                'border-blue-500/40 bg-blue-500/10 text-blue-700',
+              effectiveDiscoveryStatus.state === 'error' &&
+                'border-destructive/40 bg-destructive/10 text-destructive',
+              effectiveDiscoveryStatus.state === 'unavailable' &&
+                'border-amber-500/40 bg-amber-500/10 text-amber-700',
+              effectiveDiscoveryStatus.state === 'idle' &&
+                'border-muted-foreground/30 bg-muted text-muted-foreground'
+            )}
+            role='status'
+            aria-live='polite'
+          >
+            {discoveryStatusIcon}
+            {discoveryStateLabel(effectiveDiscoveryStatus.state, t)}
+          </div>
+        </div>
+
+        <div className='grid gap-3 sm:grid-cols-2'>
+          <div className='rounded-md border bg-background/60 p-3'>
+            <p className='text-muted-foreground text-xs font-medium uppercase tracking-wide'>
+              {t('Supported networks and tokens')}
+            </p>
+            {effectiveDiscoveryStatus.networks?.length ? (
+              <div className='mt-2 flex flex-wrap gap-2'>
+                {effectiveDiscoveryStatus.networks.map((entry) => (
+                  <span
+                    key={entry.network}
+                    className='rounded-md border bg-muted/60 px-2 py-1 text-xs'
+                  >
+                    {NETWORK_LABEL_KEYS[entry.network as GMPayNetwork]
+                      ? t(NETWORK_LABEL_KEYS[entry.network as GMPayNetwork])
+                      : entry.network}{' '}
+                    <span className='text-muted-foreground'>
+                      ({
+                        entry.tokens.length
+                          ? entry.tokens.join(', ')
+                          : t('No tokens')
+                      })
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className='text-muted-foreground mt-2 text-xs'>
+                {t('No networks reported by the gateway.')}
+              </p>
+            )}
+          </div>
+          <div className='rounded-md border bg-background/60 p-3'>
+            <p className='text-muted-foreground text-xs font-medium uppercase tracking-wide'>
+              {t('Last synced')}
+            </p>
+            <p className='mt-2 text-sm'>
+              {formatDiscoveryTimestamp(effectiveDiscoveryStatus.lastSyncedAt) ??
+                t('No successful sync yet')}
+            </p>
+            <p className='text-muted-foreground mt-3 text-xs font-medium uppercase tracking-wide'>
+              {t('Last successful estimate')}
+            </p>
+            <p className='mt-1 text-sm'>
+              {formatDiscoveryTimestamp(effectiveDiscoveryStatus.lastSuccessAt) ??
+                t('No successful estimate yet')}
+            </p>
+          </div>
+        </div>
+
+        {effectiveDiscoveryStatus.lastEstimate ? (
+          <div className='rounded-md border bg-background/60 p-3'>
+            <p className='text-muted-foreground text-xs font-medium uppercase tracking-wide'>
+              {t('Latest test estimate')}
+            </p>
+            <div className='mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2'>
+              <p>
+                <span className='text-muted-foreground'>{t('Network')}: </span>
+                {NETWORK_LABEL_KEYS[
+                  effectiveDiscoveryStatus.lastEstimate.network as GMPayNetwork
+                ]
+                  ? t(
+                      NETWORK_LABEL_KEYS[
+                        effectiveDiscoveryStatus.lastEstimate.network as GMPayNetwork
+                      ]
+                    )
+                  : effectiveDiscoveryStatus.lastEstimate.network}
+              </p>
+              <p>
+                <span className='text-muted-foreground'>{t('Token')}: </span>
+                {effectiveDiscoveryStatus.lastEstimate.token}
+              </p>
+              {effectiveDiscoveryStatus.lastEstimate.feeAmount ? (
+                <p>
+                  <span className='text-muted-foreground'>{t('Fee')}: </span>
+                  {effectiveDiscoveryStatus.lastEstimate.feeAmount}
+                </p>
+              ) : null}
+              {effectiveDiscoveryStatus.lastEstimate.nativeAmount ? (
+                <p>
+                  <span className='text-muted-foreground'>
+                    {t('Native amount')}:{' '}
+                  </span>
+                  {effectiveDiscoveryStatus.lastEstimate.nativeAmount}{' '}
+                  {effectiveDiscoveryStatus.lastEstimate.nativeAsset ?? ''}
+                </p>
+              ) : null}
+              {effectiveDiscoveryStatus.lastEstimate.settlementCurrency ? (
+                <p>
+                  <span className='text-muted-foreground'>
+                    {t('Settlement currency')}:{' '}
+                  </span>
+                  {effectiveDiscoveryStatus.lastEstimate.settlementCurrency}
+                </p>
+              ) : null}
+              {formatDiscoveryTimestamp(
+                effectiveDiscoveryStatus.lastEstimate.quotedAt
+              ) ? (
+                <p>
+                  <span className='text-muted-foreground'>{t('Quoted at')}: </span>
+                  {formatDiscoveryTimestamp(
+                    effectiveDiscoveryStatus.lastEstimate.quotedAt
+                  )}
+                </p>
+              ) : null}
+              {formatDiscoveryTimestamp(
+                effectiveDiscoveryStatus.lastEstimate.expiresAt
+              ) ? (
+                <p>
+                  <span className='text-muted-foreground'>
+                    {t('Quote expires at')}:{' '}
+                  </span>
+                  {formatDiscoveryTimestamp(
+                    effectiveDiscoveryStatus.lastEstimate.expiresAt
+                  )}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {effectiveDiscoveryStatus.error ? (
+          <p
+            className='text-destructive flex items-start gap-2 text-xs leading-relaxed'
+            role='alert'
+          >
+            <CircleAlert
+              className='mt-0.5 size-3.5 shrink-0'
+              aria-hidden='true'
+            />
+            <span>{effectiveDiscoveryStatus.error}</span>
+          </p>
+        ) : null}
+
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+          <p className='text-muted-foreground text-xs leading-relaxed'>
+            {t(
+              'Automatic discovery is managed by the server; this browser never receives RPC credentials.'
+            )}
+          </p>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='shrink-0'
+            onClick={() => void runTestEstimate()}
+            disabled={!props.onTestEstimate || isTestingEstimate}
+          >
+            {isTestingEstimate ? (
+              <Loader2 className='size-3.5 animate-spin' aria-hidden='true' />
+            ) : (
+              <RefreshCw className='size-3.5' aria-hidden='true' />
+            )}
+            {t('Test estimate')}
+          </Button>
+        </div>
+      </section>
+
+      {showAdvancedEstimatorEditor ? (
+        <>
       <div className='flex items-center justify-between gap-4 rounded-lg border px-3 py-3'>
         <div className='min-w-0'>
           <Label htmlFor='gmpay-dynamic-enabled'>
@@ -2393,6 +2827,9 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
           ))}
         </div>
       </fieldset>
+
+        </>
+      ) : null}
 
       <fieldset className='space-y-4'>
         <legend className='text-sm font-medium'>
