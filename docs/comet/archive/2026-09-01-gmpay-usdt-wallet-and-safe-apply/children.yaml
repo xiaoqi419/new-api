@@ -1,0 +1,82 @@
+schema: comet.native.children.v2
+acceptance_index:
+  A1:
+    source: brief.md
+    text: 'A1: 当 EPUSDT 配置同时返回 `TRON: [TRX, USDT]`、`Ethereum: [USDC, USDT]`、`Solana: [SOL, USDC, USDT]` 时，用户只看到三个网络卡片，分别为 `TRON / USDT · TRC20`、`Ethereum / USDT · ERC20` 和 `Solana / USDT · SPL`，看不到 TRX、SOL 或 USDC。'
+  A2:
+    source: brief.md
+    text: 'A2: 当 EPUSDT 只返回一个可用 USDT 网络时，点击支付后不显示网络选择器，直接以该网络和 `token=usdt` 创建订单。'
+  A3:
+    source: brief.md
+    text: 'A3: 当存在两个或更多可用 USDT 网络时，点击支付先显示网络选择器；取消选择不创建本地订单或网关订单，选择后只提交被选网络。'
+  A4:
+    source: brief.md
+    text: 'A4: 当 EPUSDT 配置超时、响应无效、没有 USDT、网络未知或所选网络在建单前已不可用时，不调用网关建单、不回退到 TRON，并显示本地化的不可用提示。'
+  A5:
+    source: brief.md
+    text: 'A5: 新创建的非 TRON USDT 订单继续通过现有 `payment_method` 字段绑定网络和 USDT；部署前已经存在的非 USDT pending 订单仍可按其原绑定完成合法回调，不需要数据库迁移。'
+  A6:
+    source: brief.md
+    text: 'A6: 成功建单后 Modal 展示网关返回的精确 USDT 金额、完整地址、所选网络、二维码和有效期；支付成功后按现有流程刷新余额，页面从不打开托管支付页。'
+  A7:
+    source: brief.md
+    text: 'A7: Legacy EPay、订阅、拼团和代理预付现有行为不因普通钱包的多网络 USDT 选择而改变；Native 下这些非普通钱包流程仍按各自现有明确支付方式执行。'
+  A8:
+    source: brief.md
+    text: 'A8: 钱包选择器在桌面和移动端、中文和英文下可完整操作，网络名称、USDT 协议标签、空状态、错误和重试文案全部通过 i18n 提供。'
+  A9:
+    source: brief.md
+    text: 'A9: Root 保存合法 `PaymentGatewayMode` 时，数据库写入失败必须返回失败并保持数据库值、OptionMap 目标值和当前生效模式不变；该失败不得触发退出。'
+  A10:
+    source: brief.md
+    text: 'A10: 当前生效模式与草稿目标不一致时，Root 可选择“仅保存”或“保存并应用”；非 Root 无权读取应用控制状态或调用应用接口。'
+  A11:
+    source: brief.md
+    text: 'A11: `ADMIN_SELF_RESTART_ENABLED` 未启用、运行平台不支持安全优雅退出、实例检测失败或活跃实例数不为一时，页面不提供可执行的“保存并应用”，仍明确显示“已保存，需运维手工重启”。'
+  A12:
+    source: brief.md
+    text: 'A12: “保存并应用”需要二次确认，确认文案明确说明当前站点会短暂不可用；重复点击、目标已生效、目标在确认后变化或另一应用操作正在进行时不会重复触发退出。'
+  A13:
+    source: brief.md
+    text: 'A13: 应用接口不接受任何容器、服务、主机、数据库、Redis、网关、URL、命令或信号参数；后端只能调度当前进程的既有优雅关闭路径。'
+  A14:
+    source: brief.md
+    text: 'A14: 应用操作只有在目标模式成功持久化并写入审计后才返回接受状态；响应提交完成后才异步关闭当前进程，外部 `restart: always` 或等价 supervisor 负责拉起。'
+  A15:
+    source: brief.md
+    text: 'A15: 页面在断连和恢复期间持续轮询；只有新进程 `started_at` 晚于操作前值、健康状态恢复且 `effective_mode == desired_mode` 时显示“已生效”，超时、恢复失败或模式不一致显示失败/待人工处理。'
+  A16:
+    source: brief.md
+    text: 'A16: 单实例保护使用当前站点隔离数据库中的活跃实例记录；存在第二个活跃实例、stale/未知状态或查询失败时拒绝自重启，不会在混合生效模式下报告成功。'
+  A17:
+    source: brief.md
+    text: 'A17: 自重启路径只结束当前应用进程；PostgreSQL、Redis、EPUSDT/GMPay 网关、国内站或国际站另一部署均不在其控制范围内，代码和接口中不存在可选择这些目标的能力。'
+  A18:
+    source: brief.md
+    text: 'A18: 两个子 change 合并后，Go 测试、前端聚焦测试、i18n 同步、前端生产构建、Root 权限与审计检查、单实例/禁用回退测试及独立只读 Verifier 的全部验收项通过；用户可见变更有 newest-first changelog 记录。'
+children:
+  - name: gmpay-usdt-network-selection
+    depends_on: []
+    covers:
+      - A1
+      - A2
+      - A3
+      - A4
+      - A5
+      - A6
+      - A7
+      - A8
+  - name: payment-mode-safe-apply-control
+    depends_on:
+      - gmpay-usdt-network-selection
+    covers:
+      - A9
+      - A10
+      - A11
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A18

@@ -177,7 +177,7 @@ export function usePayment() {
           amount: requestAmount,
           payment_method: paymentType,
           ...(cryptoAsset
-            ? { network: cryptoAsset.network, token: cryptoAsset.token }
+            ? { network: cryptoAsset.network, token: 'usdt' }
             : {}),
         })
 

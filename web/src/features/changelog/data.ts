@@ -29,6 +29,31 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260831-payment-mode-safe-apply-control',
+    date: '2026-08-31',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '支付网关模式新增安全的保存与应用控制：运行中的生效模式与已保存目标模式明确分离，切换前显示当前实例、重启能力和状态校验结果。',
+          '仅在单实例、健康检查、优雅停机能力和完整前置状态均满足时启用自助应用；无法安全确认时保留保存与手动重启路径，并防止重复触发重启。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260831-gmpay-usdt-selection',
+    date: '2026-08-31',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          'GMPay Native 钱包充值现在仅展示网关实际可用的 USDT 网络；单网络直接进入站内收银台，多网络先选择网络。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260831-epusdt-multichain-wallet',
     date: '2026-08-31',
     changes: [

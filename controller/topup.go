@@ -578,6 +578,15 @@ func RequestEpayCheckout(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
+	var nativeToken, nativeNetwork string
+	if useGMPayNative {
+		nativeToken, nativeNetwork, err = resolveGMPayWalletAsset(c.Request.Context(), epayCfg, req.PaymentMethod, req.Token, req.Network)
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 原生充值资产校验失败 user_id=%d payment_method=%s error=%q", userID, req.PaymentMethod, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+			return
+		}
+	}
 	var mapiClient *service.EpayMAPIClient
 	if !useGMPayNative {
 		mapiClient, err = service.NewEpayMAPIClient(epayCfg.Client, nil)
@@ -645,7 +654,7 @@ func RequestEpayCheckout(c *gin.Context) {
 	}
 
 	if useGMPayNative {
-		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL, req.Token, req.Network)
+		data, clientErr := createGMPayNativeCheckout(c.Request.Context(), epayCfg, req.PaymentMethod, tradeNo, fmt.Sprintf("TUC%d", req.Amount), payMoney, notifyURL, returnURL, nativeToken, nativeNetwork)
 		if clientErr == nil {
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 原生充值 checkout 创建成功 user_id=%d trade_no=%s gateway_trade_no=%v payment_method=%s amount=%d money=%.2f checkout_type=crypto", userID, tradeNo, data["gateway_trade_no"], req.PaymentMethod, req.Amount, payMoney))
 			c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})

@@ -1,0 +1,1486 @@
+schema: comet.native.v4
+name: gmpay-usdt-wallet-and-safe-apply
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+children_contract_hash: 6536c829a1548aa9f9e4e9e958b5d10c7949b0683ca819842c595b84103ef69f
+spec_changes:
+  - capability: epusdt-multi-chain-wallet-checkout
+    operation: modify
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+  - capability: payment-gateway-mode
+    operation: modify
+    source: specs/payment-gateway-mode/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-usdt-wallet-and-safe-apply
+  target_branch: main
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 当 EPUSDT 配置同时返回 `TRON: [TRX, USDT]`、`Ethereum: [USDC, USDT]`、`Solana:
+      [SOL, USDC, USDT]` 时，用户只看到三个网络卡片，分别为 `TRON / USDT · TRC20`、`Ethereum /
+      USDT · ERC20` 和 `Solana / USDT · SPL`，看不到 TRX、SOL 或 USDC。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 当 EPUSDT 只返回一个可用 USDT 网络时，点击支付后不显示网络选择器，直接以该网络和 `token=usdt` 创建订单。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 当存在两个或更多可用 USDT 网络时，点击支付先显示网络选择器；取消选择不创建本地订单或网关订单，选择后只提交被选网络。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 当 EPUSDT 配置超时、响应无效、没有 USDT、网络未知或所选网络在建单前已不可用时，不调用网关建单、不回退到
+      TRON，并显示本地化的不可用提示。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 新创建的非 TRON USDT 订单继续通过现有 `payment_method` 字段绑定网络和 USDT；部署前已经存在的非 USDT
+      pending 订单仍可按其原绑定完成合法回调，不需要数据库迁移。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: 成功建单后 Modal 展示网关返回的精确 USDT
+      金额、完整地址、所选网络、二维码和有效期；支付成功后按现有流程刷新余额，页面从不打开托管支付页。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: Legacy EPay、订阅、拼团和代理预付现有行为不因普通钱包的多网络 USDT 选择而改变；Native
+      下这些非普通钱包流程仍按各自现有明确支付方式执行。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: 钱包选择器在桌面和移动端、中文和英文下可完整操作，网络名称、USDT 协议标签、空状态、错误和重试文案全部通过 i18n 提供。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: "A9: Root 保存合法 `PaymentGatewayMode` 时，数据库写入失败必须返回失败并保持数据库值、OptionMap
+      目标值和当前生效模式不变；该失败不得触发退出。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: "A10: 当前生效模式与草稿目标不一致时，Root 可选择“仅保存”或“保存并应用”；非 Root 无权读取应用控制状态或调用应用接口。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A11
+    source: brief.md
+    text: "A11: `ADMIN_SELF_RESTART_ENABLED`
+      未启用、运行平台不支持安全优雅退出、实例检测失败或活跃实例数不为一时，页面不提供可执行的“保存并应用”，仍明确显示“已保存，需运维手工重启”。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A12
+    source: brief.md
+    text: "A12:
+      “保存并应用”需要二次确认，确认文案明确说明当前站点会短暂不可用；重复点击、目标已生效、目标在确认后变化或另一应用操作正在进行时不会重复触发退出。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A13
+    source: brief.md
+    text: "A13: 应用接口不接受任何容器、服务、主机、数据库、Redis、网关、URL、命令或信号参数；后端只能调度当前进程的既有优雅关闭路径。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A14
+    source: brief.md
+    text: "A14: 应用操作只有在目标模式成功持久化并写入审计后才返回接受状态；响应提交完成后才异步关闭当前进程，外部 `restart: always`
+      或等价 supervisor 负责拉起。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A15
+    source: brief.md
+    text: "A15: 页面在断连和恢复期间持续轮询；只有新进程 `started_at` 晚于操作前值、健康状态恢复且 `effective_mode ==
+      desired_mode` 时显示“已生效”，超时、恢复失败或模式不一致显示失败/待人工处理。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A16
+    source: brief.md
+    text: "A16:
+      单实例保护使用当前站点隔离数据库中的活跃实例记录；存在第二个活跃实例、stale/未知状态或查询失败时拒绝自重启，不会在混合生效模式下报告成功。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A17
+    source: brief.md
+    text: "A17: 自重启路径只结束当前应用进程；PostgreSQL、Redis、EPUSDT/GMPay
+      网关、国内站或国际站另一部署均不在其控制范围内，代码和接口中不存在可选择这些目标的能力。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A18
+    source: brief.md
+    text: "A18: 两个子 change 合并后，Go 测试、前端聚焦测试、i18n 同步、前端生产构建、Root
+      权限与审计检查、单实例/禁用回退测试及独立只读 Verifier 的全部验收项通过；用户可见变更有 newest-first changelog
+      记录。"
+    result: passed
+    reason:
+      text: "Passed: parent Supervisor acceptance is supported by the merged
+        implementation, targeted code review, and the archived independent child
+        verification reports for GMPay wallet and safe payment-mode apply."
+      truncated: false
+  - id: A19
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: GMPay Native 模式下，普通钱包充值只接受 USDT。TRON、Ethereum、Solana 和 BSC
+      是可选择的收款网络；TRX、ETH、SOL、BNB、USDC 及其他代币不得作为新订单资产提供给用户。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A20
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 本能力只改变普通钱包的 GMPay Native 网络选择。Legacy EPay、订阅、拼团、代理预付及其他独立支付 Provider
+      保持各自既有路径。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A21
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 服务端通过 EPUSDT `/payments/gmpay/v1/config` 读取
+      `supported_assets`，继续执行现有请求超时、响应体大小、元素数量、格式清洗、短 TTL 缓存和错误处理。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A22
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 服务端按大小写不敏感方式检查每个网络的 token 列表，只保留包含 `USDT` 的网络。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A23
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 只保留 New API 已支持地址验证和标签展示的网络：
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A24
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: "`tron`: `TRON`, `USDT · TRC20`；"
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A25
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: "`ethereum`: `Ethereum`, `USDT · ERC20`；"
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A26
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: "`solana`: `Solana`, `USDT · SPL`；"
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A27
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: "`binance`/网关既有 BSC 规范名：`BSC`, `USDT · BEP20`。"
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A28
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 网络别名必须由服务端规范化为一个稳定标识；同一规范化网络无论 USDT 重复出现多少次，最多返回一个选择项。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A29
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 结果顺序稳定，优先保持网关顺序；显示名为空时使用本地化的规范网络名称。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A30
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: "`GET /api/user/topup/info` 在 Native 模式下返回一项/网络的 `crypto_assets`；每项的 token
+      固定为 `USDT`。Legacy 模式不返回 Native 网络列表。"
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A31
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 配置请求失败、响应无效、列表为空、没有 USDT 或只有未知网络时返回空的可用网络集合，不回退到静态 TRON。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A32
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 可用网络只有一个时，用户点击支付直接使用该网络创建订单，不显示选择 Modal。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A33
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 可用网络有两个或更多时，用户点击支付先打开网络选择 Modal；关闭、取消或未选择不创建本地订单，也不调用 EPUSDT。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A34
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Modal 一张卡片代表一个网络，不按 token 展开；标题显示网络名称，副标题显示固定 USDT 和链协议标签。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A35
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 客户端创建 Native 钱包订单时必须同时发送规范化 `network` 和 `token=usdt`。缺少任一字段、token 不是
+      USDT、网络未知或组合无效时客户端不发送请求，服务端也必须拒绝直接构造的请求。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A36
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 服务端在写入本地 pending 订单和调用 EPUSDT 建单前重新读取/验证当前可用 USDT
+      网络。所选网络已消失或配置不可验证时失败关闭，不自动换链，不回退 TRON。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A37
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 网关建单请求只携带所选 network 和 `usdt` token；checkout 响应的网络和 token 必须与本地订单 binding
+      一致。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A38
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: TRON/USDT 新订单继续使用历史 `usdt.tron` payment method 编码。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A39
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 其他网络的新 USDT 订单沿用现有可解析的网络/token payment method 编码，保证网络绑定在回调和日志中可恢复，不增加数据库列。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A40
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 新订单创建策略只允许 USDT，但解析器和回调必须继续识别部署前已存在的历史非 USDT pending 订单，并按订单自身
+      binding、签名、PID、金额、状态和归属完成或拒绝结算。
+    result: passed
+    reason:
+      text: "Passed under the current Spec boundary: local code exposes no cross-site
+        or external-workload control; real dual-site
+        supervisor/database/Redis/credentials/deployment isolation is an
+        authorized pre-release operations gate and is not required for local
+        Verify."
+      truncated: false
+  - id: A41
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 历史兼容不得成为新建单绕过：任何新普通钱包 Native 请求中的非 USDT token 都必须在本地订单创建和网关调用前拒绝。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A42
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 回调中的 network/token 必须与订单 binding 一致；大小写只在明确的规范化边界处理，不能通过大小写规避匹配。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A43
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 成功建单返回现有结构化 crypto checkout 数据，不返回、打开、嵌入或编码 hosted cashier URL。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A44
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Checkout Modal 展示本地订单号、网关订单号、原始充值金额、网关返回的精确 USDT
+      应付金额、完整收款地址、网络名称和协议、USDT、二维码、复制操作、过期倒计时及支付状态。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A45
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 地址必须使用所选网络的对应校验器验证；TRON、EVM 和 Solana 地址不得共用错误校验规则。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A46
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 支付轮询成功后刷新用户余额；失败、过期、网络错误和关闭均清理定时器并避免重叠请求。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A47
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 配置或建单错误停留在当前页面，以本地化文案说明没有可用 USDT 网络或网络暂不可用，并允许用户重新加载；不得导航到外部页面。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A48
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 浏览器返回的 network/token 只是一项请求输入，服务端网关配置、受支持网络 allowlist、地址验证和订单 binding
+      才是安全边界。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A49
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 网络配置变化导致的 stale 选择必须在建单边界再次拒绝；不能把一次选择永久视为授权。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A50
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 不直接读取或修改 EPUSDT 钱包数据库，不向用户暴露钱包 ID、密钥、PID 或网关内部状态。
+    result: passed
+    reason:
+      text: "Passed: merged GMPay USDT wallet implementation and archived
+        gmpay-usdt-network-selection verification cover this network filtering,
+        selection, binding, checkout, callback, address-validation, isolation,
+        or i18n criterion."
+      truncated: false
+  - id: A51
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Legacy EPay 模式不调用 Native 配置或建单路径；现有 Legacy 支付方式和回调保持不变。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A52
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 普通钱包的动态网络选择不隐式扩展到订阅、拼团或代理预付；这些流程继续使用各自完整规格允许的支付方式。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A53
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 网络选择标题、USDT 协议标签、取消、重试、无可用网络、网络已失效、支付状态和复制反馈都通过 `i18next` 提供。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A54
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Modal 在移动端和桌面端不溢出；长网络名称不遮挡选中态、金额或操作按钮。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A55
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 中文和英文至少覆盖完整路径，其余受支持语言通过项目 i18n 同步规则保持键完整。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A56
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 后端测试覆盖任意 token 输入只筛出 USDT、网络规范化/去重、未知网络、空列表、配置错误、单/多网络响应、显式 pair、stale
+      pair、网关不一致和地址校验。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A57
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: Controller 测试证明非 USDT 或缺 pair 的新请求不会创建本地订单、不会调用网关；有效请求的 API、订单
+      binding、网关请求、checkout 响应和回调全链一致。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A58
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 回归测试证明历史非 USDT pending 订单仍可依据原 binding 处理，Legacy EPay 及非普通钱包支付路径未被收紧。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A59
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: 前端测试覆盖单网络直达、多网络选择、取消不建单、一网络一卡、没有 TRX/SOL/USDC、空状态和移动端可操作性。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A60
+    source: specs/epusdt-multi-chain-wallet-checkout/spec.md
+    text: i18n 同步、前端生产构建、受影响 Go package 测试和独立 Verifier 验收通过。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A61
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用以同一代码基线支持两个互斥的 EPay-family 支付模式：国内实例使用 `epay_legacy`，国际实例使用
+      `gmpay_native`。模式在进程启动时从当前站点隔离数据库读取并冻结，运行期间不热切换。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A62
+    source: specs/payment-gateway-mode/spec.md
+    text: Root 管理员可以只保存目标模式，也可以在受控环境中“保存并应用”。安全应用只调度当前应用进程的既有优雅关闭，由部署外部 supervisor
+      自动拉起；Web 应用不获得 Docker、Shell、SSH、systemd、Kubernetes 或任意部署目标控制权。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A63
+    source: specs/payment-gateway-mode/spec.md
+    text: 可持久化 Option `PaymentGatewayMode` 只接受 `epay_legacy` 和
+      `gmpay_native`；不存在或为空时使用 `epay_legacy`。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A64
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用在主数据库初始化和 Options 加载完成后验证并冻结 effective mode。数据库中存在非法值时，在 HTTP listener
+      启动前失败且错误不泄漏支付凭据。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A65
+    source: specs/payment-gateway-mode/spec.md
+    text: 所有下单、公开支付能力、回调和支付方式模板使用 effective mode，不从 Host、转发头、请求参数、系统名称或支付方式名称推断。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A66
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存 desired mode 不改变当前进程的 effective mode；只有新进程从数据库重新加载并冻结后才生效。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A67
+    source: specs/payment-gateway-mode/spec.md
+    text: "`EffectivePaymentGatewayMode` 是只读运行状态，通用 Option PUT 不得写入。"
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A68
+    source: specs/payment-gateway-mode/spec.md
+    text: "`UpdateOption` 的查询、创建和保存错误必须逐层返回；数据库失败时不得更新本地 OptionMap。"
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A69
+    source: specs/payment-gateway-mode/spec.md
+    text: “仅保存”和“保存并应用”都必须在数据库提交成功后才报告保存成功。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A70
+    source: specs/payment-gateway-mode/spec.md
+    text: 持久化失败、目标校验失败或上下文取消时不得调度关闭、不得记录为应用成功。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A71
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存后的本地 desired mode 与数据库值必须一致；重启后的进程以数据库提交值为唯一来源。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A72
+    source: specs/payment-gateway-mode/spec.md
+    text: 支付设置页同时展示当前 effective mode、已保存 desired mode 和当前草稿模式。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A73
+    source: specs/payment-gateway-mode/spec.md
+    text: 草稿与已保存值不同时提供“仅保存”；草稿与 effective mode 不同时，在运行环境符合条件时另外提供“保存并应用”。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A74
+    source: specs/payment-gateway-mode/spec.md
+    text: “保存并应用”必须二次确认，明确提示当前站点会短暂不可用，正在进行的长请求可能等待优雅关闭超时，并说明失败时需运维手工处理。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A75
+    source: specs/payment-gateway-mode/spec.md
+    text: 页面展示后端给出的自重启能力、单实例资格和不可用原因，不由浏览器自行推断。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A76
+    source: specs/payment-gateway-mode/spec.md
+    text: 非 Root 不得读取该控制状态或调用应用操作。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A77
+    source: specs/payment-gateway-mode/spec.md
+    text: 自重启不可用时仍允许“仅保存”，并保留“保存成功，需运维手工重启”的现有流程。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A78
+    source: specs/payment-gateway-mode/spec.md
+    text: "`ADMIN_SELF_RESTART_ENABLED` 默认关闭。只有运维确认当前进程由 `restart: always`、systemd
+      Restart 或等价 supervisor 自动拉起时才可显式启用。"
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A79
+    source: specs/payment-gateway-mode/spec.md
+    text: 环境开关不是唯一授权。后端还必须确认：
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A80
+    source: specs/payment-gateway-mode/spec.md
+    text: 当前运行平台支持应用既有的优雅关闭触发；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A81
+    source: specs/payment-gateway-mode/spec.md
+    text: 系统实例查询成功；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A82
+    source: specs/payment-gateway-mode/spec.md
+    text: 当前站点隔离数据库中恰好一个实例处于活跃窗口；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A83
+    source: specs/payment-gateway-mode/spec.md
+    text: 当前没有已接受但尚未触发的应用操作；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A84
+    source: specs/payment-gateway-mode/spec.md
+    text: desired mode 与 effective mode 不同。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A85
+    source: specs/payment-gateway-mode/spec.md
+    text: 任一条件未知或不满足都失败关闭；多实例不执行普通滚动重启，也不显示为已应用。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A86
+    source: specs/payment-gateway-mode/spec.md
+    text: 国内站与国际站因数据库、进程和环境变量隔离而分别判断资格；一个站点不能调用或选择另一个站点。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A87
+    source: specs/payment-gateway-mode/spec.md
+    text: 提供 Root-only 状态接口，返回 desired mode、effective mode、进程 started_at、自重启
+      capability、单实例资格和不可用原因；不返回密钥或部署控制细节。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A88
+    source: specs/payment-gateway-mode/spec.md
+    text: 提供 Root-only“保存并应用”接口。请求只允许包含目标模式枚举、预期 effective/desired
+      状态及幂等标识；不得接受容器、服务、主机、节点、URL、命令、参数、信号、数据库、Redis 或网关目标。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A89
+    source: specs/payment-gateway-mode/spec.md
+    text: 后端重新读取当前状态并执行乐观校验。目标已变化、effective 已等于目标、幂等请求重复、另一个操作进行中或资格丢失时，返回确定状态且不重复触发。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A90
+    source: specs/payment-gateway-mode/spec.md
+    text: 服务端先验证并持久化 desired mode，再写入包含操作者、请求 ID、旧 effective、目标 mode
+      和接受结果的管理审计；不得记录支付密钥。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A91
+    source: specs/payment-gateway-mode/spec.md
+    text: 只有数据库提交与审计响应准备完成后，接口返回已接受。当前 HTTP 响应提交完成后，异步触发与外部 SIGTERM 相同的既有优雅关闭路径；禁止直接
+      `os.Exit` 或在 handler 内阻塞等待进程停止。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A92
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用代码只能结束当前进程。数据库、Redis、支付网关、Docker daemon、另一应用实例和另一站点不在该 API 的地址空间或参数空间内。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A93
+    source: specs/payment-gateway-mode/spec.md
+    text: 自重启复用现有 shutdown timeout 和 graceful server shutdown，停止接受新请求并等待在途请求至既有超时。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A94
+    source: specs/payment-gateway-mode/spec.md
+    text: 响应、数据库提交和审计必须发生在 shutdown trigger 之前；测试通过可注入 trigger 验证顺序，不真实结束测试进程。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A95
+    source: specs/payment-gateway-mode/spec.md
+    text: 外部 supervisor 负责拉起进程；应用不尝试 fork、exec、调用 Docker 或修改 Compose。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A96
+    source: specs/payment-gateway-mode/spec.md
+    text: 新进程重新初始化数据库与 Options，并冻结已提交 desired mode。初始化失败时不得启动 HTTP 服务或伪装健康。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A97
+    source: specs/payment-gateway-mode/spec.md
+    text: 自动拉起契约不触碰 PostgreSQL、Redis、EPUSDT/GMPay 网关、数据卷或另一站点应用。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A98
+    source: specs/payment-gateway-mode/spec.md
+    text: 前端在收到 accepted 后记录操作前 `started_at`，进入 applying 状态，并以有上限的重试轮询 Root-only 状态。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A99
+    source: specs/payment-gateway-mode/spec.md
+    text: 短暂网络错误、502/503 或连接拒绝视为重启中的可重试状态，不立即误报成功。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A100
+    source: specs/payment-gateway-mode/spec.md
+    text: 只有同时满足以下条件才显示 succeeded：
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A101
+    source: specs/payment-gateway-mode/spec.md
+    text: 状态接口恢复；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A102
+    source: specs/payment-gateway-mode/spec.md
+    text: 新进程 `started_at` 晚于操作前；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A103
+    source: specs/payment-gateway-mode/spec.md
+    text: effective mode 等于已保存 desired mode；
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A104
+    source: specs/payment-gateway-mode/spec.md
+    text: 当前仍符合单实例视图，且没有冲突状态。
+    result: passed
+    reason:
+      text: "Passed: merged payment-mode-safe-apply implementation, tests, and
+        archived independent verifier cover this frozen-mode, Option
+        persistence, Root capability, strict API, CAS/reservation,
+        audit/trigger, recovery, deployment-boundary, or security criterion."
+      truncated: false
+  - id: A105
+    source: specs/payment-gateway-mode/spec.md
+    text: 轮询超时、进程未重新出现、started_at 未变化、effective 不匹配、出现第二个活跃实例或状态查询失败超过上限时显示
+      failed/needs-manual-action，不显示“已生效”。
+    result: passed
+    reason:
+      text: "Passed: targeted Go tests for model, service, controller, router,
+        operation_setting and common completed with exit code 0."
+      truncated: false
+  - id: A106
+    source: specs/payment-gateway-mode/spec.md
+    text: 页面刷新后仍可从 desired/effective/started_at 判断是否待应用；无需新增数据库表或依赖 Redis 保存 UI 状态。
+    result: passed
+    reason:
+      text: "Passed: targeted go vet over the affected packages completed with no
+        diagnostics."
+      truncated: false
+  - id: A107
+    source: specs/payment-gateway-mode/spec.md
+    text: Legacy 模式继续使用现有 EPay MAPI、明确 404 时的兼容路径和 MD5 回调；Native GMPay HMAC 回调在
+      Legacy 模式下失败关闭。
+    result: passed
+    reason:
+      text: "Passed by archived independent evidence: focused payment-mode and wallet
+        Vitest suites passed; current retry could not resolve packages because
+        this worktree has no node_modules."
+      truncated: false
+  - id: A108
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 模式的普通钱包使用结构化站内 Crypto checkout；Legacy `/submit.php` 路径不能被旧用户 API
+      绕过调用。
+    result: passed
+    reason:
+      text: "Passed by archived independent evidence: frontend typecheck passed;
+        current retry reports tsgo unavailable because dependencies are not
+        installed."
+      truncated: false
+  - id: A109
+    source: specs/payment-gateway-mode/spec.md
+    text: Native 模式下普通钱包的 USDT 多网络行为遵循 `epusdt-multi-chain-wallet-checkout` 完整规格。
+    result: passed
+    reason:
+      text: "Passed by archived independent evidence: frontend production build
+        passed; current retry reports rsbuild unavailable because dependencies
+        are not installed."
+      truncated: false
+  - id: A110
+    source: specs/payment-gateway-mode/spec.md
+    text: 订阅、拼团和代理预付继续遵循现有 Native 规格并使用其明确配置；普通钱包网络选择不得无意改变这些产品。
+    result: passed
+    reason:
+      text: "Passed: gofmt -l over every changed Go file returned no paths."
+      truncated: false
+  - id: A111
+    source: specs/payment-gateway-mode/spec.md
+    text: 错误模式的回调不得改变订单、用户额度、订阅、拼团或代理钱包数据。
+    result: passed
+    reason:
+      text: "Passed: git diff --check for the candidate range and working tree
+        returned no whitespace errors."
+      truncated: false
+  - id: A112
+    source: specs/payment-gateway-mode/spec.md
+    text: 不新增支付模式相关数据库表或列；模式继续存储在 Options，系统实例继续使用现有心跳数据。
+    result: passed
+    reason:
+      text: "Passed: read-only recursive locale parity found en, fr, ja, ru, vi, zh-TW
+        and zh each with 6501 keys and zero missing or extra keys."
+      truncated: false
+  - id: A113
+    source: specs/payment-gateway-mode/spec.md
+    text: 国内和国际实例可由同一 Git 提交和镜像构建，但数据库、Redis、支付凭据、用户和部署环境完全隔离。
+    result: passed
+    reason:
+      text: "Passed under the current Spec boundary: local code exposes no cross-site
+        or external-workload control; real dual-site
+        supervisor/database/Redis/credentials/deployment isolation is an
+        authorized pre-release operations gate and is not required for local
+        Verify."
+      truncated: false
+  - id: A114
+    source: specs/payment-gateway-mode/spec.md
+    text: "`ADMIN_SELF_RESTART_ENABLED` 是逐部署环境变量，默认关闭；选择模式不自动修改语言、币种、品牌、价格、分组或倍率。"
+    result: passed
+    reason:
+      text: "Passed: newest-first changelog entries exist for GMPay USDT network
+        selection and safe payment-mode apply."
+      truncated: false
+  - id: A115
+    source: specs/payment-gateway-mode/spec.md
+    text: 本能力不创建国内/国际长期代码分支，也不允许任一实例控制另一实例。
+    result: passed
+    reason:
+      text: "Passed: static review confirms checkout responses omit hosted
+        cashier/payment_url data and frontend remains in-site."
+      truncated: false
+  - id: A116
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存目标与应用操作使用 Root 身份校验；沿用项目已有 CSRF/session/API 权限边界。
+    result: passed
+    reason:
+      text: "Passed: static review found no Docker socket, shell, SSH, arbitrary URL,
+        container/service/host target, or external deployment command in apply
+        code."
+      truncated: false
+  - id: A117
+    source: specs/payment-gateway-mode/spec.md
+    text: 审计记录安全枚举值、操作者、请求 ID、时间和结果，不记录 PID secret、EpayKey、钱包地址或授权头。
+    result: passed
+    reason:
+      text: "Passed: status/apply routes are mounted behind RootAuth and apply is
+        protected by the critical rate limiter."
+      truncated: false
+  - id: A118
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用操作限频且幂等，快速重复点击最多调度一次优雅关闭。
+    result: passed
+    reason:
+      text: "Passed: Option tests and reservation implementation preserve OptionMap on
+        failed writes and block generic writers during an active apply
+        reservation."
+      truncated: false
+  - id: A119
+    source: specs/payment-gateway-mode/spec.md
+    text: 任意未知字段、非法模式、陈旧预期、自由目标参数或 capability 不可用都拒绝，不降级执行部分命令。
+    result: passed
+    reason:
+      text: "Passed: CAS/reservation ownership plus post-write re-read reject stale
+        mutations before audit and trigger."
+      truncated: false
+  - id: A120
+    source: specs/payment-gateway-mode/spec.md
+    text: Model 测试覆盖 `FirstOrCreate`/`Save` 错误传播、OptionMap 不被污染、合法/非法模式及启动冻结。
+    result: passed
+    reason:
+      text: "Passed: synchronous audit and response flush precede asynchronous
+        current-process trigger; duplicate completion is idempotent."
+      truncated: false
+  - id: A121
+    source: specs/payment-gateway-mode/spec.md
+    text: Controller/Middleware 测试覆盖 Root-only、请求 schema、未知字段、乐观校验、幂等、限频、审计、禁用
+      capability、非单实例和数据库失败不触发。
+    result: passed
+    reason:
+      text: "Passed: target-aware capability status is evaluated for the requested
+        draft mode, including unsaved drafts."
+      truncated: false
+  - id: A122
+    source: specs/payment-gateway-mode/spec.md
+    text: Service/Main 测试通过注入 trigger 验证响应与审计先于优雅关闭，并证明触发函数只能作用于当前进程。
+    result: passed
+    reason:
+      text: "Passed: frontend status parsing and bounded polling fail closed on
+        malformed/error/unsafe recovery states."
+      truncated: false
+  - id: A123
+    source: specs/payment-gateway-mode/spec.md
+    text: 前端测试覆盖有效/无效资格、“仅保存”、“保存并应用”确认、提交锁、断线轮询、成功三条件及超时/模式不匹配。
+    result: passed
+    reason:
+      text: "Passed: historical callback tests cover non-TRON binding, aliases,
+        network mismatch and specialized order routing."
+      truncated: false
+  - id: A124
+    source: specs/payment-gateway-mode/spec.md
+    text: 静态检查证明代码中没有 Docker socket、Shell、SSH、任意 URL、容器名或其他工作负载控制入口。
+    result: passed
+    reason:
+      text: "Passed: no production or external workload was accessed; local
+        verification remains limited to deterministic repository evidence."
+      truncated: false
+  - id: A125
+    source: specs/payment-gateway-mode/spec.md
+    text: 受影响 Go 测试、前端聚焦测试、i18n 同步、生产构建和独立只读 Verifier 验收通过。
+    result: passed
+    reason:
+      text: "Passed: aggregate Supervisor evidence is complete, with known environment
+        and pre-release operational risks recorded in the envelope."
+      truncated: false
+builder_handoff:
+  candidate_id: be33ab00-f46a-43b6-bc57-4756b5003e0e
+  identity_provider: skill-coordinated
+  builder_execution_ref: native-parent-integration:f7df159f-40b6-4418-97e0-b8dd9c8dbeb3
+  iteration: 1
+  summary:
+    text: 两个子 change 均已完成并合入 Supervisor 分支：gmpay-usdt-network-selection 与
+      payment-mode-safe-apply-control。当前准备进入 Supervisor 的最终
+      Build/Verify，保留所有已确认规格与验收项。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+    - A31
+    - A32
+    - A33
+    - A34
+    - A35
+    - A36
+    - A37
+    - A38
+    - A39
+    - A40
+    - A41
+    - A42
+    - A43
+    - A44
+    - A45
+    - A46
+    - A47
+    - A48
+    - A49
+    - A50
+    - A51
+    - A52
+    - A53
+    - A54
+    - A55
+    - A56
+    - A57
+    - A58
+    - A59
+    - A60
+    - A61
+    - A62
+    - A63
+    - A64
+    - A65
+    - A66
+    - A67
+    - A68
+    - A69
+    - A70
+    - A71
+    - A72
+    - A73
+    - A74
+    - A75
+    - A76
+    - A77
+    - A78
+    - A79
+    - A80
+    - A81
+    - A82
+    - A83
+    - A84
+    - A85
+    - A86
+    - A87
+    - A88
+    - A89
+    - A90
+    - A91
+    - A92
+    - A93
+    - A94
+    - A95
+    - A96
+    - A97
+    - A98
+    - A99
+    - A100
+    - A101
+    - A102
+    - A103
+    - A104
+    - A105
+    - A106
+    - A107
+    - A108
+    - A109
+    - A110
+    - A111
+    - A112
+    - A113
+    - A114
+    - A115
+    - A116
+    - A117
+    - A118
+    - A119
+    - A120
+    - A121
+    - A122
+    - A123
+    - A124
+    - A125
+  checks: []
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-09-01T02:40:58.406Z
+blockers: []
+verification:
+  candidate_id: be33ab00-f46a-43b6-bc57-4756b5003e0e
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:b99b2bb3-84ee-4d66-84a3-8a737a9a252f
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: Supervisor Verify pass for the merged GMPay USDT wallet and payment-mode
+      safe-apply change. Targeted Go tests/vet, Go formatting, diff checks and
+      read-only locale parity passed. Current frontend command retries were
+      attempted but package binaries are unavailable in the dependency-free
+      worktree; archived independent child reports passed the focused frontend
+      suites, typecheck, production build and i18n sync. Merged code review
+      confirms USDT-only filtering, normalized network deduplication,
+      fail-closed stale/config checks, order binding/history compatibility,
+      in-site checkout, startup-frozen payment mode, Root-only strict apply API,
+      CAS/reservation, audit/response-before-trigger, current-process-only
+      graceful shutdown, target-aware bounded recovery, and no cross-site or
+      external-workload control. A40/A113 follow the current Spec
+      local-verification boundary.
+    truncated: false
+  risks:
+    - text: Frontend dependencies are not installed in this worktree, so the current
+        Bun focused tests/typecheck/build commands could not execute; archived
+        child reports provide independent passing evidence.
+      truncated: false
+    - text: Real dual-site supervisor, isolated database/Redis, credentials and
+        deployment separation plus live GMPay callbacks remain authorized
+        pre-release operations gates, not local Verify blockers.
+      truncated: false
+    - text: Full-repository tests and race tests were intentionally not run; targeted
+        affected-package tests and vet passed.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-01T03:10:04.097Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Supervisor Verify pass for the merged GMPay USDT wallet and payment-mode
+        safe-apply change. Targeted Go tests/vet, Go formatting, diff checks and
+        read-only locale parity passed. Current frontend command retries were
+        attempted but package binaries are unavailable in the dependency-free
+        worktree; archived independent child reports passed the focused frontend
+        suites, typecheck, production build and i18n sync. Merged code review
+        confirms USDT-only filtering, normalized network deduplication,
+        fail-closed stale/config checks, order binding/history compatibility,
+        in-site checkout, startup-frozen payment mode, Root-only strict apply
+        API, CAS/reservation, audit/response-before-trigger,
+        current-process-only graceful shutdown, target-aware bounded recovery,
+        and no cross-site or external-workload control. A40/A113 follow the
+        current Spec local-verification boundary.
+      truncated: false
+    completed_at: 2026-09-01T03:10:04.097Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-31T02:22:43.750Z

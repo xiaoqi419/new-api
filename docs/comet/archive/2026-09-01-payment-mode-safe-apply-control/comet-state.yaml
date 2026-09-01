@@ -1,0 +1,703 @@
+schema: comet.native.v4
+name: payment-mode-safe-apply-control
+language: zh-CN
+phase: archive
+status: done
+state_version: 27
+brief: brief.md
+spec_changes:
+  - capability: payment-gateway-mode
+    operation: modify
+    source: specs/payment-gateway-mode/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/payment-mode-safe-apply-control
+  target_branch: comet/gmpay-usdt-wallet-and-safe-apply
+  finish: merge
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A9: 合法模式保存时数据库写入失败返回失败，数据库值、OptionMap 和 effective mode 均不变，且不触发退出。"
+    result: passed
+    reason:
+      text: Database write failures preserve the persisted value, OptionMap and frozen
+        effective mode and do not trigger shutdown.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A10: Root 可选择“仅保存”或“保存并应用”；非 Root 无法读取状态或调用应用接口。"
+    result: passed
+    reason:
+      text: Root users have distinct save-only and save-and-apply paths; the status
+        and apply routes are Root-only.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A11: capability 未启用、平台不支持、实例检测失败或活跃实例不为一时，不提供可执行应用按钮，只显示手工重启提示。"
+    result: passed
+    reason:
+      text: Disabled capability, unsupported shutdown, instance-check failures and
+        non-single-instance states fail closed and leave only manual-restart
+        guidance.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A12: 应用必须二次确认；重复点击、目标变化、已生效或已有操作时只返回确定状态，不重复退出。"
+    result: passed
+    reason:
+      text: The UI requires confirmation and locks pending submissions; server-side
+        idempotency, target checks and operation guards prevent duplicate
+        shutdown scheduling.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A13: 应用 API 只接受固定模式、预期状态和幂等标识，不接受自由目标或命令。"
+    result: passed
+    reason:
+      text: The apply endpoint uses strict fixed-schema JSON decoding and rejects
+        unknown fields and trailing data.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A14: desired 持久化、审计和响应准备完成后才异步触发当前进程 graceful shutdown，由 supervisor 拉起。"
+    result: passed
+    reason:
+      text: Desired persistence, synchronous audit, response preparation and the
+        asynchronous current-process graceful-shutdown trigger occur in the
+        required order.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A15: 页面在断连期间重试轮询，只有新 `started_at`、健康、effective==desired
+      且单实例时显示成功，否则失败/手工处理。"
+    result: passed
+    reason:
+      text: Recovery uses bounded polling with retries for transient 502/503/network
+        failures and does not report success from a stale or failed query.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A16: 当前站点隔离数据库中的第二个活跃实例、stale/未知状态或查询错误会拒绝应用，不报告混合生效。"
+    result: passed
+    reason:
+      text: Unknown, stale, missing or multiple active instances fail closed and
+        cannot be reported as a safe single-instance apply.
+      truncated: false
+  - id: A9
+    source: brief.md
+    text: "A17: 触发路径只结束当前应用进程，不影响 PostgreSQL、Redis、EPUSDT/GMPay 或另一站点。"
+    result: passed
+    reason:
+      text: The trigger is wired only to the current process's existing signal and
+        HTTP Server.Shutdown path.
+      truncated: false
+  - id: A10
+    source: brief.md
+    text: "A18: 受影响 Go/前端/i18n/构建检查和独立只读 Verifier 全部通过，新增用户可见文案进入 changelog。"
+    result: passed
+    reason:
+      text: All local aggregate save/apply, frontend, i18n, build and verifier checks
+        passed; the separately scoped live-isolation requirement is
+        independently covered by A40.
+      truncated: false
+  - id: A11
+    source: specs/payment-gateway-mode/spec.md
+    text: 同一代码基线支持 `epay_legacy` 和 `gmpay_native`
+      两种互斥支付模式。模式由当前站点隔离数据库提供，在进程启动时读取并冻结；运行期间不热切换。Root 管理员可保存 desired
+      mode，并在显式启用且证明安全的单实例部署中保存并应用。
+    result: passed
+    reason:
+      text: Only epay_legacy and gmpay_native are accepted, and the effective mode is
+        frozen during startup before the HTTP listener is started.
+      truncated: false
+  - id: A12
+    source: specs/payment-gateway-mode/spec.md
+    text: Web 应用只结束自身进程，复用现有 graceful shutdown；外部 supervisor
+      负责重新拉起。任何数据库、Redis、支付网关、另一站点、容器、主机或命令控制均不在 API 能力范围内。
+    result: passed
+    reason:
+      text: The implementation has no capability to control another workload, site,
+        database, Redis, gateway, container, host or external command.
+      truncated: false
+  - id: A13
+    source: specs/payment-gateway-mode/spec.md
+    text: "`PaymentGatewayMode` 只接受 `epay_legacy` 和 `gmpay_native`，不存在或为空时使用
+      `epay_legacy`。"
+    result: passed
+    reason:
+      text: PaymentGatewayMode normalization accepts only the two documented modes and
+        defaults an empty or missing persisted value to legacy.
+      truncated: false
+  - id: A14
+    source: specs/payment-gateway-mode/spec.md
+    text: 初始化数据库和 Options 后校验并冻结 effective mode；非法值在 HTTP listener 启动前失败，错误不得泄漏凭据。
+    result: passed
+    reason:
+      text: An invalid persisted mode fails during initialization before the HTTP
+        listener starts, without exposing credentials.
+      truncated: false
+  - id: A15
+    source: specs/payment-gateway-mode/spec.md
+    text: 所有下单、公开支付能力、回调和模板使用 effective mode，不根据 Host、转发头、请求参数或系统名称推断。
+    result: passed
+    reason:
+      text: Top-up, webhook, subscription, group-buy and agent-payment paths select
+        behavior from the frozen effective mode rather than host, headers or
+        request parameters.
+      truncated: false
+  - id: A16
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存 desired 不改变当前 effective；只有新进程重新加载后生效。
+    result: passed
+    reason:
+      text: Saving desired mode persists the target without changing the running
+        effective mode; a new process must reload it.
+      truncated: false
+  - id: A17
+    source: specs/payment-gateway-mode/spec.md
+    text: "`EffectivePaymentGatewayMode` 为只读运行状态，通用 Option PUT 不得写入。"
+    result: passed
+    reason:
+      text: EffectivePaymentGatewayMode is exposed as read-only runtime state and
+        generic option writes reject that key.
+      truncated: false
+  - id: A18
+    source: specs/payment-gateway-mode/spec.md
+    text: "`UpdateOption` 必须逐层返回查询、`FirstOrCreate` 和 `Save` 错误；任何数据库失败都不得更新
+      OptionMap。"
+    result: passed
+    reason:
+      text: UpdateOption and related option transactions propagate query, create and
+        save errors and update OptionMap only after a successful database
+        transaction.
+      truncated: false
+  - id: A19
+    source: specs/payment-gateway-mode/spec.md
+    text: 提供 Root-only 状态接口，返回
+      desired、effective、`started_at`、自重启能力、单实例资格、当前操作状态和不可用原因，不返回密钥或部署细节。
+    result: passed
+    reason:
+      text: The Root-only status response exposes bounded desired/effective state,
+        started_at, capability, operation and reason fields without secrets or
+        deployment details.
+      truncated: false
+  - id: A20
+    source: specs/payment-gateway-mode/spec.md
+    text: 提供 Root-only“保存并应用”接口。请求只允许目标模式枚举、预期 effective/desired 值和幂等 request
+      ID；未知字段、容器/服务/主机/URL/命令/信号/数据库/Redis/网关参数一律拒绝。
+    result: passed
+    reason:
+      text: The Root-only apply API accepts only the target mode, expected
+        effective/desired values and request ID; deployment and command
+        parameters are rejected.
+      truncated: false
+  - id: A21
+    source: specs/payment-gateway-mode/spec.md
+    text: 服务器重新读取状态并执行乐观校验。目标已变化、effective 已等于目标、请求重复、已有操作或 capability
+      丢失时返回确定状态且不重复触发。
+    result: passed
+    reason:
+      text: The server re-reads optimistic state and uses a durable Options
+        reservation plus ownership and desired-mode rechecks to coordinate apply
+        writes and conflicts.
+      truncated: false
+  - id: A22
+    source: specs/payment-gateway-mode/spec.md
+    text: 保存和应用均沿用既有 CSRF/session/API Root 权限边界；非 Root 不得读取状态或调用应用接口。
+    result: passed
+    reason:
+      text: Status and apply routes retain the existing Root authentication,
+        session/API and CSRF boundaries, with no non-Root access path added.
+      truncated: false
+  - id: A23
+    source: specs/payment-gateway-mode/spec.md
+    text: "`ADMIN_SELF_RESTART_ENABLED` 默认关闭；开启只表示运维确认当前进程由 `restart:
+      always`、systemd Restart 或等价 supervisor 自动拉起。"
+    result: passed
+    reason:
+      text: ADMIN_SELF_RESTART_ENABLED remains disabled by default and is checked
+        together with the other runtime capability conditions.
+      truncated: false
+  - id: A24
+    source: specs/payment-gateway-mode/spec.md
+    text: 后端还必须确认当前平台支持既有 graceful shutdown、系统实例查询成功、当前站点隔离数据库中恰好一个活跃实例、没有未触发的应用操作，且
+      desired 与 effective 不同。
+    result: passed
+    reason:
+      text: Capability evaluation checks self-restart configuration, graceful shutdown
+        support, trigger readiness, known current-site instances, exactly one
+        active instance, operation state and target difference.
+      truncated: false
+  - id: A25
+    source: specs/payment-gateway-mode/spec.md
+    text: 任一条件未知或不满足时失败关闭；页面仍允许仅保存并提示需要运维手工重启。
+    result: passed
+    reason:
+      text: Unknown or failed status data is rejected server-side or rendered as
+        unavailable/manual handling, while save-only remains available.
+      truncated: false
+  - id: A26
+    source: specs/payment-gateway-mode/spec.md
+    text: 国内站与国际站独立判断，任何一个站点不能选择或控制另一个站点。
+    result: passed
+    reason:
+      text: No site or deployment-target selector exists; the code only reads the
+        current process and current database's system-instance records.
+      truncated: false
+  - id: A27
+    source: specs/payment-gateway-mode/spec.md
+    text: 先验证目标并持久化 desired，再写入不含凭据的管理审计（操作者、request ID、旧 effective、目标和结果）。
+    result: passed
+    reason:
+      text: Audit metadata records the actor, request ID, old desired/effective modes,
+        target and result without credentials or deployment details.
+      truncated: false
+  - id: A28
+    source: specs/payment-gateway-mode/spec.md
+    text: 数据库提交和审计响应准备完成后返回 accepted；HTTP 响应提交完成后异步触发当前进程既有 graceful shutdown。
+    result: passed
+    reason:
+      text: The accepted response is written and flushed before
+        CompletePaymentGatewayModeApply schedules the asynchronous trigger.
+      truncated: false
+  - id: A29
+    source: specs/payment-gateway-mode/spec.md
+    text: 禁止在 handler 中阻塞等待、直接 `os.Exit`、fork/exec 或调用外部部署工具。
+    result: passed
+    reason:
+      text: No os.Exit, fork/exec, Docker, SSH, systemd, Kubernetes or external
+        deployment-tool invocation was added to the apply path.
+      truncated: false
+  - id: A30
+    source: specs/payment-gateway-mode/spec.md
+    text: 关闭复用既有 shutdown timeout，停止新请求并等待在途请求；外部 supervisor 负责拉起新进程。
+    result: passed
+    reason:
+      text: Shutdown reuses the existing signal and http.Server.Shutdown flow and
+        SHUTDOWN_TIMEOUT_SECONDS timeout; the supervisor remains responsible for
+        relaunch.
+      truncated: false
+  - id: A31
+    source: specs/payment-gateway-mode/spec.md
+    text: 可通过注入 trigger 测试“响应与审计先于 trigger”，测试不得真实终止进程。
+    result: passed
+    reason:
+      text: Injected trigger tests verify audit and response ordering and idempotent
+        scheduling without terminating the test process.
+      truncated: false
+  - id: A32
+    source: specs/payment-gateway-mode/spec.md
+    text: 支付设置页显示草稿、desired、effective、`started_at`、capability 和后端返回的原因。
+    result: passed
+    reason:
+      text: The target-aware status schema and predicates fail closed for malformed,
+        unhealthy, contradictory, unknown, stale, multi-instance,
+        unsupported-shutdown and applying states.
+      truncated: false
+  - id: A33
+    source: specs/payment-gateway-mode/spec.md
+    text: 草稿与 desired 不同时显示“仅保存”；草稿与 effective 不同时，且 capability 可用时显示“保存并应用”。
+    result: passed
+    reason:
+      text: The status endpoint evaluates the exact requested draft target and echoes
+        it; the frontend keys and requests status by draft target, so a safe
+        unsaved draft can expose Save and apply when capability is proven.
+      truncated: false
+  - id: A34
+    source: specs/payment-gateway-mode/spec.md
+    text: 应用按钮必须二次确认，说明站点会短暂不可用、长请求可能等待 graceful timeout、失败时需手工处理；提交期间锁定重复点击。
+    result: passed
+    reason:
+      text: The apply action has a second confirmation describing brief downtime,
+        graceful-timeout behavior and manual recovery, and pending submission
+        disables repeated clicks.
+      truncated: false
+  - id: A35
+    source: specs/payment-gateway-mode/spec.md
+    text: accepted 后记录操作前 `started_at`，进入 applying，以有上限的轮询查询 Root
+      状态。502/503、连接拒绝和短暂网络错误视为可重试。
+    result: passed
+    reason:
+      text: The pre-apply started_at snapshot is captured when the mutation variables
+        are created at click time, before the request resolves.
+      truncated: false
+  - id: A36
+    source: specs/payment-gateway-mode/spec.md
+    text: 只有状态恢复、新进程 `started_at` 晚于旧值、effective 等于 desired、仍为单实例且无冲突时显示 succeeded。
+    result: passed
+    reason:
+      text: Recovery succeeds only for a newer started_at, healthy status, matching
+        effective and desired target modes, a known single instance and an idle
+        operation.
+      truncated: false
+  - id: A37
+    source: specs/payment-gateway-mode/spec.md
+    text: 轮询超时、启动时间未变化、模式不匹配、多实例或状态错误显示
+      failed/needs-manual-action，不显示已生效；刷新页面可通过持久化状态恢复判断。
+    result: passed
+    reason:
+      text: Timeouts, unchanged start time, mode mismatch, multi-instance recovery and
+        status errors remain failed/manual states and never display false
+        success.
+      truncated: false
+  - id: A38
+    source: specs/payment-gateway-mode/spec.md
+    text: 不新增支付模式表或列；继续使用 Options 和现有系统实例心跳。
+    result: passed
+    reason:
+      text: No payment-mode table or column was added; the implementation uses the
+        existing Options row and system-instance heartbeat data.
+      truncated: false
+  - id: A39
+    source: specs/payment-gateway-mode/spec.md
+    text: 不触碰 PostgreSQL、Redis、EPUSDT/GMPay、数据卷、另一站点或其他容器。
+    result: passed
+    reason:
+      text: The local implementation and tests do not access or control PostgreSQL,
+        Redis, payment gateways, data volumes, another site or other containers.
+      truncated: false
+  - id: A40
+    source: specs/payment-gateway-mode/spec.md
+    text: 本地代码和接口不得提供跨站点选择或控制；国内和国际实例可使用同一提交/镜像，实际数据库、Redis、凭据和部署环境隔离作为上线前运维门禁，由发布验收单独确认，不要求本地
+      Build/Verify 访问线上环境。
+    result: passed
+    reason:
+      text: The current Spec defines real dual-site supervisor, isolated
+        database/Redis, credentials and deployment separation as an authorized
+        pre-release operations gate; local verification confirms the code
+        exposes no cross-site selector or control capability, so the unavailable
+        live environment does not block this local Verify.
+      truncated: false
+  - id: A41
+    source: specs/payment-gateway-mode/spec.md
+    text: 模式选择不改变语言、币种、品牌、价格、分组或倍率。
+    result: passed
+    reason:
+      text: Mode selection is isolated to payment protocol behavior and does not alter
+        language, currency, branding, pricing, groups or ratios.
+      truncated: false
+  - id: A42
+    source: specs/payment-gateway-mode/spec.md
+    text: A9–A18 按父级 brief 验收：错误传播和不污染内存、Root-only 双路径、capability/单实例失败关闭、二次确认和幂等、固定
+      API 边界、提交/审计/trigger 顺序、bounded polling 三条件成功、当前进程隔离，以及完整本地
+      Go/前端/i18n/构建/Verifier 检查；真实双站点部署隔离属于上线前运维门禁，不阻塞本地 Verify。
+    result: passed
+    reason:
+      text: All A1-A41 acceptance items pass. Fresh backend tests and vet, focused
+        frontend tests (34 passed), frontend typecheck and production build, Go
+        formatting, whitespace checks and read-only locale-key parity passed;
+        the prior runtime i18n sync evidence also passed. No unavailable live
+        environment is a local Verify blocker.
+      truncated: false
+builder_handoff:
+  candidate_id: 8ffed4b5-ac53-40a5-98e2-09133d377469
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:17997c75-9284-4110-80f0-ab727fdf8b57
+  iteration: 1
+  summary:
+    text: 本轮仅调整验收时点：按用户确认，将 A40 的真实双站点 supervisor、数据库、Redis、支付凭据和部署隔离从本地 Verify
+      必验项改为上线前运维门禁；A42 的本地代码级隔离及 Go/前端/i18n/构建/独立 Verifier 检查仍保留，并明确本地 Verify
+      不要求访问线上环境。已只读复核 brief/spec 文案及现有 payment-mode
+      实现/测试，未发现因该时点调整产生的代码或测试遗漏；未修改业务源码、测试或正式文档，未提交、未合并、未部署、未归档。
+    truncated: false
+  addressed_acceptance_ids:
+    - A40
+    - A42
+  checks:
+    - name:
+        text: Acceptance timing and scope review
+        truncated: false
+      result: passed
+      note:
+        text: 本轮只读复核 brief.md、payment-gateway-mode/spec.md 及其 change 副本；A40
+          明确真实双站点隔离属于上线前运维门禁，A42 明确完整本地检查仍需执行且真实部署隔离不阻塞本地 Verify。
+        truncated: false
+    - name:
+        text: Payment-mode code and test omission review
+        truncated: false
+      result: passed
+      note:
+        text: 本轮使用 rg 只读核对 service/controller/router/model/setting 的支付模式实现与测试，以及前端
+          payment-mode 回归测试；固定 schema、Root-only、target-aware
+          capability、单实例失败关闭和当前进程边界均仍有实现/测试覆盖，未发现因验收时点调整需要补改的代码或测试。
+        truncated: false
+    - name:
+        text: Backend regression suite
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：GOWORK=off go test ./model ./service
+          ./controller ./router ./setting/operation_setting ./common -count=1
+        truncated: false
+    - name:
+        text: Backend vet
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：GOWORK=off go vet ./model ./service
+          ./controller ./router ./setting/operation_setting ./common
+        truncated: false
+    - name:
+        text: Backend formatting
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：gofmt -l on all changed Go files produced no
+          output
+        truncated: false
+    - name:
+        text: Frontend payment-mode regression suite
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：bun run test --
+          src/features/system-settings/integrations/__tests__/payment-gateway-mode.test.tsx
+          (34 tests passed)
+        truncated: false
+    - name:
+        text: Frontend typecheck and production build
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：bun run typecheck; bun run build
+        truncated: false
+    - name:
+        text: Frontend targeted lint and formatting
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：oxlint and oxfmt --check passed for the
+          payment-mode implementation and regression test files
+        truncated: false
+    - name:
+        text: i18n synchronization
+        truncated: false
+      result: passed
+      note:
+        text: 沿用此前本地 Build 已通过结果（本轮未重复执行）：bun run i18n:sync completed with zero missing
+          or extra keys in all locales
+        truncated: false
+    - name:
+        text: Git whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: 本轮执行 git diff --check，未发现 whitespace errors。
+        truncated: false
+    - name:
+        text: Builder handoff JSON syntax
+        truncated: false
+      result: passed
+      note:
+        text: 本轮更新后使用 ConvertFrom-Json 解析 .comet-builder-handoff.json 成功。
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: A40 的真实双站点 supervisor、隔离数据库/Redis、支付凭据和部署隔离属于上线前运维验收项；本地 Build/Verify
+        仅验证代码级当前站点边界，不访问生产或线上环境。
+      truncated: false
+    - text: go test -race 尚未运行；本轮仅沿用既有本地检查结果，未重复执行完整 backend/frontend suites。
+      truncated: false
+    - text: 未执行 comet native next、commit、merge、push、Archive 或任何线上部署。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-01T02:08:43.803Z
+blockers: []
+verification:
+  candidate_id: 8ffed4b5-ac53-40a5-98e2-09133d377469
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:469377d7-9198-4514-8457-0f0635e26f0f
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: "Independent read-only verification of the current
+      payment-mode-safe-apply-control candidate passes all A1-A42 acceptance
+      criteria. The target-aware draft capability behavior and local safety
+      boundaries were reviewed, and the fresh backend/frontend, formatting,
+      build, and locale-parity checks passed; the earlier runtime i18n sync
+      evidence also passed. A40 is passed according to the current Spec's
+      local-verification boundary: real dual-site isolation remains an
+      authorized pre-release operations gate, while this code has no cross-site
+      or external-workload control path. Only this verifier response file was
+      updated."
+    truncated: false
+  risks:
+    - text: Real dual-site supervisor, isolated database/Redis, credentials and
+        deployment separation still require the authorized pre-release
+        operations gate described by the current Spec; this is not a local
+        code-verification blocker.
+      truncated: false
+    - text: go test -race was not run because it was not requested and the local
+        runtime history records a CGO_ENABLED=1 prerequisite.
+      truncated: false
+    - text: bun run i18n:sync was not run in this verifier pass because it rewrites
+        locale files; read-only comparison found en, fr, ja, ru, vi, zh-TW and
+        zh all at 6500 keys with zero missing or extra keys, and the prior
+        runtime/Builder evidence recorded the sync as passed.
+      truncated: false
+    - text: comet native status --details --json was attempted but hung and was
+        cancelled without state mutation; the verifier used the current
+        comet-state runtime data. No production, deployment, supervisor, payment
+        gateway, Redis or external database was accessed, and no commit, merge,
+        push, archive or comet native next action was performed.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-01T02:24:53.044Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A2
+      - A3
+      - A10
+      - A21
+      - A25
+      - A32
+      - A40
+      - A42
+    summary:
+      text: Independent read-only verification failed. Core safety behavior is present
+        and focused Go/frontend tests pass, but save-then-apply uses stale
+        status, status-query failures are not rendered fail-closed in the UI,
+        and apply writes are not atomic against generic desired-mode updates. No
+        production environment was accessed.
+      truncated: false
+    completed_at: 2026-08-31T17:28:00.630Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier final result fields
+        are invalid"
+      truncated: false
+    completed_at: 2026-08-31T18:19:44.760Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 2
+    outcome: fail
+    unresolved_ids:
+      - A10
+      - A21
+      - A32
+      - A35
+      - A40
+      - A42
+    summary:
+      text: Independent read-only verification passed the focused backend/frontend
+        checks and confirmed the save-refresh and fail-closed UI fixes. It still
+        fails the candidate on a CAS-after-commit race, an unfixed pre-apply
+        started_at snapshot, and strict status freshness/schema handling; live
+        deployment isolation remains blocked. No files, production systems,
+        commits, merges or deployments were changed by the verifier.
+      truncated: false
+    completed_at: 2026-08-31T18:48:51.355Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A40
+      - A42
+    summary:
+      text: Independent read-only verification of iteration 3 passes all local
+        acceptance items and fresh backend/frontend checks. A32 semantic
+        fail-closed handling and failed-operation retry behavior are covered.
+        Only A40 (real dual-site isolation) is blocked by the local-only scope;
+        no production system, commit, merge, push or deployment was touched.
+      truncated: false
+    completed_at: 2026-08-31T19:30:27.054Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 2
+    outcome: fail
+    unresolved_ids:
+      - A2
+      - A33
+      - A40
+      - A42
+    summary:
+      text: "Independent read-only verification of iteration 3 found a real
+        initial-draft capability gap: the status response marks self-apply
+        unavailable when saved desired already equals effective, so direct Save
+        and apply cannot be offered for an unsaved draft. A32 semantic
+        fail-closed handling and failed-operation retry behavior pass. A40
+        remains blocked by the local-only scope; no production system, commit,
+        merge, push or deployment was touched."
+      truncated: false
+    completed_at: 2026-08-31T19:48:54.110Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A40
+      - A42
+    summary:
+      text: Independent read-only verification of iteration 4 passes all locally
+        observable acceptance items, including the target-aware draft capability
+        fix for A2/A33 and the fresh backend/frontend checks. A40 cannot be
+        verified under the local-only scope, so A40 and the aggregate A42 are
+        blocked. No source, test, documentation, Comet state, production system
+        or deployment state was modified by the verifier.
+      truncated: false
+    completed_at: 2026-08-31T20:29:44.482Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 按用户确认，将 A40 的真实双站点
+        supervisor/数据库/Redis/部署验证从本地阶段必验项调整为上线前部署验收项；本地阶段保留代码级隔离验证，其他安全应用需求不变。
+      truncated: false
+    completed_at: 2026-09-01T01:57:44.586Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: "Independent read-only verification of the current
+        payment-mode-safe-apply-control candidate passes all A1-A42 acceptance
+        criteria. The target-aware draft capability behavior and local safety
+        boundaries were reviewed, and the fresh backend/frontend, formatting,
+        build, and locale-parity checks passed; the earlier runtime i18n sync
+        evidence also passed. A40 is passed according to the current Spec's
+        local-verification boundary: real dual-site isolation remains an
+        authorized pre-release operations gate, while this code has no
+        cross-site or external-workload control path. Only this verifier
+        response file was updated."
+      truncated: false
+    completed_at: 2026-09-01T02:24:53.044Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-08-31T15:14:28.825Z

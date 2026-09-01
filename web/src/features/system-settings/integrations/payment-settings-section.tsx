@@ -17,13 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Code2, Eye, RefreshCw, ShieldAlert } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
@@ -48,7 +49,11 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
-import { confirmPaymentCompliance } from '../api'
+import {
+  applyPaymentGatewayMode,
+  confirmPaymentCompliance,
+  getPaymentGatewayModeStatus,
+} from '../api'
 import {
   SettingsForm,
   SettingsSwitchContent,
@@ -58,12 +63,22 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useSystemOptions } from '../hooks/use-system-options'
 import { useUpdateOption } from '../hooks/use-update-option'
-import type { PaymentGatewayMode } from '../types'
+import type { PaymentGatewayMode, PaymentGatewayModeStatus } from '../types'
 import { safeNumberFieldProps } from '../utils/numeric-field'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
-import { getPaymentGatewayModes } from './payment-gateway-mode'
+import {
+  createPaymentGatewayModeApplyMutationVariables,
+  getPaymentGatewayModes,
+  getPaymentGatewayModeStatusForUi,
+  isPaymentGatewayModeApplyAvailable,
+  isPaymentGatewayModeApplySucceeded,
+  paymentGatewayModeStatusQueryKey,
+  paymentGatewayModeStatusQueryKeyForTarget,
+  refreshPaymentGatewayModeStatusAfterSave,
+  type PaymentGatewayModeApplyMutationVariables,
+} from './payment-gateway-mode'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
   formatJsonForEditor,
@@ -208,8 +223,96 @@ type PaymentGatewayModeControlProps = {
   storedTargetMode: PaymentGatewayMode
   draftTargetMode: PaymentGatewayMode
   isSaving: boolean
+  modeStatus?: PaymentGatewayModeStatus
+  modeStatusUnavailable?: boolean
+  applyState?: 'idle' | 'applying' | 'succeeded' | 'failed'
+  applyMessage?: string
+  isApplying?: boolean
   onDraftTargetModeChange: (mode: PaymentGatewayMode) => void
   onSave: () => void
+  onApply?: () => void
+}
+
+type PaymentGatewayModeApplyUiState = {
+  state: 'idle' | 'applying' | 'succeeded' | 'failed'
+  targetMode?: PaymentGatewayMode
+  requestId?: string
+  previousStartedAt?: number
+  deadlineAt?: number
+  message?: string
+}
+
+const PAYMENT_GATEWAY_MODE_APPLY_STORAGE_KEY =
+  'new-api.payment-gateway-mode.apply'
+const PAYMENT_GATEWAY_MODE_APPLY_POLL_INTERVAL_MS = 2000
+const PAYMENT_GATEWAY_MODE_APPLY_TIMEOUT_MS = 2 * 60 * 1000
+
+function readPaymentGatewayModeApplyState(): PaymentGatewayModeApplyUiState {
+  try {
+    const raw = window.localStorage.getItem(
+      PAYMENT_GATEWAY_MODE_APPLY_STORAGE_KEY
+    )
+    if (!raw) return { state: 'idle' }
+    const saved = JSON.parse(raw) as Partial<PaymentGatewayModeApplyUiState>
+    const now = Date.now()
+    const validTarget =
+      saved.targetMode === 'epay_legacy' || saved.targetMode === 'gmpay_native'
+    if (
+      saved.state !== 'applying' ||
+      !validTarget ||
+      typeof saved.requestId !== 'string' ||
+      saved.requestId.trim() === '' ||
+      saved.requestId.length > 128 ||
+      typeof saved.previousStartedAt !== 'number' ||
+      !Number.isFinite(saved.previousStartedAt) ||
+      typeof saved.deadlineAt !== 'number' ||
+      !Number.isFinite(saved.deadlineAt) ||
+      saved.deadlineAt <= now ||
+      saved.deadlineAt > now + PAYMENT_GATEWAY_MODE_APPLY_TIMEOUT_MS
+    ) {
+      window.localStorage.removeItem(PAYMENT_GATEWAY_MODE_APPLY_STORAGE_KEY)
+      return { state: 'idle' }
+    }
+    return {
+      state: 'applying',
+      targetMode: saved.targetMode,
+      requestId: saved.requestId,
+      previousStartedAt: saved.previousStartedAt,
+      deadlineAt: saved.deadlineAt,
+    }
+  } catch {
+    return { state: 'idle' }
+  }
+}
+
+function storePaymentGatewayModeApplyState(
+  state: PaymentGatewayModeApplyUiState
+) {
+  try {
+    if (state.state === 'applying') {
+      window.localStorage.setItem(
+        PAYMENT_GATEWAY_MODE_APPLY_STORAGE_KEY,
+        JSON.stringify(state)
+      )
+    } else {
+      window.localStorage.removeItem(PAYMENT_GATEWAY_MODE_APPLY_STORAGE_KEY)
+    }
+  } catch {
+    // Local persistence is only for recovery after a restart; inability to
+    // write storage must not block the server-side operation.
+  }
+}
+
+function createPaymentGatewayModeApplyRequestId() {
+  try {
+    const randomUUID = globalThis.crypto?.randomUUID
+    if (randomUUID) return randomUUID.call(globalThis.crypto)
+  } catch {
+    // Fall through to a non-sensitive, bounded local identifier.
+  }
+  return `payment-mode-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`
 }
 
 export function PaymentGatewayModeControl(
@@ -218,6 +321,55 @@ export function PaymentGatewayModeControl(
   const { t } = useTranslation()
   const restartPending = props.effectiveMode !== props.storedTargetMode
   const hasUnsavedTarget = props.draftTargetMode !== props.storedTargetMode
+  const canApply =
+    !props.modeStatusUnavailable &&
+    isPaymentGatewayModeApplyAvailable(
+      props.modeStatus,
+      props.draftTargetMode
+    ) &&
+    props.applyState !== 'succeeded'
+  const [showApplyConfirm, setShowApplyConfirm] = React.useState(false)
+
+  const capabilityReason = props.modeStatus?.capability.unavailable_reason
+  const capabilityReasonText: Record<string, string> = {
+    self_restart_disabled:
+      'Self-apply is disabled; save the target and ask an operator to restart this application.',
+    graceful_shutdown_unavailable:
+      'This application cannot prove that its existing graceful shutdown path is available.',
+    instance_check_failed:
+      'The current site instance check failed, so self-apply is disabled for safety.',
+    stale_instance_present:
+      'A stale or unknown site instance is present; remove the stale record and retry.',
+    instance_count_not_one:
+      'Self-apply requires exactly one active instance for this site.',
+    operation_in_progress:
+      'Another payment gateway mode operation is already in progress.',
+    target_already_effective:
+      'The requested mode is already effective in this application.',
+  }
+  let applyStatusMessage = t(
+    'Save the target first, then restart this application manually when self-apply is unavailable.'
+  )
+  if (props.modeStatusUnavailable) {
+    applyStatusMessage = t(
+      'Payment gateway mode status is unavailable; save the target and restart this application manually.'
+    )
+  } else if (capabilityReason) {
+    applyStatusMessage = t(
+      capabilityReasonText[capabilityReason] ?? capabilityReason
+    )
+  }
+  if (!props.modeStatusUnavailable) {
+    if (props.applyState === 'applying') {
+      applyStatusMessage = t(
+        'The application is restarting. Keep this page open while the new process is checked.'
+      )
+    } else if (props.applyState === 'succeeded') {
+      applyStatusMessage = t('The new payment gateway mode is now effective.')
+    } else if (props.applyState === 'failed' && props.applyMessage) {
+      applyStatusMessage = props.applyMessage
+    }
+  }
 
   return (
     <div className='space-y-4 rounded-lg border p-4'>
@@ -278,6 +430,31 @@ export function PaymentGatewayModeControl(
         </Alert>
       ) : null}
 
+      {props.modeStatus || props.modeStatusUnavailable ? (
+        <Alert variant={canApply ? 'default' : 'destructive'}>
+          <ShieldAlert className='size-4' />
+          <AlertTitle>
+            {canApply
+              ? t('Save and apply is available')
+              : t('Manual restart required')}
+          </AlertTitle>
+          <AlertDescription>{applyStatusMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {props.modeStatus?.started_at ? (
+        <p className='text-muted-foreground text-xs'>
+          {t('Application started at')}{' '}
+          <time
+            dateTime={new Date(
+              props.modeStatus.started_at * 1000
+            ).toISOString()}
+          >
+            {new Date(props.modeStatus.started_at * 1000).toLocaleString()}
+          </time>
+        </p>
+      ) : null}
+
       <div className='grid gap-2 sm:grid-cols-2' role='group'>
         {(
           Object.keys(PAYMENT_GATEWAY_MODE_LABEL_KEYS) as PaymentGatewayMode[]
@@ -294,15 +471,48 @@ export function PaymentGatewayModeControl(
         ))}
       </div>
 
-      <div className='flex justify-end'>
+      <div className='flex flex-col justify-end gap-2 sm:flex-row'>
         <Button
           type='button'
           onClick={props.onSave}
           disabled={!hasUnsavedTarget || props.isSaving}
         >
-          {t('Save target mode')}
+          {props.isSaving && hasUnsavedTarget
+            ? t('Saving…')
+            : t('Save target mode')}
         </Button>
+        {props.modeStatus && !props.modeStatusUnavailable && canApply ? (
+          <Button
+            type='button'
+            variant='destructive'
+            onClick={() => setShowApplyConfirm(true)}
+            disabled={!canApply || props.isApplying || props.isSaving}
+          >
+            {props.applyState === 'applying'
+              ? t('Applying…')
+              : t('Save and apply')}
+          </Button>
+        ) : null}
       </div>
+
+      {props.modeStatus && !props.modeStatusUnavailable && props.onApply ? (
+        <ConfirmDialog
+          open={showApplyConfirm}
+          onOpenChange={setShowApplyConfirm}
+          title={t('Confirm save and apply')}
+          desc={t(
+            'This will save the selected mode and gracefully restart this application. The current site may be briefly unavailable, long requests may wait for the graceful shutdown timeout, and a failed restart requires manual operator action.'
+          )}
+          confirmText={t('Save and apply')}
+          destructive
+          disabled={!canApply}
+          isLoading={props.isApplying}
+          handleConfirm={() => {
+            setShowApplyConfirm(false)
+            props.onApply?.()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -337,14 +547,178 @@ export function PaymentSettingsSection({
   const queryClient = useQueryClient()
   const updateOption = useUpdateOption()
   const systemOptions = useSystemOptions()
-  const paymentGatewayModes = React.useMemo(
+  const [paymentGatewayApplyState, setPaymentGatewayApplyState] =
+    React.useState<PaymentGatewayModeApplyUiState>(
+      readPaymentGatewayModeApplyState
+    )
+  // Keep the first target a valid, bounded mode while options load.  The
+  // query stays disabled until the saved target is known, so the fallback
+  // value cannot be mistaken for a capability decision.
+  const [draftPaymentGatewayMode, setDraftPaymentGatewayMode] =
+    React.useState<PaymentGatewayMode>('epay_legacy')
+  const [paymentGatewayModeDirty, setPaymentGatewayModeDirty] =
+    React.useState(false)
+  const paymentGatewayModesFromOptions = React.useMemo(
     () => getPaymentGatewayModes(systemOptions.data?.data),
     [systemOptions.data?.data]
   )
-  const [draftPaymentGatewayMode, setDraftPaymentGatewayMode] =
-    React.useState<PaymentGatewayMode>(paymentGatewayModes.targetMode)
-  const [paymentGatewayModeDirty, setPaymentGatewayModeDirty] =
-    React.useState(false)
+  const paymentGatewayModeStatusQueryEnabled =
+    systemOptions.data !== undefined &&
+    (paymentGatewayModeDirty ||
+      draftPaymentGatewayMode === paymentGatewayModesFromOptions.targetMode)
+  const paymentGatewayModeStatusQuery = useQuery({
+    queryKey: paymentGatewayModeStatusQueryKeyForTarget(
+      draftPaymentGatewayMode
+    ),
+    queryFn: ({ queryKey }) => getPaymentGatewayModeStatus(queryKey[1]),
+    enabled: paymentGatewayModeStatusQueryEnabled,
+    staleTime: 0,
+    retry: 2,
+    refetchInterval:
+      paymentGatewayApplyState.state === 'applying'
+        ? PAYMENT_GATEWAY_MODE_APPLY_POLL_INTERVAL_MS
+        : false,
+  })
+  const paymentGatewayModeStatus = getPaymentGatewayModeStatusForUi({
+    data: paymentGatewayModeStatusQuery.data,
+    isError: paymentGatewayModeStatusQuery.isError,
+    isFetching: paymentGatewayModeStatusQuery.isFetching,
+    targetMode: draftPaymentGatewayMode,
+  })
+  const paymentGatewayModeStatusUnavailable =
+    paymentGatewayModeStatusQuery.isError ||
+    (paymentGatewayModeStatusQuery.data !== undefined &&
+      paymentGatewayModeStatus === undefined)
+  const paymentGatewayModes = React.useMemo(
+    () =>
+      paymentGatewayModeStatus
+        ? {
+            effectiveMode: paymentGatewayModeStatus.effective_mode,
+            targetMode: paymentGatewayModeStatus.desired_mode,
+          }
+        : getPaymentGatewayModes(systemOptions.data?.data),
+    [paymentGatewayModeStatus, systemOptions.data?.data]
+  )
+  const applyPaymentGatewayModeMutation = useMutation({
+    mutationFn: ({ request }: PaymentGatewayModeApplyMutationVariables) =>
+      applyPaymentGatewayMode(request),
+    onSuccess: (result, variables) => {
+      const request = variables.request
+      if (!result.success || !result.data) {
+        toast.error(result.message || t('Failed to save and apply mode'))
+        return
+      }
+      if (result.data.outcome === 'already_applied') {
+        setPaymentGatewayApplyState({ state: 'succeeded' })
+        storePaymentGatewayModeApplyState({ state: 'succeeded' })
+        toast.success(
+          t('The requested payment gateway mode is already effective.')
+        )
+        return
+      }
+      if (result.data.outcome !== 'accepted') {
+        toast.error(result.message || t('Failed to save and apply mode'))
+        return
+      }
+      const previousStartedAt = variables.previousStartedAt
+      const deadlineAt = Date.now() + PAYMENT_GATEWAY_MODE_APPLY_TIMEOUT_MS
+      const nextState: PaymentGatewayModeApplyUiState = {
+        state: 'applying',
+        targetMode: request.target_mode,
+        requestId: request.request_id,
+        previousStartedAt,
+        deadlineAt,
+      }
+      setPaymentGatewayApplyState(nextState)
+      storePaymentGatewayModeApplyState(nextState)
+      setPaymentGatewayModeDirty(false)
+      void queryClient.invalidateQueries({
+        queryKey: paymentGatewayModeStatusQueryKey,
+        refetchType: 'active',
+      })
+      void queryClient.invalidateQueries({
+        queryKey: ['system-options'],
+        refetchType: 'active',
+      })
+      toast.success(t('Mode saved; waiting for the new application process.'))
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || t('Failed to save and apply mode'))
+    },
+  })
+
+  React.useEffect(() => {
+    if (paymentGatewayApplyState.state !== 'applying') return
+    const previousStartedAt = paymentGatewayApplyState.previousStartedAt
+    const targetMode = paymentGatewayApplyState.targetMode
+    if (typeof previousStartedAt !== 'number' || !targetMode) {
+      setPaymentGatewayApplyState({
+        state: 'failed',
+        message: t(
+          'The restart status was incomplete; manual action is required.'
+        ),
+      })
+      storePaymentGatewayModeApplyState({ state: 'failed' })
+      return
+    }
+
+    const status = paymentGatewayModeStatus
+    if (
+      status &&
+      isPaymentGatewayModeApplySucceeded(status, targetMode, previousStartedAt)
+    ) {
+      setPaymentGatewayApplyState({ state: 'succeeded' })
+      storePaymentGatewayModeApplyState({ state: 'succeeded' })
+      toast.success(t('The new payment gateway mode is now effective.'))
+      return
+    }
+
+    // A healthy response from a newer process that is not single-instance or
+    // loaded with the requested mode is evidence of an unsafe recovery.  Do
+    // not present it as success and stop polling so an operator can intervene.
+    if (
+      status &&
+      status.healthy &&
+      status.started_at > previousStartedAt &&
+      (!status.capability.instance_check_known ||
+        !status.capability.single_instance_eligible ||
+        status.capability.active_instance_count !== 1 ||
+        status.effective_mode !== targetMode ||
+        status.desired_mode !== targetMode)
+    ) {
+      setPaymentGatewayApplyState({
+        state: 'failed',
+        message: t(
+          'The new process did not restore the requested mode safely; manual action is required.'
+        ),
+      })
+      storePaymentGatewayModeApplyState({ state: 'failed' })
+      return
+    }
+
+    const remaining = (paymentGatewayApplyState.deadlineAt ?? 0) - Date.now()
+    if (remaining <= 0) {
+      setPaymentGatewayApplyState({
+        state: 'failed',
+        message: t(
+          'The application did not recover before the bounded wait expired; manual action is required.'
+        ),
+      })
+      storePaymentGatewayModeApplyState({ state: 'failed' })
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPaymentGatewayApplyState({
+        state: 'failed',
+        message: t(
+          'The application did not recover before the bounded wait expired; manual action is required.'
+        ),
+      })
+      storePaymentGatewayModeApplyState({ state: 'failed' })
+    }, remaining)
+    return () => window.clearTimeout(timeout)
+  }, [paymentGatewayApplyState, paymentGatewayModeStatus, t])
   const initialFormValues = React.useMemo<PaymentFormValues>(
     () => ({
       ...defaultValues,
@@ -905,6 +1279,11 @@ export function PaymentSettingsSection({
       value: draftPaymentGatewayMode,
     })
     if (result.success) {
+      await refreshPaymentGatewayModeStatusAfterSave(queryClient)
+      await queryClient.invalidateQueries({
+        queryKey: ['system-options'],
+        refetchType: 'active',
+      })
       setPaymentGatewayModeDirty(false)
     }
   }
@@ -1281,6 +1660,11 @@ export function PaymentSettingsSection({
                   storedTargetMode={paymentGatewayModes.targetMode}
                   draftTargetMode={draftPaymentGatewayMode}
                   isSaving={updateOption.isPending}
+                  modeStatus={paymentGatewayModeStatus}
+                  modeStatusUnavailable={paymentGatewayModeStatusUnavailable}
+                  applyState={paymentGatewayApplyState.state}
+                  applyMessage={paymentGatewayApplyState.message}
+                  isApplying={applyPaymentGatewayModeMutation.isPending}
                   onDraftTargetModeChange={(mode) => {
                     setDraftPaymentGatewayMode(mode)
                     setPaymentGatewayModeDirty(
@@ -1288,6 +1672,26 @@ export function PaymentSettingsSection({
                     )
                   }}
                   onSave={() => void savePaymentGatewayMode()}
+                  onApply={() => {
+                    const status = paymentGatewayModeStatus
+                    if (
+                      !status ||
+                      !isPaymentGatewayModeApplyAvailable(
+                        status,
+                        draftPaymentGatewayMode
+                      )
+                    ) {
+                      return
+                    }
+                    const requestId = createPaymentGatewayModeApplyRequestId()
+                    applyPaymentGatewayModeMutation.mutate(
+                      createPaymentGatewayModeApplyMutationVariables(
+                        draftPaymentGatewayMode,
+                        status,
+                        requestId
+                      )
+                    )
+                  }}
                 />
 
                 <div>

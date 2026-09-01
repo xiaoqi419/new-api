@@ -60,7 +60,7 @@ describe('wallet Epay production entry', () => {
       money: '10.00',
       actual_amount: '9.99',
       receive_address: 'So11111111111111111111111111111111111111112',
-      token: 'USDC',
+      token: 'USDT',
       network: 'SOLANA',
       expiration_time: 1_700_000_300,
     }
@@ -73,7 +73,7 @@ describe('wallet Epay production entry', () => {
     await act(async () => {
       await view.result.current.processPayment(10, 'usdt.solana', {
         network: 'solana',
-        token: 'USDC',
+        token: 'USDT',
         display_name: 'Solana',
       })
     })
@@ -82,13 +82,13 @@ describe('wallet Epay production entry', () => {
       amount: 10,
       payment_method: 'usdt.solana',
       network: 'solana',
-      token: 'USDC',
+      token: 'usdt',
     })
     const checkout = view.result.current.epayCheckout
     assert.equal(checkout?.checkout_type, 'crypto')
     if (checkout?.checkout_type === 'crypto') {
       assert.equal(checkout.network, 'SOLANA')
-      assert.equal(checkout.token, 'USDC')
+      assert.equal(checkout.token, 'USDT')
     }
   })
 })
