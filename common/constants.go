@@ -165,6 +165,12 @@ var RetryTimes = 0
 
 var IsMasterNode bool
 
+// AdminSelfRestartEnabled is an explicit deployment contract.  It is kept
+// disabled by default because the application must never assume that an
+// external supervisor will restart it after an administrator requests a
+// payment-mode apply operation.
+var AdminSelfRestartEnabled bool
+
 const (
 	NodeNameSourceManual   = "manual"
 	NodeNameSourceHostname = "hostname"

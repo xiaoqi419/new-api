@@ -22,6 +22,10 @@ import type {
   ConfirmPaymentComplianceResponse,
   FetchUpstreamRatiosRequest,
   LogCleanupTask,
+  PaymentGatewayModeApplyRequest,
+  PaymentGatewayModeApplyResponse,
+  PaymentGatewayMode,
+  PaymentGatewayModeStatusResponse,
   SendTestEmailResponse,
   SystemOptionsResponse,
   SystemTaskListResponse,
@@ -39,6 +43,26 @@ export async function getSystemOptions() {
 
 export async function updateSystemOption(request: UpdateOptionRequest) {
   const res = await api.put<UpdateOptionResponse>('/api/option/', request)
+  return res.data
+}
+
+export async function getPaymentGatewayModeStatus(
+  targetMode: PaymentGatewayMode
+) {
+  const res = await api.get<PaymentGatewayModeStatusResponse>(
+    '/api/option/payment_gateway_mode/status',
+    { params: { target_mode: targetMode } }
+  )
+  return res.data
+}
+
+export async function applyPaymentGatewayMode(
+  request: PaymentGatewayModeApplyRequest
+) {
+  const res = await api.post<PaymentGatewayModeApplyResponse>(
+    '/api/option/payment_gateway_mode/apply',
+    request
+  )
   return res.data
 }
 
