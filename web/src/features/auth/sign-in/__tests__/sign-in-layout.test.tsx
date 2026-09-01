@@ -684,7 +684,7 @@ describe('authentication experience layout', () => {
 
     const view = await renderNode(
       <AuthExperienceLayout page='sign-in'>
-        <AuthCard showBrand={false}>
+        <AuthCard showBrand={false} variant='canvas'>
           <UserAuthForm />
         </AuthCard>
       </AuthExperienceLayout>
