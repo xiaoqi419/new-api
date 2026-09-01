@@ -269,7 +269,6 @@ func builtinTransferContext(network, token string) (NetworkFeeTransactionContext
 	const syntheticSolanaPayer = "11111111111111111111111111111111"
 	const syntheticSolanaSource = "So11111111111111111111111111111111111111112"
 	const syntheticSolanaDestination = "Vote111111111111111111111111111111111111111"
-	const syntheticSolanaMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	const syntheticSolanaBlockhash = "11111111111111111111111111111111"
 	switch network {
 	case "ethereum", "binance":
@@ -294,10 +293,17 @@ func builtinTransferContext(network, token string) (NetworkFeeTransactionContext
 		data := "a9059cbb" + strings.Repeat("0", 24) + hex.EncodeToString(decoded[1:21]) + strings.Repeat("0", 63) + "1"
 		return NetworkFeeTransactionContext{From: syntheticTRONAddress, Recipient: syntheticTRONAddress, TokenContract: contract, Data: data, FunctionSelector: tronTRC20TransferSignature, BandwidthBytes: 345}, nil
 	case "solana":
+		mint := map[string]string{
+			"USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			"USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+		}[token]
+		if mint == "" {
+			return NetworkFeeTransactionContext{}, errors.New("token mint is unavailable")
+		}
 		return NetworkFeeTransactionContext{
 			Payer: syntheticSolanaPayer, From: syntheticSolanaPayer,
 			SourceTokenAccount: syntheticSolanaSource, RecipientTokenAccount: syntheticSolanaDestination,
-			TokenMint: syntheticSolanaMint, TransferInstruction: "transferChecked", TransferAmountBaseUnits: "1",
+			TokenMint: mint, TransferInstruction: "transferChecked", TransferAmountBaseUnits: "1",
 			TokenDecimals: 6, RecentBlockhash: syntheticSolanaBlockhash, TokenProgramID: solanaTokenProgramID,
 		}, nil
 	default:
