@@ -2687,6 +2687,17 @@ func findPriceValue(fields map[string]json.RawMessage, expectedCurrency string) 
 		if raw, ok := findJSONField(fields, expectedCurrency); ok && isJSONScalar(raw) {
 			return raw, true
 		}
+		// Some feeds (including CoinPaprika) nest the selected quote inside
+		// an object, for example {"quotes":{"USD":{"price":...}}}.
+		// Walk only the explicitly requested currency key so unrelated quote
+		// values cannot be mistaken for the settlement price.
+		if raw, ok := findJSONField(fields, expectedCurrency); ok && common.GetJsonType(raw) == "object" {
+			if nested, err := objectFields(raw); err == nil {
+				if value, found := findPriceValue(nested, expectedCurrency); found {
+					return value, true
+				}
+			}
+		}
 	}
 	for _, key := range []string{"data", "result", "payload", "quotes"} {
 		if raw, ok := findJSONField(fields, key); ok {
@@ -2704,7 +2715,7 @@ func findPriceValue(fields map[string]json.RawMessage, expectedCurrency string) 
 }
 
 func findTimestampValue(fields map[string]json.RawMessage) (json.RawMessage, bool) {
-	for _, key := range []string{"timestamp", "updated_at", "last_updated_at", "lastUpdated", "time"} {
+	for _, key := range []string{"timestamp", "updated_at", "last_updated_at", "last_updated", "lastUpdated", "time"} {
 		if raw, ok := findJSONField(fields, key); ok && isJSONScalar(raw) {
 			return raw, true
 		}

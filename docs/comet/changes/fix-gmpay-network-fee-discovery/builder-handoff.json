@@ -1,0 +1,18 @@
+{
+  "kind": "builder-handoff",
+  "summary": "修复内置 GMPay 网络费用估算的行情可用性：CoinGecko 返回限流、5xx、网络错误或无效响应时，服务器端按固定白名单尝试 CoinPaprika；严格校验资产、USD/CNY、数值和 last_updated 新鲜度，仍以现有 2 分钟上限安全失败。增加 15 秒进程内成功价格缓存与 singleflight 并发合并，避免状态探测重复请求；通用自定义估算器、多链 RPC、订单金额和数据库行为保持不变。补充限流回退、USD/CNY 解析、缓存、并发合并、资产不匹配和非正价格回归测试，并更新前端 changelog。",
+  "addressed_acceptance_ids": ["A1", "A2", "A3", "A4", "A5"],
+  "checks": [
+    {"name": "Builtin GMPay and network-fee service tests", "result": "passed", "note": "go test -count=1 ./service -run 'GMPay|NetworkFee'"},
+    {"name": "Affected backend package tests", "result": "passed", "note": "go test -count=1 ./service ./controller ./model ./router"},
+    {"name": "Frontend typecheck", "result": "passed", "note": "bun run typecheck"},
+    {"name": "Frontend production build", "result": "passed", "note": "bun run build"},
+    {"name": "Changed frontend lint", "result": "passed", "note": "bun x oxlint -c .oxlintrc.json src/features/changelog/data.ts"},
+    {"name": "Whitespace check", "result": "passed", "note": "git diff --check"}
+  ],
+  "known_limits": [
+    "go test -race 未运行：当前 Windows 环境缺少 gcc，启用 CGO 时无法找到 C 编译器。",
+    "CoinPaprika 免费计划更新频率可能低于 2 分钟；实现保持严格 priceMaxAge，行情陈旧时继续 fail-closed。",
+    "本地未修改生产数据库、支付网关、Redis 或线上容器。"
+  ]
+}

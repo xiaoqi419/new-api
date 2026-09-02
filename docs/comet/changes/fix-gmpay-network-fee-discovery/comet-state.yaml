@@ -1,0 +1,327 @@
+schema: comet.native.v4
+name: fix-gmpay-network-fee-discovery
+language: zh-CN
+phase: archive
+status: active
+state_version: 18
+brief: brief.md
+spec_changes: []
+workspace:
+  isolation: worktree
+  change_branch: comet/fix-gmpay-network-fee-discovery
+  target_branch: main
+  finish: merge
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 4
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：国际站主价格源返回 HTTP 429 时，受支持的 GMPay 网络在一次受控请求内自动尝试备用源；备用源返回匹配资产、USD/CNY
+      和新鲜时间戳时，状态恢复为可估算，quote 的 `PriceSource` 标明备用主机。
+    result: passed
+    reason:
+      text: 独立验证确认 CoinGecko 失败后按固定 api.coinpaprika.com HTTPS 白名单回退，来源正确写入
+        quote.Evidence.PriceSource；429 回退测试通过。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：备用源响应的资产、币种、数值或时间戳缺失/不匹配/过期时，估算继续 fail-closed，不创建零费用或负费用订单。
+    result: passed
+    reason:
+      text: CoinPaprika 现在强制校验固定 network id、native symbol、quotes 对象、所选 USD/CNY quote 及
+        price 标量，并执行正数/范围/时间戳 freshness 校验；缺少 quotes、币种或 quote price（包括顶层 price
+        绕过）均 fail-closed，回归测试通过。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：连续的同网络/币种/结算币种估算在短缓存 TTL 内只产生一次行情请求；缓存命中仍受严格价格最大年龄和 quote TTL
+      约束，过期后重新取源。
+    result: passed
+    reason:
+      text: 独立验证确认 15 秒有界价格缓存、每次命中 freshness/TTL 重检、容量上限及 singleflight
+        并发合并；调用方取消不会取消共享请求，缓存/并发测试通过。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：现有 TRON/EVM/Solana 链上估算、金额不变量、回调幂等和 Legacy EPay 行为保持不变；管理员无需新增配置。
+    result: passed
+    reason:
+      text: 改动仅限内置行情抓取、解析、缓存和回归测试/changelog；TRON/EVM/Solana RPC、金额、回调幂等、Legacy
+        EPay、数据库/Redis/支付网关均未改变，受影响包测试通过。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：聚焦 Go 测试覆盖主源限流回退、备用源解析、缓存及 fail-closed 边界；相关前端/构建检查不因本修复回归。
+    result: passed
+    reason:
+      text: 独立 focused/affected Go 测试、控制器回归、gofmt、git diff --check 及 web lint
+        均通过；前端逻辑未改，typecheck/build 已由同候选记录并通过。
+      truncated: false
+builder_handoff:
+  candidate_id: a92bff65-c73c-43ea-8c94-c6b4bf4864db
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:37fe263b-df0c-4c59-9403-b0e281df66da
+  iteration: 4
+  summary:
+    text: 修复 Verify 发现的 A2 绕过：CoinPaprika 备用源现在必须提供对象形式的 quotes，并且当前结算币种对应的 quote
+      对象和 price 标量必须存在；缺少 quotes、缺少币种或缺少 quote price 时即使存在顶层 price 也会
+      fail-closed。继续保留固定网络身份、正数/范围/时间戳校验，以及通用简单行情解析器的兼容行为。新增缺少报价结构的回归测试。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+  checks:
+    - name:
+        text: GMPay focused backend regression tests
+        truncated: false
+      result: passed
+      note:
+        text: GOCACHE/GOTMPDIR 指向 E:\code\new-api\.tmp-go-cache 与 .tmp-go-tmp；go test
+          -count=1 ./service -run
+          'Test(BuiltinNetworkFeeEstimator|ParseCoinPaprika)'
+        truncated: false
+    - name:
+        text: Affected backend package tests
+        truncated: false
+      result: passed
+      note:
+        text: GOCACHE/GOTMPDIR 指向 E:\code\new-api\.tmp-go-cache 与 .tmp-go-tmp；go test
+          -count=1 ./service ./controller ./model ./router
+        truncated: false
+    - name:
+        text: Whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+    - name:
+        text: Frontend typecheck/build and changelog lint
+        truncated: false
+      result: passed
+      note:
+        text: 本轮只改后端解析和回归测试；前端源码与 changelog 条目未变，iteration 3 的 bun run typecheck、bun run
+          build 和 oxlint 已通过。
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: go test -race 未运行：当前 Windows 环境没有 gcc；非 race 聚焦和受影响包测试已通过。
+      truncated: false
+    - text: CoinPaprika 免费计划更新频率可能低于 2 分钟；严格 freshness 过期时继续 fail-closed。
+      truncated: false
+    - text: 本地未修改生产数据库、支付网关、Redis 或线上容器。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-02T03:21:49.340Z
+blockers: []
+verification:
+  candidate_id: a92bff65-c73c-43ea-8c94-c6b4bf4864db
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:ee452fd7-6381-4162-88e7-1884ca6e48a4
+  iteration: 4
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: gmpay-focused-backend-tests-v4
+      name:
+        text: GMPay focused backend regression tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $cache='E:\code\new-api\.tmp-go-cache';
+            $tmp='E:\code\new-api\.tmp-go-tmp'; New-Item -ItemType Directory
+            -Force -Path $cache,$tmp | Out-Null; $env:GOCACHE=$cache;
+            $env:GOTMPDIR=$tmp; $env:GOWORK='off'; go test -count=1 ./service
+            -run 'Test(BuiltinNetworkFeeEstimator|ParseCoinPaprika)'
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3351
+    - id: affected-backend-package-tests-v4
+      name:
+        text: Affected backend package tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $cache='E:\code\new-api\.tmp-go-cache';
+            $tmp='E:\code\new-api\.tmp-go-tmp'; New-Item -ItemType Directory
+            -Force -Path $cache,$tmp | Out-Null; $env:GOCACHE=$cache;
+            $env:GOTMPDIR=$tmp; $env:GOWORK='off'; go test -count=1 ./service
+            ./controller ./model ./router
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 10886
+    - id: frontend-typecheck-v4
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $tmp='E:\code\new-api\.tmp-bun-tmp';
+            $cache='E:\code\new-api\.tmp-bun-cache'; New-Item -ItemType
+            Directory -Force -Path $tmp,$cache | Out-Null; $env:TEMP=$tmp;
+            $env:TMP=$tmp; $env:BUN_INSTALL_CACHE_DIR=$cache; bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2726
+    - id: frontend-build-v4
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $tmp='E:\code\new-api\.tmp-bun-tmp';
+            $cache='E:\code\new-api\.tmp-bun-cache'; New-Item -ItemType
+            Directory -Force -Path $tmp,$cache | Out-Null; $env:TEMP=$tmp;
+            $env:TMP=$tmp; $env:BUN_INSTALL_CACHE_DIR=$cache; bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6504
+    - id: changelog-lint-v4
+      name:
+        text: Changelog lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $tmp='E:\code\new-api\.tmp-bun-tmp';
+            $cache='E:\code\new-api\.tmp-bun-cache'; New-Item -ItemType
+            Directory -Force -Path $tmp,$cache | Out-Null; $env:TEMP=$tmp;
+            $env:TMP=$tmp; $env:BUN_INSTALL_CACHE_DIR=$cache; bun x oxlint -c
+            .oxlintrc.json src/features/changelog/data.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 233
+    - id: git-diff-check-v4
+      name:
+        text: Whitespace check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 46
+  summary:
+    text: 独立 Verifier 确认 A1-A5 全部通过；A2 的缺少报价币种/顶层 price 绕过已修复并有回归测试。
+    truncated: false
+  risks:
+    - text: go test -race 未运行：Windows 环境缺少 gcc。
+      truncated: false
+    - text: CoinPaprika 免费计划可能提供超过 2 分钟的旧报价，严格 freshness 过期时会安全失败。
+      truncated: false
+    - text: singleflight 共享请求使用首个 caller deadline 作为最短上限，极短 deadline 可能让同 key
+        后续调用共同超时；显式取消不会取消共享请求。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-02T03:31:26.110Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-09-02T02:41:18.788Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Runtime 的两项 Go 检查因 C 盘临时目录空间不足失败；实现无需修改，返回 Build 以使用 E 盘临时目录重新提交同一候选检查。
+      truncated: false
+    completed_at: 2026-09-02T02:49:16.235Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Verifier 发现 A2 缺口：CoinPaprika 响应缺少资产身份时仍可被接受；同时修正 singleflight
+        共享请求不应绑定首个调用者取消上下文。返回 Build 补充严格身份校验、并发上下文处理和回归测试。
+      truncated: false
+    completed_at: 2026-09-02T03:01:28.104Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A2
+      - A5
+    summary:
+      text: Return to Build to enforce strict CoinPaprika quotes/currency shape and
+        add a missing-currency regression test.
+      truncated: false
+    completed_at: 2026-09-02T03:16:48.630Z
+  - goal_cycle: 1
+    iteration: 4
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立 Verifier 确认 A1-A5 全部通过；A2 的缺少报价币种/顶层 price 绕过已修复并有回归测试。
+      truncated: false
+    completed_at: 2026-09-02T03:31:26.110Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-02T02:03:43.709Z

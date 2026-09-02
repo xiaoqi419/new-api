@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -236,6 +238,224 @@ func TestBuiltinNetworkFeeEstimatorSolanaFailsOnInvalidBlockhash(t *testing.T) {
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
 	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "solana", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
+}
+
+func TestBuiltinNetworkFeeEstimatorCoinPaprikaFallbackAfterPrimaryRateLimit(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	primaryCalls, fallbackCalls := 0, 0
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			switch req.URL.Host {
+			case "api.coingecko.com":
+				primaryCalls++
+				return builtinResponse(http.StatusTooManyRequests, `{}`), nil
+			case "api.coinpaprika.com":
+				fallbackCalls++
+				return builtinResponse(http.StatusOK, fmt.Sprintf(`{"id":"trx-tron","symbol":"TRX","last_updated":%q,"quotes":{"USD":{"price":0.1},"CNY":{"price":0.7}}}`, now.Format(time.RFC3339))), nil
+			}
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "api.coinpaprika.com", quote.Evidence.PriceSource)
+	assert.Equal(t, "2.7645", quote.FeeAmount.String())
+	assert.Equal(t, 1, primaryCalls)
+	assert.Equal(t, 1, fallbackCalls)
+}
+
+func TestParseCoinPaprikaPriceSupportsUSDAndCNY(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	body := []byte(fmt.Sprintf(`{"id":"eth-ethereum","symbol":"ETH","last_updated":%q,"quotes":{"USD":{"price":3000},"CNY":{"price":21000}}}`, now.Format(time.RFC3339)))
+	price, timestamp, currency, err := parseNetworkFeePriceForAsset(body, "ETH", "CNY")
+	require.NoError(t, err)
+	assert.Equal(t, "21000", price.String())
+	assert.Equal(t, now, timestamp)
+	assert.Empty(t, currency)
+}
+
+func TestParseCoinPaprikaPriceRequiresNetworkIdentity(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	cases := []struct {
+		name string
+		body []byte
+	}{
+		{name: "missing id", body: []byte(fmt.Sprintf(`{"symbol":"TRX","last_updated":%q,"quotes":{"USD":{"price":0.1}}}`, now.Format(time.RFC3339)))},
+		{name: "missing symbol", body: []byte(fmt.Sprintf(`{"id":"trx-tron","last_updated":%q,"quotes":{"USD":{"price":0.1}}}`, now.Format(time.RFC3339)))},
+		{name: "wrong asset id", body: []byte(fmt.Sprintf(`{"id":"eth-ethereum","symbol":"TRX","last_updated":%q,"quotes":{"USD":{"price":0.1}}}`, now.Format(time.RFC3339)))},
+		{name: "wrong asset symbol", body: []byte(fmt.Sprintf(`{"id":"trx-tron","symbol":"ETH","last_updated":%q,"quotes":{"USD":{"price":0.1}}}`, now.Format(time.RFC3339)))},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, _, _, err := parseBuiltinCoinPaprikaPrice(testCase.body, "tron", "USD", now, 2*time.Minute, nil)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestParseCoinPaprikaPriceRequiresSelectedQuotePrice(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	timestamp := now.Format(time.RFC3339)
+	cases := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "missing quotes object",
+			body: fmt.Sprintf(`{"id":"trx-tron","symbol":"TRX","last_updated":%q,"price":0.1}`, timestamp),
+		},
+		{
+			name: "missing selected currency",
+			body: fmt.Sprintf(`{"id":"trx-tron","symbol":"TRX","last_updated":%q,"quotes":{"CNY":{"price":0.7}}}`, timestamp),
+		},
+		{
+			name: "missing selected quote price",
+			body: fmt.Sprintf(`{"id":"trx-tron","symbol":"TRX","last_updated":%q,"quotes":{"USD":{}}}`, timestamp),
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, _, _, err := parseBuiltinCoinPaprikaPrice([]byte(testCase.body), "tron", "USD", now, 2*time.Minute, nil)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestBuiltinNetworkFeeEstimatorPriceCacheAvoidsRepeatedMarketRequests(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	priceCalls := 0
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			priceCalls++
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	for _, amount := range []int64{10, 11} {
+		_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(amount)})
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, priceCalls)
+}
+
+func TestBuiltinNetworkFeeEstimatorMergesConcurrentPriceRequests(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var priceCalls atomic.Int32
+	priceEntered := make(chan struct{})
+	releasePrice := make(chan struct{})
+	var firstPriceRequest sync.Once
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			priceCalls.Add(1)
+			firstPriceRequest.Do(func() {
+				close(priceEntered)
+				<-releasePrice
+			})
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	input := NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)}
+	const callers = 8
+	errs := make(chan error, callers)
+	var group sync.WaitGroup
+	group.Add(callers)
+	for i := 0; i < callers; i++ {
+		go func() {
+			defer group.Done()
+			_, estimateErr := estimator.Estimate(context.Background(), input)
+			errs <- estimateErr
+		}()
+	}
+	select {
+	case <-priceEntered:
+		close(releasePrice)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the first price request")
+	}
+	group.Wait()
+	close(errs)
+	for estimateErr := range errs {
+		require.NoError(t, estimateErr)
+	}
+	assert.Equal(t, int32(1), priceCalls.Load())
+}
+
+func TestBuiltinNetworkFeeEstimatorRejectsMismatchedCoinPaprikaFallback(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			if req.URL.Host == "api.coingecko.com" {
+				return builtinResponse(http.StatusTooManyRequests, `{}`), nil
+			}
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"id":"eth-ethereum","symbol":"ETH","last_updated":%q,"quotes":{"USD":{"price":3000}}}`, now.Format(time.RFC3339))), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
+}
+
+func TestBuiltinNetworkFeeEstimatorRejectsNonPositiveFallbackPrice(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			if req.URL.Host == "api.coingecko.com" {
+				return builtinResponse(http.StatusTooManyRequests, `{}`), nil
+			}
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"id":"trx-tron","symbol":"TRX","last_updated":%q,"quotes":{"USD":{"price":0}}}`, now.Format(time.RFC3339))), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
 }

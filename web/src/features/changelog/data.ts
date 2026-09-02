@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260902-gmpay-fee-source-fallback',
+    date: '2026-09-02',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 GMPay 自动网络费用估算在行情主源限流时无法使用的问题；服务器会按受控白名单切换备用行情源，并继续校验价格新鲜度。',
+          '增加短期行情缓存与并发请求合并，减少后台状态探测造成的重复请求；行情过期或不可信时仍安全拒绝创建订单。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260902-6b3151426',
     date: '2026-09-02',
     changes: [

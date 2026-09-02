@@ -14,11 +14,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/shopspring/decimal"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -34,6 +37,25 @@ const (
 type BuiltinNetworkFeeEstimator struct {
 	configured *ConfiguredNetworkFeeEstimator
 	now        func() time.Time
+	priceMu    sync.Mutex
+	priceCache map[string]builtinPriceCacheEntry
+	priceGroup singleflight.Group
+}
+
+// builtinPriceCacheEntry stores only validated, fresh observations. The key
+// space is the fixed set of built-in networks/currencies, so this cache cannot
+// be expanded by request input.
+type builtinPriceCacheEntry struct {
+	price     decimal.Decimal
+	timestamp time.Time
+	source    string
+	expiresAt time.Time
+}
+
+type builtinPriceResult struct {
+	price     decimal.Decimal
+	timestamp time.Time
+	source    string
 }
 
 func NewBuiltinNetworkFeeEstimator() (*BuiltinNetworkFeeEstimator, error) {
@@ -136,7 +158,11 @@ func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*
 	if now == nil {
 		now = time.Now
 	}
-	return &BuiltinNetworkFeeEstimator{configured: configured, now: now}, nil
+	return &BuiltinNetworkFeeEstimator{
+		configured: configured,
+		now:        now,
+		priceCache: make(map[string]builtinPriceCacheEntry),
+	}, nil
 }
 
 func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input NetworkFeeEstimateInput) (NetworkFeeQuote, error) {
@@ -456,15 +482,95 @@ func builtinERC20Calldata(recipient string) string {
 	return "0x" + evmERC20TransferSelector + strings.Repeat("0", 24) + strings.TrimPrefix(strings.ToLower(recipient), "0x") + strings.Repeat("0", 63) + "1"
 }
 
+// fetchBuiltinPrice first uses the configured CoinGecko endpoint and then a
+// fixed CoinPaprika endpoint when the primary source is unavailable or fails
+// validation.  No endpoint, host, asset, or currency is accepted from a
+// request; the fallback is part of the built-in preset.
 func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Context, chain parsedNetworkFeeChainConfig, network, currency string, now time.Time) (decimal.Decimal, time.Time, string, error) {
-	if chain.priceURL == nil {
+	if estimator == nil || estimator.configured == nil || chain.priceURL == nil {
 		return decimal.Zero, time.Time{}, "", errors.New("price source is unavailable")
+	}
+	key := network + "|" + strings.ToUpper(currency)
+	if cached, ok := estimator.getBuiltinPriceCache(key, now); ok {
+		return cached.price, cached.timestamp, cached.source, nil
+	}
+	resultCh := estimator.priceGroup.DoChan(key, func() (any, error) {
+		// Do not attach the shared request to the first caller's cancellation
+		// signal: a status probe may be canceled while other probes still need
+		// the same quote. Preserve the configured timeout and, when present, the
+		// first caller's deadline as an absolute upper bound.
+		requestTimeout := estimator.configured.config.timeout
+		if deadline, ok := ctx.Deadline(); ok {
+			if remaining := time.Until(deadline); remaining < requestTimeout {
+				requestTimeout = remaining
+			}
+		}
+		if requestTimeout <= 0 {
+			return nil, context.DeadlineExceeded
+		}
+		sharedCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		// A concurrent caller may have populated the cache while this request
+		// was waiting for the singleflight slot.
+		if cached, ok := estimator.getBuiltinPriceCache(key, now); ok {
+			return builtinPriceResult{price: cached.price, timestamp: cached.timestamp, source: cached.source}, nil
+		}
+		price, timestamp, source, primaryErr := estimator.fetchBuiltinPriceSource(sharedCtx, chain, network, currency, now, chain.priceURL)
+		if primaryErr == nil {
+			estimator.putBuiltinPriceCache(key, builtinPriceCacheEntry{price: price, timestamp: timestamp, source: source}, now)
+			return builtinPriceResult{price: price, timestamp: timestamp, source: source}, nil
+		}
+		fallback, fallbackErr := builtinCoinPaprikaEndpoint(network)
+		if fallbackErr == nil && fallback.String() != chain.priceURL.String() {
+			price, timestamp, source, fallbackErr = estimator.fetchBuiltinPriceSource(sharedCtx, chain, network, currency, now, fallback)
+			if fallbackErr == nil {
+				estimator.putBuiltinPriceCache(key, builtinPriceCacheEntry{price: price, timestamp: timestamp, source: source}, now)
+				return builtinPriceResult{price: price, timestamp: timestamp, source: source}, nil
+			}
+			return nil, fmt.Errorf("primary price source unavailable: %v; fallback price source unavailable: %v", primaryErr, fallbackErr)
+		}
+		return nil, primaryErr
+	})
+	var result singleflight.Result
+	select {
+	case result = <-resultCh:
+	case <-ctx.Done():
+		return decimal.Zero, time.Time{}, "", ctx.Err()
+	}
+	if result.Err != nil {
+		return decimal.Zero, time.Time{}, "", result.Err
+	}
+	value, ok := result.Val.(builtinPriceResult)
+	if !ok {
+		return decimal.Zero, time.Time{}, "", errors.New("price source result is invalid")
+	}
+	return value.price, value.timestamp, value.source, nil
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPriceSource(ctx context.Context, chain parsedNetworkFeeChainConfig, network, currency string, now time.Time, endpoint *url.URL) (decimal.Decimal, time.Time, string, error) {
+	body, err := estimator.requestBuiltinPriceBody(ctx, endpoint)
+	if err != nil {
+		return decimal.Zero, time.Time{}, "", err
+	}
+	if endpointSource(endpoint) == "api.coingecko.com" {
+		return parseBuiltinCoinGeckoPrice(body, network, currency, now, estimator.configured.config.priceMaxAge, endpoint)
+	}
+	price, timestamp, _, err := parseBuiltinCoinPaprikaPrice(body, network, currency, now, estimator.configured.config.priceMaxAge, endpoint)
+	if err != nil {
+		return decimal.Zero, time.Time{}, "", err
+	}
+	return price, timestamp, endpointSource(endpoint), nil
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) requestBuiltinPriceBody(ctx context.Context, endpoint *url.URL) ([]byte, error) {
+	if endpoint == nil {
+		return nil, errors.New("price source endpoint is unavailable")
 	}
 	var body []byte
 	for attempt := 0; attempt <= estimator.configured.config.maxRetries; attempt++ {
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, chain.priceURL.String(), nil)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 		if err != nil {
-			return decimal.Zero, time.Time{}, "", err
+			return nil, err
 		}
 		request.Header.Set("Accept", "application/json")
 		response, err := estimator.configured.httpClient.Do(request)
@@ -472,31 +578,38 @@ func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Conte
 			if attempt < estimator.configured.config.maxRetries {
 				continue
 			}
-			return decimal.Zero, time.Time{}, "", err
+			return nil, err
 		}
 		if response == nil || response.Body == nil {
-			return decimal.Zero, time.Time{}, "", errors.New("price source response is invalid")
+			return nil, errors.New("price source response is invalid")
 		}
-		if responseErr := validateNetworkFeeResponse(response, chain.priceURL); responseErr != nil {
+		if responseErr := validateNetworkFeeResponse(response, endpoint); responseErr != nil {
 			response.Body.Close()
-			return decimal.Zero, time.Time{}, "", responseErr
+			return nil, responseErr
 		}
 		body, err = io.ReadAll(io.LimitReader(response.Body, estimator.configured.config.responseLimit+1))
 		status := response.StatusCode
 		response.Body.Close()
-		if err != nil || int64(len(body)) > estimator.configured.config.responseLimit {
-			return decimal.Zero, time.Time{}, "", errors.New("price source response exceeds size limit")
+		if err != nil {
+			return nil, errors.New("price source response is invalid")
+		}
+		if int64(len(body)) > estimator.configured.config.responseLimit {
+			return nil, errors.New("price source response exceeds size limit")
 		}
 		if status >= 500 && attempt < estimator.configured.config.maxRetries {
 			continue
 		}
 		if status < 200 || status >= 300 {
-			return decimal.Zero, time.Time{}, "", fmt.Errorf("price source returned http status %d", status)
+			return nil, fmt.Errorf("price source returned http status %d", status)
 		}
-		break
+		return body, nil
 	}
+	return nil, errors.New("price source request failed")
+}
+
+func parseBuiltinCoinGeckoPrice(body []byte, network, currency string, now time.Time, maxAge time.Duration, endpoint *url.URL) (decimal.Decimal, time.Time, string, error) {
 	var fields map[string]map[string]json.RawMessage
-	if err := common.Unmarshal(body, &fields); err != nil {
+	if err := common.Unmarshal(body, &fields); err != nil || fields == nil {
 		return decimal.Zero, time.Time{}, "", errors.New("price source response is invalid")
 	}
 	id := map[string]string{"tron": "tron", "ethereum": "ethereum", "binance": "binancecoin", "solana": "solana"}[network]
@@ -509,7 +622,7 @@ func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Conte
 		return decimal.Zero, time.Time{}, "", errors.New("price source currency is missing")
 	}
 	price, err := parseNetworkFeeDecimal(common.JsonRawMessageToString(priceRaw), false)
-	if err != nil || price.GreaterThan(decimal.RequireFromString(maxNetworkFeePrice)) {
+	if err != nil || price.LessThanOrEqual(decimal.Zero) || price.GreaterThan(decimal.RequireFromString(maxNetworkFeePrice)) {
 		return decimal.Zero, time.Time{}, "", errors.New("price source price is invalid")
 	}
 	timestampRaw, ok := nested["last_updated_at"]
@@ -517,10 +630,117 @@ func (estimator *BuiltinNetworkFeeEstimator) fetchBuiltinPrice(ctx context.Conte
 		return decimal.Zero, time.Time{}, "", errors.New("price source timestamp is missing")
 	}
 	timestamp, err := parseNetworkFeeTimestamp(timestampRaw)
-	if err != nil || timestamp.After(now.Add(5*time.Minute)) || now.Sub(timestamp) > estimator.configured.config.priceMaxAge {
+	if err != nil || timestamp.After(now.Add(5*time.Minute)) || now.Sub(timestamp) > maxAge {
 		return decimal.Zero, time.Time{}, "", errors.New("price source timestamp is stale")
 	}
-	return price, timestamp, endpointSource(chain.priceURL), nil
+	return price, timestamp, endpointSource(endpoint), nil
+}
+
+func parseBuiltinCoinPaprikaPrice(body []byte, network, currency string, now time.Time, maxAge time.Duration, endpoint *url.URL) (decimal.Decimal, time.Time, string, error) {
+	var fields map[string]json.RawMessage
+	if err := common.Unmarshal(body, &fields); err != nil || fields == nil {
+		return decimal.Zero, time.Time{}, "", errors.New("price source response is invalid")
+	}
+	slug, ok := builtinCoinPaprikaSlug(network)
+	if !ok {
+		return decimal.Zero, time.Time{}, "", errors.New("price source network is unsupported")
+	}
+	idRaw, ok := findJSONField(fields, "id")
+	if !ok || common.GetJsonType(idRaw) != "string" || !strings.EqualFold(strings.TrimSpace(common.JsonRawMessageToString(idRaw)), slug) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source asset id does not match configured network")
+	}
+	symbolRaw, ok := findJSONField(fields, "symbol")
+	if !ok || common.GetJsonType(symbolRaw) != "string" || !strings.EqualFold(strings.TrimSpace(common.JsonRawMessageToString(symbolRaw)), expectedNativeAsset(network)) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source asset symbol does not match configured network")
+	}
+	quotesRaw, ok := findJSONField(fields, "quotes")
+	if !ok || common.GetJsonType(quotesRaw) != "object" {
+		return decimal.Zero, time.Time{}, "", errors.New("price source quotes are missing")
+	}
+	quotes, err := objectFields(quotesRaw)
+	if err != nil {
+		return decimal.Zero, time.Time{}, "", errors.New("price source quotes are invalid")
+	}
+	selectedQuoteRaw, ok := findJSONField(quotes, currency)
+	if !ok || common.GetJsonType(selectedQuoteRaw) != "object" {
+		return decimal.Zero, time.Time{}, "", errors.New("price source settlement quote is missing")
+	}
+	selectedQuote, err := objectFields(selectedQuoteRaw)
+	if err != nil {
+		return decimal.Zero, time.Time{}, "", errors.New("price source settlement quote is invalid")
+	}
+	quotePriceRaw, ok := findJSONField(selectedQuote, "price")
+	if !ok || !isJSONScalar(quotePriceRaw) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source settlement quote price is missing")
+	}
+	quotePrice, err := parseNetworkFeeDecimal(common.JsonRawMessageToString(quotePriceRaw), false)
+	if err != nil || quotePrice.GreaterThan(decimal.RequireFromString(maxNetworkFeePrice)) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source settlement quote price is invalid")
+	}
+	price, timestamp, responseCurrency, err := parseNetworkFeePriceForAsset(body, expectedNativeAsset(network), currency)
+	if err != nil {
+		return decimal.Zero, time.Time{}, "", err
+	}
+	if !price.Equal(quotePrice) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source price does not match settlement quote")
+	}
+	if responseCurrency != "" && responseCurrency != currency {
+		return decimal.Zero, time.Time{}, "", errors.New("price source currency does not match settlement currency")
+	}
+	if timestamp.After(now.Add(5*time.Minute)) || now.Sub(timestamp) > maxAge {
+		return decimal.Zero, time.Time{}, "", errors.New("price source timestamp is stale")
+	}
+	if price.LessThanOrEqual(decimal.Zero) || price.GreaterThan(decimal.RequireFromString(maxNetworkFeePrice)) {
+		return decimal.Zero, time.Time{}, "", errors.New("price source price is invalid")
+	}
+	return price, timestamp, endpointSource(endpoint), nil
+}
+
+func builtinCoinPaprikaEndpoint(network string) (*url.URL, error) {
+	slug, ok := builtinCoinPaprikaSlug(network)
+	if !ok {
+		return nil, errors.New("price source network is unsupported")
+	}
+	return validateNetworkFeeEndpoint("https://api.coinpaprika.com/v1/tickers/"+slug+"?quotes=USD,CNY", []string{"api.coinpaprika.com"})
+}
+
+func builtinCoinPaprikaSlug(network string) (string, bool) {
+	slug, ok := map[string]string{
+		"tron":     "trx-tron",
+		"ethereum": "eth-ethereum",
+		"binance":  "bnb-binance-coin",
+		"solana":   "sol-solana",
+	}[network]
+	return slug, ok
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) getBuiltinPriceCache(key string, now time.Time) (builtinPriceCacheEntry, bool) {
+	estimator.priceMu.Lock()
+	defer estimator.priceMu.Unlock()
+	entry, ok := estimator.priceCache[key]
+	if !ok || !entry.expiresAt.After(now) || entry.timestamp.After(now.Add(5*time.Minute)) || now.Sub(entry.timestamp) > estimator.configured.config.priceMaxAge {
+		if ok {
+			delete(estimator.priceCache, key)
+		}
+		return builtinPriceCacheEntry{}, false
+	}
+	return entry, true
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) putBuiltinPriceCache(key string, entry builtinPriceCacheEntry, now time.Time) {
+	estimator.priceMu.Lock()
+	defer estimator.priceMu.Unlock()
+	if estimator.priceCache == nil {
+		estimator.priceCache = make(map[string]builtinPriceCacheEntry)
+	}
+	if len(estimator.priceCache) >= 16 {
+		for existingKey := range estimator.priceCache {
+			delete(estimator.priceCache, existingKey)
+			break
+		}
+	}
+	entry.expiresAt = now.Add(estimator.configured.config.cacheTTL)
+	estimator.priceCache[key] = entry
 }
 
 var _ NetworkFeeEstimator = (*BuiltinNetworkFeeEstimator)(nil)
