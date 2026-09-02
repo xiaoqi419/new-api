@@ -1,0 +1,59 @@
+{
+  "kind": "dispatch-verifier",
+  "checks": [
+    {
+      "id": "gmpay-focused-backend-tests",
+      "name": "GMPay focused backend regression tests",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "$env:GOWORK = 'off'; go test -count=1 ./service ./controller ./router -run 'GMPay|NetworkFee|EpayCheckout'"],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "affected-backend-package-tests",
+      "name": "Affected backend package tests",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "$env:GOWORK = 'off'; go test -count=1 ./service ./controller ./model ./router"],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "frontend-typecheck",
+      "name": "Frontend typecheck",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "bun run typecheck"],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "frontend-build",
+      "name": "Frontend production build",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "bun run build"],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "changelog-lint",
+      "name": "Changelog lint",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "bun x oxlint -c .oxlintrc.json src/features/changelog/data.ts"],
+      "cwdRef": "web",
+      "timeoutMs": 900000,
+      "repeatable": true
+    },
+    {
+      "id": "git-diff-check",
+      "name": "Whitespace check",
+      "executable": "pwsh.exe",
+      "argv": ["-NoProfile", "-Command", "git diff --check"],
+      "cwdRef": ".",
+      "timeoutMs": 900000,
+      "repeatable": true
+    }
+  ]
+}
