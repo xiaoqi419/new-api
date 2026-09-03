@@ -160,6 +160,530 @@ func TestGMPayWalletAutomaticEstimatorFallback(t *testing.T) {
 	})
 }
 
+func TestGMPayWalletDynamicFailureUsesAdministratorFallback(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient("https://pay.example.test", "pid", "secret")}
+	require.NotNil(t, epCfg.Client)
+	privateClient, err := service.NewGMPayClient("https://pay.example.test", "pid", "secret", http.DefaultClient)
+	require.NoError(t, err)
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return privateClient, nil
+	}
+	failingEstimator := gmpayEstimatorCountingStub{err: errors.New("simulated dynamic outage")}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+
+	tests := []struct {
+		name      string
+		config    string
+		wantFee   string
+		wantTotal string
+	}{
+		{
+			name:      "fixed",
+			config:    `{"version":1,"fallback_enabled":true,"fallback_mode":"fixed","fallback_value":"5","max_fee":"20","max_total":"100000"}`,
+			wantFee:   "5.00",
+			wantTotal: "35.00",
+		},
+		{
+			name:      "percent",
+			config:    `{"version":1,"fallback_enabled":true,"fallback_mode":"percent","fallback_value":"10","max_fee":"20","max_total":"100000"}`,
+			wantFee:   "3.00",
+			wantTotal: "33.00",
+		},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			common.OptionMapRWMutex.Lock()
+			common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: testCase.config}
+			common.OptionMapRWMutex.Unlock()
+			resetCachedAutomaticGMPayNetworkFeeEstimator()
+
+			quote, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(30), "USDT", "tron")
+			require.NoError(t, err)
+			assert.Equal(t, service.GMPayFeeSourceAdminFallback, quote.Source)
+			assert.Equal(t, testCase.wantFee, quote.FeeAmount.StringFixed(2))
+			assert.Equal(t, testCase.wantTotal, quote.TotalAmount.StringFixed(2))
+			assert.Equal(t, "USD", quote.SettlementCurrency)
+		})
+	}
+}
+
+func TestTestGMPayFeeEstimateUsesAdministratorFallback(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		// The optional gateway asset-discovery endpoint is unavailable. The test
+		// estimate must still use the safe USDT/TRON default and can then use the
+		// explicitly configured administrator fallback.
+		writer.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+
+	operation_setting.PayAddress = server.URL
+	operation_setting.EpayId = "gmpay-test-pid"
+	operation_setting.EpayKey = "gmpay-test-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1,"fallback_enabled":true,"fallback_mode":"fixed","fallback_value":"5","max_fee":"20","max_total":"100000"}`}
+	common.OptionMapRWMutex.Unlock()
+
+	privateClient, err := service.NewGMPayClient(server.URL, operation_setting.EpayId, operation_setting.EpayKey, server.Client())
+	require.NoError(t, err)
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return privateClient, nil
+	}
+	failingEstimator := gmpayEstimatorCountingStub{err: errors.New("simulated dynamic outage")}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/option/gmpay_fee/test", strings.NewReader(`{}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	TestGMPayFeeEstimate(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var response struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Token              string  `json:"token"`
+			Network            string  `json:"network"`
+			Source             string  `json:"source"`
+			NativeAmount       *string `json:"native_amount"`
+			FeeAmount          string  `json:"fee_amount"`
+			BaseAmount         string  `json:"base_amount"`
+			TotalAmount        string  `json:"total_amount"`
+			SettlementCurrency string  `json:"settlement_currency"`
+		} `json:"data"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.True(t, response.Success)
+	assert.Equal(t, "USDT", response.Data.Token)
+	assert.Equal(t, "TRON", response.Data.Network)
+	assert.Equal(t, service.GMPayFeeSourceAdminFallback, response.Data.Source)
+	assert.Nil(t, response.Data.NativeAmount)
+	assert.Equal(t, "1.00", response.Data.BaseAmount)
+	assert.Equal(t, "5.00", response.Data.FeeAmount)
+	assert.Equal(t, "6.00", response.Data.TotalAmount)
+	assert.Equal(t, "USD", response.Data.SettlementCurrency)
+}
+
+func TestTestGMPayFeeEstimateReturnsDynamicNetworkFee(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/payments/gmpay/v1/config" {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+
+	operation_setting.PayAddress = server.URL
+	operation_setting.EpayId = "gmpay-test-pid"
+	operation_setting.EpayKey = "gmpay-test-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	common.OptionMapRWMutex.Lock()
+	// Omitted dynamic_enabled selects the automatic estimator path. This is
+	// intentionally not an administrator fallback configuration.
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1}`}
+	common.OptionMapRWMutex.Unlock()
+
+	privateClient, err := service.NewGMPayClient(server.URL, operation_setting.EpayId, operation_setting.EpayKey, server.Client())
+	require.NoError(t, err)
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return privateClient, nil
+	}
+	now := time.Now().UTC()
+	dynamicQuote := service.NetworkFeeQuote{
+		Token:              "USDT",
+		Network:            "tron",
+		SettlementCurrency: "USD",
+		BaseAmount:         decimal.NewFromInt(1),
+		FeeAmount:          decimal.RequireFromString("2.21"),
+		TotalAmount:        decimal.RequireFromString("3.21"),
+		NativeAsset:        "TRX",
+		NativeAmount:       decimal.RequireFromString("6.845"),
+		Source:             service.GMPayFeeSourceChainNetworkEstimate,
+		EstimatorVersion:   "test-dynamic",
+		Confidence:         "medium",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(time.Minute),
+		Evidence: service.NetworkFeeEvidence{
+			RPCMethod:      "wallet/estimateenergy",
+			RPCSource:      "api.trongrid.io",
+			PriceSource:    "api.coingecko.com",
+			PriceTimestamp: now.Unix(),
+		},
+	}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return gmpayEstimatorQuoteStub{quote: dynamicQuote}, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return gmpayEstimatorQuoteStub{quote: dynamicQuote}, nil
+	}
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/option/gmpay_fee/test", strings.NewReader(`{}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	TestGMPayFeeEstimate(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var response struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Source       string `json:"source"`
+			NativeAmount string `json:"native_amount"`
+			FeeAmount    string `json:"fee_amount"`
+			BaseAmount   string `json:"base_amount"`
+			TotalAmount  string `json:"total_amount"`
+		} `json:"data"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	require.True(t, response.Success)
+	assert.Equal(t, service.GMPayFeeSourceChainNetworkEstimate, response.Data.Source)
+	assert.Equal(t, "6.845", response.Data.NativeAmount)
+	assert.Equal(t, "2.21", response.Data.FeeAmount)
+	assert.Equal(t, "1.00", response.Data.BaseAmount)
+	assert.Equal(t, "3.21", response.Data.TotalAmount)
+}
+
+func TestDiscoverGMPayFeeStatusReportsAdministratorFallbackWhenDynamicUnavailable(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/payments/gmpay/v1/config" {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = writer.Write([]byte(`{"status_code":200,"message":"success","data":{"supported_assets":[{"network":"tron","display_name":"TRON","tokens":["USDT"]}]}}`))
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+
+	operation_setting.PayAddress = server.URL
+	operation_setting.EpayId = "gmpay-test-pid"
+	operation_setting.EpayKey = "gmpay-test-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: `{"version":1,"fallback_enabled":true,"fallback_mode":"fixed","fallback_value":"5","max_fee":"20","max_total":"100000"}`}
+	common.OptionMapRWMutex.Unlock()
+
+	privateClient, err := service.NewGMPayClient(server.URL, operation_setting.EpayId, operation_setting.EpayKey, server.Client())
+	require.NoError(t, err)
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return privateClient, nil
+	}
+	failingEstimator := gmpayEstimatorCountingStub{err: errors.New("simulated dynamic outage")}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	resetCachedAutomaticGMPayNetworkFeeEstimator()
+
+	status := discoverGMPayFeeStatus(context.Background())
+	require.True(t, status.Configured)
+	require.True(t, status.FallbackEnabled)
+	require.True(t, status.FallbackReady)
+	require.True(t, status.Healthy)
+	require.True(t, status.QuoteAvailable)
+	assert.False(t, status.Capability)
+	assert.Equal(t, service.GMPayFeeSourceAdminFallback, status.FeeSource)
+	assert.Equal(t, "Dynamic network fee unavailable; administrator fallback is active", status.Reason)
+	require.Len(t, status.SupportedAssets, 1)
+	assert.Equal(t, "TRON", status.SupportedAssets[0].Network)
+	assert.Equal(t, "USDT", status.SupportedAssets[0].Token)
+}
+
+func TestGetGMPayFeeStatusUsesBuiltinAssetWhenDiscoveryUnavailable(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	gmpayFeeStatusCache.Lock()
+	previousCacheValue := gmpayFeeStatusCache.value
+	previousCacheExpiry := gmpayFeeStatusCache.expiresAt
+	previousCacheKey := gmpayFeeStatusCache.key
+	gmpayFeeStatusCache.value = gmpayFeeStatusResponse{}
+	gmpayFeeStatusCache.expiresAt = time.Time{}
+	gmpayFeeStatusCache.key = ""
+	gmpayFeeStatusCache.Unlock()
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+		gmpayFeeStatusCache.Lock()
+		gmpayFeeStatusCache.value = previousCacheValue
+		gmpayFeeStatusCache.expiresAt = previousCacheExpiry
+		gmpayFeeStatusCache.key = previousCacheKey
+		gmpayFeeStatusCache.Unlock()
+	})
+
+	operation_setting.PayAddress = server.URL
+	operation_setting.EpayId = "gmpay-test-pid"
+	operation_setting.EpayKey = "gmpay-test-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	privateClient, err := service.NewGMPayClient(server.URL, operation_setting.EpayId, operation_setting.EpayKey, server.Client())
+	require.NoError(t, err)
+	newGMPayNativeClient = func(string, string, string) (*service.GMPayClient, error) {
+		return privateClient, nil
+	}
+
+	now := time.Now().UTC()
+	dynamicQuote := service.NetworkFeeQuote{
+		Token:              "USDT",
+		Network:            "tron",
+		SettlementCurrency: "USD",
+		BaseAmount:         decimal.NewFromInt(1),
+		FeeAmount:          decimal.RequireFromString("2.21"),
+		TotalAmount:        decimal.RequireFromString("3.21"),
+		NativeAsset:        "TRX",
+		NativeAmount:       decimal.RequireFromString("6.845"),
+		Source:             service.GMPayFeeSourceChainNetworkEstimate,
+		EstimatorVersion:   "test-builtin",
+		Confidence:         "medium",
+		QuotedAt:           now.Add(-time.Second),
+		ExpiresAt:          now.Add(time.Minute),
+		Evidence: service.NetworkFeeEvidence{
+			RPCMethod:      "wallet/estimateenergy",
+			RPCSource:      "api.trongrid.io",
+			PriceSource:    "api.coingecko.com",
+			PriceTimestamp: now.Unix(),
+		},
+	}
+
+	testCases := []struct {
+		name                string
+		config              string
+		builtin             service.NetworkFeeEstimator
+		wantCapability      bool
+		wantFallbackEnabled bool
+		wantFallbackReady   bool
+		wantSource          string
+		wantReason          string
+	}{
+		{
+			name:                "builtin dynamic quote",
+			config:              `{"version":1}`,
+			builtin:             gmpayEstimatorQuoteStub{quote: dynamicQuote},
+			wantCapability:      true,
+			wantFallbackEnabled: false,
+			wantFallbackReady:   false,
+			wantSource:          service.GMPayFeeSourceChainNetworkEstimate,
+		},
+		{
+			name:                "administrator fallback after dynamic failure",
+			config:              `{"version":1,"fallback_enabled":true,"fallback_mode":"fixed","fallback_value":"5","max_fee":"20","max_total":"100000"}`,
+			builtin:             gmpayEstimatorCountingStub{err: errors.New("simulated dynamic outage")},
+			wantCapability:      false,
+			wantFallbackEnabled: true,
+			wantFallbackReady:   true,
+			wantSource:          service.GMPayFeeSourceAdminFallback,
+			wantReason:          "Dynamic network fee unavailable; administrator fallback is active",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			common.OptionMapRWMutex.Lock()
+			common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: testCase.config}
+			common.OptionMapRWMutex.Unlock()
+			discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+				return nil, errors.New("simulated private discovery outage")
+			}
+			newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+				return testCase.builtin, nil
+			}
+			resetCachedAutomaticGMPayNetworkFeeEstimator()
+			gmpayFeeStatusCache.Lock()
+			gmpayFeeStatusCache.value = gmpayFeeStatusResponse{}
+			gmpayFeeStatusCache.expiresAt = time.Time{}
+			gmpayFeeStatusCache.key = ""
+			gmpayFeeStatusCache.Unlock()
+
+			gin.SetMode(gin.TestMode)
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/api/option/gmpay_fee/status", nil)
+			GetGMPayFeeStatus(ctx)
+
+			require.Equal(t, http.StatusOK, recorder.Code)
+			var response struct {
+				Success bool `json:"success"`
+				Data    struct {
+					Configured      bool                        `json:"configured"`
+					Capability      bool                        `json:"capability"`
+					Healthy         bool                        `json:"healthy"`
+					QuoteAvailable  bool                        `json:"quote_available"`
+					FallbackEnabled bool                        `json:"fallback_enabled"`
+					FallbackReady   bool                        `json:"fallback_ready"`
+					FeeSource       string                      `json:"fee_source"`
+					Reason          string                      `json:"reason"`
+					SupportedAssets []service.GMPayPaymentAsset `json:"supported_assets"`
+				} `json:"data"`
+			}
+			require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+			require.True(t, response.Success)
+			assert.True(t, response.Data.Configured)
+			assert.Equal(t, testCase.wantCapability, response.Data.Capability)
+			assert.True(t, response.Data.Healthy)
+			assert.True(t, response.Data.QuoteAvailable)
+			assert.Equal(t, testCase.wantFallbackEnabled, response.Data.FallbackEnabled)
+			assert.Equal(t, testCase.wantFallbackReady, response.Data.FallbackReady)
+			assert.Equal(t, testCase.wantSource, response.Data.FeeSource)
+			assert.Equal(t, testCase.wantReason, response.Data.Reason)
+			require.Equal(t, []service.GMPayPaymentAsset{{Network: "TRON", Token: "USDT", DisplayName: "TRON"}}, response.Data.SupportedAssets)
+		})
+	}
+}
+
+func TestGMPayFeeStatusCacheKeyTracksCompleteConfigurationAndMerchantIdentity(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+	})
+
+	operation_setting.PayAddress = "https://pay.example.test"
+	operation_setting.EpayId = "merchant-id"
+	operation_setting.EpayKey = "merchant-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	setConfig := func(raw string) {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: raw}
+		common.OptionMapRWMutex.Unlock()
+	}
+
+	setConfig(`{"version":1,"dynamic_enabled":true,"chains":{"tron":{"rpc_url":"https://rpc-one.example","price_url":"https://price-one.example","native_asset":"TRX","settlement_currency":"USD"}}}`)
+	first := currentGMPayFeeStatusCacheKey()
+	assert.NotContains(t, first, "merchant-secret")
+
+	setConfig(`{"version":1,"dynamic_enabled":true,"chains":{"tron":{"rpc_url":"https://rpc-two.example","price_url":"https://price-one.example","native_asset":"TRX","settlement_currency":"USD"}}}`)
+	second := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, first, second)
+
+	operation_setting.EpayKey = "rotated-secret"
+	third := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, second, third)
+
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	fourth := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, third, fourth)
+}
+
 func TestResolveGMPayEstimatorPriority(t *testing.T) {
 	originalConfigured := newGMPayNetworkFeeEstimator
 	originalDiscovery := discoverGMPayNetworkFeeEstimatorFromClient

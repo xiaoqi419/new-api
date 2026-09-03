@@ -2344,7 +2344,7 @@
     "Features Section": "Section Fonctionnalités",
     "Fee": "Frais",
     "Fee Amount": "Montant des frais",
-    "Fee source: {{source}}": "Fee source: {{source}}",
+    "Fee source: {{source}}": "Source des frais : {{source}}",
     "Fetch available models for:": "Récupérer les modèles disponibles pour :",
     "Fetch available models from upstream": "Récupérer les modèles disponibles en amont",
     "Fetch from Upstream": "Récupérer depuis l'amont",

@@ -1278,8 +1278,18 @@ export function PaymentSettingsSection({
       return
     }
 
+    const gmpaySettingsChanged = updates.some(({ key }) =>
+      ['PayAddress', 'EpayId', 'EpayKey', 'GMPayFeeConfig'].includes(key)
+    )
     for (const update of updates) {
       await updateOption.mutateAsync(update)
+    }
+
+    if (gmpaySettingsChanged) {
+      await queryClient.invalidateQueries({
+        queryKey: ['gmpay-fee-status'],
+        refetchType: 'active',
+      })
     }
 
     if (!hasWaffoPancakeChanges) {

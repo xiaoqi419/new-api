@@ -2344,7 +2344,7 @@
     "Features Section": "功能區塊",
     "Fee": "扣費",
     "Fee Amount": "扣費金額",
-    "Fee source: {{source}}": "Fee source: {{source}}",
+    "Fee source: {{source}}": "手續費來源：{{source}}",
     "Fetch available models for:": "獲取可用模型：",
     "Fetch available models from upstream": "從上游獲取可用模型",
     "Fetch from Upstream": "從上游獲取",

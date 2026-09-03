@@ -35,11 +35,12 @@ const (
 // injectable only for deterministic tests; production callers should use
 // NewBuiltinNetworkFeeEstimator.
 type BuiltinNetworkFeeEstimator struct {
-	configured *ConfiguredNetworkFeeEstimator
-	now        func() time.Time
-	priceMu    sync.Mutex
-	priceCache map[string]builtinPriceCacheEntry
-	priceGroup singleflight.Group
+	configured  *ConfiguredNetworkFeeEstimator
+	now         func() time.Time
+	tronRPCURLs []*url.URL
+	priceMu     sync.Mutex
+	priceCache  map[string]builtinPriceCacheEntry
+	priceGroup  singleflight.Group
 }
 
 // builtinPriceCacheEntry stores only validated, fresh observations. The key
@@ -101,6 +102,16 @@ func BuiltinNetworkFeeSupportedNetworks() []string {
 }
 
 func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*BuiltinNetworkFeeEstimator, error) {
+	builtinTRONRPCValues := []string{
+		"https://api.tronstack.io",
+		"https://tron-rpc.publicnode.com",
+		"https://api.trongrid.io",
+	}
+	builtinTRONRPCAllowedHosts := []string{
+		"api.tronstack.io",
+		"tron-rpc.publicnode.com",
+		"api.trongrid.io",
+	}
 	config := NetworkFeeEstimatorConfig{
 		Version:                  NetworkFeeEstimatorConfigVersion,
 		DynamicEnabled:           true,
@@ -115,11 +126,11 @@ func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*
 		MaxTotal:                 maxNetworkFeeAbsolute,
 		Chains: map[string]NetworkFeeChainConfig{
 			"tron": {
-				RPCURL:             "https://api.trongrid.io",
+				RPCURL:             builtinTRONRPCValues[0],
 				PriceURL:           "https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd,cny&include_last_updated_at=true",
 				NativeAsset:        "TRX",
 				SettlementCurrency: "USD",
-				RPCAllowedHosts:    []string{"api.trongrid.io"},
+				RPCAllowedHosts:    builtinTRONRPCAllowedHosts,
 				PriceAllowedHosts:  []string{"api.coingecko.com"},
 			},
 			"ethereum": {
@@ -155,13 +166,22 @@ func newBuiltinNetworkFeeEstimator(client *http.Client, now func() time.Time) (*
 	if err != nil {
 		return nil, err
 	}
+	tronRPCURLs := make([]*url.URL, 0, len(builtinTRONRPCValues))
+	for _, value := range builtinTRONRPCValues {
+		endpoint, endpointErr := validateNetworkFeeEndpoint(value, builtinTRONRPCAllowedHosts)
+		if endpointErr != nil {
+			return nil, fmt.Errorf("builtin TRON RPC endpoint is invalid: %w", endpointErr)
+		}
+		tronRPCURLs = append(tronRPCURLs, endpoint)
+	}
 	if now == nil {
 		now = time.Now
 	}
 	return &BuiltinNetworkFeeEstimator{
-		configured: configured,
-		now:        now,
-		priceCache: make(map[string]builtinPriceCacheEntry),
+		configured:  configured,
+		now:         now,
+		tronRPCURLs: tronRPCURLs,
+		priceCache:  make(map[string]builtinPriceCacheEntry),
 	}, nil
 }
 
@@ -312,7 +332,39 @@ func (estimator *BuiltinNetworkFeeEstimator) refreshBuiltinSolanaBlockhash(ctx c
 // wallet and therefore cannot have meaningful bandwidth/energy balances.  A
 // zero-resource assumption is conservative for the network cost and remains
 // fully dynamic because both fee rates and energy are read from the node.
+//
+// The built-in preset owns a small, exact allowlist of public TRON nodes. A
+// single anonymous TronGrid endpoint is routinely rate-limited, so a transient
+// 429/5xx/network failure must move the complete estimate to the next node.
+// Keeping the chain-parameter and simulation calls on one node avoids mixing
+// observations from different endpoints in one quote.
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
+	rpcURLs := estimator.tronRPCURLs
+	if len(rpcURLs) == 0 && chain.rpcURL != nil {
+		rpcURLs = []*url.URL{chain.rpcURL}
+	}
+	var lastErr error
+	for _, rpcURL := range rpcURLs {
+		raw, err := estimator.estimateBuiltinTRONAtRPC(ctx, rpcURL, token, transaction)
+		if err == nil {
+			raw.Evidence.RPCSource = endpointSource(rpcURL)
+			return raw, nil
+		}
+		lastErr = err
+		if ctx.Err() != nil {
+			return chainRawNetworkEstimate{}, ctx.Err()
+		}
+	}
+	if lastErr == nil {
+		return chainRawNetworkEstimate{}, errors.New("tron RPC endpoints are unavailable")
+	}
+	return chainRawNetworkEstimate{}, fmt.Errorf("tron RPC endpoints are unavailable: %w", lastErr)
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRONAtRPC(ctx context.Context, rpcURL *url.URL, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
+	if rpcURL == nil {
+		return chainRawNetworkEstimate{}, errors.New("tron RPC endpoint is unavailable")
+	}
 	from := strings.TrimSpace(transaction.From)
 	recipient := strings.TrimSpace(firstNonEmpty(transaction.Recipient, transaction.To))
 	contract := strings.TrimSpace(firstNonEmpty(transaction.TokenContract, transaction.Contract))
@@ -324,7 +376,7 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 	if err != nil {
 		return chainRawNetworkEstimate{}, err
 	}
-	chainParamsResult, err := estimator.configured.callTRON(ctx, chain.rpcURL, "/wallet/getchainparameters", map[string]any{})
+	chainParamsResult, err := estimator.configured.callTRON(ctx, rpcURL, "/wallet/getchainparameters", map[string]any{})
 	if err != nil {
 		return chainRawNetworkEstimate{}, err
 	}
@@ -333,14 +385,14 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 		return chainRawNetworkEstimate{}, err
 	}
 	payload := map[string]any{"owner_address": from, "contract_address": contract, "function_selector": selector, "parameter": parameter, "visible": true}
-	energyResult, energyErr := estimator.configured.callTRON(ctx, chain.rpcURL, "/wallet/estimateenergy", payload)
+	energyResult, energyErr := estimator.configured.callTRON(ctx, rpcURL, "/wallet/estimateenergy", payload)
 	methods := []string{"wallet/getchainparameters"}
 	var energy decimal.Decimal
 	if energyErr == nil {
 		energy, err = parseTRONEnergy(energyResult.Raw)
 		methods = append(methods, "wallet/estimateenergy")
 	} else {
-		constantResult, constantErr := estimator.configured.callTRON(ctx, chain.rpcURL, "/wallet/triggerconstantcontract", payload)
+		constantResult, constantErr := estimator.configured.callTRON(ctx, rpcURL, "/wallet/triggerconstantcontract", payload)
 		if constantErr == nil {
 			energy, err = parseTRONEnergy(constantResult.Raw)
 			if err == nil && energy.GreaterThan(decimal.Zero) {

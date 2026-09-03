@@ -2344,7 +2344,7 @@
     "Features Section": "Phần tính năng",
     "Fee": "Phí",
     "Fee Amount": "Số tiền phí",
-    "Fee source: {{source}}": "Fee source: {{source}}",
+    "Fee source: {{source}}": "Nguồn phí: {{source}}",
     "Fetch available models for:": "Tìm nạp các mô hình khả dụng cho:",
     "Fetch available models from upstream": "Lấy các mô hình khả dụng từ nguồn trên",
     "Fetch from Upstream": "Lấy từ nguồn",

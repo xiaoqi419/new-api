@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -115,6 +116,92 @@ func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 	assert.Equal(t, "27.645", quote.NativeAmount.String())
 	assert.Equal(t, "2.7645", quote.FeeAmount.String())
 	assert.Contains(t, quote.Evidence.RPCMethods, "wallet/estimateenergy")
+}
+
+func TestBuiltinNetworkFeeEstimatorTRONFailsOverRateLimitedRPC(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var rpcHosts []string
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		rpcHosts = append(rpcHosts, req.URL.Hostname())
+		if req.URL.Hostname() == "api.tronstack.io" {
+			return builtinResponse(http.StatusTooManyRequests, `{}`), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.NoError(t, err)
+	assert.Equal(t, "tron-rpc.publicnode.com", quote.Evidence.RPCSource)
+	assert.Equal(t, "2.7645", quote.FeeAmount.String())
+	assert.Equal(t, []string{"api.tronstack.io", "tron-rpc.publicnode.com", "tron-rpc.publicnode.com"}, rpcHosts)
+}
+
+func TestBuiltinNetworkFeeEstimatorTRONFailsClosedWhenAllRPCsAreRateLimited(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var rpcCalls int
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		rpcCalls++
+		return builtinResponse(http.StatusTooManyRequests, `{}`), nil
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
+	assert.Equal(t, 3, rpcCalls)
+}
+
+func TestParseTRONChainFeesMatchesTronGridResponse(t *testing.T) {
+	// TronGrid includes a long list of chain parameters. Some deployments
+	// return unrelated entries without a value (or with a negative value), but
+	// the two burn-price parameters remain ordinary integer values.
+	raw := json.RawMessage(`{
+		"chainParameter": [
+			{"key":"getMaintenanceTimeInterval","value":21600000},
+			{"key":"getMaxCpuTimeOfOneTx"},
+			{"key":"getAllowTvmTransfer_TRC10","value":-1},
+			{"key":"getEnergyFee","value":420},
+			{"key":"getTransactionFee","value":1000},
+			{"key":"getMemoFee","value":"not-a-burn-price"}
+		]
+	}`)
+	energyFee, bandwidthFee, err := parseTRONChainFees(raw)
+	require.NoError(t, err)
+	assert.Equal(t, "420", energyFee.String())
+	assert.Equal(t, "1000", bandwidthFee.String())
+}
+
+func TestParseTRONChainFeesFailsClosedWhenTargetIsMissingOrInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "missing energy fee", body: `{"chainParameter":[{"key":"getTransactionFee","value":1000}]}`},
+		{name: "missing transaction fee", body: `{"chainParameter":[{"key":"getEnergyFee","value":420}]}`},
+		{name: "negative energy fee", body: `{"chainParameter":[{"key":"getEnergyFee","value":-1},{"key":"getTransactionFee","value":1000}]}`},
+		{name: "invalid transaction fee", body: `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":"invalid"}]}`},
+		{name: "missing transaction value", body: `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee"}]}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, err := parseTRONChainFees(json.RawMessage(test.body))
+			require.Error(t, err)
+		})
+	}
 }
 
 func TestBuiltinTransferContextTRONUSDCUsesCanonicalContract(t *testing.T) {
