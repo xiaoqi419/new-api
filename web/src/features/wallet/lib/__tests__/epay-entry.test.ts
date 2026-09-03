@@ -86,4 +86,61 @@ describe('modern Epay entry behavior', () => {
       },
     ])
   })
+
+  test('opens a GMPay crypto checkout when money is the quoted total and fallback is the base amount', () => {
+    const modals: unknown[] = []
+    const opened = openWalletEpayCheckout(
+      {
+        checkout_type: 'crypto',
+        trade_no: 'WALLET-CRYPTO-FEE-1',
+        gateway_trade_no: 'GMPAY-ORDER-FEE-1',
+        payment_method: 'usdt.tron',
+        money: '32.24',
+        base_amount: '30.00',
+        fee_amount: '2.24',
+        total_amount: '32.24',
+        actual_amount: '32.24',
+        receive_address: 'TQ1NativeCheckoutAddress123456789',
+        token: 'USDT',
+        network: 'TRON',
+        expiration_time: 1_700_000_300,
+        server_time: 1_700_000_000,
+      },
+      { paymentMethod: 'usdt.tron', money: 30 },
+      (value) => modals.push(value)
+    )
+
+    assert.equal(opened, true)
+    assert.equal(modals.length, 1)
+    assert.equal(
+      (modals[0] as { money: string; fee_amount?: string }).money,
+      '32.24'
+    )
+    assert.equal(
+      (modals[0] as { fee_amount?: string }).fee_amount,
+      '2.24'
+    )
+  })
+
+  test('rejects a GMPay crypto checkout whose total does not equal base plus fee', () => {
+    const opened = openWalletEpayCheckout(
+      {
+        checkout_type: 'crypto',
+        trade_no: 'WALLET-CRYPTO-FEE-BAD',
+        payment_method: 'usdt.tron',
+        money: '99.00',
+        base_amount: '30.00',
+        fee_amount: '2.24',
+        actual_amount: '32.24',
+        receive_address: 'TQ1NativeCheckoutAddress123456789',
+        token: 'USDT',
+        network: 'TRON',
+        expiration_time: 1_700_000_300,
+      },
+      { paymentMethod: 'usdt.tron', money: 30 },
+      () => undefined
+    )
+
+    assert.equal(opened, false)
+  })
 })
