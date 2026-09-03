@@ -150,11 +150,19 @@ type gmpayFeeStatusResponse struct {
 	Capability      bool                        `json:"capability"`
 	Healthy         bool                        `json:"healthy"`
 	QuoteAvailable  bool                        `json:"quote_available"`
+	FallbackEnabled bool                        `json:"fallback_enabled"`
+	FallbackReady   bool                        `json:"fallback_ready"`
+	FeeSource       string                      `json:"fee_source,omitempty"`
 	Reason          string                      `json:"reason,omitempty"`
 	SupportedAssets []service.GMPayPaymentAsset `json:"supported_assets,omitempty"`
 	LastSyncAt      int64                       `json:"last_sync_at,omitempty"`
 	LastSuccessAt   int64                       `json:"last_success_at,omitempty"`
 }
+
+const (
+	gmpayFeeDiscoveryUnavailableMessage = "GMPay network fee discovery is unavailable"
+	gmpayFeeEstimateUnavailableMessage  = "GMPay network fee estimate is unavailable; enable administrator fallback or configure dynamic network fee estimation"
+)
 
 var gmpayFeeStatusCache struct {
 	sync.Mutex
@@ -190,49 +198,85 @@ func TestGMPayFeeEstimate(c *gin.Context) {
 	}
 	clientCfg := GetEpayClient()
 	if clientCfg == nil || clientCfg.Config == nil || clientCfg.BaseUrl == nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": gmpayFeeDiscoveryUnavailableMessage})
 		return
 	}
 	client, err := newGMPayNativeClient(clientCfg.BaseUrl.String(), clientCfg.Config.PartnerID, clientCfg.Config.Key)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
-		return
-	}
-	assets, err := client.SupportedAssetsFresh(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee discovery is unavailable"})
-		return
-	}
-	request.Token, request.Network, err = chooseGMPayFeeStatusAsset(assets, request.Token, request.Network)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "GMPay token or network is unavailable"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": gmpayFeeDiscoveryUnavailableMessage})
 		return
 	}
 	feeCfg, cfgErr := service.CurrentGMPayFeeConfig()
 	if cfgErr != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee estimate is unavailable"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": gmpayFeeEstimateUnavailableMessage})
 		return
 	}
-	settlementCurrency, currencyErr := gmpaySettlementCurrencyForNetwork(request.Network, feeCfg)
-	if currencyErr != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay settlement currency is unavailable"})
-		return
+	// Asset discovery is useful when the gateway exposes its config endpoint,
+	// but it is not the fee estimator itself. Some GMPay deployments expose
+	// checkout config only intermittently (or return 404 for the optional
+	// endpoint). Keep the non-mutating estimate button useful in that case by
+	// validating the requested/default pair against our server-owned network
+	// vocabulary and letting quoteGMPayWalletFee run the dynamic estimator.
+	assets, assetsErr := client.SupportedAssetsFresh(c.Request.Context())
+	if assetsErr == nil {
+		request.Token, request.Network, err = chooseGMPayFeeStatusAsset(assets, request.Token, request.Network)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "GMPay token or network is unavailable"})
+			return
+		}
+	} else {
+		request.Token = strings.ToUpper(strings.TrimSpace(request.Token))
+		request.Network = strings.ToLower(strings.TrimSpace(request.Network))
+		if request.Token == "" {
+			request.Token = "USDT"
+		}
+		if request.Network == "" {
+			request.Network = "tron"
+		}
+		if request.Token != "USDT" && request.Token != "USDC" {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "GMPay token or network is unavailable"})
+			return
+		}
+		if _, networkOK := service.NormalizeGMPayNetwork(request.Network); !networkOK {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "GMPay token or network is unavailable"})
+			return
+		}
 	}
-	quote, err := estimateGMPayNetworkQuoteWithAutomaticFallback(c.Request.Context(), feeCfg, client, service.NetworkFeeEstimateInput{
-		Token: request.Token, Network: request.Network, SettlementCurrency: settlementCurrency, BaseAmount: decimal.NewFromInt(1),
-	})
+	// Reuse the wallet quote path so this non-mutating probe exercises the same
+	// dynamic estimator and administrator fallback precedence as checkout. A
+	// failed dynamic estimate must not make the admin's explicitly configured
+	// fixed/percent fallback appear broken in the test button.
+	quote, err := quoteGMPayWalletFee(c.Request.Context(), tenantEpayConfig{
+		Enabled: true,
+		Client:  clientCfg,
+	}, decimal.NewFromInt(1), request.Token, request.Network)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay network fee estimate is unavailable"})
+		if _, currencyErr := gmpaySettlementCurrencyForNetwork(request.Network, feeCfg); currencyErr != nil {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "GMPay settlement currency is unavailable"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": gmpayFeeEstimateUnavailableMessage})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{
+	data := gin.H{
 		"token": strings.ToUpper(request.Token), "network": strings.ToUpper(request.Network),
-		"source": quote.Source, "native_asset": quote.NativeAsset, "native_amount": quote.NativeAmount.String(),
+		"source":     quote.Source,
 		"fee_amount": quote.FeeAmount.StringFixed(2), "base_amount": quote.BaseAmount.StringFixed(2),
 		"total_amount": quote.TotalAmount.StringFixed(2), "settlement_currency": quote.SettlementCurrency,
-		"estimator_version": quote.EstimatorVersion, "confidence": quote.Confidence,
-		"quoted_at": quote.QuotedAt.UTC().Format(time.RFC3339Nano), "expires_at": quote.ExpiresAt.UTC().Format(time.RFC3339Nano),
-	}})
+	}
+	if source, sourceErr := service.NormalizeGMPayFeeSource(quote.Source); sourceErr == nil {
+		if source == service.GMPayFeeSourceChainNetworkEstimate {
+			data["native_asset"] = quote.NativeAsset
+			data["native_amount"] = quote.NativeAmount.String()
+			data["estimator_version"] = quote.EstimatorVersion
+			data["confidence"] = quote.Confidence
+		}
+		if source != service.GMPayFeeSourceGatewayIncluded {
+			data["quoted_at"] = quote.QuotedAt.UTC().Format(time.RFC3339Nano)
+			data["expires_at"] = quote.ExpiresAt.UTC().Format(time.RFC3339Nano)
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
 }
 
 func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
@@ -251,8 +295,10 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 	assets, err := client.SupportedAssetsFresh(ctx)
 	status.LastSyncAt = time.Now().Unix()
 	if err != nil {
-		status.Reason = "EPUSDT supported assets are unavailable"
-		return status
+		// Asset discovery is optional for the read-only fee status probe. Use
+		// the server-owned representative pair so dynamic estimation remains
+		// preferred, with an explicit administrator fallback as the only backup.
+		assets = []service.GMPayAsset{{Network: "tron", DisplayName: "TRON", Tokens: []string{"USDT"}}}
 	}
 	for _, asset := range assets {
 		for _, token := range asset.Tokens {
@@ -264,8 +310,38 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		status.Reason = "GMPay network fee configuration is unavailable"
 		return status
 	}
+	status.FallbackEnabled = feeCfg.HasFallbackPolicy()
+	// The gateway currently exposes supported assets but does not advertise a
+	// network-fee context endpoint. An explicitly enabled administrator fallback
+	// is still a valid, checkout-safe quote source in that situation. Report it
+	// as healthy so the admin page does not claim that the gateway has no
+	// networks merely because dynamic pricing is unavailable.
+	markFallbackReady := func() bool {
+		for _, asset := range assets {
+			for _, token := range asset.Tokens {
+				if _, currencyErr := gmpaySettlementCurrencyForNetwork(asset.Network, feeCfg); currencyErr != nil {
+					continue
+				}
+				quote, quoteErr := service.GMPayFeeQuoteForAsset(decimal.NewFromInt(1), token, asset.Network)
+				if quoteErr != nil || quote.Source != service.GMPayFeeSourceAdminFallback {
+					continue
+				}
+				status.Healthy = true
+				status.QuoteAvailable = true
+				status.FallbackReady = true
+				status.FeeSource = service.GMPayFeeSourceAdminFallback
+				status.LastSuccessAt = status.LastSyncAt
+				status.Reason = "Dynamic network fee unavailable; administrator fallback is active"
+				return true
+			}
+		}
+		return false
+	}
 	estimator, err := resolveGMPayEstimatorWithClient(ctx, feeCfg, client)
 	if err != nil {
+		if status.FallbackEnabled && markFallbackReady() {
+			return status
+		}
 		if errors.Is(err, service.ErrGMPayNetworkFeeCapabilityUnavailable) {
 			status.Reason = "EPUSDT network fee capability is unavailable"
 		} else if errors.Is(err, service.ErrNetworkFeeUnavailable) && feeCfg.IsDynamicConfigured() && !feeCfg.IsDynamicEnabled() {
@@ -275,13 +351,17 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		}
 		return status
 	}
-	status.Capability = true
 	if gmpayEstimatorHasQuote(ctx, estimator, assets, feeCfg) {
+		status.Capability = true
 		status.Healthy, status.QuoteAvailable = true, true
+		status.FeeSource = service.GMPayFeeSourceChainNetworkEstimate
 		status.LastSuccessAt = status.LastSyncAt
 		return status
 	}
-	status.Reason = "GMPay network fee estimate is unavailable"
+	if status.FallbackEnabled && markFallbackReady() {
+		return status
+	}
+	status.Reason = gmpayFeeEstimateUnavailableMessage
 	return status
 }
 
@@ -343,7 +423,7 @@ func currentGMPayFeeStatusCacheKey() string {
 		endpoint = client.BaseUrl.String()
 	}
 	cfg, _ := service.CurrentGMPayFeeConfig()
-	return fmt.Sprintf("%s|v=%d|dynamic=%t|configured=%t|chains=%d", endpoint, cfg.Version, cfg.IsDynamicEnabled(), cfg.IsDynamicConfigured(), len(cfg.Chains))
+	return fmt.Sprintf("%s|v=%d|dynamic=%t|configured=%t|fallback=%t|fallback_mode=%s|fallback_value=%s|max_fee=%s|max_total=%s|chains=%d", endpoint, cfg.Version, cfg.IsDynamicEnabled(), cfg.IsDynamicConfigured(), cfg.HasFallbackPolicy(), cfg.FallbackMode, cfg.FallbackValue, cfg.MaxFee, cfg.MaxTotal, len(cfg.Chains))
 }
 
 func gmpayFeeStatusCacheValid(keys ...string) bool {

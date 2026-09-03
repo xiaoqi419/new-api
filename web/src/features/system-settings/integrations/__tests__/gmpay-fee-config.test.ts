@@ -444,6 +444,7 @@ describe('GMPay fee fallback configuration', () => {
       lastEstimate: {
         network: 'ethereum',
         token: 'USDT',
+        source: 'chain_network_estimate',
         feeAmount: '0.12 USD',
         nativeAmount: '0.00004 ETH',
         nativeAsset: 'ETH',
@@ -477,10 +478,35 @@ describe('GMPay fee fallback configuration', () => {
     await waitFor(() => expect(onTestEstimate).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.getByText('Latest test estimate')).toBeInTheDocument())
     expect(screen.getByText('0.12 USD')).toBeInTheDocument()
+    expect(
+      screen.getByText('Fee source: Dynamic network fee estimate')
+    ).toBeInTheDocument()
     expect(screen.queryByText('https://rpc.example.test')).toBeNull()
   })
 
-  test('surfaces a failed test estimate without exposing low-level context', async () => {
+  test('renders the reported fee source and unavailable administrator fallback', () => {
+    render(
+      React.createElement(GMPayFeeConfigEditor, {
+        value: DEFAULT_GMPAY_FEE_CONFIG_JSON,
+        onChange: () => undefined,
+        discoveryStatus: {
+          state: 'ready',
+          feeSource: 'admin_fixed',
+          fallbackEnabled: true,
+          fallbackReady: false,
+        },
+      })
+    )
+
+    expect(
+      screen.getByText('Fee source: Administrator fallback')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Administrator fallback: Unavailable')
+    ).toBeInTheDocument()
+  })
+
+  test('surfaces the server error for a failed test estimate', async () => {
     const onTestEstimate = vi
       .fn()
       .mockRejectedValue(new Error('gateway unavailable'))
@@ -495,7 +521,7 @@ describe('GMPay fee fallback configuration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Test estimate' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Unable to run estimate. Please retry.'
+      'gateway unavailable'
     )
     expect(screen.queryByLabelText('RPC endpoint URL')).toBeNull()
     expect(screen.queryByLabelText('Price source URL')).toBeNull()

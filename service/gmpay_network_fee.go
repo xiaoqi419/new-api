@@ -2173,23 +2173,42 @@ func parseTRONChainFees(raw json.RawMessage) (decimal.Decimal, decimal.Decimal, 
 	}
 	energyFee := decimal.Zero
 	bandwidthFee := decimal.Zero
+	energySeen := false
+	bandwidthSeen := false
 	for _, parameter := range parameters {
 		keyRaw, keyOK := findJSONField(parameter, "key")
-		valueRaw, valueOK := findJSONField(parameter, "value")
-		if !keyOK || !valueOK || common.GetJsonType(keyRaw) != "string" {
+		if !keyOK || common.GetJsonType(keyRaw) != "string" {
 			continue
 		}
 		key := strings.ToLower(strings.TrimSpace(common.JsonRawMessageToString(keyRaw)))
-		value, parseErr := parseNetworkFeeIntegerDecimal(common.JsonRawMessageToString(valueRaw), true)
-		if parseErr != nil {
-			return decimal.Zero, decimal.Zero, parseErr
-		}
+		var target *decimal.Decimal
+		var seen *bool
 		switch key {
 		case "getenergyfee":
-			energyFee = value
+			target = &energyFee
+			seen = &energySeen
 		case "gettransactionfee":
-			bandwidthFee = value
+			target = &bandwidthFee
+			seen = &bandwidthSeen
+		default:
+			// TronGrid returns many chain parameters that are unrelated to
+			// burn fees. Their value may be absent or malformed; neither should
+			// make an otherwise usable fee response fail closed.
+			continue
 		}
+		valueRaw, valueOK := findJSONField(parameter, "value")
+		if !valueOK {
+			return decimal.Zero, decimal.Zero, fmt.Errorf("tron chain parameter %s is missing value", key)
+		}
+		value, parseErr := parseNetworkFeeIntegerDecimal(common.JsonRawMessageToString(valueRaw), true)
+		if parseErr != nil {
+			return decimal.Zero, decimal.Zero, fmt.Errorf("tron chain parameter %s is invalid: %w", key, parseErr)
+		}
+		*target = value
+		*seen = true
+	}
+	if !energySeen || !bandwidthSeen {
+		return decimal.Zero, decimal.Zero, errors.New("tron chain burn fees are missing")
 	}
 	if energyFee.IsNegative() || bandwidthFee.IsNegative() || (energyFee.IsZero() && bandwidthFee.IsZero()) {
 		return decimal.Zero, decimal.Zero, errors.New("tron chain burn fees are unavailable")

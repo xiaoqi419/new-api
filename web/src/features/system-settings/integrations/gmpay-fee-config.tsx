@@ -140,9 +140,13 @@ export type GMPayDiscoveryStatus = {
   networks?: GMPayDiscoveryNetwork[]
   lastSyncedAt?: string
   lastSuccessAt?: string
+  feeSource?: string
+  fallbackEnabled?: boolean
+  fallbackReady?: boolean
   lastEstimate?: {
     network: string
     token: string
+    source?: string
     feeAmount?: string
     nativeAmount?: string
     nativeAsset?: string
@@ -1586,10 +1590,56 @@ function deriveDiscoveryStatus(config: GMPayFeeConfig): GMPayDiscoveryStatus {
 }
 
 function formatDiscoveryTimestamp(value: string | undefined) {
-  if (!value) return null
+  if (!value) {
+    return null
+  }
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return null
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
   return parsed.toLocaleString()
+}
+
+function getGMPayFeeSourceLabel(
+  source: string | undefined,
+  t: (key: string) => string
+) {
+  switch (source?.trim().toLowerCase()) {
+    case 'chain_network_estimate':
+      return t('Dynamic network fee estimate')
+    case 'admin_fallback':
+    case 'admin_fixed':
+    case 'admin_percent':
+      return t('Administrator fallback')
+    case 'gateway_quote':
+      return t('Gateway quote')
+    case 'gateway_included':
+    case 'gateway-included':
+      return t('Included in gateway amount')
+    default:
+      return t('Unknown')
+  }
+}
+
+function getGMPayFallbackStatusLabel(
+  enabled: boolean,
+  ready: boolean | undefined,
+  t: (key: string) => string
+) {
+  if (!enabled) {
+    return t('Disabled')
+  }
+  return ready ? t('Ready') : t('Unavailable')
+}
+
+function getEstimateErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const message = error.message.trim()
+    if (message && message.length <= 240) {
+      return message
+    }
+  }
+  return 'Unable to run estimate. Please retry.'
 }
 
 function discoveryStateLabel(
@@ -1617,6 +1667,9 @@ type GMPayFeeStatusApiResponse = {
     capability?: boolean
     healthy?: boolean
     quote_available?: boolean
+    fallback_enabled?: boolean
+    fallback_ready?: boolean
+    fee_source?: string
     reason?: string
     supported_assets?: Array<{
       network?: string
@@ -1633,6 +1686,7 @@ type GMPayFeeEstimateApiResponse = {
   data?: {
     token?: string
     network?: string
+    source?: string
     native_asset?: string
     native_amount?: string
     fee_amount?: string
@@ -1650,10 +1704,14 @@ function mapGMPayFeeStatusResponse(
   const grouped = new Map<string, Set<string>>()
   for (const asset of data?.supported_assets ?? []) {
     const rawNetwork = asset.network?.trim().toLowerCase()
-    if (!rawNetwork) continue
+    if (!rawNetwork) {
+      continue
+    }
     const network = NETWORK_ALIASES[rawNetwork] ?? rawNetwork
     const tokens = grouped.get(network) ?? new Set<string>()
-    if (asset.token?.trim()) tokens.add(asset.token.trim().toUpperCase())
+    if (asset.token?.trim()) {
+      tokens.add(asset.token.trim().toUpperCase())
+    }
     grouped.set(network, tokens)
   }
   const networks = Array.from(grouped, ([network, tokens]) => ({
@@ -1673,6 +1731,9 @@ function mapGMPayFeeStatusResponse(
     lastSuccessAt: data?.last_success_at
       ? new Date(data.last_success_at * 1000).toISOString()
       : undefined,
+    feeSource: data?.fee_source,
+    fallbackEnabled: data?.fallback_enabled,
+    fallbackReady: data?.fallback_ready,
     error: state === 'ready' ? undefined : data?.reason,
   }
 }
@@ -1702,6 +1763,7 @@ export async function testGMPayFeeEstimate() {
         NETWORK_ALIASES[estimate.network?.trim().toLowerCase() ?? ''] ??
         estimate.network ?? '',
       token: estimate.token ?? '',
+      source: estimate.source,
       feeAmount: estimate.fee_amount,
       nativeAmount: estimate.native_amount,
       nativeAsset: estimate.native_asset,
@@ -2196,15 +2258,19 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
     runtimeStatus ?? props.discoveryStatus ?? deriveDiscoveryStatus(draft)
   const isTestingEstimate = props.testingEstimate ?? localTesting
   const runTestEstimate = async () => {
-    if (!props.onTestEstimate || isTestingEstimate) return
+    if (!props.onTestEstimate || isTestingEstimate) {
+      return
+    }
     setLocalTesting(true)
     try {
       const result = await props.onTestEstimate()
-      if (result) setRuntimeStatus(result)
-    } catch {
+      if (result) {
+        setRuntimeStatus(result)
+      }
+    } catch (error: unknown) {
       setRuntimeStatus({
         state: 'error',
-        error: 'Unable to run estimate. Please retry.',
+        error: getEstimateErrorMessage(error),
       })
     } finally {
       setLocalTesting(false)
@@ -2396,6 +2462,26 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
               {formatDiscoveryTimestamp(effectiveDiscoveryStatus.lastSuccessAt) ??
                 t('No successful estimate yet')}
             </p>
+            {effectiveDiscoveryStatus.feeSource ? (
+              <p className='text-muted-foreground mt-3 text-xs'>
+                {t('Fee source: {{source}}', {
+                  source: getGMPayFeeSourceLabel(
+                    effectiveDiscoveryStatus.feeSource,
+                    t
+                  ),
+                })}
+              </p>
+            ) : null}
+            {typeof effectiveDiscoveryStatus.fallbackEnabled === 'boolean' ? (
+              <p className='text-muted-foreground mt-1 text-xs'>
+                {t('Administrator fallback')}:{' '}
+                {getGMPayFallbackStatusLabel(
+                  effectiveDiscoveryStatus.fallbackEnabled,
+                  effectiveDiscoveryStatus.fallbackReady,
+                  t
+                )}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -2421,6 +2507,18 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
                 <span className='text-muted-foreground'>{t('Token')}: </span>
                 {effectiveDiscoveryStatus.lastEstimate.token}
               </p>
+              {effectiveDiscoveryStatus.lastEstimate.source ? (
+                <p>
+                  <span className='text-muted-foreground'>
+                    {t('Fee source: {{source}}', {
+                      source: getGMPayFeeSourceLabel(
+                        effectiveDiscoveryStatus.lastEstimate.source,
+                        t
+                      ),
+                    })}
+                  </span>
+                </p>
+              ) : null}
               {effectiveDiscoveryStatus.lastEstimate.feeAmount ? (
                 <p>
                   <span className='text-muted-foreground'>{t('Fee')}: </span>

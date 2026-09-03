@@ -2344,7 +2344,7 @@
     "Features Section": "Раздел функций",
     "Fee": "Сбор",
     "Fee Amount": "Сумма сбора",
-    "Fee source: {{source}}": "Fee source: {{source}}",
+    "Fee source: {{source}}": "Источник комиссии: {{source}}",
     "Fetch available models for:": "Получить доступные модели для:",
     "Fetch available models from upstream": "Получить доступные модели от вышестоящего поставщика",
     "Fetch from Upstream": "Получить из Upstream",

@@ -2344,7 +2344,7 @@
     "Features Section": "機能セクション",
     "Fee": "手数料",
     "Fee Amount": "料金額",
-    "Fee source: {{source}}": "Fee source: {{source}}",
+    "Fee source: {{source}}": "手数料の出所: {{source}}",
     "Fetch available models for:": "利用可能なモデルを取得:",
     "Fetch available models from upstream": "アップストリームから利用可能なモデルを取得する",
     "Fetch from Upstream": "Upstreamからフェッチ",
