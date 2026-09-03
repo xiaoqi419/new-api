@@ -2134,6 +2134,60 @@ func normalizeTRONTransferSelector(value string) (string, error) {
 	return "", fmt.Errorf("%w: unsupported TRC20 function selector", ErrInsufficientContext)
 }
 
+func tronRPCExecutionFailed(raw json.RawMessage) error {
+	fields, err := objectFields(raw)
+	if err != nil {
+		return nil
+	}
+	if resultRaw, ok := findJSONField(fields, "result"); ok && common.GetJsonType(resultRaw) == "object" {
+		resultFields, resultErr := objectFields(resultRaw)
+		if resultErr == nil {
+			if successRaw, successOK := findJSONField(resultFields, "result"); successOK && common.GetJsonType(successRaw) == "boolean" {
+				var success bool
+				if common.Unmarshal(successRaw, &success) == nil && !success {
+					return errors.New("tron rpc result failed")
+				}
+			}
+			if codeRaw, codeOK := findJSONField(resultFields, "code"); codeOK && common.GetJsonType(codeRaw) == "string" {
+				if strings.EqualFold(strings.TrimSpace(common.JsonRawMessageToString(codeRaw)), "CONTRACT_VALIDATE_ERROR") {
+					return errors.New("tron rpc contract validation failed")
+				}
+			}
+			if messageRaw, messageOK := findJSONField(resultFields, "message"); messageOK && common.GetJsonType(messageRaw) == "string" {
+				if strings.Contains(strings.ToUpper(common.JsonRawMessageToString(messageRaw)), "REVERT") {
+					return errors.New("tron rpc execution reverted")
+				}
+			}
+		}
+	}
+	transactionRaw, transactionOK := findJSONField(fields, "transaction")
+	if !transactionOK || common.GetJsonType(transactionRaw) != "object" {
+		return nil
+	}
+	transactionFields, err := objectFields(transactionRaw)
+	if err != nil {
+		return nil
+	}
+	retRaw, retOK := findJSONField(transactionFields, "ret")
+	if !retOK || common.GetJsonType(retRaw) != "array" {
+		return nil
+	}
+	var rets []map[string]json.RawMessage
+	if common.Unmarshal(retRaw, &rets) != nil {
+		return nil
+	}
+	for _, ret := range rets {
+		valueRaw, valueOK := findJSONField(ret, "ret")
+		if !valueOK || common.GetJsonType(valueRaw) != "string" {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(common.JsonRawMessageToString(valueRaw)), "FAILED") {
+			return errors.New("tron rpc transaction failed")
+		}
+	}
+	return nil
+}
+
 func parseTRONEnergy(raw json.RawMessage) (decimal.Decimal, error) {
 	fields, err := objectFields(raw)
 	if err != nil {
@@ -2351,14 +2405,8 @@ func (estimator *ConfiguredNetworkFeeEstimator) callTRON(ctx context.Context, en
 		if common.Unmarshal(responseBody, &fields) != nil || fields == nil {
 			return networkFeeCallResult{}, errors.New("tron rpc response is invalid")
 		}
-		if resultRaw, ok := findJSONField(fields, "result"); ok && common.GetJsonType(resultRaw) == "object" {
-			resultFields, _ := objectFields(resultRaw)
-			if successRaw, successOK := findJSONField(resultFields, "result"); successOK && common.GetJsonType(successRaw) == "boolean" {
-				var success bool
-				if common.Unmarshal(successRaw, &success) == nil && !success {
-					return networkFeeCallResult{}, errors.New("tron rpc result failed")
-				}
-			}
+		if err := tronRPCExecutionFailed(responseBody); err != nil {
+			return networkFeeCallResult{}, err
 		}
 		return networkFeeCallResult{Raw: responseBody, RPCMethod: strings.TrimPrefix(path, "/")}, nil
 	}

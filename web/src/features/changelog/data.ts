@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260903-gmpay-tron-revert-fee-fallback',
+    date: '2026-09-03',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 TRON USDT 动态手续费把合约 REVERT 的能量当成成功报价的问题；模拟失败时改用现有地址转账的经验能量和实时链上单价。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260903-gmpay-network-fee-estimator',
     date: '2026-09-03',
     changes: [
