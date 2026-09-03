@@ -27,7 +27,6 @@ import (
 const (
 	builtinNetworkFeeEstimatorVersion = NetworkFeeEstimatorVersion + "+builtin"
 	builtinEVMTransferGasUnits        = "65000"
-	builtinTRONTransferEnergyUnits    = "65000"
 )
 
 // BuiltinNetworkFeeEstimator is a fail-closed estimator backed by fixed,
@@ -388,27 +387,36 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRONAtRPC(ctx contex
 	energyResult, energyErr := estimator.configured.callTRON(ctx, rpcURL, "/wallet/estimateenergy", payload)
 	methods := []string{"wallet/getchainparameters"}
 	var energy decimal.Decimal
+	simulationErr := energyErr
 	if energyErr == nil {
-		energy, err = parseTRONEnergy(energyResult.Raw)
-		methods = append(methods, "wallet/estimateenergy")
-	} else {
+		energy, simulationErr = parseTRONEnergy(energyResult.Raw)
+		if simulationErr == nil && energy.GreaterThan(decimal.Zero) {
+			methods = append(methods, "wallet/estimateenergy")
+		} else if simulationErr == nil {
+			simulationErr = errors.New("tron wallet/estimateenergy returned non-positive energy")
+		}
+	}
+	if simulationErr != nil {
 		constantResult, constantErr := estimator.configured.callTRON(ctx, rpcURL, "/wallet/triggerconstantcontract", payload)
 		if constantErr == nil {
 			energy, err = parseTRONEnergy(constantResult.Raw)
 			if err == nil && energy.GreaterThan(decimal.Zero) {
 				methods = append(methods, "wallet/triggerconstantcontract")
+				simulationErr = nil
+			} else if err == nil {
+				simulationErr = errors.New("tron wallet/triggerconstantcontract returned non-positive energy")
+			} else {
+				simulationErr = err
 			}
 		} else {
-			err = constantErr
+			simulationErr = fmt.Errorf("tron energy simulation failed: %w", constantErr)
 		}
 	}
-	if err != nil || energy.LessThanOrEqual(decimal.Zero) {
-		// A synthetic sender intentionally owns neither token balance nor account
-		// resources, so some TRC-20 contracts reject simulation. Use a bounded,
-		// representative transfer quantity while still reading current energy and
-		// bandwidth burn prices from the chain. This is an auditable preset, not a
-		// claim about GMPay's exact collection wallet.
-		energy = decimal.RequireFromString(builtinTRONTransferEnergyUnits)
+	if simulationErr != nil || energy.LessThanOrEqual(decimal.Zero) {
+		if simulationErr == nil {
+			simulationErr = errors.New("tron energy simulation returned non-positive energy")
+		}
+		return chainRawNetworkEstimate{}, simulationErr
 	}
 	bandwidth := decimal.NewFromInt(345)
 	sun := energy.Mul(energyFee).Add(bandwidth.Mul(bandwidthFee))
