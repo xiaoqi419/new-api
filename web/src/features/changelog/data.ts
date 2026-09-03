@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-crypto-checkout-fee-total',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 USDT 充值在动态网络手续费计入应付总额后，前端把本金和总额比对失败、误报支付请求失败的问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260903-gmpay-tron-revert-fee-fallback',
     date: '2026-09-03',
     changes: [

@@ -396,6 +396,29 @@ function normalizeOptionalGmpayEvidence(
   return evidence
 }
 
+function epayMoneyCents(value: number): number | null {
+  if (!Number.isFinite(value)) return null
+  return Math.round(value * 100)
+}
+
+function epayCheckoutMoneyMatchesFallback(
+  fields: Record<string, unknown>,
+  responseMoney: number,
+  expectedMoney: number
+): boolean {
+  const responseCents = epayMoneyCents(responseMoney)
+  const expectedCents = epayMoneyCents(expectedMoney)
+  if (responseCents === null || expectedCents === null) return false
+  if (responseCents === expectedCents) return true
+  if (fields.checkout_type !== 'crypto') return false
+  const baseCents = epayMoneyCents(Number(fields.base_amount))
+  const feeCents = epayMoneyCents(Number(fields.fee_amount))
+  if (baseCents === null || feeCents === null || feeCents < 0) return false
+  return (
+    baseCents === expectedCents && responseCents === baseCents + feeCents
+  )
+}
+
 export function getEpayCheckoutData(
   value: unknown,
   fallback: EpayCheckoutFallback = {}
@@ -426,7 +449,7 @@ export function getEpayCheckoutData(
     if (
       !Number.isFinite(responseMoney) ||
       !Number.isFinite(expectedMoney) ||
-      responseMoney !== expectedMoney
+      !epayCheckoutMoneyMatchesFallback(fields, responseMoney, expectedMoney)
     ) {
       return null
     }
