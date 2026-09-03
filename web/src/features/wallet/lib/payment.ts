@@ -505,7 +505,7 @@ export function getEpayCheckoutData(
     const expiresAt = normalizeOptionalGmpayTimestamp(fields.expires_at)
     const estimatorVersion = normalizeOptionalGmpayIdentifier(
       fields.estimator_version,
-      /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/
+      /^[A-Za-z0-9][A-Za-z0-9._:+/-]{0,127}$/
     )
     const confidence = normalizeOptionalGmpayIdentifier(
       fields.confidence,

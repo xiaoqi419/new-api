@@ -397,6 +397,43 @@ describe('Epay checkout normalization', () => {
     }
   })
 
+  test('accepts the builtin TRON empirical quote version used in production', () => {
+    const checkout = getEpayCheckoutData(
+      buildCryptoCheckout({
+        money: '32.24',
+        base_amount: '30.00',
+        fee_amount: '2.24',
+        total_amount: '32.24',
+        fee_source: 'chain_network_estimate',
+        native_amount: '6.7735',
+        native_asset: 'TRX',
+        settlement_currency: 'USD',
+        quoted_at: '2026-09-03T16:51:27.74800117Z',
+        expires_at: '2026-09-03T16:56:27.74800117Z',
+        estimator_version: 'chain-network-v1+builtin',
+        confidence: 'medium',
+        evidence: {
+          rpc_method: 'wallet/getchainparameters',
+          rpc_methods: [
+            'wallet/getchainparameters',
+            'empirical_trc20_energy',
+          ],
+          rpc_source: 'api.tronstack.io',
+          energy: '64285',
+          bandwidth: '345',
+        },
+      }),
+      { paymentMethod: 'usdt.tron', money: 30 }
+    )
+
+    expect(checkout).toMatchObject({
+      checkout_type: 'crypto',
+      money: '32.24',
+      estimator_version: 'chain-network-v1+builtin',
+      native_amount: '6.7735',
+    })
+  })
+
   test('rejects a quote whose expiry precedes its quote time', () => {
     expect(
       getEpayCheckoutData(

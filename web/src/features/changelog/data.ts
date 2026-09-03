@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-estimator-version-plus',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 USDT 收款弹窗因动态估算版本号含 “+builtin” 被前端拒绝、误报支付请求失败的问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-crypto-checkout-fee-total',
     date: '2026-09-04',
     changes: [
