@@ -27,6 +27,8 @@ import (
 const (
 	builtinNetworkFeeEstimatorVersion = NetworkFeeEstimatorVersion + "+builtin"
 	builtinEVMTransferGasUnits        = "65000"
+	builtinTRONUSDTTransferEnergy     = "64285"
+	builtinTRONEmpiricalEnergyMethod  = "empirical_trc20_energy"
 )
 
 // BuiltinNetworkFeeEstimator is a fail-closed estimator backed by fixed,
@@ -329,20 +331,45 @@ func (estimator *BuiltinNetworkFeeEstimator) refreshBuiltinSolanaBlockhash(ctx c
 // parameters and the node's energy simulation.  It deliberately does not ask
 // for account resources: the synthetic representative sender is not a real
 // wallet and therefore cannot have meaningful bandwidth/energy balances.  A
-// zero-resource assumption is conservative for the network cost and remains
-// fully dynamic because both fee rates and energy are read from the node.
+// zero-resource assumption is conservative for the network cost. Burn prices
+// stay dynamic; when simulation reverts or is unavailable, energy falls back
+// to the representative existing-holder constant rather than a reverted
+// energy_used value.
 //
 // The built-in preset owns a small, exact allowlist of public TRON nodes. A
 // single anonymous TronGrid endpoint is routinely rate-limited, so a transient
 // 429/5xx/network failure must move the complete estimate to the next node.
 // Keeping the chain-parameter and simulation calls on one node avoids mixing
 // observations from different endpoints in one quote.
+type tronSimulationUnavailableError struct {
+	energyFee    decimal.Decimal
+	bandwidthFee decimal.Decimal
+	methods      []string
+	err          error
+}
+
+func (err *tronSimulationUnavailableError) Error() string {
+	if err == nil || err.err == nil {
+		return "tron energy simulation is unavailable"
+	}
+	return err.err.Error()
+}
+
+func (err *tronSimulationUnavailableError) Unwrap() error {
+	if err == nil {
+		return nil
+	}
+	return err.err
+}
+
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
 	rpcURLs := estimator.tronRPCURLs
 	if len(rpcURLs) == 0 && chain.rpcURL != nil {
 		rpcURLs = []*url.URL{chain.rpcURL}
 	}
 	var lastErr error
+	var lastSimulation *tronSimulationUnavailableError
+	var lastSimulationRPC *url.URL
 	for _, rpcURL := range rpcURLs {
 		raw, err := estimator.estimateBuiltinTRONAtRPC(ctx, rpcURL, token, transaction)
 		if err == nil {
@@ -350,9 +377,22 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 			return raw, nil
 		}
 		lastErr = err
+		var simulationErr *tronSimulationUnavailableError
+		if errors.As(err, &simulationErr) {
+			lastSimulation = simulationErr
+			lastSimulationRPC = rpcURL
+		}
 		if ctx.Err() != nil {
 			return chainRawNetworkEstimate{}, ctx.Err()
 		}
+	}
+	if lastSimulation != nil {
+		raw, err := empiricalTRONNetworkEstimate(lastSimulation.energyFee, lastSimulation.bandwidthFee, lastSimulation.methods)
+		if err == nil {
+			raw.Evidence.RPCSource = endpointSource(lastSimulationRPC)
+			return raw, nil
+		}
+		lastErr = err
 	}
 	if lastErr == nil {
 		return chainRawNetworkEstimate{}, errors.New("tron RPC endpoints are unavailable")
@@ -416,7 +456,25 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRONAtRPC(ctx contex
 		if simulationErr == nil {
 			simulationErr = errors.New("tron energy simulation returned non-positive energy")
 		}
-		return chainRawNetworkEstimate{}, simulationErr
+		return chainRawNetworkEstimate{}, &tronSimulationUnavailableError{
+			energyFee:    energyFee,
+			bandwidthFee: bandwidthFee,
+			methods:      methods,
+			err:          simulationErr,
+		}
+	}
+	return tronNetworkEstimateFromEnergy(energy, energyFee, bandwidthFee, methods)
+}
+
+func empiricalTRONNetworkEstimate(energyFee, bandwidthFee decimal.Decimal, methods []string) (chainRawNetworkEstimate, error) {
+	copied := append([]string{}, methods...)
+	copied = append(copied, builtinTRONEmpiricalEnergyMethod)
+	return tronNetworkEstimateFromEnergy(decimal.RequireFromString(builtinTRONUSDTTransferEnergy), energyFee, bandwidthFee, copied)
+}
+
+func tronNetworkEstimateFromEnergy(energy, energyFee, bandwidthFee decimal.Decimal, methods []string) (chainRawNetworkEstimate, error) {
+	if len(methods) == 0 {
+		methods = []string{"wallet/getchainparameters"}
 	}
 	bandwidth := decimal.NewFromInt(345)
 	sun := energy.Mul(energyFee).Add(bandwidth.Mul(bandwidthFee))
