@@ -641,6 +641,49 @@ func TestGetGMPayFeeStatusUsesBuiltinAssetWhenDiscoveryUnavailable(t *testing.T)
 	}
 }
 
+func TestGMPayFeeStatusCacheKeyTracksCompleteConfigurationAndMerchantIdentity(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousPayAddress := operation_setting.PayAddress
+	previousEpayID := operation_setting.EpayId
+	previousEpayKey := operation_setting.EpayKey
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.PayAddress = previousPayAddress
+		operation_setting.EpayId = previousEpayID
+		operation_setting.EpayKey = previousEpayKey
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+	})
+
+	operation_setting.PayAddress = "https://pay.example.test"
+	operation_setting.EpayId = "merchant-id"
+	operation_setting.EpayKey = "merchant-secret"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	setConfig := func(raw string) {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = map[string]string{service.GMPayFeeConfigOptionKey: raw}
+		common.OptionMapRWMutex.Unlock()
+	}
+
+	setConfig(`{"version":1,"dynamic_enabled":true,"chains":{"tron":{"rpc_url":"https://rpc-one.example","price_url":"https://price-one.example","native_asset":"TRX","settlement_currency":"USD"}}}`)
+	first := currentGMPayFeeStatusCacheKey()
+	assert.NotContains(t, first, "merchant-secret")
+
+	setConfig(`{"version":1,"dynamic_enabled":true,"chains":{"tron":{"rpc_url":"https://rpc-two.example","price_url":"https://price-one.example","native_asset":"TRX","settlement_currency":"USD"}}}`)
+	second := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, first, second)
+
+	operation_setting.EpayKey = "rotated-secret"
+	third := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, second, third)
+
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	fourth := currentGMPayFeeStatusCacheKey()
+	assert.NotEqual(t, third, fourth)
+}
+
 func TestResolveGMPayEstimatorPriority(t *testing.T) {
 	originalConfigured := newGMPayNetworkFeeEstimator
 	originalDiscovery := discoverGMPayNetworkFeeEstimatorFromClient

@@ -422,8 +422,36 @@ func currentGMPayFeeStatusCacheKey() string {
 	if client != nil && client.BaseUrl != nil {
 		endpoint = client.BaseUrl.String()
 	}
-	cfg, _ := service.CurrentGMPayFeeConfig()
-	return fmt.Sprintf("%s|v=%d|dynamic=%t|configured=%t|fallback=%t|fallback_mode=%s|fallback_value=%s|max_fee=%s|max_total=%s|chains=%d", endpoint, cfg.Version, cfg.IsDynamicEnabled(), cfg.IsDynamicConfigured(), cfg.HasFallbackPolicy(), cfg.FallbackMode, cfg.FallbackValue, cfg.MaxFee, cfg.MaxTotal, len(cfg.Chains))
+	// The status result depends on the complete administrator option and the
+	// merchant identity, not only on a few summary fields. Hash both values so
+	// changing a chain endpoint, context, override, credential, or malformed
+	// option cannot serve a prior result, while never placing secrets in the
+	// in-memory cache key or response.
+	common.OptionMapRWMutex.RLock()
+	rawConfig := common.OptionMap[service.GMPayFeeConfigOptionKey]
+	if strings.TrimSpace(rawConfig) == "" {
+		for _, key := range []string{"billing_setting.gmpay_fee_config", "payment_setting.gmpay_fee_config"} {
+			if candidate := common.OptionMap[key]; strings.TrimSpace(candidate) != "" {
+				rawConfig = candidate
+				break
+			}
+		}
+	}
+	common.OptionMapRWMutex.RUnlock()
+	merchantDigest := common.Sha256Raw([]byte(strings.Join([]string{
+		operation_setting.PayAddress,
+		operation_setting.EpayId,
+		operation_setting.EpayKey,
+	}, "\x00")))
+	endpointDigest := common.Sha256Raw([]byte(endpoint))
+	configDigest := common.Sha256Raw([]byte(rawConfig))
+	fingerprint := strings.Join([]string{
+		fmt.Sprintf("%x", endpointDigest),
+		operation_setting.GetQuotaDisplayType(),
+		fmt.Sprintf("%x", merchantDigest),
+		fmt.Sprintf("%x", configDigest),
+	}, "\x00")
+	return fmt.Sprintf("%x", common.Sha256Raw([]byte(fingerprint)))
 }
 
 func gmpayFeeStatusCacheValid(keys ...string) bool {
