@@ -690,7 +690,7 @@ func TestPrepareTRONTRC20CallDerivesAndValidatesSelector(t *testing.T) {
 	_, _, err = prepareTRONTRC20Call(address, address, "00"+parameter[2:], "")
 	assert.ErrorIs(t, err, ErrInsufficientContext)
 
-	otherRecipient := "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"
+	otherRecipient := "TA9pkx4DFxrEw8JZzUtyDrh2uAat1LDuJL"
 	_, _, err = prepareTRONTRC20Call(address, otherRecipient, "a9059cbb"+parameter, "")
 	assert.ErrorIs(t, err, ErrInsufficientContext)
 

@@ -93,6 +93,7 @@ func TestBuiltinNetworkFeeEstimatorEVMSyntheticSenderFallback(t *testing.T) {
 
 func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
+	var contractAddress string
 	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
 		if req.Method == http.MethodGet {
 			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"cny":0.7,"last_updated_at":%d}}`, now.Unix())), nil
@@ -103,6 +104,11 @@ func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 		case "/wallet/getchainparameters":
 			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
 		case "/wallet/estimateenergy":
+			var payload struct {
+				ContractAddress string `json:"contract_address"`
+			}
+			require.NoError(t, common.DecodeJson(req.Body, &payload))
+			contractAddress = payload.ContractAddress
 			return builtinResponse(http.StatusOK, `{"energy_required":65000}`), nil
 		default:
 			return builtinResponse(http.StatusNotFound, `{}`), nil
@@ -116,6 +122,9 @@ func TestBuiltinNetworkFeeEstimatorTRON(t *testing.T) {
 	assert.Equal(t, "27.645", quote.NativeAmount.String())
 	assert.Equal(t, "2.7645", quote.FeeAmount.String())
 	assert.Contains(t, quote.Evidence.RPCMethods, "wallet/estimateenergy")
+	assert.Equal(t, "api.tronstack.io", quote.Evidence.RPCSource)
+	assert.True(t, quote.FeeAmount.IsPositive())
+	assert.Equal(t, "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", contractAddress)
 }
 
 func TestBuiltinNetworkFeeEstimatorTRONFailsOverRateLimitedRPC(t *testing.T) {
