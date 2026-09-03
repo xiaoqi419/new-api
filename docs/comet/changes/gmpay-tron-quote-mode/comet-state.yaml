@@ -3,7 +3,7 @@ name: gmpay-tron-quote-mode
 language: zh-CN
 phase: archive
 status: active
-state_version: 7
+state_version: 8
 brief: brief.md
 spec_changes:
   - capability: gmpay-fee-admin-controls
@@ -13,7 +13,7 @@ workspace:
   isolation: worktree
   change_branch: comet/gmpay-tron-quote-mode
   target_branch: main
-  finish: merge
+  finish: keep
 loop:
   stage: archive-ready
   goal_cycle: 1
