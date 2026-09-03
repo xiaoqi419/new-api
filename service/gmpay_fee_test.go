@@ -71,6 +71,24 @@ func TestParseGMPayFeeConfigInfersLegacyDefaultMode(t *testing.T) {
 	assert.Equal(t, "50", cfg.Default.Value)
 }
 
+func TestParseGMPayFeeConfigTronQuoteMode(t *testing.T) {
+	missing, err := ParseGMPayFeeConfig(`{"version":1}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayTronQuoteModeSimulateThenEmpirical, missing.ResolvedTronQuoteMode())
+
+	simulate, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"simulate"}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayTronQuoteModeSimulate, simulate.ResolvedTronQuoteMode())
+
+	empirical, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"empirical"}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayTronQuoteModeEmpirical, empirical.ResolvedTronQuoteMode())
+
+	_, err = ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"guess"}`)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tron_quote_mode")
+}
+
 func TestParseGMPayFeeConfigRequiresFallbackModeForFallbackValue(t *testing.T) {
 	_, err := ParseGMPayFeeConfig(`{"version":1,"fallback_enabled":true,"fallback_value":"5"}`)
 	require.Error(t, err)

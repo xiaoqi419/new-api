@@ -1,0 +1,327 @@
+schema: comet.native.v4
+name: gmpay-tron-quote-mode
+language: zh-CN
+phase: archive
+status: done
+state_version: 9
+brief: brief.md
+spec_changes:
+  - capability: gmpay-fee-admin-controls
+    operation: create
+    source: specs/gmpay-fee-admin-controls/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-tron-quote-mode
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 未写 `tron_quote_mode` 的已有配置加载后策略为模拟失败再经验兜底，TRON 模拟失败且已有单价时仍报出约 64285
+      energy。"
+    result: passed
+    reason:
+      text: Missing tron_quote_mode resolves to simulate_then_empirical; existing
+        empirical test still quotes 64285 after failed simulation.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 管理员选择「只走链上模拟」并保存后，TRON 模拟失败不再使用 64285；若管理员兜底关闭则拒绝创建充值。"
+    result: passed
+    reason:
+      text: simulate mode returns ErrNetworkFeeUnavailable on failed simulation and
+        does not attach empirical energy.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 管理员选择「只走经验能量」并保存后，TRON 报价跳过 `estimateenergy`，用 64285 × 实时 energy 单价 +
+      345 带宽。"
+    result: passed
+    reason:
+      text: empirical mode quotes 64285/6.7735 TRX and never calls estimateenergy or
+        triggerconstantcontract.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 管理员选择「模拟失败后经验兜底」时行为与当前生产一致。"
+    result: passed
+    reason:
+      text: Default and empty mode keep the previous simulate-then-empirical path.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 中文界面下，兜底规则类型选中「固定金额」或「充值金额百分比」后，触发器显示对应中文而不是 `fixed`/`percent`。"
+    result: passed
+    reason:
+      text: SelectValue renders translated Fixed amount / Percentage of top-up; UI
+        test asserts trigger does not show percent.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: 规则类型为百分比时，右侧输入标签为百分比、带 `%` 后缀、说明不再写成 USD；切回固定金额后恢复 USD 输入。"
+    result: passed
+    reason:
+      text: Percent mode uses Fallback percentage (%) label, % suffix, and 0-100 copy;
+        fixed mode keeps USD label.
+      truncated: false
+  - id: A7
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "`GMPayFeeConfig.tron_quote_mode` 控制内置 TRON USDT 估算器："
+    result: passed
+    reason:
+      text: GMPayFeeConfig.tron_quote_mode is parsed and drives
+        BuiltinNetworkFeeEstimator.
+      truncated: false
+  - id: A8
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "| 值 | 行为 |"
+    result: passed
+    reason:
+      text: Three documented modes are implemented as simulate, empirical,
+        simulate_then_empirical.
+      truncated: false
+  - id: A9
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "| `simulate` | 仅链上模拟。`estimateenergy`/`triggerconstantcontract` 失败（含
+      REVERT）则动态报价失败。 |"
+    result: passed
+    reason:
+      text: simulate-only fails closed on simulation errors including
+        REVERT/unavailable RPCs.
+      truncated: false
+  - id: A10
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "| `empirical` | 跳过合约模拟。读取链参数后按 64285 energy + 345 bandwidth × 实时单价报价。 |"
+    result: passed
+    reason:
+      text: empirical path uses getchainparameters then 64285 energy + 345 bandwidth.
+      truncated: false
+  - id: A11
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "| `simulate_then_empirical` | 先模拟；全部允许 RPC 均模拟失败但已拿到单价时，改用经验能量。 |"
+    result: passed
+    reason:
+      text: simulate_then_empirical still calls empiricalTRONNetworkEstimate after
+        lastSimulation.
+      truncated: false
+  - id: A12
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 缺省、空字符串或旧配置没有该字段时视为 `simulate_then_empirical`。非法值拒绝保存。
+    result: passed
+    reason:
+      text: Parse defaults empty/missing; unknown values are rejected.
+      truncated: false
+  - id: A13
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 经验路径不得在缺少 `getEnergyFee`/`getTransactionFee` 时编造单价。经验能量固定为现有持仓档
+      64285，不使用新地址 130285。
+    result: passed
+    reason:
+      text: Empirical still requires parsed chain fees; energy constant remains 64285.
+      truncated: false
+  - id: A14
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: ETH、BSC、Solana 估算不受该字段影响。
+    result: passed
+    reason:
+      text: tron_quote_mode is only read in estimateBuiltinTRON.
+      truncated: false
+  - id: A15
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 动态报价失败后，现有 `fallback_enabled` 管理员固定/比例规则仍按原语义生效。
+    result: passed
+    reason:
+      text: Administrator fallback_enabled path is unchanged after dynamic failure.
+      truncated: false
+  - id: A16
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 规则类型选项值为 `fixed` / `percent`。界面必须显示翻译文案：
+    result: passed
+    reason:
+      text: Select items remain value fixed/percent with translated children.
+      truncated: false
+  - id: A17
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "`fixed` → `Fixed amount`"
+    result: passed
+    reason:
+      text: Fixed amount label is used for selected and dropdown copy.
+      truncated: false
+  - id: A18
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "`percent` → `Percentage of top-up`（覆盖规则可用 `Percentage`）"
+    result: passed
+    reason:
+      text: Percentage of top-up / Percentage used for percent rules.
+      truncated: false
+  - id: A19
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 选中后触发器显示同一套翻译，不得回显枚举值。
+    result: passed
+    reason:
+      text: SelectValue children override raw enum display.
+      truncated: false
+  - id: A20
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "`percent` 时数值输入："
+    result: passed
+    reason:
+      text: Percent numeric input is specialized in the fallback fieldset.
+      truncated: false
+  - id: A21
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 标签表示百分比；
+    result: passed
+    reason:
+      text: Label is Fallback percentage (%).
+      truncated: false
+  - id: A22
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 可见 `%` 后缀；
+    result: passed
+    reason:
+      text: ConfigInput suffix % is rendered for percent mode.
+      truncated: false
+  - id: A23
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 说明写 0–100，相对充值本金；
+    result: passed
+    reason:
+      text: Description states 0 to 100 of the top-up amount.
+      truncated: false
+  - id: A24
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: 不得再写「以 USD 表示」。
+    result: passed
+    reason:
+      text: Percent description no longer says values are expressed in USD.
+      truncated: false
+  - id: A25
+    source: specs/gmpay-fee-admin-controls/spec.md
+    text: "`fixed` 时输入仍为 USD 金额。存储仍是规则 `value` 字符串；百分比后端计算保持 `base * value / 100`。"
+    result: passed
+    reason:
+      text: Fixed mode still uses USD amount input; percent backend formula is
+        unchanged.
+      truncated: false
+builder_handoff:
+  candidate_id: 06f66806-0fdc-4df3-ab65-d5b6304bc1af
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:7dace902-2414-4fa7-9894-415747e797ea
+  iteration: 1
+  summary:
+    text: Added tron_quote_mode (simulate / empirical / simulate_then_empirical,
+      default latter). Builtin TRON estimator skips empirical on simulate-only
+      and skips estimateenergy on empirical-only. Admin fallback select shows
+      translated labels; percent rules use a % suffix input. Tests cover parse,
+      estimator modes, and fee-config UI.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+  checks:
+    - name:
+        text: go test service TRON quote mode
+        truncated: false
+      result: passed
+      note:
+        text: TestParseGMPayFeeConfigTronQuoteMode and
+          TestBuiltinNetworkFeeEstimatorTRON*
+        truncated: false
+    - name:
+        text: vitest gmpay-fee-config.test.ts
+        truncated: false
+      result: passed
+      note:
+        text: 20 tests
+        truncated: false
+    - name:
+        text: bun run i18n:sync
+        truncated: false
+      result: passed
+      note: null
+  checks_truncated: false
+  known_limits:
+    - text: Did not run full bun typecheck or oxlint of the whole web tree.
+        ETH/BSC/Solana estimators unchanged.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-03T18:00:09.026Z
+blockers: []
+verification:
+  candidate_id: 06f66806-0fdc-4df3-ab65-d5b6304bc1af
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:a58e90f6-bdc5-4b86-99ee-009aaa85c8b6
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks: []
+  summary:
+    text: TRON quote strategy and fallback UI match the spec. Unit tests for parse,
+      estimator modes, and the fee-config editor passed.
+    truncated: false
+  risks:
+    - text: Full bun typecheck/oxlint of web/ was not run.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-03T18:02:33.272Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: TRON quote strategy and fallback UI match the spec. Unit tests for parse,
+        estimator modes, and the fee-config editor passed.
+      truncated: false
+    completed_at: 2026-09-03T18:02:33.272Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-03T17:37:41.206Z

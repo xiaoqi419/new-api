@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-tron-quote-mode',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'feat',
+        items: [
+          'GMPay 手续费增加 TRON 报价策略：只模拟、只经验能量、或模拟失败后再经验兜底；管理员兜底下拉显示翻译文案，百分比改为带 % 的输入。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-estimator-version-plus',
     date: '2026-09-04',
     changes: [

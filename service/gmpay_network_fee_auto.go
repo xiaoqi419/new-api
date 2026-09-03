@@ -36,12 +36,13 @@ const (
 // injectable only for deterministic tests; production callers should use
 // NewBuiltinNetworkFeeEstimator.
 type BuiltinNetworkFeeEstimator struct {
-	configured  *ConfiguredNetworkFeeEstimator
-	now         func() time.Time
-	tronRPCURLs []*url.URL
-	priceMu     sync.Mutex
-	priceCache  map[string]builtinPriceCacheEntry
-	priceGroup  singleflight.Group
+	configured    *ConfiguredNetworkFeeEstimator
+	now           func() time.Time
+	tronRPCURLs   []*url.URL
+	tronQuoteMode string
+	priceMu       sync.Mutex
+	priceCache    map[string]builtinPriceCacheEntry
+	priceGroup    singleflight.Group
 }
 
 // builtinPriceCacheEntry stores only validated, fresh observations. The key
@@ -362,6 +363,20 @@ func (err *tronSimulationUnavailableError) Unwrap() error {
 	return err.err
 }
 
+func (estimator *BuiltinNetworkFeeEstimator) resolvedTronQuoteMode() string {
+	if estimator != nil {
+		switch strings.ToLower(strings.TrimSpace(estimator.tronQuoteMode)) {
+		case GMPayTronQuoteModeSimulate, GMPayTronQuoteModeEmpirical, GMPayTronQuoteModeSimulateThenEmpirical:
+			return strings.ToLower(strings.TrimSpace(estimator.tronQuoteMode))
+		}
+	}
+	cfg, err := CurrentGMPayFeeConfig()
+	if err != nil {
+		return GMPayTronQuoteModeSimulateThenEmpirical
+	}
+	return cfg.ResolvedTronQuoteMode()
+}
+
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
 	rpcURLs := estimator.tronRPCURLs
 	if len(rpcURLs) == 0 && chain.rpcURL != nil {
@@ -386,7 +401,7 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 			return chainRawNetworkEstimate{}, ctx.Err()
 		}
 	}
-	if lastSimulation != nil {
+	if lastSimulation != nil && estimator.resolvedTronQuoteMode() != GMPayTronQuoteModeSimulate {
 		raw, err := empiricalTRONNetworkEstimate(lastSimulation.energyFee, lastSimulation.bandwidthFee, lastSimulation.methods)
 		if err == nil {
 			raw.Evidence.RPCSource = endpointSource(lastSimulationRPC)
@@ -422,6 +437,9 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRONAtRPC(ctx contex
 	energyFee, bandwidthFee, err := parseTRONChainFees(chainParamsResult.Raw)
 	if err != nil {
 		return chainRawNetworkEstimate{}, err
+	}
+	if estimator.resolvedTronQuoteMode() == GMPayTronQuoteModeEmpirical {
+		return empiricalTRONNetworkEstimate(energyFee, bandwidthFee, []string{"wallet/getchainparameters"})
 	}
 	payload := map[string]any{"owner_address": from, "contract_address": contract, "function_selector": selector, "parameter": parameter, "visible": true}
 	energyResult, energyErr := estimator.configured.callTRON(ctx, rpcURL, "/wallet/estimateenergy", payload)

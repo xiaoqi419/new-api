@@ -41,6 +41,10 @@ const (
 	gmpayFeeAbsoluteLimit   = "1000000000.00"
 	gmpayFeeMaxScale        = int32(6)
 	gmpayFeeMaxOverrides    = 64
+
+	GMPayTronQuoteModeSimulate              = "simulate"
+	GMPayTronQuoteModeEmpirical             = "empirical"
+	GMPayTronQuoteModeSimulateThenEmpirical = "simulate_then_empirical"
 )
 
 var ErrGMPayFeeUnavailable = errors.New("gmpay fee quote is unavailable")
@@ -117,6 +121,10 @@ type GMPayFeeConfig struct {
 	FallbackMode    string `json:"fallback_mode"`
 	FallbackValue   string `json:"fallback_value"`
 
+	// TronQuoteMode selects how the builtin TRON estimator produces a quote.
+	// Empty values resolve to simulate_then_empirical.
+	TronQuoteMode string `json:"tron_quote_mode"`
+
 	// These aliases are accepted by the structured editor used by some
 	// installations. The estimator consumes the canonical chains/timeout
 	// fields above; the aliases are normalized while parsing.
@@ -155,6 +163,17 @@ type GMPayFeeQuote struct {
 	Evidence           NetworkFeeEvidence
 }
 
+func (cfg GMPayFeeConfig) ResolvedTronQuoteMode() string {
+	switch strings.ToLower(strings.TrimSpace(cfg.TronQuoteMode)) {
+	case GMPayTronQuoteModeSimulate:
+		return GMPayTronQuoteModeSimulate
+	case GMPayTronQuoteModeEmpirical:
+		return GMPayTronQuoteModeEmpirical
+	default:
+		return GMPayTronQuoteModeSimulateThenEmpirical
+	}
+}
+
 func defaultGMPayFeeConfig() GMPayFeeConfig {
 	return GMPayFeeConfig{
 		Version:                  GMPayFeeConfigVersion,
@@ -189,7 +208,7 @@ func ParseGMPayFeeConfig(raw string) (GMPayFeeConfig, error) {
 		case "version", "enabled", "default", "overrides", "max_fee", "max_total",
 			"dynamic_enabled", "chains", "timeout_ms", "max_response_bytes", "max_retries",
 			"quote_ttl_seconds", "price_max_age_seconds", "fallback_enabled", "fallback_mode",
-			"fallback_value", "fallback_default", "estimator_mode", "rpc_references",
+			"fallback_value", "fallback_default", "estimator_mode", "tron_quote_mode", "rpc_references",
 			"price_source_references", "request_timeout_ms", "cache_ttl_seconds",
 			"response_body_limit_bytes", "max_price_deviation_percent", "contexts":
 		default:
@@ -230,6 +249,16 @@ func ParseGMPayFeeConfig(raw string) (GMPayFeeConfig, error) {
 			return cfg, err
 		}
 		cfg.EstimatorMode = parsed
+	}
+	if value, ok := fields["tron_quote_mode"]; ok {
+		if common.GetJsonType(value) != "string" {
+			return cfg, errors.New("gmpay fee tron_quote_mode must be a string")
+		}
+		mode := strings.ToLower(strings.TrimSpace(common.JsonRawMessageToString(value)))
+		if mode != "" && mode != GMPayTronQuoteModeSimulate && mode != GMPayTronQuoteModeEmpirical && mode != GMPayTronQuoteModeSimulateThenEmpirical {
+			return cfg, errors.New("gmpay fee tron_quote_mode must be simulate, empirical, or simulate_then_empirical")
+		}
+		cfg.TronQuoteMode = mode
 	}
 	if value, ok := fields["fallback_mode"]; ok {
 		if common.GetJsonType(value) != "string" {
