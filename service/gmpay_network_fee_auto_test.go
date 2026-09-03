@@ -147,6 +147,37 @@ func TestBuiltinNetworkFeeEstimatorTRONFailsOverRateLimitedRPC(t *testing.T) {
 	assert.Equal(t, []string{"api.tronstack.io", "tron-rpc.publicnode.com", "tron-rpc.publicnode.com"}, rpcHosts)
 }
 
+func TestBuiltinNetworkFeeEstimatorTRONFailsOverSimulationRPC(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var rpcRequests []string
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.1,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		host := req.URL.Hostname()
+		rpcRequests = append(rpcRequests, host+req.URL.Path)
+		if host == "api.tronstack.io" && (req.URL.Path == "/wallet/estimateenergy" || req.URL.Path == "/wallet/triggerconstantcontract") {
+			return builtinResponse(http.StatusBadGateway, `{}`), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":420},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy":
+			return builtinResponse(http.StatusOK, `{"energy_required":70000}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.NoError(t, err)
+	assert.Equal(t, "tron-rpc.publicnode.com", quote.Evidence.RPCSource)
+	assert.Equal(t, "70000", quote.Evidence.Energy)
+	assert.Contains(t, rpcRequests, "api.tronstack.io/wallet/estimateenergy")
+	assert.Contains(t, rpcRequests, "api.tronstack.io/wallet/triggerconstantcontract")
+}
+
 func TestBuiltinNetworkFeeEstimatorTRONFailsClosedWhenAllRPCsAreRateLimited(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	var rpcCalls int
@@ -211,7 +242,7 @@ func TestBuiltinTransferContextTRONUSDCUsesCanonicalContract(t *testing.T) {
 	assert.True(t, IsGMPayAddress("tron", transaction.TokenContract))
 }
 
-func TestBuiltinNetworkFeeEstimatorTRONSimulationFallback(t *testing.T) {
+func TestBuiltinNetworkFeeEstimatorTRONFailsClosedWhenSimulationUnavailable(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
 		if req.Method == http.MethodGet {
@@ -228,11 +259,9 @@ func TestBuiltinNetworkFeeEstimatorTRONSimulationFallback(t *testing.T) {
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
-	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
-	require.NoError(t, err)
-	assert.Equal(t, "65000", quote.Evidence.Energy)
-	assert.Equal(t, "27.645", quote.NativeAmount.String())
-	assert.Equal(t, "2.7645", quote.FeeAmount.String())
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
 }
 
 func TestBuiltinNetworkFeeEstimatorFailsClosedOnStalePrice(t *testing.T) {
