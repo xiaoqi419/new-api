@@ -55,6 +55,10 @@ import { cn } from '@/lib/utils'
  */
 
 export type GMPayFeeMode = 'fixed' | 'percent'
+export type GMPayTronQuoteMode =
+  | 'simulate'
+  | 'empirical'
+  | 'simulate_then_empirical'
 export type GMPayEstimatorMode = 'auto' | 'tron' | 'evm' | 'solana'
 export type GMPayNetwork = 'tron' | 'ethereum' | 'binance' | 'solana'
 
@@ -121,6 +125,7 @@ export type GMPayFeeConfig = {
   rpc_allowed_hosts: Partial<Record<GMPayNetwork, string[]>>
   price_allowed_hosts: Partial<Record<GMPayNetwork, string[]>>
   fallback_enabled: boolean
+  tron_quote_mode: GMPayTronQuoteMode
   fallback_mode: GMPayFeeMode
   default: GMPayFeeRule
   overrides: Record<string, GMPayFeeRule>
@@ -217,6 +222,7 @@ const FEE_CONFIG_KEYS = new Set([
   'contexts',
   'chains',
   'fallback_enabled',
+  'tron_quote_mode',
   'fallback_mode',
   'fallback_value',
   // Shared fallback fields.
@@ -328,6 +334,7 @@ export const DEFAULT_GMPAY_FEE_CONFIG: GMPayFeeConfig = {
   rpc_allowed_hosts: {},
   price_allowed_hosts: {},
   fallback_enabled: false,
+  tron_quote_mode: 'simulate_then_empirical',
   fallback_mode: 'fixed',
   default: { mode: 'fixed', value: '0.00' },
   overrides: {},
@@ -1019,6 +1026,16 @@ export function getGMPayFeeConfigError(value: string): string | null {
     }
   }
 
+  if (Object.hasOwn(parsed, 'tron_quote_mode')) {
+    if (
+      parsed.tron_quote_mode !== 'simulate' &&
+      parsed.tron_quote_mode !== 'empirical' &&
+      parsed.tron_quote_mode !== 'simulate_then_empirical'
+    ) {
+      return 'GMPay TRON quote mode is invalid'
+    }
+  }
+
   for (const [key, label] of [
     ['rpc_references', 'GMPay RPC references'],
     ['price_source_references', 'GMPay price source references'],
@@ -1329,6 +1346,12 @@ export function parseGMPayFeeConfig(value: string): GMPayFeeConfig | null {
     rpc_allowed_hosts: canonical.rpcAllowedHosts,
     price_allowed_hosts: canonical.priceAllowedHosts,
     fallback_enabled: fallbackEnabled,
+    tron_quote_mode:
+      parsed.tron_quote_mode === 'simulate' ||
+      parsed.tron_quote_mode === 'empirical' ||
+      parsed.tron_quote_mode === 'simulate_then_empirical'
+        ? parsed.tron_quote_mode
+        : DEFAULT_GMPAY_FEE_CONFIG.tron_quote_mode,
     fallback_mode: fallbackMode,
     default: defaultRule,
     overrides,
@@ -1546,6 +1569,12 @@ export function serializeGMPayFeeConfig(
   // Omit a false value so the server can use its automatic-discovery mode.
   // An explicit true still opts into the configured estimator path.
   if (config.dynamic_enabled) serialized.dynamic_enabled = true
+  if (
+    config.tron_quote_mode &&
+    config.tron_quote_mode !== 'simulate_then_empirical'
+  ) {
+    serialized.tron_quote_mode = config.tron_quote_mode
+  }
   if (options.includeLegacyEnabled) serialized.enabled = config.fallback_enabled
   return JSON.stringify(serialized, null, 2)
 }
@@ -1787,6 +1816,7 @@ type ConfigInputProps = {
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
   sensitive?: boolean
   required?: boolean
+  suffix?: string
 }
 
 function ConfigInput(props: ConfigInputProps) {
@@ -1805,7 +1835,7 @@ function ConfigInput(props: ConfigInputProps) {
           </span>
         ) : null}
       </Label>
-      <div className={cn(sensitive && 'relative')}>
+      <div className={cn((sensitive || props.suffix) && 'relative')}>
         <Input
           id={props.id}
           type={inputType}
@@ -1818,9 +1848,17 @@ function ConfigInput(props: ConfigInputProps) {
           required={props.required}
           aria-required={props.required || undefined}
           data-sensitive={sensitive ? 'true' : undefined}
-          className={cn(sensitive && 'pe-9')}
+          className={cn(sensitive && 'pe-9', props.suffix && 'pe-8')}
           onChange={(event) => props.onChange(event.target.value)}
         />
+        {props.suffix ? (
+          <span
+            className='text-muted-foreground pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-sm'
+            aria-hidden='true'
+          >
+            {props.suffix}
+          </span>
+        ) : null}
         {sensitive ? (
           <Button
             type='button'
@@ -2929,6 +2967,64 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
         </>
       ) : null}
 
+      <div className='min-w-0 space-y-1.5'>
+        <Label htmlFor='gmpay-tron-quote-mode'>
+          {t('TRON quote strategy')}
+        </Label>
+        <Select
+          value={draft.tron_quote_mode}
+          onValueChange={(value) => {
+            if (
+              value === 'simulate' ||
+              value === 'empirical' ||
+              value === 'simulate_then_empirical'
+            ) {
+              updateDraft({ ...draft, tron_quote_mode: value })
+            }
+          }}
+        >
+          <SelectTrigger id='gmpay-tron-quote-mode' className='w-full'>
+            <SelectValue>
+              {
+                {
+                  simulate: t('On-chain simulation only'),
+                  empirical: t('Empirical energy only'),
+                  simulate_then_empirical: t(
+                    'Simulate, then empirical fallback'
+                  ),
+                }[draft.tron_quote_mode]
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='simulate_then_empirical'>
+              {t('Simulate, then empirical fallback')}
+            </SelectItem>
+            <SelectItem value='simulate'>
+              {t('On-chain simulation only')}
+            </SelectItem>
+            <SelectItem value='empirical'>
+              {t('Empirical energy only')}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p className='text-muted-foreground text-xs leading-relaxed'>
+          {
+            {
+              simulate: t(
+                'Reject the dynamic quote when TRON simulation fails. Administrator fallback still applies if enabled.'
+              ),
+              empirical: t(
+                'Use live energy and bandwidth prices with the existing-holder energy amount. Skip contract simulation.'
+              ),
+              simulate_then_empirical: t(
+                'Try official TRON simulation first. If it fails, use existing-holder energy with live chain prices.'
+              ),
+            }[draft.tron_quote_mode]
+          }
+        </p>
+      </div>
+
       <fieldset className='space-y-4'>
         <legend className='text-sm font-medium'>
           {t('Administrator fallback')}
@@ -2973,7 +3069,11 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
               }}
             >
               <SelectTrigger id='gmpay-fallback-mode' className='w-full'>
-                <SelectValue />
+                <SelectValue>
+                  {draft.fallback_mode === 'percent'
+                    ? t('Percentage of top-up')
+                    : t('Fixed amount')}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='fixed'>{t('Fixed amount')}</SelectItem>
@@ -2985,7 +3085,11 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
           </div>
           <ConfigInput
             id='gmpay-default-fee'
-            label={t('Default fallback value')}
+            label={
+              draft.fallback_mode === 'percent'
+                ? t('Fallback percentage (%)')
+                : t('Default fallback amount (USD)')
+            }
             value={draft.default.value}
             onChange={(value) =>
               updateDraft({
@@ -2993,10 +3097,19 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
                 default: { ...draft.default, value },
               })
             }
-            description={t(
-              'Fixed values and percentages are expressed in USD and capped by maximum fee and total.'
-            )}
+            description={
+              draft.fallback_mode === 'percent'
+                ? t(
+                    'Percentage of the top-up amount, from 0 to 100, capped by maximum fee and total.'
+                  )
+                : t(
+                    'Fixed USD amount, capped by maximum fee and total.'
+                  )
+            }
             inputMode='decimal'
+            min={0}
+            max={draft.fallback_mode === 'percent' ? 100 : undefined}
+            suffix={draft.fallback_mode === 'percent' ? '%' : undefined}
           />
         </div>
       </fieldset>
@@ -3113,7 +3226,11 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
                         id={`gmpay-override-mode-${key}`}
                         className='w-full'
                       >
-                        <SelectValue />
+                        <SelectValue>
+                          {rule.mode === 'percent'
+                            ? t('Percentage')
+                            : t('Fixed amount')}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value='fixed'>
@@ -3127,12 +3244,19 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
                   </div>
                   <ConfigInput
                     id={`gmpay-override-value-${key}`}
-                    label={t('Value')}
+                    label={
+                      rule.mode === 'percent'
+                        ? t('Fallback percentage (%)')
+                        : t('Default fallback amount (USD)')
+                    }
                     value={rule.value}
                     onChange={(value) =>
                       updateOverride(key, { ...rule, value })
                     }
                     inputMode='decimal'
+                    min={0}
+                    max={rule.mode === 'percent' ? 100 : undefined}
+                    suffix={rule.mode === 'percent' ? '%' : undefined}
                   />
                   <Button
                     type='button'

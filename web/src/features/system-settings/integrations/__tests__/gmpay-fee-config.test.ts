@@ -469,7 +469,7 @@ describe('GMPay fee fallback configuration', () => {
     )
 
     expect(screen.getByText('Ready')).toBeInTheDocument()
-    expect(screen.getByText(/TRON/)).toBeInTheDocument()
+    expect(screen.getByText('TRON quote strategy')).toBeInTheDocument()
     expect(screen.getByText(/\(USDT\)/)).toBeInTheDocument()
     expect(screen.getByText('Last successful estimate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Test estimate' })).toBeEnabled()
@@ -525,6 +525,59 @@ describe('GMPay fee fallback configuration', () => {
     )
     expect(screen.queryByLabelText('RPC endpoint URL')).toBeNull()
     expect(screen.queryByLabelText('Price source URL')).toBeNull()
+  })
+
+  test('defaults TRON quote mode and rejects unknown values', () => {
+    expect(parseGMPayFeeConfig(DEFAULT_GMPAY_FEE_CONFIG_JSON)).toMatchObject({
+      tron_quote_mode: 'simulate_then_empirical',
+    })
+    expect(JSON.parse(DEFAULT_GMPAY_FEE_CONFIG_JSON)).not.toHaveProperty(
+      'tron_quote_mode'
+    )
+    expect(
+      getGMPayFeeConfigError(
+        JSON.stringify({ version: 1, tron_quote_mode: 'guess' })
+      )
+    ).toBe('GMPay TRON quote mode is invalid')
+    const empirical = JSON.stringify({
+      version: 1,
+      tron_quote_mode: 'empirical',
+    })
+    expect(getGMPayFeeConfigError(empirical)).toBeNull()
+    expect(parseGMPayFeeConfig(empirical).tron_quote_mode).toBe('empirical')
+    expect(
+      JSON.parse(
+        serializeGMPayFeeConfig(parseGMPayFeeConfig(empirical))
+      ).tron_quote_mode
+    ).toBe('empirical')
+  })
+
+  test('shows a translated fallback mode and a percent suffix', () => {
+    const value = JSON.stringify({
+      version: 1,
+      fallback_enabled: true,
+      fallback_mode: 'percent',
+      fallback_value: '4.00',
+      default: { mode: 'percent', value: '4.00' },
+    })
+    render(
+      React.createElement(GMPayFeeConfigEditor, {
+        value,
+        onChange: () => undefined,
+      })
+    )
+    expect(screen.getByLabelText('Fallback rule type')).toHaveTextContent(
+      'Percentage of top-up'
+    )
+    expect(screen.queryByLabelText('Fallback rule type')).not.toHaveTextContent(
+      'percent'
+    )
+    expect(screen.getByLabelText('Fallback percentage (%)')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Percentage of the top-up amount, from 0 to 100, capped by maximum fee and total.'
+      )
+    ).toBeInTheDocument()
   })
 
   test('requires the version marker used by the backend schema', () => {

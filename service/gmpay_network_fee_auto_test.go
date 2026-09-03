@@ -310,6 +310,56 @@ func TestBuiltinNetworkFeeEstimatorTRONRejectsRevertedSimulationEnergy(t *testin
 	assert.Contains(t, quote.Evidence.RPCMethods, builtinTRONEmpiricalEnergyMethod)
 }
 
+func TestBuiltinNetworkFeeEstimatorTRONSimulateModeDoesNotUseEmpiricalEnergy(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.326,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":100},{"key":"getTransactionFee","value":1000}]}`), nil
+		case "/wallet/estimateenergy", "/wallet/triggerconstantcontract":
+			return builtinResponse(http.StatusBadGateway, `{}`), nil
+		default:
+			return builtinResponse(http.StatusNotFound, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	estimator.tronQuoteMode = GMPayTronQuoteModeSimulate
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
+}
+
+func TestBuiltinNetworkFeeEstimatorTRONEmpiricalModeSkipsSimulation(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var paths []string
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"tron":{"usd":0.326,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		paths = append(paths, req.URL.Path)
+		switch req.URL.Path {
+		case "/wallet/getchainparameters":
+			return builtinResponse(http.StatusOK, `{"chainParameter":[{"key":"getEnergyFee","value":100},{"key":"getTransactionFee","value":1000}]}`), nil
+		default:
+			return builtinResponse(http.StatusInternalServerError, `{}`), nil
+		}
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	estimator.tronQuoteMode = GMPayTronQuoteModeEmpirical
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.NoError(t, err)
+	assert.Equal(t, "64285", quote.Evidence.Energy)
+	assert.Equal(t, "6.7735", quote.NativeAmount.String())
+	assert.Contains(t, quote.Evidence.RPCMethods, builtinTRONEmpiricalEnergyMethod)
+	assert.NotContains(t, paths, "/wallet/estimateenergy")
+	assert.NotContains(t, paths, "/wallet/triggerconstantcontract")
+}
+
 func TestBuiltinNetworkFeeEstimatorFailsClosedOnStalePrice(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
