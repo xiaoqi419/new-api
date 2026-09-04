@@ -374,11 +374,7 @@ func (estimator *BuiltinNetworkFeeEstimator) resolvedQuoteMode() string {
 			return strings.ToLower(strings.TrimSpace(estimator.quoteMode))
 		}
 	}
-	cfg, err := CurrentGMPayFeeConfig()
-	if err != nil {
-		return GMPayQuoteModeSimulateThenEmpirical
-	}
-	return cfg.ResolvedQuoteMode()
+	return GMPayQuoteModeSimulate
 }
 
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
@@ -405,13 +401,16 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 			return chainRawNetworkEstimate{}, ctx.Err()
 		}
 	}
-	if lastSimulation != nil && estimator.resolvedQuoteMode() != GMPayQuoteModeSimulate {
-		raw, err := empiricalTRONNetworkEstimate(lastSimulation.energyFee, lastSimulation.bandwidthFee, lastSimulation.methods)
-		if err == nil {
-			raw.Evidence.RPCSource = endpointSource(lastSimulationRPC)
-			return raw, nil
+	if lastSimulation != nil {
+		mode := estimator.resolvedQuoteMode()
+		if mode == GMPayQuoteModeEmpirical || mode == GMPayQuoteModeSimulateThenEmpirical {
+			raw, err := empiricalTRONNetworkEstimate(lastSimulation.energyFee, lastSimulation.bandwidthFee, lastSimulation.methods)
+			if err == nil {
+				raw.Evidence.RPCSource = endpointSource(lastSimulationRPC)
+				return raw, nil
+			}
+			lastErr = err
 		}
-		lastErr = err
 	}
 	if lastErr == nil {
 		return chainRawNetworkEstimate{}, errors.New("tron RPC endpoints are unavailable")

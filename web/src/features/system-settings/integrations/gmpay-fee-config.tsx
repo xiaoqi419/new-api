@@ -57,16 +57,17 @@ import { cn } from '@/lib/utils'
 export type GMPayFeeMode = 'fixed' | 'percent'
 export type GMPayQuoteMode =
   | 'simulate'
-  | 'empirical'
-  | 'simulate_then_empirical'
+  | 'admin'
+  | 'simulate_then_admin'
 export type GMPayTronQuoteMode = GMPayQuoteMode
 
-function isGMPayQuoteMode(value: unknown): value is GMPayQuoteMode {
-  return (
-    value === 'simulate' ||
-    value === 'empirical' ||
-    value === 'simulate_then_empirical'
-  )
+function canonicalizeGMPayQuoteMode(value: unknown): GMPayQuoteMode | null {
+  if (value === 'simulate') return 'simulate'
+  if (value === 'admin' || value === 'empirical') return 'admin'
+  if (value === 'simulate_then_admin' || value === 'simulate_then_empirical') {
+    return 'simulate_then_admin'
+  }
+  return null
 }
 export type GMPayEstimatorMode = 'auto' | 'tron' | 'evm' | 'solana'
 export type GMPayNetwork = 'tron' | 'ethereum' | 'binance' | 'solana'
@@ -344,7 +345,7 @@ export const DEFAULT_GMPAY_FEE_CONFIG: GMPayFeeConfig = {
   rpc_allowed_hosts: {},
   price_allowed_hosts: {},
   fallback_enabled: false,
-  quote_mode: 'simulate_then_empirical',
+  quote_mode: 'simulate_then_admin',
   fallback_mode: 'fixed',
   default: { mode: 'fixed', value: '0.00' },
   overrides: {},
@@ -1037,7 +1038,7 @@ export function getGMPayFeeConfigError(value: string): string | null {
   }
 
   for (const key of ['quote_mode', 'tron_quote_mode']) {
-    if (Object.hasOwn(parsed, key) && !isGMPayQuoteMode(parsed[key])) {
+    if (Object.hasOwn(parsed, key) && canonicalizeGMPayQuoteMode(parsed[key]) === null) {
       return 'GMPay quote mode is invalid'
     }
   }
@@ -1299,10 +1300,12 @@ export function parseGMPayFeeConfig(value: string): GMPayFeeConfig | null {
   }
 
   let quoteMode = DEFAULT_GMPAY_FEE_CONFIG.quote_mode
-  if (isGMPayQuoteMode(parsed.quote_mode)) {
-    quoteMode = parsed.quote_mode
-  } else if (isGMPayQuoteMode(parsed.tron_quote_mode)) {
-    quoteMode = parsed.tron_quote_mode
+  const parsedQuoteMode = canonicalizeGMPayQuoteMode(parsed.quote_mode)
+  const parsedLegacyQuoteMode = canonicalizeGMPayQuoteMode(parsed.tron_quote_mode)
+  if (parsedQuoteMode) {
+    quoteMode = parsedQuoteMode
+  } else if (parsedLegacyQuoteMode) {
+    quoteMode = parsedLegacyQuoteMode
   }
 
   const readNumber = (keys: string[], fallback: number) => {
@@ -1577,7 +1580,7 @@ export function serializeGMPayFeeConfig(
   // Omit a false value so the server can use its automatic-discovery mode.
   // An explicit true still opts into the configured estimator path.
   if (config.dynamic_enabled) serialized.dynamic_enabled = true
-  if (config.quote_mode && config.quote_mode !== 'simulate_then_empirical') {
+  if (config.quote_mode && config.quote_mode !== 'simulate_then_admin') {
     serialized.quote_mode = config.quote_mode
   }
   if (options.includeLegacyEnabled) serialized.enabled = config.fallback_enabled
@@ -2979,8 +2982,8 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
           onValueChange={(value) => {
             if (
               value === 'simulate' ||
-              value === 'empirical' ||
-              value === 'simulate_then_empirical'
+              value === 'admin' ||
+              value === 'simulate_then_admin'
             ) {
               updateDraft({ ...draft, quote_mode: value })
             }
@@ -2991,23 +2994,23 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
               {
                 {
                   simulate: t('On-chain simulation only'),
-                  empirical: t('Empirical usage only'),
-                  simulate_then_empirical: t(
-                    'Simulate, then empirical fallback'
+                  admin: t('Administrator rule only'),
+                  simulate_then_admin: t(
+                    'Simulate, then administrator fallback'
                   ),
                 }[draft.quote_mode]
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='simulate_then_empirical'>
-              {t('Simulate, then empirical fallback')}
+            <SelectItem value='simulate_then_admin'>
+              {t('Simulate, then administrator fallback')}
             </SelectItem>
             <SelectItem value='simulate'>
               {t('On-chain simulation only')}
             </SelectItem>
-            <SelectItem value='empirical'>
-              {t('Empirical usage only')}
+            <SelectItem value='admin'>
+              {t('Administrator rule only')}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -3015,13 +3018,13 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
           {
             {
               simulate: t(
-                'Reject the dynamic quote when chain simulation fails. Administrator fallback still applies if enabled.'
+                'Use chain simulation only. If it fails, reject the quote even if an administrator rule is configured.'
               ),
-              empirical: t(
-                'Use representative usage with live prices for TRON, Ethereum, BSC, and Solana. Skip contract simulation.'
+              admin: t(
+                'Skip chain simulation and charge the administrator fixed amount or percentage.'
               ),
-              simulate_then_empirical: t(
-                'Try official chain simulation first. If it fails, use representative usage with live prices.'
+              simulate_then_admin: t(
+                'Try chain simulation first. If it fails, use the administrator fixed amount or percentage.'
               ),
             }[draft.quote_mode]
           }
