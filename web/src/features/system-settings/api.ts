@@ -26,6 +26,7 @@ import type {
   PaymentGatewayModeApplyResponse,
   PaymentGatewayMode,
   PaymentGatewayModeStatusResponse,
+  QuotaReminderConfigRequest,
   SendTestEmailResponse,
   SystemOptionsResponse,
   SystemTaskListResponse,
@@ -43,6 +44,22 @@ export async function getSystemOptions() {
 
 export async function updateSystemOption(request: UpdateOptionRequest) {
   const res = await api.put<UpdateOptionResponse>('/api/option/', request)
+  return res.data
+}
+
+/** Save all low-quota reminder options in one transaction on the server. */
+export async function updateQuotaReminderConfig(
+  request: QuotaReminderConfigRequest
+): Promise<UpdateOptionResponse> {
+  const res = await api.put<UpdateOptionResponse>(
+    '/api/option/quota_reminder',
+    request
+  )
+  if (!res.data.success) {
+    throw new Error(
+      res.data.message || 'Failed to update quota reminder settings'
+    )
+  }
   return res.data
 }
 
@@ -71,6 +88,15 @@ export async function sendTestEmail(to: string) {
   const res = await api.post<SendTestEmailResponse>('/api/option/test_email', {
     to,
   })
+  return res.data
+}
+
+/** Send a rendered low-quota reminder without changing any user reminder state. */
+export async function sendQuotaReminderTestEmail(to: string) {
+  const res = await api.post<SendTestEmailResponse>(
+    '/api/option/quota_reminder_test',
+    { to }
+  )
   return res.data
 }
 

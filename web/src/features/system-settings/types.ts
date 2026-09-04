@@ -39,6 +39,15 @@ export type UpdateOptionResponse = {
   message: string
 }
 
+export type QuotaReminderTemplateId = 'default' | 'concise' | 'custom'
+
+export type QuotaReminderConfigRequest = {
+  enabled: boolean
+  threshold: number
+  template: QuotaReminderTemplateId
+  custom_template: string
+}
+
 export type PaymentGatewayMode = 'epay_legacy' | 'gmpay_native'
 
 export type PaymentGatewayModeCapability = {
@@ -444,6 +453,13 @@ export type OperationsSettings = {
   DemoSiteEnabled: boolean
   SelfUseModeEnabled: boolean
   QuotaRemindThreshold: string
+  QuotaRemindEnabled: boolean
+  QuotaRemindThresholdUnit: string
+  QuotaRemindThresholdQuotaPerUnit: string
+  QuotaRemindThresholdUSDRate: string
+  QuotaRemindThresholdCustomRate: string
+  QuotaRemindTemplate: string
+  QuotaRemindCustomTemplate: string
   SMTPServer: string
   SMTPPort: string
   SMTPAccount: string

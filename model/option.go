@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -482,7 +483,44 @@ func InitOptionMap() error {
 	}
 
 	common.OptionMapRWMutex.Unlock()
-	return loadOptionsFromDatabase()
+	if err := loadOptionsFromDatabase(); err != nil {
+		return err
+	}
+
+	// The display configuration is loaded from Options above. Only now can an
+	// unset reminder configuration safely default to one *current* display
+	// unit; creating this snapshot earlier would permanently use the package
+	// default USD on an existing CNY/CUSTOM/TOKENS site.
+	common.OptionMapRWMutex.Lock()
+	if _, ok := common.OptionMap["quota_reminder.enabled"]; !ok {
+		common.OptionMap["quota_reminder.enabled"] = strconv.FormatBool(common.QuotaRemindEnabled)
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold"]; !ok {
+		common.OptionMap["quota_reminder.threshold"] = "1"
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold_unit"]; !ok {
+		common.OptionMap["quota_reminder.threshold_unit"] = operation_setting.GetQuotaDisplayType()
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold_quota_per_unit"]; !ok {
+		common.OptionMap["quota_reminder.threshold_quota_per_unit"] = strconv.FormatFloat(common.QuotaPerUnit, 'f', -1, 64)
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold_usd_exchange_rate"]; !ok {
+		common.OptionMap["quota_reminder.threshold_usd_exchange_rate"] = strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64)
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold_custom_exchange_rate"]; !ok {
+		common.OptionMap["quota_reminder.threshold_custom_exchange_rate"] = strconv.FormatFloat(operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate, 'f', -1, 64)
+	}
+	if _, ok := common.OptionMap["quota_reminder.threshold_custom_currency_symbol"]; !ok {
+		common.OptionMap["quota_reminder.threshold_custom_currency_symbol"] = operation_setting.GetGeneralSetting().CustomCurrencySymbol
+	}
+	if _, ok := common.OptionMap["quota_reminder.template"]; !ok {
+		common.OptionMap["quota_reminder.template"] = "default"
+	}
+	if _, ok := common.OptionMap["quota_reminder.custom_template"]; !ok {
+		common.OptionMap["quota_reminder.custom_template"] = ""
+	}
+	common.OptionMapRWMutex.Unlock()
+	return nil
 }
 
 func loadOptionsFromDatabase() error {
@@ -551,6 +589,16 @@ func UpdateOption(key string, value string) error {
 		return err
 	}
 	value = normalizedValue
+	var quotaReminderSnapshot map[string]string
+	if key == "quota_reminder.threshold" {
+		quotaReminderSnapshot = map[string]string{
+			"quota_reminder.threshold_unit":                   operation_setting.GetQuotaDisplayType(),
+			"quota_reminder.threshold_quota_per_unit":         strconv.FormatFloat(common.QuotaPerUnit, 'f', -1, 64),
+			"quota_reminder.threshold_usd_exchange_rate":      strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64),
+			"quota_reminder.threshold_custom_exchange_rate":   strconv.FormatFloat(operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate, 'f', -1, 64),
+			"quota_reminder.threshold_custom_currency_symbol": operation_setting.GetGeneralSetting().CustomCurrencySymbol,
+		}
+	}
 	if key == operation_setting.PaymentGatewayModeOptionKey {
 		paymentGatewayModeOptionWriteMu.Lock()
 		defer paymentGatewayModeOptionWriteMu.Unlock()
@@ -589,12 +637,111 @@ func UpdateOption(key string, value string) error {
 		if err := tx.Save(&option).Error; err != nil {
 			return err
 		}
+		if quotaReminderSnapshot != nil {
+			// Capture the unit and exchange-rate semantics atomically with the
+			// displayed threshold so later site-currency changes cannot reinterpret it.
+			for snapshotKey, snapshotValue := range quotaReminderSnapshot {
+				snapshot := Option{Key: snapshotKey}
+				if err := tx.FirstOrCreate(&snapshot, Option{Key: snapshotKey}).Error; err != nil {
+					return err
+				}
+				snapshot.Value = snapshotValue
+				if err := tx.Save(&snapshot).Error; err != nil {
+					return err
+				}
+			}
+		}
+		if key == "quota_reminder.enabled" || key == "QuotaRemindEnabled" || key == "QuotaReminderEnabled" {
+			enabled, _ := strconv.ParseBool(value)
+			if !enabled {
+				if err := suppressPendingQuotaReminders(tx); err != nil {
+					return err
+				}
+			}
+		}
 		return nil
 	}); err != nil {
 		return err
 	}
 	// Update OptionMap
-	return updateOptionMap(key, value)
+	if err := updateOptionMap(key, value); err != nil {
+		return err
+	}
+	if quotaReminderSnapshot != nil {
+		for snapshotKey, snapshotValue := range quotaReminderSnapshot {
+			if err := updateOptionMap(snapshotKey, snapshotValue); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// UpdateQuotaReminderOptions stores a complete reminder configuration and its
+// display conversion snapshot as a single transaction. The dedicated update
+// path prevents a task from seeing a threshold paired with another request's
+// template or currency semantics.
+func UpdateQuotaReminderOptions(enabled bool, threshold string, templateID string, customTemplate string) error {
+	threshold = strings.TrimSpace(threshold)
+	displayedThreshold, err := strconv.ParseFloat(threshold, 64)
+	if err != nil || math.IsNaN(displayedThreshold) || math.IsInf(displayedThreshold, 0) || displayedThreshold <= 0 {
+		return fmt.Errorf("quota reminder threshold must be finite and greater than zero")
+	}
+	templateID = strings.TrimSpace(templateID)
+	switch templateID {
+	case "default", "concise", "custom":
+	default:
+		return fmt.Errorf("unsupported quota reminder template %q", templateID)
+	}
+
+	generalSetting := operation_setting.GetGeneralSetting()
+	displayUnit := operation_setting.GetQuotaDisplayType()
+	quotaPerUnit := common.QuotaPerUnit
+	usdExchangeRate := operation_setting.USDExchangeRate
+	customExchangeRate := generalSetting.CustomCurrencyExchangeRate
+	if _, err := common.NormalizeDisplayedQuotaThreshold(displayedThreshold, displayUnit, quotaPerUnit, usdExchangeRate, customExchangeRate); err != nil {
+		return fmt.Errorf("invalid quota reminder threshold: %w", err)
+	}
+	values := map[string]string{
+		"quota_reminder.enabled":                          strconv.FormatBool(enabled),
+		"quota_reminder.threshold":                        threshold,
+		"quota_reminder.template":                         templateID,
+		"quota_reminder.custom_template":                  customTemplate,
+		"quota_reminder.threshold_unit":                   displayUnit,
+		"quota_reminder.threshold_quota_per_unit":         strconv.FormatFloat(quotaPerUnit, 'f', -1, 64),
+		"quota_reminder.threshold_usd_exchange_rate":      strconv.FormatFloat(usdExchangeRate, 'f', -1, 64),
+		"quota_reminder.threshold_custom_exchange_rate":   strconv.FormatFloat(customExchangeRate, 'f', -1, 64),
+		"quota_reminder.threshold_custom_currency_symbol": generalSetting.CustomCurrencySymbol,
+	}
+
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		for key, value := range values {
+			option := Option{Key: key}
+			if err := tx.FirstOrCreate(&option, Option{Key: key}).Error; err != nil {
+				return err
+			}
+			option.Value = value
+			if err := tx.Save(&option).Error; err != nil {
+				return err
+			}
+		}
+		if !enabled {
+			return suppressPendingQuotaReminders(tx)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Publish the whole configuration together after commit, so readers cannot
+	// combine a newly persisted threshold with stale snapshot/template fields.
+	common.OptionMapRWMutex.Lock()
+	for key, value := range values {
+		common.OptionMap[key] = value
+	}
+	common.QuotaRemindEnabled = enabled
+	common.OptionMapRWMutex.Unlock()
+	return nil
 }
 
 // GetPaymentGatewayModeOption reads the persisted desired mode.  Older
@@ -1165,6 +1312,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.RebateRatio, _ = strconv.ParseFloat(value, 64)
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
+	case "quota_reminder.enabled", "QuotaRemindEnabled", "QuotaReminderEnabled":
+		common.QuotaRemindEnabled, _ = strconv.ParseBool(value)
 	case "PreConsumedQuota":
 		common.PreConsumedQuota, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitCount":

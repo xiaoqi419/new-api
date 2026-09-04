@@ -318,6 +318,17 @@ type SubscriptionSummary struct {
 	Subscription *UserSubscription `json:"subscription"`
 }
 
+func GetUserSubscriptionByID(id int) (*UserSubscription, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid userSubscriptionId")
+	}
+	var subscription UserSubscription
+	if err := DB.Where("id = ?", id).First(&subscription).Error; err != nil {
+		return nil, err
+	}
+	return &subscription, nil
+}
+
 type SubscriptionResetResult struct {
 	PlanId           int    `json:"plan_id"`
 	MatchedCount     int    `json:"matched_count"`
@@ -1626,7 +1637,9 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 	if delta == 0 {
 		return nil
 	}
-	return DB.Transaction(func(tx *gorm.DB) error {
+	var observedUserID int
+	var observedRemaining int64
+	err := DB.Transaction(func(tx *gorm.DB) error {
 		var sub UserSubscription
 		if err := lockForUpdate(tx).
 			Where("id = ?", userSubscriptionId).
@@ -1641,6 +1654,15 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 			return fmt.Errorf("subscription used exceeds total, used=%d total=%d", newUsed, sub.AmountTotal)
 		}
 		sub.AmountUsed = newUsed
-		return tx.Save(&sub).Error
+		if err := tx.Save(&sub).Error; err != nil {
+			return err
+		}
+		observedUserID = sub.UserId
+		observedRemaining = sub.AmountTotal - sub.AmountUsed
+		return nil
 	})
+	if err == nil && observedUserID > 0 {
+		ObserveQuotaReminderBalance(observedUserID, QuotaReminderBalanceSubscription, int64(userSubscriptionId), observedRemaining)
+	}
+	return err
 }

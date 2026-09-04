@@ -1410,9 +1410,17 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 }
 
 func increaseUserQuota(id int, quota int) (err error) {
+	previous, previousErr := GetUserQuota(id, true)
 	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
 	if err != nil {
 		return err
+	}
+	if current, readErr := GetUserQuota(id, true); readErr == nil {
+		if previousErr == nil {
+			ObserveQuotaReminderBalanceWithPrevious(id, QuotaReminderBalanceWallet, 0, int64(previous), int64(current))
+		} else {
+			ObserveQuotaReminderBalance(id, QuotaReminderBalanceWallet, 0, int64(current))
+		}
 	}
 	return err
 }
@@ -1435,9 +1443,17 @@ func DecreaseUserQuota(id int, quota int, db bool) (err error) {
 }
 
 func decreaseUserQuota(id int, quota int) (err error) {
+	previous, previousErr := GetUserQuota(id, true)
 	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota - ?", quota)).Error
 	if err != nil {
 		return err
+	}
+	if current, readErr := GetUserQuota(id, true); readErr == nil {
+		if previousErr == nil {
+			ObserveQuotaReminderBalanceWithPrevious(id, QuotaReminderBalanceWallet, 0, int64(previous), int64(current))
+		} else {
+			ObserveQuotaReminderBalance(id, QuotaReminderBalanceWallet, 0, int64(current))
+		}
 	}
 	return err
 }
@@ -1541,6 +1557,7 @@ func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, r
 		return
 	}
 
+	previous, previousErr := GetUserQuota(id, true)
 	err := DB.Model(&User{}).Where("id = ?", id).Updates(
 		map[string]interface{}{
 			"quota":         gorm.Expr("quota + ?", quota),
@@ -1550,6 +1567,20 @@ func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, r
 	).Error
 	if err != nil {
 		common.SysLog("failed to batch update user quota, used quota and request count: " + err.Error())
+		return
+	}
+	if quota != 0 {
+		// The reminder state must observe the committed database balance.  The
+		// queued mutation is invisible to reads until this helper flushes it.
+		if current, readErr := GetUserQuota(id, true); readErr == nil {
+			if previousErr == nil {
+				ObserveQuotaReminderBalanceWithPrevious(id, QuotaReminderBalanceWallet, 0, int64(previous), int64(current))
+			} else {
+				ObserveQuotaReminderBalance(id, QuotaReminderBalanceWallet, 0, int64(current))
+			}
+		} else {
+			common.SysLog("failed to read user quota after batch update: " + readErr.Error())
+		}
 	}
 }
 

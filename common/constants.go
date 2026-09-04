@@ -156,7 +156,14 @@ var GroupBuyEnabled = false
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false
-var QuotaRemindThreshold = 1000
+
+// QuotaRemindEnabled controls low-balance reminder delivery. New installations
+// default to enabled; the effective threshold is resolved from the site's
+// displayed unit by the reminder service.
+var QuotaRemindEnabled = true
+
+// QuotaRemindThreshold is retained as the legacy internal-unit fallback.
+var QuotaRemindThreshold = 500000
 var PreConsumedQuota = 500
 
 var RetryTimes = 0

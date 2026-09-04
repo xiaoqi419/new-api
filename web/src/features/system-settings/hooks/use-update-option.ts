@@ -40,23 +40,30 @@ const STATUS_RELATED_KEYS = new Set([
   'oidc.display_name',
 ])
 
-export function useUpdateOption() {
+type UseUpdateOptionOptions = {
+  invalidateOnSuccess?: boolean
+}
+
+export function useUpdateOption(options: UseUpdateOptionOptions = {}) {
   const queryClient = useQueryClient()
+  const invalidateOnSuccess = options.invalidateOnSuccess ?? true
 
   return useMutation({
     mutationFn: (request: UpdateOptionRequest) => updateSystemOption(request),
     onSuccess: (data, variables) => {
       if (data.success) {
-        // Always refresh system-options
-        queryClient.invalidateQueries({ queryKey: ['system-options'] })
+        if (invalidateOnSuccess) {
+          // Always refresh system-options
+          queryClient.invalidateQueries({ queryKey: ['system-options'] })
 
-        // If updating frontend-display-related config, also refresh status
-        if (STATUS_RELATED_KEYS.has(variables.key)) {
-          queryClient.invalidateQueries({ queryKey: ['status'] })
-          try {
-            window.localStorage.removeItem('status')
-          } catch {
-            /* empty */
+          // If updating frontend-display-related config, also refresh status
+          if (STATUS_RELATED_KEYS.has(variables.key)) {
+            queryClient.invalidateQueries({ queryKey: ['status'] })
+            try {
+              window.localStorage.removeItem('status')
+            } catch {
+              /* empty */
+            }
           }
         }
 

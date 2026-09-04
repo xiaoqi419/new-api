@@ -62,6 +62,7 @@ func TestMain(m *testing.M) {
 		&AgentDomain{},
 		&AgentOption{},
 		&AgentPaymentConfig{},
+		&QuotaReminderState{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
@@ -98,6 +99,7 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM agent_ledgers")
 		DB.Exec("DELETE FROM agent_domains")
 		DB.Exec("DELETE FROM agent_options")
+		DB.Exec("DELETE FROM quota_reminder_states")
 	})
 }
 

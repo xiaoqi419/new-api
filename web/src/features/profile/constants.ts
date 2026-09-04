@@ -20,10 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 // Profile Constants
 // ============================================================================
 
-/**
- * Default quota warning threshold (500,000 = $1)
- */
-export const DEFAULT_QUOTA_WARNING_THRESHOLD = 500000
+/** Empty means the administrator's global low-balance threshold is inherited. */
+export const DEFAULT_QUOTA_WARNING_THRESHOLD: null = null
 
 /**
  * Notification methods

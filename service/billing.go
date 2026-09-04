@@ -91,5 +91,15 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 	if quotaDelta != 0 {
 		return PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
 	}
+	// A legacy/no-session request may already have charged its entire
+	// pre-consume amount.  The zero settlement delta still represents real
+	// usage, so run the reminder check against the authoritative balance.
+	if actualQuota != 0 {
+		if relayInfo.BillingSource == BillingSourceSubscription {
+			checkAndSendSubscriptionQuotaNotify(relayInfo)
+		} else {
+			checkAndSendQuotaNotify(relayInfo, 0, actualQuota)
+		}
+	}
 	return nil
 }

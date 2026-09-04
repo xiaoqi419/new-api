@@ -95,7 +95,13 @@ export interface UserSettings {
   /** Notification type */
   notify_type?: NotifyType
   /** Quota warning threshold */
-  quota_warning_threshold?: number
+  quota_warning_threshold?: number | null
+  /** Display unit captured when the personal threshold was saved */
+  quota_warning_threshold_unit?: string
+  quota_warning_threshold_quota_per_unit?: number
+  quota_warning_threshold_usd_exchange_rate?: number
+  quota_warning_threshold_custom_exchange_rate?: number
+  quota_warning_threshold_custom_currency_symbol?: string
   /** Webhook URL */
   webhook_url?: string
   /** Webhook secret */
@@ -134,7 +140,7 @@ export interface UpdateUserRequest {
  */
 export interface UpdateUserSettingsRequest {
   notify_type?: string
-  quota_warning_threshold?: number
+  quota_warning_threshold?: number | null
   webhook_url?: string
   webhook_secret?: string
   notification_email?: string

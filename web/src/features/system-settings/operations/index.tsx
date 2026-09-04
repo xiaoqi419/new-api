@@ -30,7 +30,14 @@ const defaultOperationsSettings: OperationsSettings = {
   DefaultCollapseSidebar: false,
   DemoSiteEnabled: false,
   SelfUseModeEnabled: false,
-  QuotaRemindThreshold: '',
+  QuotaRemindThreshold: '1',
+  QuotaRemindEnabled: true,
+  QuotaRemindThresholdUnit: 'USD',
+  QuotaRemindThresholdQuotaPerUnit: '500000',
+  QuotaRemindThresholdUSDRate: '1',
+  QuotaRemindThresholdCustomRate: '1',
+  QuotaRemindTemplate: 'default',
+  QuotaRemindCustomTemplate: '',
   SMTPServer: '',
   SMTPPort: '',
   SMTPAccount: '',
@@ -75,6 +82,47 @@ export function OperationsSettings() {
       defaultSection={OPERATIONS_DEFAULT_SECTION}
       getSectionContent={getOperationsSectionContent}
       getSectionMeta={getOperationsSectionMeta}
+      resolveSettings={(settings, raw) => {
+        const values = new Map(
+          (raw ?? []).map((option) => [option.key, option.value])
+        )
+        const modernThreshold = values.get('quota_reminder.threshold')
+        const modernEnabled = values.get('quota_reminder.enabled')
+        const modernUnit = values.get('quota_reminder.threshold_unit')
+        const modernQuotaPerUnit = values.get(
+          'quota_reminder.threshold_quota_per_unit'
+        )
+        const modernUsdRate = values.get(
+          'quota_reminder.threshold_usd_exchange_rate'
+        )
+        const modernCustomRate = values.get(
+          'quota_reminder.threshold_custom_exchange_rate'
+        )
+        const modernTemplate = values.get('quota_reminder.template')
+        const modernCustomTemplate = values.get(
+          'quota_reminder.custom_template'
+        )
+        return {
+          ...settings,
+          QuotaRemindThreshold:
+            modernThreshold ?? settings.QuotaRemindThreshold,
+          QuotaRemindEnabled:
+            modernEnabled === undefined
+              ? settings.QuotaRemindEnabled
+              : modernEnabled === 'true' || modernEnabled === '1',
+          QuotaRemindThresholdUnit:
+            modernUnit ?? settings.QuotaRemindThresholdUnit,
+          QuotaRemindThresholdQuotaPerUnit:
+            modernQuotaPerUnit ?? settings.QuotaRemindThresholdQuotaPerUnit,
+          QuotaRemindThresholdUSDRate:
+            modernUsdRate ?? settings.QuotaRemindThresholdUSDRate,
+          QuotaRemindThresholdCustomRate:
+            modernCustomRate ?? settings.QuotaRemindThresholdCustomRate,
+          QuotaRemindTemplate: modernTemplate ?? settings.QuotaRemindTemplate,
+          QuotaRemindCustomTemplate:
+            modernCustomTemplate ?? settings.QuotaRemindCustomTemplate,
+        }
+      }}
       extraArgs={[
         status?.version as string | undefined,
         status?.start_time as number | null | undefined,

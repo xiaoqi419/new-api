@@ -1,13 +1,16 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net"
 	"net/smtp"
+	"net/textproto"
 	"slices"
 	"strings"
 	"time"
@@ -123,6 +126,41 @@ func newSMTPClient(addr string) (*smtp.Client, error) {
 }
 
 func SendEmail(subject string, receiver string, content string) error {
+	return sendEmailMessage(subject, receiver, "text/html; charset=UTF-8", []byte(content))
+}
+
+// SendEmailWithAlternative sends matching plain-text and HTML bodies as a
+// multipart/alternative message. Existing callers can keep using SendEmail
+// when only an HTML body is available.
+func SendEmailWithAlternative(subject string, receiver string, htmlContent string, textContent string) error {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	parts := []struct {
+		contentType string
+		content     string
+	}{
+		{contentType: "text/plain; charset=UTF-8", content: textContent},
+		{contentType: "text/html; charset=UTF-8", content: htmlContent},
+	}
+	for _, part := range parts {
+		header := textproto.MIMEHeader{}
+		header.Set("Content-Type", part.contentType)
+		header.Set("Content-Transfer-Encoding", "8bit")
+		partWriter, err := writer.CreatePart(header)
+		if err != nil {
+			return fmt.Errorf("create email body: %w", err)
+		}
+		if _, err := partWriter.Write([]byte(part.content)); err != nil {
+			return fmt.Errorf("write email body: %w", err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("close email body: %w", err)
+	}
+	return sendEmailMessage(subject, receiver, fmt.Sprintf("multipart/alternative; boundary=%q", writer.Boundary()), body.Bytes())
+}
+
+func sendEmailMessage(subject string, receiver string, contentType string, body []byte) error {
 	if SMTPFrom == "" { // for compatibility
 		SMTPFrom = SMTPAccount
 	}
@@ -134,13 +172,18 @@ func SendEmail(subject string, receiver string, content string) error {
 		return fmt.Errorf("SMTP 服务器未配置")
 	}
 	encodedSubject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(subject)))
-	mail := []byte(fmt.Sprintf("To: %s\r\n"+
+	header := []byte(fmt.Sprintf("To: %s\r\n"+
 		"From: %s <%s>\r\n"+
 		"Subject: %s\r\n"+
 		"Date: %s\r\n"+
 		"Message-ID: %s\r\n"+ // 添加 Message-ID 头
-		"Content-Type: text/html; charset=UTF-8\r\n\r\n%s\r\n",
-		receiver, SystemName, SMTPFrom, encodedSubject, time.Now().Format(time.RFC1123Z), id, content))
+		"MIME-Version: 1.0\r\n"+
+		"Content-Type: %s\r\n\r\n",
+		receiver, SystemName, SMTPFrom, encodedSubject, time.Now().Format(time.RFC1123Z), id, contentType))
+	mail := make([]byte, 0, len(header)+len(body)+2)
+	mail = append(mail, header...)
+	mail = append(mail, body...)
+	mail = append(mail, '\r', '\n')
 	auth := getSMTPAuth()
 	addr := fmt.Sprintf("%s:%d", SMTPServer, SMTPPort)
 	to := strings.Split(receiver, ";")
