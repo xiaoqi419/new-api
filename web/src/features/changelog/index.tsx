@@ -79,7 +79,7 @@ export function ChangelogPage() {
 
                 <div className='mt-4 flex flex-col gap-4'>
                   {entry.changes.map((group) => {
-                    const meta = kindMeta[group.kind]
+                    const meta = kindMeta[group.kind] ?? kindMeta.feature
                     return (
                       <div key={group.kind} className='flex flex-col gap-2'>
                         <StatusBadge
