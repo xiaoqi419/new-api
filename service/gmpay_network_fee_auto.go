@@ -374,7 +374,14 @@ func (estimator *BuiltinNetworkFeeEstimator) resolvedQuoteMode() string {
 			return strings.ToLower(strings.TrimSpace(estimator.quoteMode))
 		}
 	}
-	return GMPayQuoteModeSimulate
+	cfg, err := CurrentGMPayFeeConfig()
+	if err != nil {
+		return GMPayQuoteModeSimulateThenEmpirical
+	}
+	if cfg.ResolvedQuoteMode() == GMPayQuoteModeSimulate {
+		return GMPayQuoteModeSimulate
+	}
+	return GMPayQuoteModeSimulateThenEmpirical
 }
 
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {

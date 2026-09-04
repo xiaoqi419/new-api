@@ -304,6 +304,7 @@ func TestBuiltinNetworkFeeEstimatorTRONRejectsRevertedSimulationEnergy(t *testin
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeSimulate
 	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)

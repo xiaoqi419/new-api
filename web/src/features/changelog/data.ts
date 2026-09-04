@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-fee-status-fix',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复 GMPay 手续费页测试估算失败后把已发现网络清空、看起来像同步失败的问题；默认策略下链上模拟失败仍可用经验用量给出测试报价。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-quote-policy',
     date: '2026-09-04',
     changes: [

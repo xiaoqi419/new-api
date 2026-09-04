@@ -515,6 +515,11 @@ describe('GMPay fee fallback configuration', () => {
       React.createElement(GMPayFeeConfigEditor, {
         value: DEFAULT_GMPAY_FEE_CONFIG_JSON,
         onChange: () => undefined,
+        discoveryStatus: {
+          state: 'ready',
+          networks: [{ network: 'tron', tokens: ['USDT'] }],
+          lastSyncedAt: '2026-09-04T08:00:00.000Z',
+        },
         onTestEstimate,
       })
     )
@@ -523,6 +528,7 @@ describe('GMPay fee fallback configuration', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'gateway unavailable'
     )
+    expect(screen.getByText(/\(USDT\)/)).toBeInTheDocument()
     expect(screen.queryByLabelText('RPC endpoint URL')).toBeNull()
     expect(screen.queryByLabelText('Price source URL')).toBeNull()
   })

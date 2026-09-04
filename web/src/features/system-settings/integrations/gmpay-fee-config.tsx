@@ -2315,6 +2315,9 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
       }
     } catch (error: unknown) {
       setRuntimeStatus({
+        ...(runtimeStatus ??
+          props.discoveryStatus ??
+          deriveDiscoveryStatus(draft)),
         state: 'error',
         error: getEstimateErrorMessage(error),
       })
