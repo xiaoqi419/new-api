@@ -29,6 +29,9 @@ const (
 	builtinEVMTransferGasUnits        = "65000"
 	builtinTRONUSDTTransferEnergy     = "64285"
 	builtinTRONEmpiricalEnergyMethod  = "empirical_trc20_energy"
+	builtinEVMEmpiricalGasMethod      = "empirical_erc20_gas"
+	builtinSolanaTransferLamports     = "5000"
+	builtinSolanaEmpiricalFeeMethod   = "empirical_spl_fee"
 )
 
 // BuiltinNetworkFeeEstimator is a fail-closed estimator backed by fixed,
@@ -36,13 +39,13 @@ const (
 // injectable only for deterministic tests; production callers should use
 // NewBuiltinNetworkFeeEstimator.
 type BuiltinNetworkFeeEstimator struct {
-	configured    *ConfiguredNetworkFeeEstimator
-	now           func() time.Time
-	tronRPCURLs   []*url.URL
-	tronQuoteMode string
-	priceMu       sync.Mutex
-	priceCache    map[string]builtinPriceCacheEntry
-	priceGroup    singleflight.Group
+	configured  *ConfiguredNetworkFeeEstimator
+	now         func() time.Time
+	tronRPCURLs []*url.URL
+	quoteMode   string
+	priceMu     sync.Mutex
+	priceCache  map[string]builtinPriceCacheEntry
+	priceGroup  singleflight.Group
 }
 
 // builtinPriceCacheEntry stores only validated, fresh observations. The key
@@ -242,7 +245,8 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	requestCtx, cancel := context.WithTimeout(ctx, estimator.configured.config.timeout)
 	defer cancel()
 	var latestSlot uint64
-	if network == "solana" {
+	mode := estimator.resolvedQuoteMode()
+	if network == "solana" && mode != GMPayQuoteModeEmpirical {
 		transaction, latestSlot, err = estimator.refreshBuiltinSolanaBlockhash(requestCtx, chain, transaction)
 		if err != nil {
 			return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
@@ -255,7 +259,7 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	case "ethereum", "binance":
 		raw, err = estimator.estimateBuiltinEVM(requestCtx, chain, token, transaction)
 	case "solana":
-		raw, err = estimator.configured.estimateSolana(requestCtx, chain, token, transaction)
+		raw, err = estimator.estimateBuiltinSolana(requestCtx, chain, token, transaction)
 	}
 	if err != nil {
 		return NetworkFeeQuote{}, fmt.Errorf("%w: %v", ErrNetworkFeeUnavailable, err)
@@ -277,7 +281,7 @@ func (estimator *BuiltinNetworkFeeEstimator) Estimate(ctx context.Context, input
 	if raw.Evidence.RPCSource == "" {
 		raw.Evidence.RPCSource = endpointSource(chain.rpcURL)
 	}
-	if network == "solana" {
+	if network == "solana" && mode != GMPayQuoteModeEmpirical {
 		raw.Evidence.RPCMethods = append([]string{"getLatestBlockhash"}, raw.Evidence.RPCMethods...)
 		if latestSlot > 0 {
 			raw.Evidence.Slot = latestSlot
@@ -363,18 +367,18 @@ func (err *tronSimulationUnavailableError) Unwrap() error {
 	return err.err
 }
 
-func (estimator *BuiltinNetworkFeeEstimator) resolvedTronQuoteMode() string {
+func (estimator *BuiltinNetworkFeeEstimator) resolvedQuoteMode() string {
 	if estimator != nil {
-		switch strings.ToLower(strings.TrimSpace(estimator.tronQuoteMode)) {
-		case GMPayTronQuoteModeSimulate, GMPayTronQuoteModeEmpirical, GMPayTronQuoteModeSimulateThenEmpirical:
-			return strings.ToLower(strings.TrimSpace(estimator.tronQuoteMode))
+		switch strings.ToLower(strings.TrimSpace(estimator.quoteMode)) {
+		case GMPayQuoteModeSimulate, GMPayQuoteModeEmpirical, GMPayQuoteModeSimulateThenEmpirical:
+			return strings.ToLower(strings.TrimSpace(estimator.quoteMode))
 		}
 	}
 	cfg, err := CurrentGMPayFeeConfig()
 	if err != nil {
-		return GMPayTronQuoteModeSimulateThenEmpirical
+		return GMPayQuoteModeSimulateThenEmpirical
 	}
-	return cfg.ResolvedTronQuoteMode()
+	return cfg.ResolvedQuoteMode()
 }
 
 func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
@@ -401,7 +405,7 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRON(ctx context.Con
 			return chainRawNetworkEstimate{}, ctx.Err()
 		}
 	}
-	if lastSimulation != nil && estimator.resolvedTronQuoteMode() != GMPayTronQuoteModeSimulate {
+	if lastSimulation != nil && estimator.resolvedQuoteMode() != GMPayQuoteModeSimulate {
 		raw, err := empiricalTRONNetworkEstimate(lastSimulation.energyFee, lastSimulation.bandwidthFee, lastSimulation.methods)
 		if err == nil {
 			raw.Evidence.RPCSource = endpointSource(lastSimulationRPC)
@@ -438,7 +442,7 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinTRONAtRPC(ctx contex
 	if err != nil {
 		return chainRawNetworkEstimate{}, err
 	}
-	if estimator.resolvedTronQuoteMode() == GMPayTronQuoteModeEmpirical {
+	if estimator.resolvedQuoteMode() == GMPayQuoteModeEmpirical {
 		return empiricalTRONNetworkEstimate(energyFee, bandwidthFee, []string{"wallet/getchainparameters"})
 	}
 	payload := map[string]any{"owner_address": from, "contract_address": contract, "function_selector": selector, "parameter": parameter, "visible": true}
@@ -520,8 +524,15 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinEVM(ctx context.Cont
 	if err := validateEVMERC20TransferCalldata(data, recipient); err != nil {
 		return chainRawNetworkEstimate{}, err
 	}
-	if exact, err := estimator.configured.estimateEVM(ctx, chain, token, transaction); err == nil {
-		return exact, nil
+	mode := estimator.resolvedQuoteMode()
+	if mode != GMPayQuoteModeEmpirical {
+		exact, exactErr := estimator.configured.estimateEVM(ctx, chain, token, transaction)
+		if exactErr == nil {
+			return exact, nil
+		}
+		if mode == GMPayQuoteModeSimulate {
+			return chainRawNetworkEstimate{}, exactErr
+		}
 	}
 
 	gas := decimal.RequireFromString(builtinEVMTransferGasUnits)
@@ -553,6 +564,7 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinEVM(ctx context.Cont
 	if nativeAmount.IsNegative() || !decimalIsFinite(nativeAmount) {
 		return chainRawNetworkEstimate{}, errors.New("evm representative network cost is invalid")
 	}
+	methods = append([]string{builtinEVMEmpiricalGasMethod}, methods...)
 	return chainRawNetworkEstimate{
 		NativeAmount: nativeAmount,
 		Confidence:   "medium",
@@ -562,6 +574,33 @@ func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinEVM(ctx context.Cont
 			Block:      block,
 			Gas:        gas.String(),
 			GasPrice:   gasPrice.String(),
+		},
+	}, nil
+}
+
+func (estimator *BuiltinNetworkFeeEstimator) estimateBuiltinSolana(ctx context.Context, chain parsedNetworkFeeChainConfig, token string, transaction NetworkFeeTransactionContext) (chainRawNetworkEstimate, error) {
+	mode := estimator.resolvedQuoteMode()
+	if mode != GMPayQuoteModeEmpirical {
+		raw, err := estimator.configured.estimateSolana(ctx, chain, token, transaction)
+		if err == nil {
+			return raw, nil
+		}
+		if mode == GMPayQuoteModeSimulate {
+			return chainRawNetworkEstimate{}, err
+		}
+	}
+	lamports := decimal.RequireFromString(builtinSolanaTransferLamports)
+	nativeAmount := lamports.Div(decimal.RequireFromString(solanaLamportsPerSOL))
+	if nativeAmount.IsNegative() || !decimalIsFinite(nativeAmount) {
+		return chainRawNetworkEstimate{}, errors.New("solana representative network cost is invalid")
+	}
+	return chainRawNetworkEstimate{
+		NativeAmount: nativeAmount,
+		Confidence:   "medium",
+		Evidence: NetworkFeeEvidence{
+			RPCMethod:  builtinSolanaEmpiricalFeeMethod,
+			RPCMethods: []string{builtinSolanaEmpiricalFeeMethod},
+			Lamports:   lamports.String(),
 		},
 	}, nil
 }

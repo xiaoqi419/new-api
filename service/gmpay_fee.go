@@ -42,9 +42,13 @@ const (
 	gmpayFeeMaxScale        = int32(6)
 	gmpayFeeMaxOverrides    = 64
 
-	GMPayTronQuoteModeSimulate              = "simulate"
-	GMPayTronQuoteModeEmpirical             = "empirical"
-	GMPayTronQuoteModeSimulateThenEmpirical = "simulate_then_empirical"
+	GMPayQuoteModeSimulate              = "simulate"
+	GMPayQuoteModeEmpirical             = "empirical"
+	GMPayQuoteModeSimulateThenEmpirical = "simulate_then_empirical"
+
+	GMPayTronQuoteModeSimulate              = GMPayQuoteModeSimulate
+	GMPayTronQuoteModeEmpirical             = GMPayQuoteModeEmpirical
+	GMPayTronQuoteModeSimulateThenEmpirical = GMPayQuoteModeSimulateThenEmpirical
 )
 
 var ErrGMPayFeeUnavailable = errors.New("gmpay fee quote is unavailable")
@@ -121,8 +125,11 @@ type GMPayFeeConfig struct {
 	FallbackMode    string `json:"fallback_mode"`
 	FallbackValue   string `json:"fallback_value"`
 
-	// TronQuoteMode selects how the builtin TRON estimator produces a quote.
-	// Empty values resolve to simulate_then_empirical.
+	// QuoteMode selects how the builtin estimator produces a quote on every
+	// supported network. Empty values resolve to simulate_then_empirical.
+	QuoteMode string `json:"quote_mode"`
+	// TronQuoteMode is the previously TRON-only spelling. It is accepted when
+	// quote_mode is omitted so existing administrator documents keep working.
 	TronQuoteMode string `json:"tron_quote_mode"`
 
 	// These aliases are accepted by the structured editor used by some
@@ -163,15 +170,34 @@ type GMPayFeeQuote struct {
 	Evidence           NetworkFeeEvidence
 }
 
-func (cfg GMPayFeeConfig) ResolvedTronQuoteMode() string {
-	switch strings.ToLower(strings.TrimSpace(cfg.TronQuoteMode)) {
-	case GMPayTronQuoteModeSimulate:
-		return GMPayTronQuoteModeSimulate
-	case GMPayTronQuoteModeEmpirical:
-		return GMPayTronQuoteModeEmpirical
-	default:
-		return GMPayTronQuoteModeSimulateThenEmpirical
+func parseGMPayQuoteModeValue(value json.RawMessage, field string) (string, error) {
+	if common.GetJsonType(value) != "string" {
+		return "", fmt.Errorf("gmpay fee %s must be a string", field)
 	}
+	mode := strings.ToLower(strings.TrimSpace(common.JsonRawMessageToString(value)))
+	if mode != "" && mode != GMPayQuoteModeSimulate && mode != GMPayQuoteModeEmpirical && mode != GMPayQuoteModeSimulateThenEmpirical {
+		return "", fmt.Errorf("gmpay fee %s must be simulate, empirical, or simulate_then_empirical", field)
+	}
+	return mode, nil
+}
+
+func (cfg GMPayFeeConfig) ResolvedQuoteMode() string {
+	mode := strings.ToLower(strings.TrimSpace(cfg.QuoteMode))
+	if mode == "" {
+		mode = strings.ToLower(strings.TrimSpace(cfg.TronQuoteMode))
+	}
+	switch mode {
+	case GMPayQuoteModeSimulate:
+		return GMPayQuoteModeSimulate
+	case GMPayQuoteModeEmpirical:
+		return GMPayQuoteModeEmpirical
+	default:
+		return GMPayQuoteModeSimulateThenEmpirical
+	}
+}
+
+func (cfg GMPayFeeConfig) ResolvedTronQuoteMode() string {
+	return cfg.ResolvedQuoteMode()
 }
 
 func defaultGMPayFeeConfig() GMPayFeeConfig {
@@ -208,7 +234,7 @@ func ParseGMPayFeeConfig(raw string) (GMPayFeeConfig, error) {
 		case "version", "enabled", "default", "overrides", "max_fee", "max_total",
 			"dynamic_enabled", "chains", "timeout_ms", "max_response_bytes", "max_retries",
 			"quote_ttl_seconds", "price_max_age_seconds", "fallback_enabled", "fallback_mode",
-			"fallback_value", "fallback_default", "estimator_mode", "tron_quote_mode", "rpc_references",
+			"fallback_value", "fallback_default", "estimator_mode", "quote_mode", "tron_quote_mode", "rpc_references",
 			"price_source_references", "request_timeout_ms", "cache_ttl_seconds",
 			"response_body_limit_bytes", "max_price_deviation_percent", "contexts":
 		default:
@@ -250,15 +276,22 @@ func ParseGMPayFeeConfig(raw string) (GMPayFeeConfig, error) {
 		}
 		cfg.EstimatorMode = parsed
 	}
-	if value, ok := fields["tron_quote_mode"]; ok {
-		if common.GetJsonType(value) != "string" {
-			return cfg, errors.New("gmpay fee tron_quote_mode must be a string")
+	if value, ok := fields["quote_mode"]; ok {
+		mode, err := parseGMPayQuoteModeValue(value, "quote_mode")
+		if err != nil {
+			return cfg, err
 		}
-		mode := strings.ToLower(strings.TrimSpace(common.JsonRawMessageToString(value)))
-		if mode != "" && mode != GMPayTronQuoteModeSimulate && mode != GMPayTronQuoteModeEmpirical && mode != GMPayTronQuoteModeSimulateThenEmpirical {
-			return cfg, errors.New("gmpay fee tron_quote_mode must be simulate, empirical, or simulate_then_empirical")
+		cfg.QuoteMode = mode
+	}
+	if value, ok := fields["tron_quote_mode"]; ok {
+		mode, err := parseGMPayQuoteModeValue(value, "tron_quote_mode")
+		if err != nil {
+			return cfg, err
 		}
 		cfg.TronQuoteMode = mode
+		if cfg.QuoteMode == "" {
+			cfg.QuoteMode = mode
+		}
 	}
 	if value, ok := fields["fallback_mode"]; ok {
 		if common.GetJsonType(value) != "string" {

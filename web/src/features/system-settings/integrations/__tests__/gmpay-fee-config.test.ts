@@ -469,7 +469,7 @@ describe('GMPay fee fallback configuration', () => {
     )
 
     expect(screen.getByText('Ready')).toBeInTheDocument()
-    expect(screen.getByText('TRON quote strategy')).toBeInTheDocument()
+    expect(screen.getByText('Quote strategy')).toBeInTheDocument()
     expect(screen.getByText(/\(USDT\)/)).toBeInTheDocument()
     expect(screen.getByText('Last successful estimate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Test estimate' })).toBeEnabled()
@@ -527,28 +527,27 @@ describe('GMPay fee fallback configuration', () => {
     expect(screen.queryByLabelText('Price source URL')).toBeNull()
   })
 
-  test('defaults TRON quote mode and rejects unknown values', () => {
+  test('defaults quote mode and maps the TRON-only alias', () => {
     expect(parseGMPayFeeConfig(DEFAULT_GMPAY_FEE_CONFIG_JSON)).toMatchObject({
-      tron_quote_mode: 'simulate_then_empirical',
+      quote_mode: 'simulate_then_empirical',
     })
     expect(JSON.parse(DEFAULT_GMPAY_FEE_CONFIG_JSON)).not.toHaveProperty(
-      'tron_quote_mode'
+      'quote_mode'
     )
     expect(
       getGMPayFeeConfigError(
-        JSON.stringify({ version: 1, tron_quote_mode: 'guess' })
+        JSON.stringify({ version: 1, quote_mode: 'guess' })
       )
-    ).toBe('GMPay TRON quote mode is invalid')
+    ).toBe('GMPay quote mode is invalid')
     const empirical = JSON.stringify({
       version: 1,
       tron_quote_mode: 'empirical',
     })
     expect(getGMPayFeeConfigError(empirical)).toBeNull()
-    expect(parseGMPayFeeConfig(empirical).tron_quote_mode).toBe('empirical')
+    expect(parseGMPayFeeConfig(empirical).quote_mode).toBe('empirical')
     expect(
-      JSON.parse(
-        serializeGMPayFeeConfig(parseGMPayFeeConfig(empirical))
-      ).tron_quote_mode
+      JSON.parse(serializeGMPayFeeConfig(parseGMPayFeeConfig(empirical)))
+        .quote_mode
     ).toBe('empirical')
   })
 
