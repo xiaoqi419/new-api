@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-changelog-kind-fix',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复更新日志页因 feat 分类无法识别而崩溃的问题。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-fee-status-fix',
     date: '2026-09-04',
     changes: [
@@ -45,7 +57,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-04',
     changes: [
       {
-        kind: 'feat',
+        kind: 'feature',
         items: [
           'GMPay 报价策略改为：只链上模拟、只管理员固定/百分比、模拟失败再走管理员规则；适用于全部 USDT 网络。',
         ],
@@ -57,7 +69,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-04',
     changes: [
       {
-        kind: 'feat',
+        kind: 'feature',
         items: [
           'GMPay 动态报价策略改为全局开关，TRON、Ethereum、BSC、Solana 都可选择只模拟、只经验用量、或模拟失败后再经验兜底。',
         ],
@@ -69,7 +81,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-04',
     changes: [
       {
-        kind: 'feat',
+        kind: 'feature',
         items: [
           'GMPay 手续费增加 TRON 报价策略：只模拟、只经验能量、或模拟失败后再经验兜底；管理员兜底下拉显示翻译文案，百分比改为带 % 的输入。',
         ],
