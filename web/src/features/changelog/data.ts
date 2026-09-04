@@ -30,9 +30,8 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     // Keep the entry in the same YYYYMMDD-<sha> format used by build-push.sh.
-    // The final release metadata commit must replace this placeholder with the
-    // immutable merge SHA used for the image tag.
-    version: '20260905-ffacd74d7',
+    // This release tag is built from the immutable low-quota reminder merge SHA.
+    version: '20260905-9dd772dd6',
     date: '2026-09-05',
     changes: [
       {
