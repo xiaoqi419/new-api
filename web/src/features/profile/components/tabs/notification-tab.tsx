@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -27,7 +27,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { getCurrencyLabel } from '@/lib/currency'
+import { getEditableQuotaStep } from '@/lib/format'
+import {
+  convertDisplayedQuotaBetweenSnapshots,
+  quotaThresholdValueForSave,
+} from '@/lib/quota-threshold'
 import { ROLE } from '@/lib/roles'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { updateUserSettings } from '../../api'
 import {
@@ -67,7 +74,12 @@ interface NotificationTabProps {
 export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   const { t } = useTranslation()
   const isAdmin = (profile?.role ?? 0) >= ROLE.ADMIN
+  const currency = useSystemConfigStore((state) => state.config.currency)
   const [loading, setLoading] = useState(false)
+  const quotaThresholdBaselineRef = useRef<{
+    displayed: number | null
+    persisted: number | null
+  }>({ displayed: null, persisted: null })
   const [settings, setSettings] = useState<UserSettings>({
     notify_type: 'email',
     quota_warning_threshold: DEFAULT_QUOTA_WARNING_THRESHOLD,
@@ -94,10 +106,41 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   useEffect(() => {
     if (profile?.setting) {
       const parsed = parseUserSettings(profile.setting)
+      const savedUnit = parsed.quota_warning_threshold_unit
+      const threshold = parsed.quota_warning_threshold
+      const displayedThreshold =
+        threshold && threshold > 0
+          ? convertDisplayedQuotaBetweenSnapshots(
+              threshold,
+              {
+                quotaDisplayType:
+                  savedUnit === 'USD' ||
+                  savedUnit === 'CNY' ||
+                  savedUnit === 'CUSTOM' ||
+                  savedUnit === 'TOKENS'
+                    ? savedUnit
+                    : currency.quotaDisplayType,
+                quotaPerUnit:
+                  parsed.quota_warning_threshold_quota_per_unit ||
+                  currency.quotaPerUnit,
+                usdExchangeRate:
+                  parsed.quota_warning_threshold_usd_exchange_rate ||
+                  currency.usdExchangeRate,
+                customCurrencyExchangeRate:
+                  parsed.quota_warning_threshold_custom_exchange_rate ||
+                  currency.customCurrencyExchangeRate,
+              },
+              currency
+            )
+          : null
+      quotaThresholdBaselineRef.current = {
+        displayed: displayedThreshold,
+        persisted: threshold && threshold > 0 ? threshold : null,
+      }
       setSettings({
         notify_type: normalizeNotifyType(parsed.notify_type),
         quota_warning_threshold:
-          parsed.quota_warning_threshold ?? DEFAULT_QUOTA_WARNING_THRESHOLD,
+          displayedThreshold ?? DEFAULT_QUOTA_WARNING_THRESHOLD,
         notification_email: parsed.notification_email ?? '',
         webhook_url: parsed.webhook_url ?? '',
         webhook_secret: parsed.webhook_secret ?? '',
@@ -112,12 +155,20 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
           parsed.upstream_model_update_notify_enabled || false,
       })
     }
-  }, [profile])
+  }, [currency, profile])
 
   const handleSave = async () => {
     try {
       setLoading(true)
-      const response = await updateUserSettings(settings)
+      const currentThreshold = settings.quota_warning_threshold ?? null
+      const response = await updateUserSettings({
+        ...settings,
+        quota_warning_threshold: quotaThresholdValueForSave(
+          currentThreshold,
+          quotaThresholdBaselineRef.current.displayed,
+          quotaThresholdBaselineRef.current.persisted
+        ),
+      })
 
       if (response.success) {
         toast.success(t('Settings updated successfully'))
@@ -173,19 +224,29 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
 
       {/* Warning Threshold */}
       <div className='space-y-1.5'>
-        <Label htmlFor='threshold'>{t('Quota Warning Threshold')}</Label>
+        <Label htmlFor='threshold'>
+          {t('Personal reminder threshold ({{unit}})', {
+            unit: getCurrencyLabel(),
+          })}
+        </Label>
         <Input
           id='threshold'
           type='number'
           className='h-9'
-          value={settings.quota_warning_threshold}
-          onChange={(e) =>
-            updateField('quota_warning_threshold', Number(e.target.value))
-          }
-          placeholder={t('Enter threshold')}
+          min={getEditableQuotaStep()}
+          step={getEditableQuotaStep()}
+          value={settings.quota_warning_threshold ?? ''}
+          onChange={(event) => {
+            const value = event.target.value
+            updateField(
+              'quota_warning_threshold',
+              value === '' ? null : Number(value)
+            )
+          }}
+          placeholder={t('Use global threshold')}
         />
         <p className='text-muted-foreground text-xs'>
-          {t('Get notified when balance falls below this value')}
+          {t('Leave empty to inherit the global reminder threshold.')}
         </p>
       </div>
 

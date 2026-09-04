@@ -29,6 +29,21 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    // Keep the entry in the same YYYYMMDD-<sha> format used by build-push.sh.
+    // The final release metadata commit must replace this placeholder with the
+    // immutable merge SHA used for the image tag.
+    version: '20260905-ffacd74d7',
+    date: '2026-09-05',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '新增低余额邮件提醒配置：管理员可按站点货币单位设置阈值、选择模板并发送测试邮件，用户可在个人设置中覆盖阈值。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-changelog-kind-fix',
     date: '2026-09-04',
     changes: [

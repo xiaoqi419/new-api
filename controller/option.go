@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,6 +45,110 @@ func isPositiveOptionValue(value string) bool {
 	}
 	floatValue, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
 	return err == nil && floatValue > 0
+}
+
+// validateQuotaReminderOption validates the small, user-facing subset of
+// options used by the low-quota reminder settings.  Option values arrive via
+// the generic PUT /api/option endpoint as strings, so validation must happen
+// before model.UpdateOption mutates the persisted value or the in-memory map.
+// Template bodies are validated by the reminder service when that service is
+// available; this boundary only enforces safe scalar/configuration values.
+func validateQuotaReminderOption(key, value string) error {
+	switch key {
+	case "QuotaRemindEnabled", "QuotaReminderEnabled", "quota_reminder.enabled":
+		if _, err := strconv.ParseBool(strings.TrimSpace(value)); err != nil {
+			return fmt.Errorf("QuotaRemindEnabled must be true or false")
+		}
+	case "QuotaRemindThreshold", "QuotaReminderThreshold", "quota_reminder.threshold":
+		threshold, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err != nil || math.IsNaN(threshold) || math.IsInf(threshold, 0) || threshold <= 0 {
+			return fmt.Errorf("QuotaRemindThreshold must be finite and greater than zero")
+		}
+		if _, err := common.NormalizeDisplayedQuotaThreshold(
+			threshold,
+			operation_setting.GetQuotaDisplayType(),
+			common.QuotaPerUnit,
+			operation_setting.USDExchangeRate,
+			operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate,
+		); err != nil {
+			return fmt.Errorf("QuotaRemindThreshold is outside the supported quota range")
+		}
+	case "QuotaRemindThresholdUnit", "QuotaReminderThresholdUnit", "quota_reminder.threshold_unit":
+		unit := strings.ToUpper(strings.TrimSpace(value))
+		switch unit {
+		case common.QuotaDisplayUnitUSD, common.QuotaDisplayUnitCNY,
+			common.QuotaDisplayUnitCustom, common.QuotaDisplayUnitTokens:
+		default:
+			return fmt.Errorf("unsupported quota reminder threshold unit %q", value)
+		}
+	case "QuotaRemindTemplate", "QuotaReminderTemplate", "QuotaRemindTemplateID", "QuotaReminderTemplateID", "quota_reminder.template", "quota_reminder.template_id":
+		templateID := strings.TrimSpace(value)
+		switch templateID {
+		case "default", "concise", "custom":
+		default:
+			return fmt.Errorf("unsupported quota reminder template %q", value)
+		}
+		if templateID == "custom" {
+			common.OptionMapRWMutex.RLock()
+			customTemplate := common.OptionMap["quota_reminder.custom_template"]
+			common.OptionMapRWMutex.RUnlock()
+			if err := service.ValidateQuotaReminderCustomTemplate(customTemplate); err != nil {
+				return err
+			}
+		}
+	case "quota_reminder.custom_template":
+		return service.ValidateQuotaReminderCustomTemplate(value)
+	case "quota_reminder.threshold_quota_per_unit", "quota_reminder.threshold_usd_exchange_rate", "quota_reminder.threshold_custom_exchange_rate":
+		valueFloat, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err != nil || math.IsNaN(valueFloat) || math.IsInf(valueFloat, 0) || valueFloat <= 0 {
+			return fmt.Errorf("quota reminder snapshot must be finite and greater than zero")
+		}
+	case "quota_reminder.threshold_custom_currency_symbol":
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("custom currency symbol must not be empty")
+		}
+	}
+	return nil
+}
+
+type quotaReminderConfigUpdateRequest struct {
+	Enabled        *bool    `json:"enabled"`
+	Threshold      *float64 `json:"threshold"`
+	Template       string   `json:"template"`
+	CustomTemplate string   `json:"custom_template"`
+}
+
+func validateQuotaReminderConfigRequest(req quotaReminderConfigUpdateRequest) error {
+	if req.Enabled == nil {
+		return fmt.Errorf("quota reminder enabled is required")
+	}
+	if req.Threshold == nil {
+		return fmt.Errorf("quota reminder threshold is required")
+	}
+	if math.IsNaN(*req.Threshold) || math.IsInf(*req.Threshold, 0) || *req.Threshold <= 0 {
+		return fmt.Errorf("quota reminder threshold must be finite and greater than zero")
+	}
+	if _, err := common.NormalizeDisplayedQuotaThreshold(
+		*req.Threshold,
+		operation_setting.GetQuotaDisplayType(),
+		common.QuotaPerUnit,
+		operation_setting.USDExchangeRate,
+		operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate,
+	); err != nil {
+		return fmt.Errorf("quota reminder threshold is outside the supported quota range")
+	}
+
+	switch strings.TrimSpace(req.Template) {
+	case "default", "concise":
+		// A previously saved custom template is irrelevant while a built-in
+		// template is selected. Validate it only when custom is active so stale
+		// data cannot prevent switching back to a built-in template.
+	case "custom":
+		return service.ValidateQuotaReminderCustomTemplate(req.CustomTemplate)
+	default:
+		return fmt.Errorf("unsupported quota reminder template %q", req.Template)
+	}
+	return nil
 }
 
 func collectModelNamesFromOptionValue(raw string, modelNames map[string]struct{}) {
@@ -417,6 +522,13 @@ func UpdateOption(c *gin.Context) {
 			}
 		}
 	}
+	if err := validateQuotaReminderOption(option.Key, option.Value.(string)); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {
 		common.ApiError(c, err)
@@ -425,6 +537,50 @@ func UpdateOption(c *gin.Context) {
 	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
 	recordManageAudit(c, "option.update", map[string]interface{}{
 		"key": option.Key,
+	})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+// UpdateQuotaReminderConfig accepts the complete reminder configuration in
+// one request. The model layer persists its values and display snapshot in a
+// single transaction, which avoids partial settings during concurrent task
+// execution.
+func UpdateQuotaReminderConfig(c *gin.Context) {
+	var req quotaReminderConfigUpdateRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的参数",
+		})
+		return
+	}
+	if err := validateQuotaReminderConfigRequest(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	if err := model.UpdateQuotaReminderOptions(
+		*req.Enabled,
+		strconv.FormatFloat(*req.Threshold, 'f', -1, 64),
+		strings.TrimSpace(req.Template),
+		req.CustomTemplate,
+	); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordManageAudit(c, "option.quota_reminder_update", map[string]interface{}{
+		"keys": []string{
+			"quota_reminder.enabled",
+			"quota_reminder.threshold",
+			"quota_reminder.template",
+			"quota_reminder.custom_template",
+			"quota_reminder.threshold_snapshot",
+		},
 	})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -461,11 +617,7 @@ func SendTestEmail(c *gin.Context) {
 		return
 	}
 
-	subject := fmt.Sprintf("%s SMTP 测试邮件", common.SystemName)
-	content := fmt.Sprintf("<p>这是一封来自 %s 的测试邮件。</p>"+
-		"<p>您能收到它，说明当前保存的 SMTP 配置可以正常发信。</p>"+
-		"<p>发送时间：%s</p>", common.SystemName, time.Now().Format("2006-01-02 15:04:05"))
-	if err := common.SendEmail(subject, receiver, content); err != nil {
+	if err := sendSMTPTestEmail(receiver, "SMTP"); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -477,4 +629,52 @@ func SendTestEmail(c *gin.Context) {
 		"success": true,
 		"message": "",
 	})
+}
+
+// SendQuotaReminderTestEmail sends a one-off low-quota reminder preview to an
+// explicitly supplied address.  It intentionally does not call NotifyUser or
+// touch reminder state: this endpoint is a configuration smoke test only.
+// The reminder service may replace the preview renderer in the future; keeping
+// the transport and validation here preserves the administrator API contract.
+func SendQuotaReminderTestEmail(c *gin.Context) {
+	var req struct {
+		To string `json:"to"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiErrorMsg(c, "参数错误")
+		return
+	}
+	receiver := strings.TrimSpace(req.To)
+	if receiver == "" {
+		common.ApiErrorMsg(c, "请填写收件邮箱")
+		return
+	}
+	if !common.IsValidEmail(receiver) {
+		common.ApiErrorMsg(c, "收件邮箱格式不正确")
+		return
+	}
+	email, err := service.RenderQuotaReminderTestEmail()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err := common.SendEmailWithAlternative(email.Subject, receiver, email.HTML, email.Text); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordManageAudit(c, "option.quota_reminder_test_email", map[string]interface{}{
+		"receiver": receiver,
+	})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+}
+
+func sendSMTPTestEmail(receiver, kind string) error {
+	subject := fmt.Sprintf("%s %s测试邮件", common.SystemName, kind)
+	content := fmt.Sprintf("<p>这是一封来自 %s 的%s测试邮件。</p>"+
+		"<p>您能收到它，说明当前保存的 SMTP 配置可以正常发信。</p>"+
+		"<p>发送时间：%s</p>", common.SystemName, kind, time.Now().Format("2006-01-02 15:04:05"))
+	return common.SendEmail(subject, receiver, content)
 }

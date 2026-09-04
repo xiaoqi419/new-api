@@ -32,7 +32,7 @@ func setupManageUserTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 	model.DB, model.LOG_DB = db, db
 	require.NoError(t, db.AutoMigrate(
-		&model.User{}, &model.UserSession{}, &model.Log{}, &model.CasbinRule{}, &model.AuthzRole{},
+		&model.User{}, &model.UserSession{}, &model.Log{}, &model.CasbinRule{}, &model.AuthzRole{}, &model.QuotaReminderState{},
 	))
 
 	t.Cleanup(func() {
@@ -158,4 +158,64 @@ func TestManageUserDeleteReturnsImmediatelyAndUnknownActionFails(t *testing.T) {
 	require.NoError(t, db.First(&unchanged, unchanged.Id).Error)
 	assert.EqualValues(t, 1, unchanged.AuthVersion)
 	assert.Equal(t, common.UserStatusEnabled, unchanged.Status)
+}
+
+func TestManageUserQuotaAdjustmentCreatesInitialCrossingAndRearms(t *testing.T) {
+	oldEnabled, oldThreshold := common.QuotaRemindEnabled, common.QuotaRemindThreshold
+	common.QuotaRemindEnabled = true
+	common.QuotaRemindThreshold = 50
+	t.Cleanup(func() {
+		common.QuotaRemindEnabled = oldEnabled
+		common.QuotaRemindThreshold = oldThreshold
+	})
+
+	for _, tc := range []struct {
+		name  string
+		mode  string
+		value int
+	}{
+		{name: "subtract", mode: "subtract", value: 60},
+		{name: "override", mode: "override", value: 40},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupManageUserTestDB(t)
+			user := model.User{
+				Username: "managed-quota-" + tc.name, Password: "password", Role: common.RoleCommonUser,
+				Status: common.UserStatusEnabled, Group: "default", Quota: 100,
+			}
+			require.NoError(t, db.Create(&user).Error)
+
+			body := fmt.Sprintf(`{"id":%d,"action":"add_quota","mode":%q,"value":%d}`, user.Id, tc.mode, tc.value)
+			recorder := performManageUserRequest(t, body)
+			assert.Equal(t, http.StatusOK, recorder.Code)
+			assert.Contains(t, recorder.Body.String(), `"success":true`)
+
+			state, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			require.NotNil(t, state)
+			assert.Equal(t, model.QuotaReminderStatusLowPending, state.Status)
+			assert.Equal(t, int64(40), state.LastBalance)
+
+			// Staying below the threshold must not open another cycle.
+			recorder = performManageUserRequest(t, fmt.Sprintf(`{"id":%d,"action":"add_quota","mode":"subtract","value":1}`, user.Id))
+			assert.Contains(t, recorder.Body.String(), `"success":true`)
+			state, err = model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			assert.Equal(t, model.QuotaReminderStatusLowPending, state.Status)
+
+			// Add quota above the threshold to re-arm, then verify a second
+			// high-to-low override opens the next cycle.
+			recorder = performManageUserRequest(t, fmt.Sprintf(`{"id":%d,"action":"add_quota","mode":"add","value":61}`, user.Id))
+			assert.Contains(t, recorder.Body.String(), `"success":true`)
+			state, err = model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			assert.Equal(t, model.QuotaReminderStatusArmed, state.Status)
+
+			recorder = performManageUserRequest(t, fmt.Sprintf(`{"id":%d,"action":"add_quota","mode":"override","value":40}`, user.Id))
+			assert.Contains(t, recorder.Body.String(), `"success":true`)
+			state, err = model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			assert.Equal(t, model.QuotaReminderStatusLowPending, state.Status)
+		})
+	}
 }

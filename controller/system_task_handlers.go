@@ -22,6 +22,22 @@ func RegisterScheduledSystemTasks() {
 	service.RegisterSystemTaskHandler(modelUpdateHandler{})
 	service.RegisterSystemTaskHandler(midjourneyPollHandler{})
 	service.RegisterSystemTaskHandler(asyncTaskPollHandler{})
+	service.RegisterSystemTaskHandler(quotaReminderHandler{})
+}
+
+type quotaReminderHandler struct{}
+
+func (quotaReminderHandler) Type() string            { return model.SystemTaskTypeQuotaReminder }
+func (quotaReminderHandler) Enabled() bool           { return service.QuotaReminderEnabled() }
+func (quotaReminderHandler) Interval() time.Duration { return 5 * time.Minute }
+func (quotaReminderHandler) NewPayload() any         { return nil }
+func (quotaReminderHandler) Run(_ context.Context, task *model.SystemTask, runnerID string) {
+	result, err := service.RunQuotaReminderTaskOnce()
+	if err != nil {
+		finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusFailed, result, err)
+		return
+	}
+	finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusSucceeded, result, nil)
 }
 
 // channelTestHandler runs the scheduled "test all channels" job. Enablement and

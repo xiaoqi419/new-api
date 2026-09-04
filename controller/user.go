@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -1267,6 +1268,7 @@ func ManageUser(c *gin.Context) {
 				common.ApiError(c, err)
 				return
 			}
+			model.ObserveQuotaReminderBalanceWithPrevious(user.Id, model.QuotaReminderBalanceWallet, 0, int64(oldQuota), int64(req.Value))
 			recordManageAuditFor(c, user.Id, "user.quota_override", map[string]interface{}{
 				"from": logger.LogQuota(oldQuota),
 				"to":   logger.LogQuota(req.Value),
@@ -1463,18 +1465,21 @@ func TopUp(c *gin.Context) {
 }
 
 type UpdateUserSettingRequest struct {
-	QuotaWarningType                 string  `json:"notify_type"`
-	QuotaWarningThreshold            float64 `json:"quota_warning_threshold"`
-	WebhookUrl                       string  `json:"webhook_url,omitempty"`
-	WebhookSecret                    string  `json:"webhook_secret,omitempty"`
-	NotificationEmail                string  `json:"notification_email,omitempty"`
-	BarkUrl                          string  `json:"bark_url,omitempty"`
-	GotifyUrl                        string  `json:"gotify_url,omitempty"`
-	GotifyToken                      string  `json:"gotify_token,omitempty"`
-	GotifyPriority                   int     `json:"gotify_priority,omitempty"`
-	UpstreamModelUpdateNotifyEnabled *bool   `json:"upstream_model_update_notify_enabled,omitempty"`
-	AcceptUnsetModelRatioModel       bool    `json:"accept_unset_model_ratio_model"`
-	RecordIpLog                      bool    `json:"record_ip_log"`
+	QuotaWarningType string `json:"notify_type"`
+	// A nil/zero threshold means inherit the administrator's global value.  A
+	// pointer lets the API distinguish an omitted field from an explicit value
+	// while remaining backwards-compatible with existing clients that send 0.
+	QuotaWarningThreshold            *float64 `json:"quota_warning_threshold"`
+	WebhookUrl                       string   `json:"webhook_url,omitempty"`
+	WebhookSecret                    string   `json:"webhook_secret,omitempty"`
+	NotificationEmail                string   `json:"notification_email,omitempty"`
+	BarkUrl                          string   `json:"bark_url,omitempty"`
+	GotifyUrl                        string   `json:"gotify_url,omitempty"`
+	GotifyToken                      string   `json:"gotify_token,omitempty"`
+	GotifyPriority                   int      `json:"gotify_priority,omitempty"`
+	UpstreamModelUpdateNotifyEnabled *bool    `json:"upstream_model_update_notify_enabled,omitempty"`
+	AcceptUnsetModelRatioModel       bool     `json:"accept_unset_model_ratio_model"`
+	RecordIpLog                      bool     `json:"record_ip_log"`
 }
 
 func UpdateUserSetting(c *gin.Context) {
@@ -1491,9 +1496,24 @@ func UpdateUserSetting(c *gin.Context) {
 	}
 
 	// 验证预警阈值
-	if req.QuotaWarningThreshold <= 0 {
-		common.ApiErrorI18n(c, i18n.MsgQuotaThresholdGtZero)
-		return
+	if req.QuotaWarningThreshold != nil {
+		threshold := *req.QuotaWarningThreshold
+		if math.IsNaN(threshold) || math.IsInf(threshold, 0) || threshold < 0 {
+			common.ApiErrorI18n(c, i18n.MsgQuotaThresholdGtZero)
+			return
+		}
+		if threshold > 0 {
+			if _, err := common.NormalizeDisplayedQuotaThreshold(
+				threshold,
+				operation_setting.GetQuotaDisplayType(),
+				common.QuotaPerUnit,
+				operation_setting.USDExchangeRate,
+				operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate,
+			); err != nil {
+				common.ApiErrorI18n(c, i18n.MsgQuotaThresholdGtZero)
+				return
+			}
+		}
 	}
 
 	// 如果是webhook类型,验证webhook地址
@@ -1572,12 +1592,34 @@ func UpdateUserSetting(c *gin.Context) {
 	}
 
 	// 构建设置
+	quotaWarningThreshold := float64(0)
+	if req.QuotaWarningThreshold != nil && *req.QuotaWarningThreshold > 0 {
+		quotaWarningThreshold = *req.QuotaWarningThreshold
+	}
 	settings := dto.UserSetting{
 		NotifyType:                       req.QuotaWarningType,
-		QuotaWarningThreshold:            req.QuotaWarningThreshold,
+		QuotaWarningThreshold:            quotaWarningThreshold,
 		UpstreamModelUpdateNotifyEnabled: upstreamModelUpdateNotifyEnabled,
 		AcceptUnsetRatioModel:            req.AcceptUnsetModelRatioModel,
 		RecordIpLog:                      req.RecordIpLog,
+	}
+	if quotaWarningThreshold > 0 {
+		// Preserve the original unit/rate snapshot when the user is saving other
+		// notification settings. Re-capture semantics only when the threshold
+		// itself changes (or when loading a legacy value without a snapshot).
+		if quotaWarningThreshold == existingSettings.QuotaWarningThreshold && existingSettings.QuotaWarningThresholdUnit != "" {
+			settings.QuotaWarningThresholdUnit = existingSettings.QuotaWarningThresholdUnit
+			settings.QuotaWarningThresholdQuotaPerUnit = existingSettings.QuotaWarningThresholdQuotaPerUnit
+			settings.QuotaWarningThresholdUSDRate = existingSettings.QuotaWarningThresholdUSDRate
+			settings.QuotaWarningThresholdCustomRate = existingSettings.QuotaWarningThresholdCustomRate
+			settings.QuotaWarningThresholdCustomSymbol = existingSettings.QuotaWarningThresholdCustomSymbol
+		} else {
+			settings.QuotaWarningThresholdUnit = operation_setting.GetQuotaDisplayType()
+			settings.QuotaWarningThresholdQuotaPerUnit = common.QuotaPerUnit
+			settings.QuotaWarningThresholdUSDRate = operation_setting.USDExchangeRate
+			settings.QuotaWarningThresholdCustomRate = operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
+			settings.QuotaWarningThresholdCustomSymbol = operation_setting.GetGeneralSetting().CustomCurrencySymbol
+		}
 	}
 
 	// 如果是webhook类型,添加webhook相关设置

@@ -47,6 +47,15 @@ const OPERATIONS_SECTIONS = [
       <MonitoringSettingsSection
         defaultValues={{
           QuotaRemindThreshold: settings.QuotaRemindThreshold,
+          QuotaRemindEnabled: settings.QuotaRemindEnabled,
+          QuotaRemindThresholdUnit: settings.QuotaRemindThresholdUnit,
+          QuotaRemindThresholdQuotaPerUnit:
+            settings.QuotaRemindThresholdQuotaPerUnit,
+          QuotaRemindThresholdUSDRate: settings.QuotaRemindThresholdUSDRate,
+          QuotaRemindThresholdCustomRate:
+            settings.QuotaRemindThresholdCustomRate,
+          QuotaRemindTemplate: settings.QuotaRemindTemplate,
+          QuotaRemindCustomTemplate: settings.QuotaRemindCustomTemplate,
           'perf_metrics_setting.enabled':
             settings['perf_metrics_setting.enabled'] ?? true,
           'perf_metrics_setting.flush_interval':

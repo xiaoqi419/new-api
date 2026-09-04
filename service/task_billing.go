@@ -88,11 +88,61 @@ func taskIsSubscription(task *model.Task) bool {
 
 // taskAdjustFunding 调整任务的资金来源（钱包或订阅），delta > 0 表示扣费，delta < 0 表示退还。
 func taskAdjustFunding(task *model.Task, delta int) error {
+	if delta == 0 {
+		return nil
+	}
 	if taskIsSubscription(task) {
-		return model.PostConsumeUserSubscriptionDelta(task.PrivateData.SubscriptionId, int64(delta))
+		var previous int64
+		havePrevious := false
+		if delta > 0 {
+			if sub, err := model.GetUserSubscriptionByID(task.PrivateData.SubscriptionId); err == nil && sub != nil {
+				previous = sub.AmountTotal - sub.AmountUsed
+				havePrevious = true
+			}
+		}
+		if err := model.PostConsumeUserSubscriptionDelta(task.PrivateData.SubscriptionId, int64(delta)); err != nil {
+			return err
+		}
+		if delta > 0 && havePrevious {
+			sub, subErr := model.GetUserSubscriptionByID(task.PrivateData.SubscriptionId)
+			settings, settingErr := model.GetUserSetting(task.UserId, true)
+			if subErr == nil && sub != nil && settingErr == nil {
+				checkAndSendQuotaReminderForBalances(
+					task.UserId,
+					model.QuotaReminderBalanceSubscription,
+					int64(sub.Id),
+					previous,
+					sub.AmountTotal-sub.AmountUsed,
+					settings,
+				)
+			}
+		}
+		return nil
+	}
+	previous := 0
+	havePrevious := false
+	if delta > 0 {
+		var err error
+		previous, err = model.GetUserQuota(task.UserId, true)
+		havePrevious = err == nil
 	}
 	if delta > 0 {
-		return model.DecreaseUserQuota(task.UserId, delta, false)
+		if err := model.DecreaseUserQuota(task.UserId, delta, false); err != nil {
+			return err
+		}
+		current, quotaErr := model.GetUserQuota(task.UserId, true)
+		settings, settingErr := model.GetUserSetting(task.UserId, true)
+		if havePrevious && quotaErr == nil && settingErr == nil {
+			checkAndSendQuotaReminderForBalances(
+				task.UserId,
+				model.QuotaReminderBalanceWallet,
+				0,
+				int64(previous),
+				int64(current),
+				settings,
+			)
+		}
+		return nil
 	}
 	return model.IncreaseUserQuota(task.UserId, -delta, false)
 }

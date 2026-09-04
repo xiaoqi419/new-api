@@ -467,6 +467,38 @@ func TestSendEmailUsesExplicitStartTLSWithInsecureCertificate(t *testing.T) {
 	}
 }
 
+func TestSendEmailWithAlternativeIncludesPlainTextAndHTMLBodies(t *testing.T) {
+	server := newFakeSMTPServer(t)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = server.host
+	SMTPPort = server.port
+	SMTPSSLEnabled = false
+	SMTPStartTLSEnabled = true
+	SMTPInsecureSkipVerify = true
+	SMTPForceAuthLogin = false
+	SMTPAccount = "sender@example.com"
+	SMTPFrom = "sender@example.com"
+	SMTPToken = "secret"
+	SystemName = "New API"
+
+	err := SendEmailWithAlternative("Quota reminder", "receiver@example.com", "<p>HTML body</p>", "Plain body")
+	require.NoError(t, err)
+
+	select {
+	case message := <-server.messages:
+		assert.Contains(t, message, "MIME-Version: 1.0")
+		assert.Contains(t, message, "Content-Type: multipart/alternative;")
+		assert.Contains(t, message, "Content-Type: text/plain; charset=UTF-8")
+		assert.Contains(t, message, "Plain body")
+		assert.Contains(t, message, "Content-Type: text/html; charset=UTF-8")
+		assert.Contains(t, message, "<p>HTML body</p>")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SMTP DATA")
+	}
+}
+
 func TestSendEmailExplicitStartTLSRequiresServerSupport(t *testing.T) {
 	server := newFakeSMTPServerWithSTARTTLSAdvertisement(t, false)
 	defer server.close()
