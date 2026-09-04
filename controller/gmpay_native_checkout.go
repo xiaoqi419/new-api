@@ -381,6 +381,24 @@ func quoteGMPayWalletFee(ctx context.Context, epayCfg tenantEpayConfig, baseAmou
 	// merchant credentials. An explicit dynamic_enabled=false remains a
 	// deliberate opt-out and falls through to the optional administrator
 	// fallback/legacy gateway-included behavior.
+	mode := cfg.ResolvedQuoteMode()
+	if mode == service.GMPayQuoteModeAdmin {
+		if !cfg.HasFallbackPolicy() {
+			return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+		}
+		quote, quoteErr := service.GMPayFeeQuoteForAsset(baseAmount, token, network)
+		if quoteErr != nil {
+			return service.GMPayFeeQuote{}, quoteErr
+		}
+		if quote.Source != service.GMPayFeeSourceGatewayIncluded {
+			if currencyErr != nil || strings.TrimSpace(settlementCurrency) == "" {
+				return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
+			}
+			quote.SettlementCurrency = settlementCurrency
+		}
+		return quote, nil
+	}
+
 	dynamicRequested := cfg.IsDynamicEnabled() || !cfg.IsDynamicConfigured()
 	if dynamicRequested {
 		estimator, provenance, estimatorErr := resolveGMPayWalletEstimatorWithProvenance(ctx, epayCfg, cfg)
@@ -420,7 +438,7 @@ func quoteGMPayWalletFee(ctx context.Context, epayCfg tenantEpayConfig, baseAmou
 				}
 			}
 		}
-		if !cfg.HasFallbackPolicy() {
+		if mode == service.GMPayQuoteModeSimulate || !cfg.HasFallbackPolicy() {
 			return service.GMPayFeeQuote{}, service.ErrGMPayFeeUnavailable
 		}
 	}

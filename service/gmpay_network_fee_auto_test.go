@@ -83,6 +83,7 @@ func TestBuiltinNetworkFeeEstimatorEVMSyntheticSenderFallback(t *testing.T) {
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeSimulateThenEmpirical
 	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "ethereum", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
 	require.NoError(t, err)
 	assert.Equal(t, "0.000065", quote.NativeAmount.String())
@@ -268,6 +269,7 @@ func TestBuiltinNetworkFeeEstimatorTRONUsesEmpiricalEnergyWhenSimulationUnavaila
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeEmpirical
 	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
 	require.NoError(t, err)
 	assert.Equal(t, "64285", quote.Evidence.Energy)
@@ -302,12 +304,9 @@ func TestBuiltinNetworkFeeEstimatorTRONRejectsRevertedSimulationEnergy(t *testin
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
-	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
-	require.NoError(t, err)
-	assert.Equal(t, "64285", quote.Evidence.Energy)
-	assert.Equal(t, "6.7735", quote.NativeAmount.String())
-	assert.NotEqual(t, "8624", quote.Evidence.Energy)
-	assert.Contains(t, quote.Evidence.RPCMethods, builtinTRONEmpiricalEnergyMethod)
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
 }
 
 func TestBuiltinNetworkFeeEstimatorTRONSimulateModeDoesNotUseEmpiricalEnergy(t *testing.T) {

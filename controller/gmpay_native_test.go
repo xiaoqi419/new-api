@@ -229,6 +229,78 @@ func TestGMPayWalletDynamicFailureUsesAdministratorFallback(t *testing.T) {
 	}
 }
 
+func TestGMPayWalletQuoteModeSimulateIgnoresAdministratorFallback(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousClientFactory := newGMPayNativeClient
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		newGMPayNativeClient = previousClientFactory
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient("https://pay.example.test", "pid", "secret")}
+	failingEstimator := gmpayEstimatorCountingStub{err: errors.New("simulated dynamic outage")}
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		return failingEstimator, nil
+	}
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{
+		service.GMPayFeeConfigOptionKey: `{"version":1,"quote_mode":"simulate","fallback_enabled":true,"fallback_mode":"fixed","fallback_value":"5","max_fee":"20","max_total":"100000"}`,
+	}
+	common.OptionMapRWMutex.Unlock()
+	_, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(30), "USDT", "tron")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, service.ErrGMPayFeeUnavailable)
+}
+
+func TestGMPayWalletQuoteModeAdminSkipsChainEstimate(t *testing.T) {
+	previousOptions := common.OptionMap
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	previousDiscovery := discoverGMPayNetworkFeeEstimatorFromClient
+	previousAutomatic := newAutomaticGMPayNetworkFeeEstimator
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previousOptions
+		common.OptionMapRWMutex.Unlock()
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
+		discoverGMPayNetworkFeeEstimatorFromClient = previousDiscovery
+		newAutomaticGMPayNetworkFeeEstimator = previousAutomatic
+		resetCachedAutomaticGMPayNetworkFeeEstimator()
+	})
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	var estimateCalls atomic.Int32
+	discoverGMPayNetworkFeeEstimatorFromClient = func(context.Context, *service.GMPayClient) (service.NetworkFeeEstimator, error) {
+		estimateCalls.Add(1)
+		return gmpayEstimatorCountingStub{quote: gmpayTestNetworkFeeQuote("9")}, nil
+	}
+	newAutomaticGMPayNetworkFeeEstimator = func() (service.NetworkFeeEstimator, error) {
+		estimateCalls.Add(1)
+		return gmpayEstimatorCountingStub{quote: gmpayTestNetworkFeeQuote("9")}, nil
+	}
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap = map[string]string{
+		service.GMPayFeeConfigOptionKey: `{"version":1,"quote_mode":"admin","fallback_enabled":true,"fallback_mode":"percent","fallback_value":"10","max_fee":"20","max_total":"100000"}`,
+	}
+	common.OptionMapRWMutex.Unlock()
+	epCfg := tenantEpayConfig{Enabled: true, Client: buildEpayClient("https://pay.example.test", "pid", "secret")}
+	quote, err := quoteGMPayWalletFee(context.Background(), epCfg, decimal.NewFromInt(30), "USDT", "tron")
+	require.NoError(t, err)
+	assert.Equal(t, service.GMPayFeeSourceAdminFallback, quote.Source)
+	assert.Equal(t, "3.00", quote.FeeAmount.StringFixed(2))
+	assert.Equal(t, int32(0), estimateCalls.Load())
+}
+
 func TestTestGMPayFeeEstimateUsesAdministratorFallback(t *testing.T) {
 	previousOptions := common.OptionMap
 	previousPayAddress := operation_setting.PayAddress

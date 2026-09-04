@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-quote-policy',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'feat',
+        items: [
+          'GMPay 报价策略改为：只链上模拟、只管理员固定/百分比、模拟失败再走管理员规则；适用于全部 USDT 网络。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-quote-mode',
     date: '2026-09-04',
     changes: [

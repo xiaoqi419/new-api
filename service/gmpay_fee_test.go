@@ -74,15 +74,23 @@ func TestParseGMPayFeeConfigInfersLegacyDefaultMode(t *testing.T) {
 func TestParseGMPayFeeConfigTronQuoteMode(t *testing.T) {
 	missing, err := ParseGMPayFeeConfig(`{"version":1}`)
 	require.NoError(t, err)
-	assert.Equal(t, GMPayQuoteModeSimulateThenEmpirical, missing.ResolvedQuoteMode())
+	assert.Equal(t, GMPayQuoteModeSimulateThenAdmin, missing.ResolvedQuoteMode())
 
 	simulate, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"simulate"}`)
 	require.NoError(t, err)
 	assert.Equal(t, GMPayQuoteModeSimulate, simulate.ResolvedQuoteMode())
 
+	admin, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"admin"}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayQuoteModeAdmin, admin.ResolvedQuoteMode())
+
 	legacy, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"empirical"}`)
 	require.NoError(t, err)
-	assert.Equal(t, GMPayQuoteModeEmpirical, legacy.ResolvedQuoteMode())
+	assert.Equal(t, GMPayQuoteModeAdmin, legacy.ResolvedQuoteMode())
+
+	legacyCombo, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"simulate_then_empirical"}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayQuoteModeSimulateThenAdmin, legacyCombo.ResolvedQuoteMode())
 
 	preferred, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"simulate","tron_quote_mode":"empirical"}`)
 	require.NoError(t, err)

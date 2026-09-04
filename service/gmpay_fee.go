@@ -43,6 +43,8 @@ const (
 	gmpayFeeMaxOverrides    = 64
 
 	GMPayQuoteModeSimulate              = "simulate"
+	GMPayQuoteModeAdmin                 = "admin"
+	GMPayQuoteModeSimulateThenAdmin     = "simulate_then_admin"
 	GMPayQuoteModeEmpirical             = "empirical"
 	GMPayQuoteModeSimulateThenEmpirical = "simulate_then_empirical"
 
@@ -175,10 +177,17 @@ func parseGMPayQuoteModeValue(value json.RawMessage, field string) (string, erro
 		return "", fmt.Errorf("gmpay fee %s must be a string", field)
 	}
 	mode := strings.ToLower(strings.TrimSpace(common.JsonRawMessageToString(value)))
-	if mode != "" && mode != GMPayQuoteModeSimulate && mode != GMPayQuoteModeEmpirical && mode != GMPayQuoteModeSimulateThenEmpirical {
-		return "", fmt.Errorf("gmpay fee %s must be simulate, empirical, or simulate_then_empirical", field)
+	switch mode {
+	case "",
+		GMPayQuoteModeSimulate,
+		GMPayQuoteModeAdmin,
+		GMPayQuoteModeSimulateThenAdmin,
+		GMPayQuoteModeEmpirical,
+		GMPayQuoteModeSimulateThenEmpirical:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("gmpay fee %s must be simulate, admin, or simulate_then_admin", field)
 	}
-	return mode, nil
 }
 
 func (cfg GMPayFeeConfig) ResolvedQuoteMode() string {
@@ -189,10 +198,10 @@ func (cfg GMPayFeeConfig) ResolvedQuoteMode() string {
 	switch mode {
 	case GMPayQuoteModeSimulate:
 		return GMPayQuoteModeSimulate
-	case GMPayQuoteModeEmpirical:
-		return GMPayQuoteModeEmpirical
+	case GMPayQuoteModeAdmin, GMPayQuoteModeEmpirical:
+		return GMPayQuoteModeAdmin
 	default:
-		return GMPayQuoteModeSimulateThenEmpirical
+		return GMPayQuoteModeSimulateThenAdmin
 	}
 }
 

@@ -529,7 +529,7 @@ describe('GMPay fee fallback configuration', () => {
 
   test('defaults quote mode and maps the TRON-only alias', () => {
     expect(parseGMPayFeeConfig(DEFAULT_GMPAY_FEE_CONFIG_JSON)).toMatchObject({
-      quote_mode: 'simulate_then_empirical',
+      quote_mode: 'simulate_then_admin',
     })
     expect(JSON.parse(DEFAULT_GMPAY_FEE_CONFIG_JSON)).not.toHaveProperty(
       'quote_mode'
@@ -544,11 +544,11 @@ describe('GMPay fee fallback configuration', () => {
       tron_quote_mode: 'empirical',
     })
     expect(getGMPayFeeConfigError(empirical)).toBeNull()
-    expect(parseGMPayFeeConfig(empirical).quote_mode).toBe('empirical')
+    expect(parseGMPayFeeConfig(empirical).quote_mode).toBe('admin')
     expect(
       JSON.parse(serializeGMPayFeeConfig(parseGMPayFeeConfig(empirical)))
         .quote_mode
-    ).toBe('empirical')
+    ).toBe('admin')
   })
 
   test('shows a translated fallback mode and a percent suffix', () => {
