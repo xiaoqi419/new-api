@@ -327,7 +327,7 @@ func TestBuiltinNetworkFeeEstimatorTRONSimulateModeDoesNotUseEmpiricalEnergy(t *
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
-	estimator.tronQuoteMode = GMPayTronQuoteModeSimulate
+	estimator.quoteMode = GMPayQuoteModeSimulate
 	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
@@ -350,7 +350,7 @@ func TestBuiltinNetworkFeeEstimatorTRONEmpiricalModeSkipsSimulation(t *testing.T
 	})
 	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
 	require.NoError(t, err)
-	estimator.tronQuoteMode = GMPayTronQuoteModeEmpirical
+	estimator.quoteMode = GMPayQuoteModeEmpirical
 	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "tron", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(1)})
 	require.NoError(t, err)
 	assert.Equal(t, "64285", quote.Evidence.Energy)
@@ -358,6 +358,78 @@ func TestBuiltinNetworkFeeEstimatorTRONEmpiricalModeSkipsSimulation(t *testing.T
 	assert.Contains(t, quote.Evidence.RPCMethods, builtinTRONEmpiricalEnergyMethod)
 	assert.NotContains(t, paths, "/wallet/estimateenergy")
 	assert.NotContains(t, paths, "/wallet/triggerconstantcontract")
+}
+
+func TestBuiltinNetworkFeeEstimatorEVMSimulateModeDoesNotUseEmpiricalGas(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"ethereum":{"usd":3000,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		if call.Method == "eth_estimateGas" {
+			return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32000}}`), nil
+		}
+		return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":"0x3b9aca00"}`), nil
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeSimulate
+	_, err = estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "ethereum", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNetworkFeeUnavailable)
+}
+
+func TestBuiltinNetworkFeeEstimatorEVMEmpiricalModeSkipsEstimateGas(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var methods []string
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"ethereum":{"usd":3000,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		methods = append(methods, call.Method)
+		if call.Method == "eth_estimateGas" {
+			return builtinResponse(http.StatusInternalServerError, `{}`), nil
+		}
+		return builtinResponse(http.StatusOK, `{"jsonrpc":"2.0","id":1,"result":"0x3b9aca00"}`), nil
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeEmpirical
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "ethereum", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "65000", quote.Evidence.Gas)
+	assert.Contains(t, quote.Evidence.RPCMethods, builtinEVMEmpiricalGasMethod)
+	assert.NotContains(t, methods, "eth_estimateGas")
+}
+
+func TestBuiltinNetworkFeeEstimatorSolanaEmpiricalModeSkipsFeeForMessage(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	var methods []string
+	transport := builtinEstimatorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodGet {
+			return builtinResponse(http.StatusOK, fmt.Sprintf(`{"solana":{"usd":150,"last_updated_at":%d}}`, now.Unix())), nil
+		}
+		body, _ := io.ReadAll(req.Body)
+		var call networkFeeRPCRequest
+		require.NoError(t, common.Unmarshal(body, &call))
+		methods = append(methods, call.Method)
+		return builtinResponse(http.StatusInternalServerError, `{}`), nil
+	})
+	estimator, err := NewBuiltinNetworkFeeEstimatorWithClock(&http.Client{Transport: transport}, func() time.Time { return now })
+	require.NoError(t, err)
+	estimator.quoteMode = GMPayQuoteModeEmpirical
+	quote, err := estimator.Estimate(context.Background(), NetworkFeeEstimateInput{Token: "USDT", Network: "solana", SettlementCurrency: "USD", BaseAmount: decimal.NewFromInt(10)})
+	require.NoError(t, err)
+	assert.Equal(t, "5000", quote.Evidence.Lamports)
+	assert.Equal(t, builtinSolanaEmpiricalFeeMethod, quote.Evidence.RPCMethod)
+	assert.NotContains(t, methods, "getFeeForMessage")
+	assert.NotContains(t, methods, "getLatestBlockhash")
 }
 
 func TestBuiltinNetworkFeeEstimatorFailsClosedOnStalePrice(t *testing.T) {

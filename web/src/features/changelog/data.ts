@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260904-gmpay-quote-mode',
+    date: '2026-09-04',
+    changes: [
+      {
+        kind: 'feat',
+        items: [
+          'GMPay 动态报价策略改为全局开关，TRON、Ethereum、BSC、Solana 都可选择只模拟、只经验用量、或模拟失败后再经验兜底。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260904-gmpay-tron-quote-mode',
     date: '2026-09-04',
     changes: [

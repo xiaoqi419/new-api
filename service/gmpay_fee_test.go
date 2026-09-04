@@ -74,19 +74,23 @@ func TestParseGMPayFeeConfigInfersLegacyDefaultMode(t *testing.T) {
 func TestParseGMPayFeeConfigTronQuoteMode(t *testing.T) {
 	missing, err := ParseGMPayFeeConfig(`{"version":1}`)
 	require.NoError(t, err)
-	assert.Equal(t, GMPayTronQuoteModeSimulateThenEmpirical, missing.ResolvedTronQuoteMode())
+	assert.Equal(t, GMPayQuoteModeSimulateThenEmpirical, missing.ResolvedQuoteMode())
 
-	simulate, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"simulate"}`)
+	simulate, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"simulate"}`)
 	require.NoError(t, err)
-	assert.Equal(t, GMPayTronQuoteModeSimulate, simulate.ResolvedTronQuoteMode())
+	assert.Equal(t, GMPayQuoteModeSimulate, simulate.ResolvedQuoteMode())
 
-	empirical, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"empirical"}`)
+	legacy, err := ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"empirical"}`)
 	require.NoError(t, err)
-	assert.Equal(t, GMPayTronQuoteModeEmpirical, empirical.ResolvedTronQuoteMode())
+	assert.Equal(t, GMPayQuoteModeEmpirical, legacy.ResolvedQuoteMode())
 
-	_, err = ParseGMPayFeeConfig(`{"version":1,"tron_quote_mode":"guess"}`)
+	preferred, err := ParseGMPayFeeConfig(`{"version":1,"quote_mode":"simulate","tron_quote_mode":"empirical"}`)
+	require.NoError(t, err)
+	assert.Equal(t, GMPayQuoteModeSimulate, preferred.ResolvedQuoteMode())
+
+	_, err = ParseGMPayFeeConfig(`{"version":1,"quote_mode":"guess"}`)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "tron_quote_mode")
+	assert.Contains(t, err.Error(), "quote_mode")
 }
 
 func TestParseGMPayFeeConfigRequiresFallbackModeForFallbackValue(t *testing.T) {

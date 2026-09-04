@@ -55,10 +55,19 @@ import { cn } from '@/lib/utils'
  */
 
 export type GMPayFeeMode = 'fixed' | 'percent'
-export type GMPayTronQuoteMode =
+export type GMPayQuoteMode =
   | 'simulate'
   | 'empirical'
   | 'simulate_then_empirical'
+export type GMPayTronQuoteMode = GMPayQuoteMode
+
+function isGMPayQuoteMode(value: unknown): value is GMPayQuoteMode {
+  return (
+    value === 'simulate' ||
+    value === 'empirical' ||
+    value === 'simulate_then_empirical'
+  )
+}
 export type GMPayEstimatorMode = 'auto' | 'tron' | 'evm' | 'solana'
 export type GMPayNetwork = 'tron' | 'ethereum' | 'binance' | 'solana'
 
@@ -125,7 +134,7 @@ export type GMPayFeeConfig = {
   rpc_allowed_hosts: Partial<Record<GMPayNetwork, string[]>>
   price_allowed_hosts: Partial<Record<GMPayNetwork, string[]>>
   fallback_enabled: boolean
-  tron_quote_mode: GMPayTronQuoteMode
+  quote_mode: GMPayQuoteMode
   fallback_mode: GMPayFeeMode
   default: GMPayFeeRule
   overrides: Record<string, GMPayFeeRule>
@@ -222,6 +231,7 @@ const FEE_CONFIG_KEYS = new Set([
   'contexts',
   'chains',
   'fallback_enabled',
+  'quote_mode',
   'tron_quote_mode',
   'fallback_mode',
   'fallback_value',
@@ -334,7 +344,7 @@ export const DEFAULT_GMPAY_FEE_CONFIG: GMPayFeeConfig = {
   rpc_allowed_hosts: {},
   price_allowed_hosts: {},
   fallback_enabled: false,
-  tron_quote_mode: 'simulate_then_empirical',
+  quote_mode: 'simulate_then_empirical',
   fallback_mode: 'fixed',
   default: { mode: 'fixed', value: '0.00' },
   overrides: {},
@@ -1026,13 +1036,9 @@ export function getGMPayFeeConfigError(value: string): string | null {
     }
   }
 
-  if (Object.hasOwn(parsed, 'tron_quote_mode')) {
-    if (
-      parsed.tron_quote_mode !== 'simulate' &&
-      parsed.tron_quote_mode !== 'empirical' &&
-      parsed.tron_quote_mode !== 'simulate_then_empirical'
-    ) {
-      return 'GMPay TRON quote mode is invalid'
+  for (const key of ['quote_mode', 'tron_quote_mode']) {
+    if (Object.hasOwn(parsed, key) && !isGMPayQuoteMode(parsed[key])) {
+      return 'GMPay quote mode is invalid'
     }
   }
 
@@ -1292,6 +1298,13 @@ export function parseGMPayFeeConfig(value: string): GMPayFeeConfig | null {
     if (Object.keys(context).length > 0) contexts[network] = context
   }
 
+  let quoteMode = DEFAULT_GMPAY_FEE_CONFIG.quote_mode
+  if (isGMPayQuoteMode(parsed.quote_mode)) {
+    quoteMode = parsed.quote_mode
+  } else if (isGMPayQuoteMode(parsed.tron_quote_mode)) {
+    quoteMode = parsed.tron_quote_mode
+  }
+
   const readNumber = (keys: string[], fallback: number) => {
     for (const key of keys) {
       if (typeof parsed[key] === 'number') return parsed[key] as number
@@ -1346,12 +1359,7 @@ export function parseGMPayFeeConfig(value: string): GMPayFeeConfig | null {
     rpc_allowed_hosts: canonical.rpcAllowedHosts,
     price_allowed_hosts: canonical.priceAllowedHosts,
     fallback_enabled: fallbackEnabled,
-    tron_quote_mode:
-      parsed.tron_quote_mode === 'simulate' ||
-      parsed.tron_quote_mode === 'empirical' ||
-      parsed.tron_quote_mode === 'simulate_then_empirical'
-        ? parsed.tron_quote_mode
-        : DEFAULT_GMPAY_FEE_CONFIG.tron_quote_mode,
+    quote_mode: quoteMode,
     fallback_mode: fallbackMode,
     default: defaultRule,
     overrides,
@@ -1569,11 +1577,8 @@ export function serializeGMPayFeeConfig(
   // Omit a false value so the server can use its automatic-discovery mode.
   // An explicit true still opts into the configured estimator path.
   if (config.dynamic_enabled) serialized.dynamic_enabled = true
-  if (
-    config.tron_quote_mode &&
-    config.tron_quote_mode !== 'simulate_then_empirical'
-  ) {
-    serialized.tron_quote_mode = config.tron_quote_mode
+  if (config.quote_mode && config.quote_mode !== 'simulate_then_empirical') {
+    serialized.quote_mode = config.quote_mode
   }
   if (options.includeLegacyEnabled) serialized.enabled = config.fallback_enabled
   return JSON.stringify(serialized, null, 2)
@@ -2968,31 +2973,29 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
       ) : null}
 
       <div className='min-w-0 space-y-1.5'>
-        <Label htmlFor='gmpay-tron-quote-mode'>
-          {t('TRON quote strategy')}
-        </Label>
+        <Label htmlFor='gmpay-quote-mode'>{t('Quote strategy')}</Label>
         <Select
-          value={draft.tron_quote_mode}
+          value={draft.quote_mode}
           onValueChange={(value) => {
             if (
               value === 'simulate' ||
               value === 'empirical' ||
               value === 'simulate_then_empirical'
             ) {
-              updateDraft({ ...draft, tron_quote_mode: value })
+              updateDraft({ ...draft, quote_mode: value })
             }
           }}
         >
-          <SelectTrigger id='gmpay-tron-quote-mode' className='w-full'>
+          <SelectTrigger id='gmpay-quote-mode' className='w-full'>
             <SelectValue>
               {
                 {
                   simulate: t('On-chain simulation only'),
-                  empirical: t('Empirical energy only'),
+                  empirical: t('Empirical usage only'),
                   simulate_then_empirical: t(
                     'Simulate, then empirical fallback'
                   ),
-                }[draft.tron_quote_mode]
+                }[draft.quote_mode]
               }
             </SelectValue>
           </SelectTrigger>
@@ -3004,7 +3007,7 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
               {t('On-chain simulation only')}
             </SelectItem>
             <SelectItem value='empirical'>
-              {t('Empirical energy only')}
+              {t('Empirical usage only')}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -3012,15 +3015,15 @@ export function GMPayFeeConfigEditor(props: ConfigEditorProps) {
           {
             {
               simulate: t(
-                'Reject the dynamic quote when TRON simulation fails. Administrator fallback still applies if enabled.'
+                'Reject the dynamic quote when chain simulation fails. Administrator fallback still applies if enabled.'
               ),
               empirical: t(
-                'Use live energy and bandwidth prices with the existing-holder energy amount. Skip contract simulation.'
+                'Use representative usage with live prices for TRON, Ethereum, BSC, and Solana. Skip contract simulation.'
               ),
               simulate_then_empirical: t(
-                'Try official TRON simulation first. If it fails, use existing-holder energy with live chain prices.'
+                'Try official chain simulation first. If it fails, use representative usage with live prices.'
               ),
-            }[draft.tron_quote_mode]
+            }[draft.quote_mode]
           }
         </p>
       </div>

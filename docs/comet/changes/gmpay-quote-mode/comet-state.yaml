@@ -1,0 +1,115 @@
+schema: comet.native.v4
+name: gmpay-quote-mode
+language: zh-CN
+phase: build
+status: active
+state_version: 2
+brief: brief.md
+spec_changes:
+  - capability: gmpay-quote-mode
+    operation: create
+    source: specs/gmpay-quote-mode/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-quote-mode
+  target_branch: main
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 旧配置只有 `tron_quote_mode=empirical` 时，ETH/BSC/Solana/TRON 都按经验用量报价。"
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: "A2: `quote_mode=simulate` 时，各链模拟失败不再用经验用量；管理员兜底关闭则拒绝充值。"
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: "A3: `quote_mode=empirical` 时，TRON 不调 estimateenergy，EVM 不调
+      eth_estimateGas，Solana 不调 getFeeForMessage。"
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: "A4: 缺省或 `simulate_then_empirical` 保持当前各链「先模拟后经验」行为。"
+    result: pending
+    reason: null
+  - id: A5
+    source: brief.md
+    text: "A5: 管理界面显示「报价策略」，不再写「TRON 报价策略」。"
+    result: pending
+    reason: null
+  - id: A6
+    source: specs/gmpay-quote-mode/spec.md
+    text: "`GMPayFeeConfig.quote_mode` 控制内置估算器在全部支持网络上的行为："
+    result: pending
+    reason: null
+  - id: A7
+    source: specs/gmpay-quote-mode/spec.md
+    text: "| 值 | TRON | Ethereum / BSC | Solana |"
+    result: pending
+    reason: null
+  - id: A8
+    source: specs/gmpay-quote-mode/spec.md
+    text: "| `simulate` | 仅合约模拟 | 仅 `eth_estimateGas` | 仅 `getFeeForMessage` |"
+    result: pending
+    reason: null
+  - id: A9
+    source: specs/gmpay-quote-mode/spec.md
+    text: "| `empirical` | 64285 energy + 345 bandwidth × 链上单价 | 65000 gas × 实时 gas
+      price | 5000 lamports |"
+    result: pending
+    reason: null
+  - id: A10
+    source: specs/gmpay-quote-mode/spec.md
+    text: "| `simulate_then_empirical` | 模拟失败后经验 | `eth_estimateGas` 失败后 65000 gas |
+      `getFeeForMessage` 失败后 5000 lamports |"
+    result: pending
+    reason: null
+  - id: A11
+    source: specs/gmpay-quote-mode/spec.md
+    text: 缺省、空字符串视为 `simulate_then_empirical`。若没有 `quote_mode` 但存在
+      `tron_quote_mode`，使用后者。非法值拒绝保存。
+    result: pending
+    reason: null
+  - id: A12
+    source: specs/gmpay-quote-mode/spec.md
+    text: 经验路径不得在缺少实时单价时编造费用。管理员 `fallback_enabled` 仍只在动态报价失败后生效。
+    result: pending
+    reason: null
+  - id: A13
+    source: specs/gmpay-quote-mode/spec.md
+    text: 管理界面使用「报价策略」文案，选项适用于全部 GMPay Native USDT 网络。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-09-04T02:37:30.059Z
