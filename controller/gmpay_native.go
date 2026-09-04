@@ -337,8 +337,17 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		}
 		return false
 	}
+	if feeCfg.ResolvedQuoteMode() == service.GMPayQuoteModeAdmin {
+		status.Capability = true
+		if status.FallbackEnabled && markFallbackReady() {
+			return status
+		}
+		status.Reason = gmpayFeeEstimateUnavailableMessage
+		return status
+	}
 	estimator, err := resolveGMPayEstimatorWithClient(ctx, feeCfg, client)
 	if err != nil {
+		status.Capability = true
 		if status.FallbackEnabled && markFallbackReady() {
 			return status
 		}
@@ -351,8 +360,8 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		}
 		return status
 	}
+	status.Capability = true
 	if gmpayEstimatorHasQuote(ctx, estimator, assets, feeCfg) {
-		status.Capability = true
 		status.Healthy, status.QuoteAvailable = true, true
 		status.FeeSource = service.GMPayFeeSourceChainNetworkEstimate
 		status.LastSuccessAt = status.LastSyncAt
