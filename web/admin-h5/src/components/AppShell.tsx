@@ -50,8 +50,10 @@ export function AppShell(): ReactElement {
               <button
                 key={siteId}
                 type="button"
+                disabled={isAuthenticated}
+                title={isAuthenticated ? (t("site.signOutToSwitch") as string) : undefined}
                 onClick={() => setActiveSite(siteId as SiteId)}
-                className={`min-h-9 rounded-md px-2 text-xs font-medium ${activeSiteId === siteId ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                className={`min-h-9 rounded-md px-2 text-xs font-medium ${activeSiteId === siteId ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"} disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 {t(`site.${siteId}`, { defaultValue: siteConfigs[siteId].label })}
               </button>

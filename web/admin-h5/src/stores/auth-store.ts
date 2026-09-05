@@ -47,7 +47,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   setActiveSite: (activeSiteId) => {
-    const site = get().sites[activeSiteId];
+    const current = get();
+    if (activeSiteId !== current.activeSiteId && current.sites[current.activeSiteId].accessToken) {
+      return;
+    }
+    const site = current.sites[activeSiteId];
     set({
       activeSiteId,
       accessToken: site.accessToken,

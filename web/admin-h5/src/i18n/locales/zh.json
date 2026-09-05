@@ -149,6 +149,7 @@
   },
   "site": {
     "switcher": "站点",
+    "signOutToSwitch": "退出登录后才能切换站点",
     "domestic": "国内站",
     "international": "国际站"
   }

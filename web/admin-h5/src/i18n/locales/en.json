@@ -149,6 +149,7 @@
   },
   "site": {
     "switcher": "Site",
+    "signOutToSwitch": "Sign out before switching sites",
     "domestic": "Domestic",
     "international": "International"
   }

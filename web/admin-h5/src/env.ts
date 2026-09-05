@@ -6,6 +6,7 @@ export interface SiteConfig {
   baseUrl: string;
   configured: boolean;
 }
+export const siteIds: SiteId[] = ["domestic", "international"];
 interface BuildEnv {
   VITE_DOMESTIC_API_BASE_URL?: string;
   VITE_INTERNATIONAL_API_BASE_URL?: string;
@@ -41,6 +42,20 @@ export const siteConfigs: Record<SiteId, SiteConfig> = {
     configured: env.VITE_INTERNATIONAL_API_BASE_URL !== undefined,
   },
 };
-export const siteIds: SiteId[] = ["domestic", "international"];
-export const defaultSiteId: SiteId =
+const configuredDefaultSite: SiteId =
   env.VITE_DEFAULT_SITE === "international" ? "international" : "domestic";
+
+function matchesCurrentOrigin(site: SiteConfig): boolean {
+  if (!site.baseUrl || typeof window === "undefined") return false;
+  try {
+    return new URL(site.baseUrl, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+// A single bundle is deployed on both public domains. Prefer the site whose
+// configured API origin matches the current browser origin, then fall back to
+// the explicit build default for other deployments.
+export const defaultSiteId: SiteId =
+  siteIds.find((siteId) => matchesCurrentOrigin(siteConfigs[siteId])) ?? configuredDefaultSite;
