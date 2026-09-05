@@ -1,0 +1,155 @@
+{
+  "app": {
+    "title": "Admin",
+    "navigation": {
+      "signIn": "Sign in",
+      "users": "Users"
+    },
+    "fallbacks": {
+      "notFoundTitle": "Page not found",
+      "notFoundDescription": "The page you requested is not available.",
+      "errorTitle": "Something went wrong",
+      "errorDescription": "This page could not be loaded. Please try again later."
+    }
+  },
+  "auth": {
+    "username": "Username",
+    "password": "Password",
+    "verificationCode": "Verification code",
+    "signIn": "Sign in",
+    "verify": "Verify code",
+    "loading": "Signing in…",
+    "signOut": "Sign out",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "errors": {
+      "required": "This field is required.",
+      "signIn": "Sign-in failed. Check your credentials and try again.",
+      "verification": "The verification code was not accepted.",
+      "permission": "You do not have permission to access the admin area.",
+      "network": "Unable to sign in. Please try again."
+    }
+  },
+  "sections": {
+    "signInTitle": "Sign in",
+    "signInDescription": "Use your admin account to continue.",
+    "usersTitle": "Users",
+    "usersDescription": "This section is ready.",
+    "userTitle": "User details",
+    "userDescription": "This section is ready.",
+    "backToUsers": "Back to users"
+  },
+  "users": {
+    "title": "Users",
+    "description": "Search and manage admin users.",
+    "searchLabel": "Search users",
+    "searchPlaceholder": "Search by username or email",
+    "filters": "User filters",
+    "all": "All",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "lowBalance": "Low balance",
+    "loading": "Loading users",
+    "empty": "No users found.",
+    "noEmail": "No email address",
+    "error": "Unable to load users.",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "group": "Group",
+    "quota": "Balance",
+    "usedQuota": "Used balance",
+    "pagination": "User list pages",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{total}}"
+  },
+  "userDetail": {
+    "title": "User details",
+    "backToUsers": "Back to users",
+    "invalidTitle": "User not found",
+    "invalidDescription": "The user link is invalid.",
+    "loadingUser": "Loading user details",
+    "identity": "Identity",
+    "username": "Username",
+    "displayName": "Display name",
+    "email": "Email",
+    "notAvailable": "Not available",
+    "status": "Status",
+    "group": "Group",
+    "id": "User ID",
+    "quotaOverview": "Balance overview",
+    "quota": "Balance",
+    "usedQuota": "Used balance",
+    "remainingQuota": "Remaining balance",
+    "adjustQuota": "Adjust balance",
+    "topupHistory": "Recharge history",
+    "loadingTopups": "Loading recharge history",
+    "topupEmpty": "No recharge records found.",
+    "topupError": "Unable to load recharge history.",
+    "userError": "Unable to load user details.",
+    "quotaAdjusted": "Balance updated successfully.",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "quotaAmount": "Balance amount",
+    "orderNumber": "Order number",
+    "tradeNumber": "Trade number",
+    "createdAt": "Created",
+    "pagination": "Recharge history pages",
+    "pageOf": "Page {{page}} of {{total}}",
+    "totalQuota": "Total balance",
+    "paymentMethod": "Payment method",
+    "statuses": {
+      "pending": "Pending",
+      "success": "Success",
+      "failed": "Failed",
+      "expired": "Expired",
+      "held": "Held"
+    },
+    "paymentMethods": {
+      "balance": "Balance",
+      "stripe": "Stripe",
+      "creem": "Creem",
+      "waffo": "Waffo",
+      "waffo_pancake": "Waffo Pancake",
+      "wechatpay": "WeChat Pay",
+      "alipay_direct": "Alipay"
+    },
+    "notFoundTitle": "User not found",
+    "notFoundDescription": "The selected user could not be found."
+  },
+  "quotaAdjustment": {
+    "title": "Adjust balance",
+    "close": "Close",
+    "cancel": "Cancel",
+    "back": "Back",
+    "continue": "Continue",
+    "confirm": "Confirm adjustment",
+    "saving": "Saving…",
+    "mode": "Adjustment mode",
+    "value": "Balance amount",
+    "currentQuota": "Current balance",
+    "preview": "{{current}} → {{result}}",
+    "confirmDescription": "Confirm {{mode}} of {{value}} balance.",
+    "error": "Unable to adjust balance. Please try again.",
+    "modes": {
+      "add": "Add",
+      "subtract": "Subtract",
+      "override": "Override"
+    },
+    "warnings": {
+      "subtract": "Subtracting balance is a risky operation.",
+      "override": "Overriding balance is a risky operation."
+    },
+    "validation": {
+      "required": "Enter a balance amount.",
+      "amount": "Enter a valid balance amount.",
+      "positive": "Add and subtract require a positive balance amount.",
+      "nonNegative": "Override requires a non-negative balance amount.",
+      "safeInteger": "Enter a valid balance amount."
+    }
+  },
+  "site": {
+    "switcher": "Site",
+    "domestic": "Domestic",
+    "international": "International"
+  }
+}
