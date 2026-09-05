@@ -20,6 +20,7 @@
 - 从 `https://aierxin.cc/admin-h5/sign-in` 选择国际站并发起登录时，浏览器不再因 CORS 把响应转换为“暂时无法登录”；无效账号能够显示后端返回的业务错误。
 - 对 `https://aierxin.cc` 和 `https://codezip.io` 的 API 请求分别返回匹配的 `Access-Control-Allow-Origin` 与 `Access-Control-Allow-Credentials: true`，并带 `Vary: Origin`。
 - OPTIONS 预检允许 H5 使用的 `POST` 方法和 `Content-Type`、`Authorization`、`X-Auth-Session`、`Cache-Control` 等请求头；未知 origin 不获得 CORS 放行头。
+- 真实 `SetApiRouter` 注册的 `/api` OPTIONS 预检能够命中 H5 CORS middleware，而不是因 Gin 未匹配 OPTIONS 路由返回 404。
 - `/api/user/login`、`/api/user/login/2fa`、`/api/user/auth/refresh` 和 `/api/user/auth/logout` 均经过该策略，现有无 Origin 的同源请求继续工作。
 
 # Constraints and invariants
