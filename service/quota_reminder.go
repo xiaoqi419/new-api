@@ -492,20 +492,327 @@ type QuotaReminderTaskResult struct {
 	Failed  int `json:"failed"`
 }
 
+const quotaReminderCompensationPageSize = 200
+
+// seedQuotaReminderBaselines records the balances observed at the moment a
+// previously disabled reminder feature is enabled.  Low balances are marked
+// suppressed so the first compensation pass cannot turn an old condition into
+// a retroactive notification; later authoritative crossings are still handled
+// by TransitionQuotaReminderWithSnapshot.
+func seedQuotaReminderBaselinesWithResult() (failed int, err error) {
+	var userCursor int
+	for {
+		users, pageErr := model.ListEnabledUsersForQuotaReminder(userCursor, quotaReminderCompensationPageSize)
+		if pageErr != nil {
+			return failed, pageErr
+		}
+		for i := range users {
+			user := &users[i]
+			cfg, cfgErr := quotaReminderConfigForUser(user.GetSetting())
+			if cfgErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline wallet reminder for user %d: %v", user.Id, cfgErr))
+				continue
+			}
+			if baselineErr := model.SeedQuotaReminderBaseline(user.Id, model.QuotaReminderBalanceWallet, 0, int64(user.Quota), int64(cfg.Threshold)); baselineErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline wallet reminder for user %d: %v", user.Id, baselineErr))
+			}
+		}
+		if len(users) < quotaReminderCompensationPageSize {
+			break
+		}
+		userCursor = users[len(users)-1].Id
+	}
+
+	var subscriptionCursor int
+	for {
+		subscriptions, pageErr := model.ListActiveUserSubscriptionsForQuotaReminder(subscriptionCursor, quotaReminderCompensationPageSize)
+		if pageErr != nil {
+			return failed, pageErr
+		}
+		for i := range subscriptions {
+			subscription := &subscriptions[i]
+			user, userErr := model.GetUserById(subscription.UserId, true)
+			if userErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline subscription reminder user %d: %v", subscription.UserId, userErr))
+				continue
+			}
+			if user == nil || user.Status != common.UserStatusEnabled {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline subscription reminder user %d: user is disabled or missing", subscription.UserId))
+				continue
+			}
+			cfg, cfgErr := quotaReminderConfigForUser(user.GetSetting())
+			if cfgErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline subscription reminder for user %d subscription %d: %v", user.Id, subscription.Id, cfgErr))
+				continue
+			}
+			current, eligible := quotaReminderSubscriptionRemaining(subscription.AmountTotal, subscription.AmountUsed)
+			if !eligible {
+				if state, stateErr := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceSubscription, int64(subscription.Id)); stateErr != nil {
+					failed++
+					common.SysLog(fmt.Sprintf("failed to inspect unlimited subscription reminder for user %d subscription %d: %v", user.Id, subscription.Id, stateErr))
+				} else if state != nil && (state.Status == model.QuotaReminderStatusLowPending || state.Status == model.QuotaReminderStatusSending) {
+					if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+						failed++
+						common.SysLog(fmt.Sprintf("failed to suppress unlimited subscription reminder state %d: %v", state.ID, suppressErr))
+					}
+				}
+				continue
+			}
+			if baselineErr := model.SeedQuotaReminderBaseline(user.Id, model.QuotaReminderBalanceSubscription, int64(subscription.Id), current, int64(cfg.Threshold)); baselineErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to baseline subscription reminder for user %d subscription %d: %v", user.Id, subscription.Id, baselineErr))
+			}
+		}
+		if len(subscriptions) < quotaReminderCompensationPageSize {
+			break
+		}
+		subscriptionCursor = subscriptions[len(subscriptions)-1].Id
+	}
+	return failed, nil
+}
+
+// compensateQuotaReminderBalances repairs gaps left by mutation observers.
+// Observers normally provide the authoritative previous balance, but an
+// adjustment can bypass that hook entirely.  The periodic pass therefore
+// walks every enabled user and active subscription with keyset pagination and
+// seeds a missing state only when the current balance is already below its
+// effective threshold.  Existing states retain their own last balance and
+// immutable cycle snapshot through ObserveQuotaReminderBalanceWithPrevious.
+func compensateQuotaReminderBalancesWithResult() (failed int, err error) {
+	var userCursor int
+	for {
+		users, pageErr := model.ListEnabledUsersForQuotaReminder(userCursor, quotaReminderCompensationPageSize)
+		if pageErr != nil {
+			return failed, pageErr
+		}
+		for i := range users {
+			user := &users[i]
+			current := int64(user.Quota)
+			if recordErr := compensateQuotaReminderRecord(user.Id, model.QuotaReminderBalanceWallet, 0, user.GetSetting(), current); recordErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to compensate wallet reminder for user %d: %v", user.Id, recordErr))
+				continue
+			}
+		}
+		if len(users) < quotaReminderCompensationPageSize {
+			break
+		}
+		userCursor = users[len(users)-1].Id
+	}
+
+	var subscriptionCursor int
+	for {
+		subscriptions, pageErr := model.ListActiveUserSubscriptionsForQuotaReminder(subscriptionCursor, quotaReminderCompensationPageSize)
+		if pageErr != nil {
+			return failed, pageErr
+		}
+		for i := range subscriptions {
+			subscription := &subscriptions[i]
+			user, userErr := model.GetUserById(subscription.UserId, true)
+			if userErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to load subscription reminder user %d: %v", subscription.UserId, userErr))
+				continue
+			}
+			if user == nil || user.Status != common.UserStatusEnabled {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to load subscription reminder user %d: user is disabled or missing", subscription.UserId))
+				continue
+			}
+			current, eligible := quotaReminderSubscriptionRemaining(subscription.AmountTotal, subscription.AmountUsed)
+			if !eligible {
+				if state, stateErr := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceSubscription, int64(subscription.Id)); stateErr != nil {
+					failed++
+					common.SysLog(fmt.Sprintf("failed to inspect unlimited subscription reminder for user %d subscription %d: %v", user.Id, subscription.Id, stateErr))
+				} else if state != nil && (state.Status == model.QuotaReminderStatusLowPending || state.Status == model.QuotaReminderStatusSending) {
+					if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+						failed++
+						common.SysLog(fmt.Sprintf("failed to suppress unlimited subscription reminder state %d: %v", state.ID, suppressErr))
+					}
+				}
+				continue
+			}
+			if recordErr := compensateQuotaReminderRecord(user.Id, model.QuotaReminderBalanceSubscription, int64(subscription.Id), user.GetSetting(), current); recordErr != nil {
+				failed++
+				common.SysLog(fmt.Sprintf("failed to compensate subscription reminder for user %d subscription %d: %v", user.Id, subscription.Id, recordErr))
+				continue
+			}
+		}
+		if len(subscriptions) < quotaReminderCompensationPageSize {
+			break
+		}
+		subscriptionCursor = subscriptions[len(subscriptions)-1].Id
+	}
+	return failed, nil
+}
+
+// compensateQuotaReminderBalances retains the small error-only helper used by
+// tests and callers that do not need per-record accounting.
+func compensateQuotaReminderBalances() error {
+	_, err := compensateQuotaReminderBalancesWithResult()
+	return err
+}
+
+func compensateQuotaReminderRecord(userID int, kind model.QuotaReminderBalanceKind, resourceID int64, setting dto.UserSetting, current int64) error {
+	cfg, err := quotaReminderConfigForUser(setting)
+	if err != nil {
+		return err
+	}
+	threshold := int64(cfg.Threshold)
+	state, err := model.GetQuotaReminderState(userID, kind, resourceID)
+	if err != nil {
+		return err
+	}
+	if state == nil && current >= threshold {
+		return nil
+	}
+	previous := current
+	if state == nil {
+		// A missing row is the signature of an observer gap. Treat the
+		// threshold as the last known high balance so a low current value opens
+		// one retryable cycle; subsequent scans deduplicate on state fields.
+		previous = threshold
+	} else {
+		previous = state.LastBalance
+	}
+	_, err = model.TransitionQuotaReminderWithSnapshot(
+		userID, kind, resourceID, previous, current, threshold, quotaReminderSnapshotFromConfig(cfg),
+	)
+	return err
+}
+
+// A zero subscription total is the established representation of an
+// unlimited plan (see PreConsumeUserSubscription). It is not a finite balance
+// and therefore must never open a low-balance reminder cycle. Negative usage is
+// malformed persisted data; treating it as ineligible avoids an overflowing
+// subtraction from reaching the reminder state machine.
+func quotaReminderSubscriptionRemaining(total, used int64) (int64, bool) {
+	if total <= 0 || used < 0 {
+		return 0, false
+	}
+	return total - used, true
+}
+
+func listPendingQuotaReminderStatesPage(afterID int64, limit int) ([]model.QuotaReminderState, error) {
+	if limit <= 0 {
+		limit = quotaReminderCompensationPageSize
+	}
+	staleAttempt := common.GetTimestamp() - 10*60
+	var states []model.QuotaReminderState
+	err := model.DB.Where("id > ? AND (status = ? OR (status = ? AND last_attempt_at < ?))", afterID,
+		model.QuotaReminderStatusLowPending, model.QuotaReminderStatusSending, staleAttempt).
+		Order("id asc").Limit(limit).Find(&states).Error
+	return states, err
+}
+
+func suppressQuotaReminderState(stateID int64) error {
+	return model.DB.Model(&model.QuotaReminderState{}).Where("id = ?", stateID).Updates(map[string]interface{}{
+		"armed": false, "status": model.QuotaReminderStatusSuppressed, "delivery_token": "",
+		"last_error": "", "threshold_display_unit": "", "threshold_quota_per_unit": 0,
+		"threshold_usd_exchange_rate": 0, "threshold_custom_exchange_rate": 0,
+		"threshold_currency_symbol": "", "updated_at": common.GetTimestamp(),
+	}).Error
+}
+
+// suppressPendingQuotaReminderStates disables delivery for every in-flight
+// cycle when the feature is turned off. Option updates normally perform this
+// transition synchronously, but the task can also observe a disabled runtime
+// flag after a restart or an out-of-band configuration change. Clearing the
+// delivery token and cycle snapshot makes re-enabling start from a fresh
+// high-to-low crossing instead of replaying historical low balances.
+func suppressPendingQuotaReminderStates() error {
+	now := common.GetTimestamp()
+	return model.DB.Model(&model.QuotaReminderState{}).
+		Where("status = ? OR status = ?", model.QuotaReminderStatusLowPending, model.QuotaReminderStatusSending).
+		Updates(map[string]interface{}{
+			"armed": false, "status": model.QuotaReminderStatusSuppressed,
+			"delivery_token": "", "last_error": "", "updated_at": now,
+			"threshold_display_unit": "", "threshold_quota_per_unit": 0,
+			"threshold_usd_exchange_rate": 0, "threshold_custom_exchange_rate": 0,
+			"threshold_currency_symbol": "",
+		}).Error
+}
+
 func RunQuotaReminderTaskOnce() (QuotaReminderTaskResult, error) {
 	result := QuotaReminderTaskResult{}
 	if !QuotaReminderEnabled() {
+		if err := suppressPendingQuotaReminderStates(); err != nil {
+			return result, err
+		}
 		return result, nil
 	}
-	states, err := model.ListPendingQuotaReminderStates(200)
+	if model.IsQuotaReminderBaselinePending() {
+		baselineToken, tokenErr := model.QuotaReminderActivationToken()
+		if tokenErr != nil {
+			result.Failed++
+			return result, tokenErr
+		}
+		baselineFailed, baselineErr := seedQuotaReminderBaselinesWithResult()
+		result.Failed += baselineFailed
+		if baselineErr != nil {
+			return result, baselineErr
+		}
+		// Keep the durable marker set when any record could not be baselined.
+		// Clearing it here would let the next pass interpret that record's
+		// already-low balance as a new crossing and send a retroactive message.
+		// Retrying the complete baseline on the next system-task interval is
+		// preferable to silently losing that boundary.
+		if baselineFailed > 0 {
+			return result, nil
+		}
+		completed, completeErr := model.CompleteQuotaReminderBaseline(baselineToken)
+		if completeErr != nil {
+			result.Failed++
+			return result, completeErr
+		}
+		// Another instance may have completed the marker while this pass was
+		// running. If it is still pending, stop before compensation so a
+		// partially baselined dataset cannot generate a retroactive reminder.
+		if !completed && model.IsQuotaReminderBaselinePending() {
+			return result, nil
+		}
+	}
+	compensationFailed, err := compensateQuotaReminderBalancesWithResult()
+	result.Failed += compensationFailed
 	if err != nil {
 		return result, err
+	}
+	var states []model.QuotaReminderState
+	var stateCursor int64
+	for {
+		page, err := listPendingQuotaReminderStatesPage(stateCursor, quotaReminderCompensationPageSize)
+		if err != nil {
+			return result, err
+		}
+		states = append(states, page...)
+		if len(page) < quotaReminderCompensationPageSize {
+			break
+		}
+		stateCursor = page[len(page)-1].ID
 	}
 	result.Pending = len(states)
 	for _, state := range states {
 		remaining := state.LastBalance
 		switch state.BalanceKind {
 		case model.QuotaReminderBalanceWallet:
+			user, userErr := model.GetUserById(state.UserID, true)
+			if userErr != nil {
+				result.Failed++
+				common.SysLog(fmt.Sprintf("failed to load quota reminder user %d: %v", state.UserID, userErr))
+				continue
+			}
+			if user == nil || user.Status != common.UserStatusEnabled {
+				if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+					result.Failed++
+					common.SysLog(fmt.Sprintf("failed to suppress quota reminder state %d: %v", state.ID, suppressErr))
+				}
+				continue
+			}
 			quota, e := model.GetUserQuota(state.UserID, true)
 			if e != nil {
 				result.Failed++
@@ -518,13 +825,43 @@ func RunQuotaReminderTaskOnce() (QuotaReminderTaskResult, error) {
 				result.Failed++
 				continue
 			}
-			remaining = sub.AmountTotal - sub.AmountUsed
+			if sub.Status != "active" || sub.EndTime <= common.GetTimestamp() {
+				if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+					result.Failed++
+				}
+				continue
+			}
+			user, userErr := model.GetUserById(sub.UserId, true)
+			if userErr != nil {
+				result.Failed++
+				common.SysLog(fmt.Sprintf("failed to load quota reminder user %d: %v", sub.UserId, userErr))
+				continue
+			}
+			if user == nil || user.Status != common.UserStatusEnabled || sub.UserId != state.UserID {
+				if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+					result.Failed++
+					common.SysLog(fmt.Sprintf("failed to suppress quota reminder state %d: %v", state.ID, suppressErr))
+				}
+				continue
+			}
+			var eligible bool
+			remaining, eligible = quotaReminderSubscriptionRemaining(sub.AmountTotal, sub.AmountUsed)
+			if !eligible {
+				if suppressErr := suppressQuotaReminderState(state.ID); suppressErr != nil {
+					result.Failed++
+					common.SysLog(fmt.Sprintf("failed to suppress unlimited subscription reminder state %d: %v", state.ID, suppressErr))
+				}
+				continue
+			}
 		default:
 			result.Failed++
 			continue
 		}
 		if remaining >= state.Threshold {
-			_, _ = model.TransitionQuotaReminder(state.UserID, state.BalanceKind, state.ResourceID, state.LastBalance, remaining, state.Threshold)
+			if _, transitionErr := model.TransitionQuotaReminder(state.UserID, state.BalanceKind, state.ResourceID, state.LastBalance, remaining, state.Threshold); transitionErr != nil {
+				result.Failed++
+				common.SysLog(fmt.Sprintf("failed to re-arm quota reminder state %d: %v", state.ID, transitionErr))
+			}
 			continue
 		}
 		token, claimed, claimErr := model.ClaimQuotaReminderDeliveryWithToken(state.UserID, state.BalanceKind, state.ResourceID)
@@ -537,7 +874,9 @@ func RunQuotaReminderTaskOnce() (QuotaReminderTaskResult, error) {
 		}
 		sent, e := SendQuotaReminderWithAttempt(state.UserID, state.BalanceKind, state.ResourceID, remaining, state.Threshold, token)
 		if e != nil {
-			_, _ = model.MarkQuotaReminderFailedWithToken(state.UserID, state.BalanceKind, state.ResourceID, token, e)
+			if _, markErr := model.MarkQuotaReminderFailedWithToken(state.UserID, state.BalanceKind, state.ResourceID, token, e); markErr != nil {
+				common.SysLog(fmt.Sprintf("failed to record quota reminder delivery failure for state %d: %v", state.ID, markErr))
+			}
 			result.Failed++
 			continue
 		}

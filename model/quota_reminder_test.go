@@ -122,6 +122,22 @@ func TestTransitionQuotaReminderInitialRecoveryArmsNextCrossing(t *testing.T) {
 	assert.True(t, triggered)
 }
 
+func TestSeedQuotaReminderBaselinePreservesConcurrentLowCrossing(t *testing.T) {
+	truncateTables(t)
+	triggered, err := TransitionQuotaReminder(110, QuotaReminderBalanceWallet, 0, 100, 40, 50)
+	require.NoError(t, err)
+	require.True(t, triggered)
+
+	// The baseline scan may have read a stale high balance while an observer
+	// already recorded the real low crossing. It must not re-arm that cycle.
+	require.NoError(t, SeedQuotaReminderBaseline(110, QuotaReminderBalanceWallet, 0, 100, 50))
+	state, err := GetQuotaReminderState(110, QuotaReminderBalanceWallet, 0)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	assert.Equal(t, QuotaReminderStatusLowPending, state.Status)
+	assert.False(t, state.Armed)
+}
+
 func TestClaimQuotaReminderDeliveryAndSentSnapshot(t *testing.T) {
 	truncateTables(t)
 	triggered, err := TransitionQuotaReminder(104, QuotaReminderBalanceWallet, 0, 100, 40, 50)

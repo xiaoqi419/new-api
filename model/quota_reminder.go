@@ -201,6 +201,70 @@ func TransitionQuotaReminderWithSnapshot(userID int, kind QuotaReminderBalanceKi
 	return triggered, err
 }
 
+// SeedQuotaReminderBaseline records the current balance without opening a new
+// low-balance cycle. It is used immediately after reminders are re-enabled so
+// balances that were already low while the feature was disabled remain
+// suppressed; a later high-to-low observation can still open a fresh cycle.
+// Existing pending/sending cycles are preserved because they represent a
+// crossing that happened after the feature was enabled.
+func SeedQuotaReminderBaseline(userID int, kind QuotaReminderBalanceKind, resourceID, currentBalance, threshold int64) error {
+	if userID <= 0 || threshold <= 0 {
+		return errors.New("invalid quota reminder baseline")
+	}
+	if kind != QuotaReminderBalanceWallet && kind != QuotaReminderBalanceSubscription {
+		return errors.New("invalid quota reminder balance kind")
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var state QuotaReminderState
+		err := lockForUpdate(tx).
+			Where("user_id = ? AND balance_kind = ? AND resource_id = ?", userID, kind, resourceID).
+			First(&state).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			state = QuotaReminderState{
+				UserID: userID, BalanceKind: kind, ResourceID: resourceID,
+				Armed: currentBalance >= threshold, Status: QuotaReminderStatusArmed,
+				LastBalance: currentBalance, Threshold: threshold,
+			}
+			if currentBalance < threshold {
+				state.Armed = false
+				state.Status = QuotaReminderStatusSuppressed
+			}
+			return tx.Create(&state).Error
+		}
+		if err != nil {
+			return err
+		}
+
+		// A real post-enable crossing must survive the baseline pass. Do not use
+		// the scan's point-in-time balance to re-arm an in-flight cycle: an
+		// observer may have recorded a genuine low crossing after the scan read
+		// the user but before this row lock was acquired. The regular
+		// compensation pass observes the latest balance and re-arms recovered
+		// cycles safely after the baseline completes.
+		if state.Status == QuotaReminderStatusLowPending || state.Status == QuotaReminderStatusSending {
+			return nil
+		}
+		if state.Status == QuotaReminderStatusSent && currentBalance < state.Threshold {
+			state.LastBalance = currentBalance
+			return tx.Save(&state).Error
+		}
+
+		state.Threshold = threshold
+		state.LastBalance = currentBalance
+		state.DeliveryToken = ""
+		state.LastError = ""
+		clearSnapshotFromState(&state)
+		if currentBalance >= threshold {
+			state.Armed = true
+			state.Status = QuotaReminderStatusArmed
+		} else {
+			state.Armed = false
+			state.Status = QuotaReminderStatusSuppressed
+		}
+		return tx.Save(&state).Error
+	})
+}
+
 func GetQuotaReminderState(userID int, kind QuotaReminderBalanceKind, resourceID int64) (*QuotaReminderState, error) {
 	var state QuotaReminderState
 	err := DB.Where("user_id = ? AND balance_kind = ? AND resource_id = ?", userID, kind, resourceID).First(&state).Error

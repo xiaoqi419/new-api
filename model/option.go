@@ -17,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/QuantumNous/new-api/setting/ui_setting"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -39,6 +40,18 @@ const paymentGatewayModeApplyReservationOptionKey = "__internal.payment_gateway_
 
 const paymentGatewayModeApplyReservationLeaseSeconds int64 = 5 * 60
 
+// QuotaReminderBaselinePendingOptionKey marks a false-to-true reminder
+// enable transition whose current balances still need to be recorded as the
+// new baseline.  Keeping the marker in Options lets a restarted instance
+// finish the baseline before compensation can interpret an already-low
+// balance as a missed crossing.
+const QuotaReminderBaselinePendingOptionKey = "quota_reminder.baseline_pending"
+
+// QuotaReminderActivationTokenOptionKey identifies the enable transition whose
+// baseline scan is in flight. A fresh token is written for every false-to-true
+// transition so an older worker cannot clear a newer activation marker.
+const QuotaReminderActivationTokenOptionKey = "quota_reminder.activation_token"
+
 var (
 	ErrPaymentGatewayModeApplyReservationActive  = errors.New("payment gateway mode apply reservation is active")
 	ErrPaymentGatewayModeApplyReservationInvalid = errors.New("payment gateway mode apply reservation is invalid")
@@ -58,6 +71,200 @@ func AllOption() ([]*Option, error) {
 
 func isPaymentGatewayModeApplyReservationOption(key string) bool {
 	return key == paymentGatewayModeApplyReservationOptionKey
+}
+
+func isQuotaReminderEnabledOption(key string) bool {
+	switch key {
+	case "quota_reminder.enabled", "QuotaRemindEnabled", "QuotaReminderEnabled":
+		return true
+	default:
+		return false
+	}
+}
+
+func setQuotaReminderBaselinePendingTx(tx *gorm.DB, pending bool, activationToken string) error {
+	option := Option{Key: QuotaReminderBaselinePendingOptionKey}
+	if err := tx.FirstOrCreate(&option, Option{Key: QuotaReminderBaselinePendingOptionKey}).Error; err != nil {
+		return err
+	}
+	option.Value = strconv.FormatBool(pending)
+	if err := tx.Save(&option).Error; err != nil {
+		return err
+	}
+	if pending {
+		if strings.TrimSpace(activationToken) == "" {
+			activationToken = uuid.NewString()
+		}
+	} else {
+		activationToken = ""
+	}
+	tokenOption := Option{Key: QuotaReminderActivationTokenOptionKey}
+	if err := tx.FirstOrCreate(&tokenOption, Option{Key: QuotaReminderActivationTokenOptionKey}).Error; err != nil {
+		return err
+	}
+	tokenOption.Value = activationToken
+	return tx.Save(&tokenOption).Error
+}
+
+func quotaReminderActivationTokenTx(tx *gorm.DB) (string, error) {
+	var option Option
+	err := lockForUpdate(tx).
+		Where("key = ?", QuotaReminderActivationTokenOptionKey).
+		First(&option).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(option.Value), nil
+}
+
+// QuotaReminderActivationToken returns the durable token for the currently
+// pending enable transition. Missing rows are treated as a legacy installation
+// with no token; callers can still complete that marker without weakening
+// token checks for newer transitions.
+func QuotaReminderActivationToken() (string, error) {
+	if DB == nil {
+		return "", nil
+	}
+	var option Option
+	err := DB.Where("key = ?", QuotaReminderActivationTokenOptionKey).First(&option).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(option.Value), nil
+}
+
+func quotaReminderEnabledBeforeTx(tx *gorm.DB, key string) (bool, error) {
+	keys := []string{key}
+	if isQuotaReminderEnabledOption(key) {
+		for _, candidate := range []string{"quota_reminder.enabled", "QuotaRemindEnabled", "QuotaReminderEnabled"} {
+			seen := false
+			for _, existing := range keys {
+				if existing == candidate {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				keys = append(keys, candidate)
+			}
+		}
+	}
+	for _, candidate := range keys {
+		var option Option
+		err := lockForUpdate(tx).Where("key = ?", candidate).First(&option).Error
+		if err == nil {
+			parsed, parseErr := strconv.ParseBool(strings.TrimSpace(option.Value))
+			if parseErr == nil {
+				return parsed, nil
+			}
+			continue
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, err
+		}
+	}
+	// The database is authoritative, but a newly created installation (or a
+	// test transaction that has not persisted the option yet) may only have the
+	// current value in the in-memory map.  Consult all legacy aliases before
+	// falling back to the package default so a stale common.QuotaRemindEnabled
+	// value cannot turn a real false-to-true transition into a no-op.
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	for _, candidate := range keys {
+		if raw, ok := common.OptionMap[candidate]; ok {
+			if parsed, parseErr := strconv.ParseBool(strings.TrimSpace(raw)); parseErr == nil {
+				return parsed, nil
+			}
+		}
+	}
+	return common.QuotaRemindEnabled, nil
+}
+
+// IsQuotaReminderBaselinePending reports whether an enable transition still
+// needs a baseline scan. The persisted option is checked first so a stale
+// process-local OptionMap cannot cause one instance to repeat (or skip) the
+// baseline after another instance changes the setting. The map remains a
+// fallback during early startup, before the database handle is available.
+func IsQuotaReminderBaselinePending() bool {
+	if DB != nil {
+		var option Option
+		if err := DB.Where("key = ?", QuotaReminderBaselinePendingOptionKey).First(&option).Error; err == nil {
+			pending, parseErr := strconv.ParseBool(strings.TrimSpace(option.Value))
+			if parseErr == nil {
+				common.OptionMapRWMutex.Lock()
+				common.OptionMap[QuotaReminderBaselinePendingOptionKey] = strconv.FormatBool(pending)
+				common.OptionMapRWMutex.Unlock()
+				return pending
+			}
+		}
+	}
+	common.OptionMapRWMutex.RLock()
+	pending, _ := strconv.ParseBool(strings.TrimSpace(common.OptionMap[QuotaReminderBaselinePendingOptionKey]))
+	common.OptionMapRWMutex.RUnlock()
+	return pending
+}
+
+// CompleteQuotaReminderBaseline clears a pending activation marker only when
+// it is still true.  The conditional update prevents a concurrent disable /
+// re-enable cycle from losing its newer marker.
+func CompleteQuotaReminderBaseline(expectedToken ...string) (bool, error) {
+	var completed bool
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var option Option
+		err := lockForUpdate(tx).
+			Where("key = ?", QuotaReminderBaselinePendingOptionKey).
+			First(&option).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("quota reminder baseline marker is missing: %w", err)
+		}
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(strings.TrimSpace(option.Value), "true") {
+			return nil
+		}
+		currentToken, err := quotaReminderActivationTokenTx(tx)
+		if err != nil {
+			return err
+		}
+		if len(expectedToken) > 0 && strings.TrimSpace(expectedToken[0]) != currentToken {
+			return nil
+		}
+		result := tx.Model(&Option{}).
+			Where("key = ? AND value = ?", QuotaReminderBaselinePendingOptionKey, option.Value).
+			Update("value", "false")
+		if result.Error != nil {
+			return result.Error
+		}
+		completed = result.RowsAffected == 1
+		if completed {
+			tokenResult := tx.Model(&Option{}).
+				Where("key = ? AND value = ?", QuotaReminderActivationTokenOptionKey, currentToken).
+				Update("value", "")
+			if tokenResult.Error != nil {
+				return tokenResult.Error
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	if completed {
+		common.OptionMapRWMutex.Lock()
+		if strings.EqualFold(strings.TrimSpace(common.OptionMap[QuotaReminderBaselinePendingOptionKey]), "true") {
+			common.OptionMap[QuotaReminderBaselinePendingOptionKey] = "false"
+		}
+		common.OptionMap[QuotaReminderActivationTokenOptionKey] = ""
+		common.OptionMapRWMutex.Unlock()
+	}
+	return completed, nil
 }
 
 func ensurePaymentGatewayModeApplyReservationRow(tx *gorm.DB) error {
@@ -519,6 +726,12 @@ func InitOptionMap() error {
 	if _, ok := common.OptionMap["quota_reminder.custom_template"]; !ok {
 		common.OptionMap["quota_reminder.custom_template"] = ""
 	}
+	if _, ok := common.OptionMap[QuotaReminderBaselinePendingOptionKey]; !ok {
+		common.OptionMap[QuotaReminderBaselinePendingOptionKey] = "false"
+	}
+	if _, ok := common.OptionMap[QuotaReminderActivationTokenOptionKey]; !ok {
+		common.OptionMap[QuotaReminderActivationTokenOptionKey] = ""
+	}
 	common.OptionMapRWMutex.Unlock()
 	return nil
 }
@@ -603,6 +816,8 @@ func UpdateOption(key string, value string) error {
 		paymentGatewayModeOptionWriteMu.Lock()
 		defer paymentGatewayModeOptionWriteMu.Unlock()
 	}
+	var quotaReminderBaselinePendingValue string
+	var quotaReminderActivationTokenValue string
 	// FirstOrCreate followed by Save must be one transaction.  Besides making
 	// the two writes atomic for a newly-created option, this keeps the
 	// in-memory OptionMap untouched when either database operation fails.
@@ -620,6 +835,13 @@ func UpdateOption(key string, value string) error {
 				return ErrPaymentGatewayModeApplyReservationActive
 			}
 			if err := clearExpiredPaymentGatewayModeApplyReservation(tx, reservation, common.GetTimestamp()); err != nil {
+				return err
+			}
+		}
+		var quotaReminderEnabledBefore bool
+		if isQuotaReminderEnabledOption(key) {
+			quotaReminderEnabledBefore, err = quotaReminderEnabledBeforeTx(tx, key)
+			if err != nil {
 				return err
 			}
 		}
@@ -651,10 +873,23 @@ func UpdateOption(key string, value string) error {
 				}
 			}
 		}
-		if key == "quota_reminder.enabled" || key == "QuotaRemindEnabled" || key == "QuotaReminderEnabled" {
+		if isQuotaReminderEnabledOption(key) {
 			enabled, _ := strconv.ParseBool(value)
 			if !enabled {
+				quotaReminderBaselinePendingValue = "false"
+				if err := setQuotaReminderBaselinePendingTx(tx, false, ""); err != nil {
+					return err
+				}
 				if err := suppressPendingQuotaReminders(tx); err != nil {
+					return err
+				}
+			} else if !quotaReminderEnabledBefore {
+				quotaReminderBaselinePendingValue = "true"
+				if err := setQuotaReminderBaselinePendingTx(tx, true, ""); err != nil {
+					return err
+				}
+				quotaReminderActivationTokenValue, err = quotaReminderActivationTokenTx(tx)
+				if err != nil {
 					return err
 				}
 			}
@@ -670,6 +905,20 @@ func UpdateOption(key string, value string) error {
 	if quotaReminderSnapshot != nil {
 		for snapshotKey, snapshotValue := range quotaReminderSnapshot {
 			if err := updateOptionMap(snapshotKey, snapshotValue); err != nil {
+				return err
+			}
+		}
+	}
+	if quotaReminderBaselinePendingValue != "" {
+		if err := updateOptionMap(QuotaReminderBaselinePendingOptionKey, quotaReminderBaselinePendingValue); err != nil {
+			return err
+		}
+		if quotaReminderBaselinePendingValue == "false" {
+			if err := updateOptionMap(QuotaReminderActivationTokenOptionKey, ""); err != nil {
+				return err
+			}
+		} else if quotaReminderActivationTokenValue != "" {
+			if err := updateOptionMap(QuotaReminderActivationTokenOptionKey, quotaReminderActivationTokenValue); err != nil {
 				return err
 			}
 		}
@@ -713,8 +962,14 @@ func UpdateQuotaReminderOptions(enabled bool, threshold string, templateID strin
 		"quota_reminder.threshold_custom_exchange_rate":   strconv.FormatFloat(customExchangeRate, 'f', -1, 64),
 		"quota_reminder.threshold_custom_currency_symbol": generalSetting.CustomCurrencySymbol,
 	}
+	var quotaReminderBaselinePendingValue string
+	var quotaReminderActivationTokenValue string
 
 	if err := DB.Transaction(func(tx *gorm.DB) error {
+		previousEnabled, err := quotaReminderEnabledBeforeTx(tx, "quota_reminder.enabled")
+		if err != nil {
+			return err
+		}
 		for key, value := range values {
 			option := Option{Key: key}
 			if err := tx.FirstOrCreate(&option, Option{Key: key}).Error; err != nil {
@@ -726,7 +981,21 @@ func UpdateQuotaReminderOptions(enabled bool, threshold string, templateID strin
 			}
 		}
 		if !enabled {
+			quotaReminderBaselinePendingValue = "false"
+			if err := setQuotaReminderBaselinePendingTx(tx, false, ""); err != nil {
+				return err
+			}
 			return suppressPendingQuotaReminders(tx)
+		}
+		if !previousEnabled {
+			quotaReminderBaselinePendingValue = "true"
+			if err := setQuotaReminderBaselinePendingTx(tx, true, ""); err != nil {
+				return err
+			}
+			quotaReminderActivationTokenValue, err = quotaReminderActivationTokenTx(tx)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
@@ -738,6 +1007,14 @@ func UpdateQuotaReminderOptions(enabled bool, threshold string, templateID strin
 	common.OptionMapRWMutex.Lock()
 	for key, value := range values {
 		common.OptionMap[key] = value
+	}
+	if quotaReminderBaselinePendingValue != "" {
+		common.OptionMap[QuotaReminderBaselinePendingOptionKey] = quotaReminderBaselinePendingValue
+		if quotaReminderBaselinePendingValue == "false" {
+			common.OptionMap[QuotaReminderActivationTokenOptionKey] = ""
+		} else if quotaReminderActivationTokenValue != "" {
+			common.OptionMap[QuotaReminderActivationTokenOptionKey] = quotaReminderActivationTokenValue
+		}
 	}
 	common.QuotaRemindEnabled = enabled
 	common.OptionMapRWMutex.Unlock()

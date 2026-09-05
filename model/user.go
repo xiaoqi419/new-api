@@ -447,6 +447,21 @@ func GetAllUsers(pageInfo *common.PageInfo, sortOptions ...UserSortOptions) (use
 	return users, total, nil
 }
 
+// ListEnabledUsersForQuotaReminder returns a stable, keyset-paginated slice of
+// users that are eligible for low-balance reminder compensation.  The scanner
+// deliberately uses the user's primary key as its cursor so it cannot skip
+// rows when the table contains more than one page (or when rows are inserted
+// while a pass is running).
+func ListEnabledUsersForQuotaReminder(afterID, limit int) ([]User, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	var users []User
+	err := DB.Select("id, quota, setting").Where("status = ? AND id > ?", common.UserStatusEnabled, afterID).
+		Order("id asc").Limit(limit).Find(&users).Error
+	return users, err
+}
+
 func SearchUsers(keyword string, group string, role *int, status *int, balance string, startIdx int, num int, sortOptions ...UserSortOptions) ([]*User, int64, error) {
 	var users []*User
 	var total int64
