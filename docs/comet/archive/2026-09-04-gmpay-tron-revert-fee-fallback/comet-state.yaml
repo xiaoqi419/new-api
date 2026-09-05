@@ -1,0 +1,524 @@
+schema: comet.native.v4
+name: gmpay-tron-revert-fee-fallback
+language: zh-CN
+phase: archive
+status: done
+state_version: 15
+brief: brief.md
+spec_changes:
+  - capability: gmpay-tron-usdt-fee-quote
+    operation: create
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-tron-revert-fee-fallback
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 4
+  retry_epoch: 1
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: Given `triggerconstantcontract` returns `result.result=true`,
+      `message=REVERT opcode executed`, and a small `energy_used`, the built-in
+      estimator does not quote that energy.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: Given live `getEnergyFee=100` and `getTransactionFee=1000` after a failed
+      simulation, the quote uses `64285` energy and `345` bandwidth and is about
+      `6.7735` TRX.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: Given a successful `estimateenergy` `energy_required=65000`, the estimator
+      still uses that simulated energy.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: Given every TRON RPC is rate-limited so chain parameters are unavailable,
+      the estimator still returns `ErrNetworkFeeUnavailable`.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A5
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: The built-in GMPay network-fee estimator quotes a TRON USDT TRC-20
+      transfer using the canonical mainnet contract
+      `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t`.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A6
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "A TRON simulation is valid only when execution succeeded. The estimator
+      MUST reject payloads that report any of:"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A7
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "`result.result` boolean `false`"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A8
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "`result.code` equal to `CONTRACT_VALIDATE_ERROR`"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A9
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "`result.message` containing `REVERT` (case-insensitive)"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A10
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "`transaction.ret[].ret` equal to `FAILED`"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A11
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: A positive `energy_used` or `energy_required` on a rejected payload MUST
+      NOT become a quote.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A12
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "When a valid simulation returns a positive energy value, the estimator
+      MUST use that energy. When simulation is unusable but
+      `wallet/getchainparameters` returned valid `getEnergyFee` and
+      `getTransactionFee`, the estimator MUST quote the representative
+      existing-holder constants `64285` energy and `345` bandwidth:"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A13
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: "`native_sun = 64285 × getEnergyFee + 345 × getTransactionFee`"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A14
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: If chain burn prices cannot be read from any whitelisted RPC, the
+      estimator MUST return `ErrNetworkFeeUnavailable` rather than inventing
+      prices.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A15
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Successful simulation evidence names the simulation method. Empirical
+      fallback evidence names the empirical energy source. Ethereum, BSC, and
+      Solana estimators are unchanged.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A16
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: A `triggerconstantcontract` body with `result.result=true`,
+      `message=REVERT opcode executed`, `energy_used=8624`, and `ret=FAILED`
+      does not produce a quote from `8624` energy.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A17
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: After that rejected simulation, with `getEnergyFee=100` and
+      `getTransactionFee=1000`, the built-in estimator returns a non-negative
+      quote whose energy evidence is `64285` and native amount is `6.7735` TRX.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A18
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: A successful `estimateenergy` response with `energy_required=65000` still
+      produces a quote from `65000` energy.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A19
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: When every whitelisted TRON RPC is rate-limited, the estimator returns
+      `ErrNetworkFeeUnavailable`.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A20
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Existing TRON failover tests that recover a valid simulation on a later
+      RPC still pass.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A21
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Do not read payment-gateway wallet lists or merchant keys.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A22
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Do not add energy-rental or third-party quote vendors.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A23
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Do not use GitHub CI as a release prerequisite.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+  - id: A24
+    source: specs/gmpay-tron-usdt-fee-quote/spec.md
+    text: Do not record credentials in source, artifacts, logs, or command output.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime
+        检查作为旧变更清理依据。"
+      truncated: false
+builder_handoff:
+  candidate_id: 85aeddd7-0faa-42c0-bd52-0bde830175d7
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:fe9a91d4-31ec-4631-844d-9d040f363e24
+  iteration: 1
+  summary:
+    text: TRON simulations that revert or fail contract validation are no longer
+      quoted. After every whitelisted RPC fails simulation, the built-in
+      estimator uses 64285 energy and 345 bandwidth with live
+      getEnergyFee/getTransactionFee. Successful estimateenergy values are
+      unchanged. Ethereum, BSC, and Solana are untouched.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+  checks:
+    - name:
+        text: focused TRON estimator tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./service -run
+          'TestBuiltinNetworkFeeEstimatorTRON|TestBuiltinTransferContextTRON|TestParseTRONChainFees'
+          -count=1
+        truncated: false
+    - name:
+        text: service package tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./service -count=1
+        truncated: false
+    - name:
+        text: backend vet
+        truncated: false
+      result: passed
+      note:
+        text: go vet ./service ./controller
+        truncated: false
+    - name:
+        text: diff whitespace
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Empirical energy is the existing-holder constant 64285, not the
+        new-address 2x value.
+      truncated: false
+    - text: Frontend typecheck/build were not run; the only frontend change is a
+        changelog entry.
+      truncated: false
+    - text: No production deploy was performed from this worktree.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-03T09:56:21.802Z
+blockers: []
+verification:
+  candidate_id: 85aeddd7-0faa-42c0-bd52-0bde830175d7
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:abc0cfbf-2db1-48b7-b62a-834ff3404976
+  iteration: 1
+  attempt: 4
+  assurance: user-confirmed-degraded
+  verdict: pass
+  checks:
+    - id: runtime-tron-estimator
+      name:
+        text: TRON builtin estimator regressions
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: -run
+          truncated: false
+        - text: TestBuiltinNetworkFeeEstimatorTRON|TestBuiltinTransferContextTRON|TestParseTRONChainFees
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 3200
+    - id: runtime-tron-service
+      name:
+        text: service package tests
+        truncated: false
+      argv_display:
+        - text: test
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 4037
+    - id: runtime-tron-vet
+      name:
+        text: backend vet
+        truncated: false
+      argv_display:
+        - text: vet
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1280
+    - id: runtime-tron-diff
+      name:
+        text: git diff whitespace
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 41
+  summary:
+    text: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime 检查作为旧变更清理依据。
+    truncated: false
+  risks:
+    - text: No independent semantic Verifier execution was available; Runtime checks
+        alone do not cover acceptance semantics.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-04T06:12:08.893Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-09-03T10:01:54.753Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 2
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native Verifier check ID
+        tron-estimator conflicts with a Runtime check"
+      truncated: false
+    completed_at: 2026-09-03T10:03:57.072Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 3
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-09-03T10:05:08.932Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 4
+    outcome: blocked
+    unresolved_ids:
+      - A1
+      - A2
+      - A3
+      - A4
+      - A5
+      - A6
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A18
+      - A19
+      - A20
+      - A21
+      - A22
+      - A23
+      - A24
+    summary:
+      text: The independent semantic verifier could not be started because the
+        configured Codex provider returned HTTP 503 after the Runtime checks
+        passed. The candidate was independently inspected and all required
+        command checks are green.
+      truncated: false
+    completed_at: 2026-09-04T06:11:47.999Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 4
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 用户已确认 Grok 变更已完成；独立 Verifier 服务不可用，接受已通过的 Runtime 检查作为旧变更清理依据。
+      truncated: false
+    completed_at: 2026-09-04T06:12:08.893Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-03T09:48:39.258Z
