@@ -856,6 +856,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 	previousMinTopUp := operation_setting.MinTopUp
 	previousCallbackAddress := operation_setting.CustomCallbackAddress
 	previousServerAddress := system_setting.ServerAddress
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
 	previousOptions := common.OptionMap
 	operation_setting.PayAddress = "https://pay.example.test/payments/epay/v1/order/create-transaction"
 	operation_setting.EpayId = "gmpay-test-pid"
@@ -864,6 +865,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 	operation_setting.Price = 1
 	operation_setting.MinTopUp = 1
 	operation_setting.CustomCallbackAddress = "https://new-api.example"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
 	system_setting.ServerAddress = "https://new-api.example"
 	// Ordinary wallet fee discovery is opt-out by default in production. The
 	// legacy checkout fixtures explicitly disable dynamic discovery so these
@@ -881,6 +883,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 		operation_setting.Price = previousPrice
 		operation_setting.MinTopUp = previousMinTopUp
 		operation_setting.CustomCallbackAddress = previousCallbackAddress
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
 		system_setting.ServerAddress = previousServerAddress
 		common.OptionMapRWMutex.Lock()
 		common.OptionMap = previousOptions
