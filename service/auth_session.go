@@ -15,6 +15,18 @@ import (
 
 const RefreshCookieName = "new_api_refresh"
 
+// refreshCookieSameSite selects the cookie policy for the refresh token.
+// Secure deployments serve the H5 dashboard and API from different origins,
+// so the browser requires SameSite=None together with Secure for credentialed
+// refresh/logout requests. Local development keeps the strict policy because
+// SameSite=None is rejected by browsers when Secure is not set.
+func refreshCookieSameSite() http.SameSite {
+	if common.SessionCookieSecure {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteStrictMode
+}
+
 var (
 	ErrLoginSessionInvalid  = errors.New("login session is invalid")
 	ErrLoginSessionRevoked  = errors.New("login session is revoked")
@@ -308,7 +320,7 @@ func WriteRefreshCookie(c *gin.Context, rawToken string) {
 		Expires:  expiresAt,
 		HttpOnly: true,
 		Secure:   common.SessionCookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: refreshCookieSameSite(),
 	})
 }
 
@@ -321,7 +333,7 @@ func ClearRefreshCookie(c *gin.Context) {
 		Expires:  time.Unix(1, 0),
 		HttpOnly: true,
 		Secure:   common.SessionCookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: refreshCookieSameSite(),
 	})
 }
 
