@@ -128,6 +128,17 @@ docker image inspect "torch-ai-release:$TAG" --format '{{.Id}}'
 
 ## 4. 只更新应用容器
 
+### 4.0 统一 H5 的跨站会话配置
+
+统一 Admin H5 由同一份静态页面分别挂在 `aierxin.cc` 和 `codezip.io`。当用户在一个页面选择另一个站点时，浏览器会跨 origin 调用对应 API。两套应用容器启用安全会话时，都必须把两个 H5 origin 写入 `SESSION_COOKIE_TRUSTED_URL`：
+
+```text
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_TRUSTED_URL=https://aierxin.cc,https://codezip.io
+```
+
+应用会为安全模式的 refresh Cookie 设置 `SameSite=None; Secure`，并由 `SessionCookieOriginGuard` 继续限制 refresh/logout 的来源。只更新镜像不会自动改写服务器 Compose 或 `.env` 中的环境变量；若现有配置只列出单一域名，先在两套 Compose 中补齐上述列表，再按本节的 `config -q` 和仅应用服务重建步骤发布。
+
 热更新前必须先保存两个 Compose 文件，确认数据卷路径不变，并确认目标镜像存在：
 
 ```bash
@@ -208,5 +219,4 @@ docker compose --project-directory /opt/new-api-international \
 - 若发生回滚，记录回滚标签和原因。
 
 该文档只描述发布流程，不保存任何生产凭据。服务器域名到容器的映射若发生变化，必须先更新本节并现场用 Caddy/nginx 配置和 Docker Compose 标签核对，不能依赖历史记忆。
-
 

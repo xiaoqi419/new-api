@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +20,45 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+func TestRefreshCookiesUseCrossSiteAttributesOnlyInSecureMode(t *testing.T) {
+	previousSecure := common.SessionCookieSecure
+	t.Cleanup(func() { common.SessionCookieSecure = previousSecure })
+
+	tests := []struct {
+		name             string
+		secure           bool
+		expectedSameSite http.SameSite
+	}{
+		{name: "secure production", secure: true, expectedSameSite: http.SameSiteNoneMode},
+		{name: "insecure local development", secure: false, expectedSameSite: http.SameSiteStrictMode},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			common.SessionCookieSecure = test.secure
+			gin.SetMode(gin.TestMode)
+
+			writeRecorder := httptest.NewRecorder()
+			writeContext, _ := gin.CreateTestContext(writeRecorder)
+			WriteRefreshCookie(writeContext, "refresh-token")
+			writeCookies := writeRecorder.Result().Cookies()
+			require.Len(t, writeCookies, 1)
+			assert.Equal(t, test.expectedSameSite, writeCookies[0].SameSite)
+			assert.Equal(t, test.secure, writeCookies[0].Secure)
+			assert.True(t, writeCookies[0].HttpOnly)
+
+			clearRecorder := httptest.NewRecorder()
+			clearContext, _ := gin.CreateTestContext(clearRecorder)
+			ClearRefreshCookie(clearContext)
+			clearCookies := clearRecorder.Result().Cookies()
+			require.Len(t, clearCookies, 1)
+			assert.Equal(t, test.expectedSameSite, clearCookies[0].SameSite)
+			assert.Equal(t, test.secure, clearCookies[0].Secure)
+			assert.Equal(t, -1, clearCookies[0].MaxAge)
+		})
+	}
+}
 
 func setupAuthSessionTestDB(t *testing.T) *model.User {
 	t.Helper()
