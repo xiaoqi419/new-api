@@ -942,6 +942,24 @@ func GetAllActiveUserSubscriptions(userId int) ([]SubscriptionSummary, error) {
 	return buildSubscriptionSummaries(subs), nil
 }
 
+// ListActiveUserSubscriptionsForQuotaReminder returns active subscriptions
+// belonging to enabled, non-deleted users using keyset pagination.  This is
+// kept separate from the user-facing summary helpers so the compensation task
+// can scan every eligible subscription without an arbitrary global LIMIT.
+func ListActiveUserSubscriptionsForQuotaReminder(afterID int, limit int) ([]UserSubscription, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	now := common.GetTimestamp()
+	var subscriptions []UserSubscription
+	userIDs := DB.Model(&User{}).
+		Select("id").
+		Where("status = ?", common.UserStatusEnabled)
+	err := DB.Where("status = ? AND end_time > ? AND amount_total > ? AND id > ? AND user_id IN (?)", "active", now, 0, afterID, userIDs).
+		Order("id asc").Limit(limit).Find(&subscriptions).Error
+	return subscriptions, err
+}
+
 // HasActiveUserSubscription returns whether the user has any active subscription.
 // This is a lightweight existence check to avoid heavy pre-consume transactions.
 func HasActiveUserSubscription(userId int) (bool, error) {

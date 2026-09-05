@@ -144,6 +144,65 @@ func TestDisablingQuotaReminderSuppressesPendingDelivery(t *testing.T) {
 	assert.False(t, common.QuotaRemindEnabled)
 }
 
+func TestQuotaReminderEnableWritesActivationTokenAndDisablingClearsIt(t *testing.T) {
+	db := useQuotaReminderOptionDB(t)
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "false"))
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "true"))
+
+	var marker Option
+	require.NoError(t, db.First(&marker, "key = ?", QuotaReminderBaselinePendingOptionKey).Error)
+	assert.Equal(t, "true", marker.Value)
+	var token Option
+	require.NoError(t, db.First(&token, "key = ?", QuotaReminderActivationTokenOptionKey).Error)
+	assert.NotEmpty(t, token.Value)
+	firstToken := token.Value
+
+	// Updating an already-enabled configuration must not start a second
+	// baseline generation.
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "true"))
+	require.NoError(t, db.First(&token, "key = ?", QuotaReminderActivationTokenOptionKey).Error)
+	assert.Equal(t, firstToken, token.Value)
+
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "false"))
+	require.NoError(t, db.First(&marker, "key = ?", QuotaReminderBaselinePendingOptionKey).Error)
+	require.NoError(t, db.First(&token, "key = ?", QuotaReminderActivationTokenOptionKey).Error)
+	assert.Equal(t, "false", marker.Value)
+	assert.Empty(t, token.Value)
+}
+
+func TestCompleteQuotaReminderBaselineHonorsActivationToken(t *testing.T) {
+	db := useQuotaReminderOptionDB(t)
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "false"))
+	require.NoError(t, UpdateOption("quota_reminder.enabled", "true"))
+	firstToken, err := QuotaReminderActivationToken()
+	require.NoError(t, err)
+	require.NotEmpty(t, firstToken)
+
+	completed, err := CompleteQuotaReminderBaseline("stale-token")
+	require.NoError(t, err)
+	assert.False(t, completed)
+	assert.True(t, IsQuotaReminderBaselinePending())
+
+	completed, err = CompleteQuotaReminderBaseline(firstToken)
+	require.NoError(t, err)
+	assert.True(t, completed)
+	assert.False(t, IsQuotaReminderBaselinePending())
+
+	var marker Option
+	require.NoError(t, db.First(&marker, "key = ?", QuotaReminderBaselinePendingOptionKey).Error)
+	assert.Equal(t, "false", marker.Value)
+	var token Option
+	require.NoError(t, db.First(&token, "key = ?", QuotaReminderActivationTokenOptionKey).Error)
+	assert.Empty(t, token.Value)
+}
+
+func TestCompleteQuotaReminderBaselineReportsMissingMarker(t *testing.T) {
+	useQuotaReminderOptionDB(t)
+	completed, err := CompleteQuotaReminderBaseline("missing-marker")
+	require.Error(t, err)
+	assert.False(t, completed)
+}
+
 func TestUpdateQuotaReminderOptionsWritesSnapshotAndSuppressesInOneTransaction(t *testing.T) {
 	db := useQuotaReminderOptionDB(t)
 	general := operation_setting.GetGeneralSetting()

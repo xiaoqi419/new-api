@@ -1,0 +1,549 @@
+schema: comet.native.v4
+name: low-quota-email-reminder
+language: zh-CN
+phase: archive
+status: done
+state_version: 15
+brief: brief.md
+spec_changes:
+  - capability: low-quota-email-reminder
+    operation: modify
+    source: specs/low-quota-email-reminder/spec.md
+workspace:
+  isolation: current
+  change_branch: secondary-dev
+  target_branch: secondary-dev
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 管理员开启提醒并输入 `1`：USD 站点保存为 `$1` 的规范化值，CNY 站点保存为 `¥1` 的规范化值，CUSTOM/TOKENS
+      站点分别保存为一个自定义货币单位/一个 token 单位。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: 管理员关闭提醒后，即使用户余额低于阈值也不创建或发送提醒；重新开启后只对新的低余额周期生效。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: 用户个人阈值为非空值时使用个人值；个人阈值留空时使用管理员全局值。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 内置模板可以切换并预览；自定义模板只允许白名单变量（`username`、`remaining_quota`、`threshold`、`currency_symbol`、`top_up_url`、`site_name`），未知变量在保存和发送前被拒绝。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: 测试收件邮箱为空、格式非法或 SMTP 发送失败时返回明确错误；成功时只发送测试邮件，不改变任何用户的提醒状态。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: 权威余额由高于或等于阈值变为低于阈值时，重复扫描和并发请求最多创建一个发送记录；发送失败可由系统任务重试，成功后不重复发送。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: 充值、退款或管理员调整使钱包余额回到阈值以上后，下一次再次跌破阈值可以重新提醒；订阅状态独立验证同样规则，钱包恢复不会重置订阅状态，反之亦然。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: SQLite、MySQL 5.7.8+ 和 PostgreSQL 9.6+ 均可完成迁移、读写提醒状态和并发去重查询。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A9
+    source: specs/low-quota-email-reminder/spec.md
+    text: The administrator configuration has an enable switch, a global threshold,
+      a selected built-in or custom template, and a test recipient address. The
+      global threshold defaults to one unit of the site's current displayed
+      quota unit. The API accepts displayed-unit input and stores a normalized
+      value together with the unit semantics used at save time. Reading the
+      configuration renders the saved value using those semantics, so later
+      exchange-rate or display-unit changes do not reinterpret an existing
+      threshold.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A10
+    source: specs/low-quota-email-reminder/spec.md
+    text: The configuration is disabled only when the administrator turns it off.
+      When disabled, no low-quota reminder is created or sent. Re-enabling does
+      not retroactively send for an already-low balance; a new crossing after
+      re-enabling is required.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A11
+    source: specs/low-quota-email-reminder/spec.md
+    text: "`UserSetting.QuotaWarningThreshold` remains optional. A non-empty,
+      positive value is interpreted in the current displayed unit at the time
+      the user saves it and is normalized with the same unit metadata as the
+      global value. An empty value means inheritance from the global threshold.
+      Invalid, negative, non-finite, or out-of-range values are rejected with a
+      client error."
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A12
+    source: specs/low-quota-email-reminder/spec.md
+    text: "Built-in templates are selectable and previewable. A custom template has
+      a subject, HTML body, and plain-text body. Rendering accepts only these
+      variables:"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A13
+    source: specs/low-quota-email-reminder/spec.md
+    text: "`username`, `remaining_quota`, `threshold`, `currency_symbol`,
+      `top_up_url`, `site_name`."
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A14
+    source: specs/low-quota-email-reminder/spec.md
+    text: Unknown variables, malformed delimiters, or missing required custom fields
+      fail validation before persistence and before send. Values are escaped
+      according to the output context; HTML bodies must not allow template
+      content to inject arbitrary server-side expressions.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A15
+    source: specs/low-quota-email-reminder/spec.md
+    text: "Wallet and subscription balances have independent reminder state records.
+      Each state is associated with a user, balance kind, and effective
+      threshold. The state machine is:"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A16
+    source: specs/low-quota-email-reminder/spec.md
+    text: "`armed` -> `low_pending` -> `sent`"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A17
+    source: specs/low-quota-email-reminder/spec.md
+    text: and any balance at or above the threshold transitions `low_pending` or
+      `sent` back to `armed`. A crossing is defined as an authoritative
+      post-settlement or post-adjustment balance changing from `>= threshold` to
+      `< threshold`. A balance that is already below the threshold does not
+      create another reminder on repeated scans.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A18
+    source: specs/low-quota-email-reminder/spec.md
+    text: Creation and deduplication occur transactionally. Concurrent requests or
+      compensation scans may race, but only one transition for a given
+      low-balance cycle can enqueue/send a reminder. Failed delivery remains
+      retryable without creating another logical reminder. A successful delivery
+      records the template and threshold snapshot used for auditability.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A19
+    source: specs/low-quota-email-reminder/spec.md
+    text: The recipient is the user's notification email when configured, otherwise
+      the user's default email. If no email exists, the reminder is skipped with
+      an audit log and the state remains retryable/armed according to the
+      implementation's delivery policy; no fake success is recorded.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A20
+    source: specs/low-quota-email-reminder/spec.md
+    text: An administrator-only endpoint sends the selected template rendered with
+      safe example values to the explicitly supplied test address using current
+      SMTP settings. It validates address and template first, returns a
+      structured success or error response, and never mutates user reminder
+      state or consumes quota.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A21
+    source: specs/low-quota-email-reminder/spec.md
+    text: The existing system-task framework periodically scans enabled users with
+      authoritative low balances and retryable reminder records. It applies the
+      same transactional state transition and template snapshot rules as
+      synchronous settlement hooks. The task is safe to run repeatedly and
+      across multiple instances.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A22
+    source: specs/low-quota-email-reminder/spec.md
+    text: All persistence uses GORM patterns compatible with SQLite, MySQL 5.7.8+,
+      and PostgreSQL 9.6+. Migrations avoid dialect-specific column types and
+      raw locking syntax. Quota conversion uses the common saturation helpers
+      and rejects invalid user-controlled multipliers. Existing SMTP,
+      NotifyUser, and other notification channels retain their behavior.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A23
+    source: specs/low-quota-email-reminder/spec.md
+    text: Display-unit threshold conversion and default `1` are correct for USD,
+      CNY, CUSTOM, and TOKENS.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A24
+    source: specs/low-quota-email-reminder/spec.md
+    text: Personal override and empty-value inheritance are correct.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A25
+    source: specs/low-quota-email-reminder/spec.md
+    text: Template selection, preview, whitelist validation, and context-safe
+      rendering are correct.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A26
+    source: specs/low-quota-email-reminder/spec.md
+    text: Test-email API handles success, invalid address, invalid template, and
+      SMTP failure without changing reminder state.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A27
+    source: specs/low-quota-email-reminder/spec.md
+    text: Wallet crossing creates at most one reminder per cycle; repeated low scans
+      do not resend; recovery re-arms it.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A28
+    source: specs/low-quota-email-reminder/spec.md
+    text: Subscription lifecycle follows the same rules independently from wallet
+      lifecycle.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A29
+    source: specs/low-quota-email-reminder/spec.md
+    text: Persistence and migration work on all three supported databases, including
+      concurrent deduplication.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+  - id: A30
+    source: specs/low-quota-email-reminder/spec.md
+    text: Admin authorization, email absence, retry behavior, observability, i18n,
+      changelog, and regression compatibility are covered.
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。"
+      truncated: false
+builder_handoff:
+  candidate_id: 68e67e7e-d2eb-4263-8e90-682b916bf4fa
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:7bf59621-a309-4c32-8e0c-8c19eac86299
+  iteration: 1
+  summary:
+    text: 已核对低余额邮件提醒实现已合入 origin/main（e7249413e，经 9dd772dd6 合并，当前 main
+      历史包含该功能），本轮未修改业务代码；现有本地验收结果继续作为候选交接，发布收尾将使用干净 main 工作区和明确镜像标签。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+    - A25
+    - A26
+    - A27
+    - A28
+    - A29
+    - A30
+  checks:
+    - name:
+        text: go-test-all
+        truncated: false
+      result: passed
+      note:
+        text: go test ./... -count=1
+        truncated: false
+    - name:
+        text: go-vet-affected
+        truncated: false
+      result: passed
+      note:
+        text: go vet ./common ./model ./service ./controller ./router
+        truncated: false
+    - name:
+        text: relaykit-independent-build
+        truncated: false
+      result: passed
+      note:
+        text: cd relaykit; GOWORK=off; go build ./...
+        truncated: false
+    - name:
+        text: frontend-typecheck
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run typecheck
+        truncated: false
+    - name:
+        text: frontend-build
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run build
+        truncated: false
+    - name:
+        text: frontend-reminder-tests
+        truncated: false
+      result: passed
+      note:
+        text: 3 affected frontend test files, 12 tests passed
+        truncated: false
+    - name:
+        text: git-diff-check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: MySQL/PostgreSQL live instances were unavailable; SQLite and
+        dialect-neutral GORM/static checks passed.
+      truncated: false
+    - text: 真实 SMTP 投递和生产邮件行为仍需在生产配置上验证；不记录或读取凭据。
+      truncated: false
+    - text: 当前 secondary-dev 工作区含大量其他用户/代理未提交改动，本轮发布不使用该工作区。
+      truncated: false
+    - text: GitHub CI 不作为本轮发布前提，按用户要求使用本地检查和应用容器更新。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-05T12:50:58.682Z
+blockers: []
+verification:
+  candidate_id: 68e67e7e-d2eb-4263-8e90-682b916bf4fa
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:f9064a65-c496-44b5-8d6c-988baf2fd165
+  iteration: 1
+  attempt: 1
+  assurance: user-confirmed-degraded
+  verdict: pass
+  checks: []
+  summary:
+    text: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。
+    truncated: false
+  risks:
+    - text: No independent semantic Verifier execution was available; Runtime checks
+        alone do not cover acceptance semantics.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-05T16:29:51.211Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+      - A18
+      - A30
+    summary:
+      text: Independent read-only verification found two P1 behavioral gaps
+        (administrator first low-balance crossing and immutable delivery
+        snapshot) and one release-readiness metadata gap. Return to Build; do
+        not archive this candidate.
+      truncated: false
+    completed_at: 2026-09-04T16:46:01.298Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only review recommends PASS. The A7 first-crossing and
+        A18 immutable snapshot gaps are fixed and covered; all local Runtime
+        checks passed. Release remains pending because no scoped
+        commit/push/PR/merge/deployment has been authorized/executed in this
+        verification cycle, and the final changelog SHA must be aligned with the
+        actual merge commit before release.
+      truncated: false
+    completed_at: 2026-09-04T17:30:19.851Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native target specification declarations changed
+      truncated: false
+    completed_at: 2026-09-05T12:48:45.705Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A1
+      - A2
+      - A3
+      - A4
+      - A5
+      - A6
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A12
+      - A13
+      - A14
+      - A15
+      - A16
+      - A17
+      - A18
+      - A19
+      - A20
+      - A21
+      - A22
+      - A23
+      - A24
+      - A25
+      - A26
+      - A27
+      - A28
+      - A29
+      - A30
+    summary:
+      text: 独立 verifier 执行句柄在 Runtime 中持续处于 running，但当前会话无法获得可用的只读 verifier 代理；已完成
+        Runtime 检查计划：Go 全量测试、go vet、relaykit 独立构建、主前端
+        typecheck/build、classic/canvas 构建、3 个提醒相关前端测试文件共 8 项测试、git diff --check
+        均通过。已额外完成令牌竞态、基线扫描竞态和重新启用后新 crossing 回归测试。受限项：未连接 MySQL/PostgreSQL
+        实例，未使用真实 SMTP，未进行生产行为验证。
+      truncated: false
+    completed_at: 2026-09-05T16:29:35.585Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 已完成本轮补偿修复与全部可用本地检查；独立 verifier 因平台执行句柄不可用，按既有用户授权继续归档。
+      truncated: false
+    completed_at: 2026-09-05T16:29:51.211Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-04T06:22:41.820Z
