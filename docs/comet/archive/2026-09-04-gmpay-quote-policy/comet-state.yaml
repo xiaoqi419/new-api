@@ -1,0 +1,253 @@
+schema: comet.native.v4
+name: gmpay-quote-policy
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: gmpay-quote-policy
+    operation: create
+    source: specs/gmpay-quote-policy/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/gmpay-quote-policy
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: `simulate` 且模拟失败时，即使开了管理员兜底也不用固定/百分比。"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: `admin` 时不调用链上估算，直接用管理员规则。"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: `simulate_then_admin` 在模拟失败且已配置管理员规则时使用固定/百分比。"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 界面三个选项对应只链上估算、只管理员固定/百分比、估算失败再走管理员。"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 旧 `empirical` / `simulate_then_empirical` 文档仍能加载为 `admin` /
+      `simulate_then_admin`。"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A6
+    source: specs/gmpay-quote-policy/spec.md
+    text: "`quote_mode` 对全部 GMPay Native USDT 网络生效："
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A7
+    source: specs/gmpay-quote-policy/spec.md
+    text: "| 值 | 行为 |"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A8
+    source: specs/gmpay-quote-policy/spec.md
+    text: "| `simulate` | 仅链上模拟。失败则拒绝，不使用管理员规则。 |"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A9
+    source: specs/gmpay-quote-policy/spec.md
+    text: "| `admin` | 仅管理员固定金额或充值百分比。不调用链上估算。 |"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A10
+    source: specs/gmpay-quote-policy/spec.md
+    text: "| `simulate_then_admin` | 先链上模拟；失败后使用管理员规则。 |"
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A11
+    source: specs/gmpay-quote-policy/spec.md
+    text: 缺省为
+      `simulate_then_admin`。兼容读取：`empirical`→`admin`，`simulate_then_empirical`→`simulate_then_admin`，以及旧字段
+      `tron_quote_mode`。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+  - id: A12
+    source: specs/gmpay-quote-policy/spec.md
+    text: 链上模拟失败不得改用 64285 energy / 65000 gas / 5000 lamports 作为本策略的兜底。管理员规则仍由
+      `fallback_enabled`、`fallback_mode`、`fallback_value` 配置；策略需要管理员规则但未启用时拒绝报价。
+    result: passed
+    reason:
+      text: "User confirmed degraded completion without independent semantic
+        verification: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。"
+      truncated: false
+builder_handoff:
+  candidate_id: b6707ffb-90cd-4179-80a7-4463f63474ed
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:d2f375e6-b43f-4f1a-9fe9-77e5d085f5a5
+  iteration: 1
+  summary:
+    text: Quote strategy is simulate / admin / simulate_then_admin for all Native
+      USDT networks. Production is on origin/main 90b3129cb, image
+      20260904-gmpay-fee-status-fix, both sites healthy. User confirmed the
+      admin page works.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+  checks:
+    - name:
+        text: quote-policy Go tests
+        truncated: false
+      result: passed
+      note:
+        text: go test ./service ./controller -run
+          TestParseGMPayFeeConfigTronQuoteMode|TestBuiltinNetworkFeeEstimatorTRON|TestGMPayWalletQuoteMode
+        truncated: false
+    - name:
+        text: fee-config frontend tests
+        truncated: false
+      result: passed
+      note:
+        text: bun run test --
+          src/features/system-settings/integrations/__tests__/gmpay-fee-config.test.ts
+        truncated: false
+    - name:
+        text: production hot-update
+        truncated: false
+      result: passed
+      note:
+        text: aierxin.cc and codezip.io report version 20260904-gmpay-fee-status-fix;
+          user confirmed test estimate works
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Native Verify was not run before production deploy because the user asked
+        to merge and hot-update immediately.
+      truncated: false
+    - text: gmpay-quote-mode and gmpay-tron-revert-fee-fallback remain separate active
+        changes.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-04T05:26:18.398Z
+blockers: []
+verification:
+  candidate_id: b6707ffb-90cd-4179-80a7-4463f63474ed
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:770f5c38-443c-411a-b887-dd06575b64b8
+  iteration: 1
+  attempt: 1
+  assurance: user-confirmed-degraded
+  verdict: pass
+  checks: []
+  summary:
+    text: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。
+    truncated: false
+  risks:
+    - text: No independent semantic Verifier execution was available; Runtime checks
+        alone do not cover acceptance semantics.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-04T05:26:55.103Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A1
+      - A2
+      - A3
+      - A4
+      - A5
+      - A6
+      - A7
+      - A8
+      - A9
+      - A10
+      - A11
+      - A12
+    summary:
+      text: Independent Native Verifier was not dispatched. Runtime check plan was
+        empty and already complete. User confirmed production image
+        20260904-gmpay-fee-status-fix works and asked to archive.
+      truncated: false
+    completed_at: 2026-09-04T05:26:48.137Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 用户确认线上可用并要求归档。生产镜像 20260904-gmpay-fee-status-fix 已热更两站。
+      truncated: false
+    completed_at: 2026-09-04T05:26:55.103Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-04T04:39:37.020Z
