@@ -1652,7 +1652,7 @@ func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *tes
 		var payload map[string]any
 		require.NoError(t, common.DecodeJson(request.Body, &payload))
 		requestBodies <- payload
-		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-fee-order","order_id":%q,"amount":15,"currency":"USD","actual_amount":"15.5","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","status":1,"expiration_time":2000000000}}`, payload["order_id"])))
+		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-fee-order","order_id":%q,"amount":%v,"currency":"USD","actual_amount":"15.5","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","status":1,"expiration_time":2000000000}}`, payload["order_id"], payload["amount"])))
 	}))
 	t.Cleanup(server.Close)
 	previousClientFactory := newGMPayNativeClient
