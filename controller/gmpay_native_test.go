@@ -1632,7 +1632,7 @@ func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *tes
 	previousOptions := common.OptionMap
 	common.OptionMapRWMutex.Lock()
 	common.OptionMap = map[string]string{
-		service.GMPayFeeConfigOptionKey: `{"version":1,"enabled":true,"default":{"mode":"fixed","value":"5"},"max_fee":"20","max_total":"100000"}`,
+		service.GMPayFeeConfigOptionKey: `{"version":1,"dynamic_enabled":false,"enabled":true,"default":{"mode":"fixed","value":"5"},"max_fee":"20","max_total":"100000"}`,
 	}
 	common.OptionMapRWMutex.Unlock()
 	t.Cleanup(func() {
