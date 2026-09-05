@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    // Release tag for low-quota reminder compensation and activation-race fixes.
+    version: '20260906-ac1d17cc8',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复低余额邮件提醒在大量用户、订阅补偿扫描和快速关闭后重新开启时的漏扫、重复提醒与旧任务竞态。',
+        ],
+      },
+    ],
+  },
+  {
     // Release tag for the H5 cross-origin login fix and real OPTIONS preflight route.
     version: '20260905-27ab1a99a',
     date: '2026-09-05',
