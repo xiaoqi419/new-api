@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    // Release tag for the H5 cross-origin login fix and real OPTIONS preflight route.
+    version: '20260905-27ab1a99a',
+    date: '2026-09-05',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复统一 Admin H5 切换国际站登录时被浏览器拦截的问题：双站点跨域请求现在返回明确的凭据 CORS 响应，登录、二次验证、会话刷新和退出登录可以正常读取后端结果。',
+        ],
+      },
+    ],
+  },
+  {
     // Keep the entry in the same YYYYMMDD-<sha> format used by build-push.sh.
     // This release tag is built from the immutable release metadata merge SHA.
     version: '20260905-cce6dd4bf',
