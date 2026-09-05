@@ -338,7 +338,6 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		return false
 	}
 	if feeCfg.ResolvedQuoteMode() == service.GMPayQuoteModeAdmin {
-		status.Capability = true
 		if status.FallbackEnabled && markFallbackReady() {
 			return status
 		}
@@ -347,7 +346,6 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 	}
 	estimator, err := resolveGMPayEstimatorWithClient(ctx, feeCfg, client)
 	if err != nil {
-		status.Capability = true
 		if status.FallbackEnabled && markFallbackReady() {
 			return status
 		}
@@ -360,8 +358,12 @@ func discoverGMPayFeeStatus(ctx context.Context) gmpayFeeStatusResponse {
 		}
 		return status
 	}
-	status.Capability = true
 	if gmpayEstimatorHasQuote(ctx, estimator, assets, feeCfg) {
+		// Capability describes a currently usable dynamic network-fee
+		// estimator.  An estimator object may exist while every quote fails;
+		// in that case administrator fallback can still provide a checkout-safe
+		// price, but the dynamic capability must remain false.
+		status.Capability = true
 		status.Healthy, status.QuoteAvailable = true, true
 		status.FeeSource = service.GMPayFeeSourceChainNetworkEstimate
 		status.LastSuccessAt = status.LastSyncAt

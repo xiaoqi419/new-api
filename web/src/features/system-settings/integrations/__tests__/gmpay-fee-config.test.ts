@@ -550,9 +550,12 @@ describe('GMPay fee fallback configuration', () => {
       tron_quote_mode: 'empirical',
     })
     expect(getGMPayFeeConfigError(empirical)).toBeNull()
-    expect(parseGMPayFeeConfig(empirical).quote_mode).toBe('admin')
+    const parsed = parseGMPayFeeConfig(empirical)
+    expect(parsed).not.toBeNull()
+    if (!parsed) return
+    expect(parsed.quote_mode).toBe('admin')
     expect(
-      JSON.parse(serializeGMPayFeeConfig(parseGMPayFeeConfig(empirical)))
+      JSON.parse(serializeGMPayFeeConfig(parsed))
         .quote_mode
     ).toBe('admin')
   })

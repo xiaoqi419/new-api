@@ -1,0 +1,155 @@
+{
+  "app": {
+    "title": "管理后台",
+    "navigation": {
+      "signIn": "登录",
+      "users": "用户"
+    },
+    "fallbacks": {
+      "notFoundTitle": "页面未找到",
+      "notFoundDescription": "你请求的页面不可用。",
+      "errorTitle": "出现了一些问题",
+      "errorDescription": "此页面无法加载，请稍后再试。"
+    }
+  },
+  "auth": {
+    "username": "用户名",
+    "password": "密码",
+    "verificationCode": "验证码",
+    "signIn": "登录",
+    "verify": "验证",
+    "loading": "正在登录…",
+    "signOut": "退出登录",
+    "sessionExpired": "登录已过期，请重新登录。",
+    "errors": {
+      "required": "请输入此项。",
+      "signIn": "登录失败，请检查账号和密码后重试。",
+      "verification": "验证码无效，请重试。",
+      "permission": "你没有访问管理后台的权限。",
+      "network": "暂时无法登录，请稍后重试。"
+    }
+  },
+  "sections": {
+    "signInTitle": "登录",
+    "signInDescription": "使用管理员账号继续。",
+    "usersTitle": "用户",
+    "usersDescription": "此页面已准备就绪。",
+    "userTitle": "用户详情",
+    "userDescription": "此页面已准备就绪。",
+    "backToUsers": "返回用户列表"
+  },
+  "users": {
+    "title": "用户",
+    "description": "搜索和管理后台用户。",
+    "searchLabel": "搜索用户",
+    "searchPlaceholder": "按用户名或邮箱搜索",
+    "filters": "用户筛选",
+    "all": "全部",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "lowBalance": "低余额",
+    "loading": "正在加载用户",
+    "empty": "未找到用户。",
+    "noEmail": "未填写邮箱",
+    "error": "无法加载用户。",
+    "retry": "重试",
+    "retrying": "正在重试…",
+    "group": "分组",
+    "quota": "余额",
+    "usedQuota": "已用余额",
+    "pagination": "用户列表分页",
+    "previous": "上一页",
+    "next": "下一页",
+    "pageOf": "第 {{page}} / {{total}} 页"
+  },
+  "userDetail": {
+    "title": "用户详情",
+    "backToUsers": "返回用户列表",
+    "invalidTitle": "未找到用户",
+    "invalidDescription": "用户链接无效。",
+    "loadingUser": "正在加载用户详情",
+    "identity": "身份信息",
+    "username": "用户名",
+    "displayName": "显示名称",
+    "email": "邮箱",
+    "notAvailable": "暂无",
+    "status": "状态",
+    "group": "分组",
+    "id": "用户 ID",
+    "quotaOverview": "余额概览",
+    "quota": "余额",
+    "usedQuota": "已用余额",
+    "remainingQuota": "剩余余额",
+    "adjustQuota": "调整余额",
+    "topupHistory": "充值记录",
+    "loadingTopups": "正在加载充值记录",
+    "topupEmpty": "暂无充值记录。",
+    "topupError": "无法加载充值记录。",
+    "userError": "无法加载用户详情。",
+    "quotaAdjusted": "余额已成功更新。",
+    "retry": "重试",
+    "retrying": "正在重试…",
+    "quotaAmount": "余额金额",
+    "orderNumber": "订单号",
+    "tradeNumber": "交易单号",
+    "createdAt": "创建时间",
+    "pagination": "充值记录分页",
+    "pageOf": "第 {{page}} / {{total}} 页",
+    "totalQuota": "总余额",
+    "paymentMethod": "支付方式",
+    "statuses": {
+      "pending": "待处理",
+      "success": "成功",
+      "failed": "失败",
+      "expired": "已过期",
+      "held": "暂存"
+    },
+    "paymentMethods": {
+      "balance": "余额",
+      "stripe": "Stripe",
+      "creem": "Creem",
+      "waffo": "Waffo",
+      "waffo_pancake": "Waffo Pancake",
+      "wechatpay": "微信支付",
+      "alipay_direct": "支付宝"
+    },
+    "notFoundTitle": "未找到用户",
+    "notFoundDescription": "所选用户不存在或已被删除。"
+  },
+  "quotaAdjustment": {
+    "title": "调整余额",
+    "close": "关闭",
+    "cancel": "取消",
+    "back": "返回",
+    "continue": "继续",
+    "confirm": "确认调整",
+    "saving": "保存中…",
+    "mode": "调整方式",
+    "value": "余额金额",
+    "currentQuota": "当前余额",
+    "preview": "{{current}} → {{result}}",
+    "confirmDescription": "确认{{mode}}{{value}}余额。",
+    "error": "无法调整余额，请稍后重试。",
+    "modes": {
+      "add": "增加",
+      "subtract": "扣减",
+      "override": "覆盖"
+    },
+    "warnings": {
+      "subtract": "扣减余额是高风险操作。",
+      "override": "覆盖余额是高风险操作。"
+    },
+    "validation": {
+      "required": "请输入余额金额。",
+      "amount": "请输入有效的余额金额。",
+      "positive": "增加和扣减必须使用正数余额。",
+      "nonNegative": "覆盖必须使用非负余额。",
+      "safeInteger": "请输入有效的余额金额。"
+    }
+  },
+  "site": {
+    "switcher": "站点",
+    "domestic": "国内站",
+    "international": "国际站"
+  }
+}

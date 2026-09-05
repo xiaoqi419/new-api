@@ -856,6 +856,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 	previousMinTopUp := operation_setting.MinTopUp
 	previousCallbackAddress := operation_setting.CustomCallbackAddress
 	previousServerAddress := system_setting.ServerAddress
+	previousDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
 	previousOptions := common.OptionMap
 	operation_setting.PayAddress = "https://pay.example.test/payments/epay/v1/order/create-transaction"
 	operation_setting.EpayId = "gmpay-test-pid"
@@ -864,6 +865,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 	operation_setting.Price = 1
 	operation_setting.MinTopUp = 1
 	operation_setting.CustomCallbackAddress = "https://new-api.example"
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
 	system_setting.ServerAddress = "https://new-api.example"
 	// Ordinary wallet fee discovery is opt-out by default in production. The
 	// legacy checkout fixtures explicitly disable dynamic discovery so these
@@ -881,6 +883,7 @@ func setupGMPayTopUpTest(t *testing.T) {
 		operation_setting.Price = previousPrice
 		operation_setting.MinTopUp = previousMinTopUp
 		operation_setting.CustomCallbackAddress = previousCallbackAddress
+		operation_setting.GetGeneralSetting().QuotaDisplayType = previousDisplayType
 		system_setting.ServerAddress = previousServerAddress
 		common.OptionMapRWMutex.Lock()
 		common.OptionMap = previousOptions
@@ -1629,7 +1632,7 @@ func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *tes
 	previousOptions := common.OptionMap
 	common.OptionMapRWMutex.Lock()
 	common.OptionMap = map[string]string{
-		service.GMPayFeeConfigOptionKey: `{"version":1,"enabled":true,"default":{"mode":"fixed","value":"5"},"max_fee":"20","max_total":"100000"}`,
+		service.GMPayFeeConfigOptionKey: `{"version":1,"dynamic_enabled":false,"enabled":true,"default":{"mode":"fixed","value":"5"},"max_fee":"20","max_total":"100000"}`,
 	}
 	common.OptionMapRWMutex.Unlock()
 	t.Cleanup(func() {
@@ -1649,7 +1652,7 @@ func TestRequestEpayCheckoutAddsConfiguredGMPayFeeWithoutIncreasingCredit(t *tes
 		var payload map[string]any
 		require.NoError(t, common.DecodeJson(request.Body, &payload))
 		requestBodies <- payload
-		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-fee-order","order_id":%q,"amount":15,"currency":"USD","actual_amount":"15.5","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","status":1,"expiration_time":2000000000}}`, payload["order_id"])))
+		_, _ = writer.Write([]byte(fmt.Sprintf(`{"status_code":200,"message":"success","data":{"trade_id":"gateway-fee-order","order_id":%q,"amount":%v,"currency":"USD","actual_amount":"15.5","receive_address":"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb","token":"USDT","network":"tron","status":1,"expiration_time":2000000000}}`, payload["order_id"], payload["amount"])))
 	}))
 	t.Cleanup(server.Close)
 	previousClientFactory := newGMPayNativeClient
