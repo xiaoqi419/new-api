@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 
@@ -18,6 +20,12 @@ func SetApiRouter(router *gin.Engine) {
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
 	apiRouter.Use(middleware.BodyStorageCleanup()) // 清理请求体存储
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
+	// Gin only runs a route group's middleware when a route matches the
+	// request method. Register an OPTIONS catch-all so browser preflight
+	// requests reach H5CORS even though the API endpoints are POST/GET-only.
+	apiRouter.OPTIONS("/*path", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 	anonymousRequestBodyLimit := middleware.AnonymousRequestBodyLimit()
 	{
 		apiRouter.GET("/setup", controller.GetSetup)
