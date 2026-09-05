@@ -1,0 +1,352 @@
+schema: comet.native.v4
+name: h5-cross-origin-login-fix
+language: zh-CN
+phase: archive
+status: done
+state_version: 13
+brief: brief.md
+spec_changes:
+  - capability: h5-cross-origin-login-fix
+    operation: create
+    source: specs/h5-cross-origin-login-fix/spec.md
+workspace:
+  isolation: current
+  change_branch: secondary-dev
+  target_branch: secondary-dev
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 3
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: 从 `https://aierxin.cc/admin-h5/sign-in` 选择国际站并发起登录时，浏览器不再因 CORS
+      把响应转换为“暂时无法登录”；无效账号能够显示后端返回的业务错误。
+    result: passed
+    reason:
+      text: 在 https://aierxin.cc/admin-h5/sign-in
+        的浏览器中选择国际站并提交合成无效账号后，页面显示后端业务错误“用户名或密码错误，或用户已被封禁”，不再显示 CORS
+        网络错误或“暂时无法登录”。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "对 `https://aierxin.cc` 和 `https://codezip.io` 的 API 请求分别返回匹配的
+      `Access-Control-Allow-Origin` 与 `Access-Control-Allow-Credentials:
+      true`，并带 `Vary: Origin`。"
+    result: passed
+    reason:
+      text: 线上从服务器实测 aierxin.cc 与 codezip.io 两个方向的跨站请求均返回匹配
+        ACAO、Allow-Credentials=true 和 Origin 变化；公共状态接口版本头与响应均为
+        20260905-27ab1a99a。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: OPTIONS 预检允许 H5 使用的 `POST` 方法和
+      `Content-Type`、`Authorization`、`X-Auth-Session`、`Cache-Control` 等请求头；未知
+      origin 不获得 CORS 放行头。
+    result: passed
+    reason:
+      text: 线上五个 API 路径的 OPTIONS 预检允许 POST 与 Content-Type、Authorization、X-Auth-Session
+        等请求头；未知 origin 返回 403 且无放行头；无 Origin 预检返回 204 且无 CORS origin 头。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: 真实 `SetApiRouter` 注册的 `/api` OPTIONS 预检能够命中 H5 CORS middleware，而不是因 Gin
+      未匹配 OPTIONS 路由返回 404。
+    result: passed
+    reason:
+      text: 真实 SetApiRouter 回归测试通过；线上
+        /api/user/login、/api/user/login/2fa、/api/user/auth/refresh、/api/user/auth/logout
+        和 /api/status 预检均返回 204 与显式来源。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "`/api/user/login`、`/api/user/login/2fa`、`/api/user/auth/refresh` 和
+      `/api/user/auth/logout` 均经过该策略，现有无 Origin 的同源请求继续工作。"
+    result: passed
+    reason:
+      text: 以上登录、2FA、refresh、logout 路径均经 H5 CORS 策略；无 Origin 兼容性由本地测试和线上无 Origin
+        OPTIONS 检查覆盖。
+      truncated: false
+  - id: A6
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: 统一 Admin H5 运行在一个站点 origin、请求另一个站点 API 时，后端必须按请求的 `Origin` 返回显式 CORS
+      允许值。`https://aierxin.cc` 与 `https://codezip.io` 是本次允许的 H5 origin；允许携带会话
+      Cookie，并覆盖 `/api` 路由组中的登录、2FA、refresh、logout、状态和用户 API。安全 Cookie 模式下
+      refresh Cookie 使用 `SameSite=None; Secure`，以便跨站 H5 在刷新页面后继续保持会话。没有 `Origin`
+      的同源请求保持现有行为，其他 origin 不获得放行头。
+    result: passed
+    reason:
+      text: H5CORS 仅使用两个 HTTPS origin，安全模式 refresh Cookie 使用 SameSite=None;
+        Secure；两套运行环境均为 SESSION_COOKIE_SECURE=true 且 SESSION_COOKIE_TRUSTED_URL
+        包含两个 origin；本地 cookie 测试通过。
+      truncated: false
+  - id: A7
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: 不得将 `AllowAllOrigins=true` 与 `AllowCredentials=true` 用于 H5
+      跨域策略。预检必须限制到实际使用的方法和请求头。启用 `SESSION_COOKIE_SECURE` 时，refresh Cookie 为
+      `SameSite=None; Secure`，且两个 H5 origin 必须能够通过 `SESSION_COOKIE_TRUSTED_URL`
+      的可信 origin 校验；不安全本地模式继续使用 `SameSite=Strict`。
+    result: passed
+    reason:
+      text: 代码未将 H5 AllowAllOrigins 与凭据同时启用；预检方法和请求头为显式白名单；安全与不安全 cookie 模式测试均通过。
+      truncated: false
+  - id: A8
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: "A1：允许 `https://aierxin.cc` 和 `https://codezip.io`，响应包含匹配的
+      `Access-Control-Allow-Origin`、`Access-Control-Allow-Credentials: true` 和
+      `Vary: Origin`。"
+    result: passed
+    reason:
+      text: "线上双方向跨站实测返回精确 ACAO、Allow-Credentials=true；Vary: Origin 由应用返回并在请求经过网关时保留。"
+      truncated: false
+  - id: A9
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: A2：真实 `SetApiRouter` 的 OPTIONS 预检能够命中 H5 CORS middleware，返回 204，并允许 H5
+      登录/会话所需的 POST、GET、PUT、DELETE、OPTIONS 方法以及
+      Content-Type、Authorization、X-Auth-Session、Cache-Control 等请求头。
+    result: passed
+    reason:
+      text: 真实路由测试覆盖 OPTIONS catch-all，线上所有认证相关路径预检均为 204，允许的方法包含
+        POST、GET、PUT、DELETE、OPTIONS 等。
+      truncated: false
+  - id: A10
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: A3：未知 origin 没有 CORS 放行头；没有 Origin 的同源请求仍返回业务响应。
+    result: passed
+    reason:
+      text: 未知来源线上预检返回 403 且无 ACAO；无 Origin 请求保持 204/业务兼容。
+      truncated: false
+  - id: A11
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: A4：`/api/user/login`、`/api/user/login/2fa`、`/api/user/auth/refresh`、`/api/user/auth/logout`
+      和 `/api/status` 都安装 H5 CORS，国际站无效账号请求能够读到后端 JSON 错误而不是浏览器网络错误。
+    result: passed
+    reason:
+      text: 线上 codezip.io 与 aierxin.cc 状态接口均返回 success=true 和版本
+        20260905-27ab1a99a；国际登录合成无效账号响应可被 H5 浏览器读取。
+      truncated: false
+  - id: A12
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: A5：Go middleware 回归测试和受影响测试通过；线上 curl/浏览器检查记录两个 origin 的预检和实际请求结果。
+    result: passed
+    reason:
+      text: go test -count=1 ./router ./middleware ./service ./controller ./common、go
+        vet ./router ./middleware、git diff --check 均通过；服务器 Docker 构建成功；线上双域名
+        curl、预检、无效登录和浏览器检查通过。
+      truncated: false
+  - id: A13
+    source: specs/h5-cross-origin-login-fix/spec.md
+    text: A6：未写入认证凭据，未改变站点数据隔离或国内访问限制；Comet Verify 未通过前保持 change active。
+    result: passed
+    reason:
+      text: 未使用或写入真实认证凭据；仅更新应用镜像、Compose 环境和运行时 trusted
+        origins，数据库、Redis、网关及国内访问限制未改动；配置已备份。
+      truncated: false
+builder_handoff:
+  candidate_id: 873ac1e9-6d26-4804-90cc-109e5235e817
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:db8042fb-e6d0-4318-a603-156e7b5dd541
+  iteration: 1
+  summary:
+    text: "已在 PR #32 合并后的 origin/main 上补齐真实 Gin OPTIONS 预检路由。/api 组现在注册 OPTIONS
+      /*path，使 /api/user/login 等预检命中 H5CORS 并返回 204；双 origin 显式凭据
+      CORS、未知源拒绝、跨站安全 refresh Cookie 和回归测试均保留。"
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+  checks:
+    - name:
+        text: go test ./router ./middleware ./service ./controller
+        truncated: false
+      result: passed
+      note:
+        text: preflight candidate worktree passed
+        truncated: false
+    - name:
+        text: go vet ./router ./middleware
+        truncated: false
+      result: passed
+      note:
+        text: no diagnostics
+        truncated: false
+    - name:
+        text: gofmt
+        truncated: false
+      result: passed
+      note:
+        text: changed Go files formatted
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: candidate diff clean
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 线上生产容器仍需从合并后的 origin/main 构建并更新；部署时 SESSION_COOKIE_TRUSTED_URL 必须包含
+        https://aierxin.cc,https://codezip.io。
+      truncated: false
+    - text: 未使用真实账号凭据；线上验证只使用无效测试账号和预检请求。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-05T11:31:15.430Z
+blockers: []
+verification:
+  candidate_id: 873ac1e9-6d26-4804-90cc-109e5235e817
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:560d959a-8403-4aeb-b045-a8e7d55c41c6
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: go-test-h5-preflight
+      name:
+        text: H5 preflight affected Go tests
+        truncated: false
+      argv_display:
+        - text: -C
+          truncated: false
+        - text: .worktrees/h5-cors-preflight-fix
+          truncated: false
+        - text: test
+          truncated: false
+        - text: ./router
+          truncated: false
+        - text: ./middleware
+          truncated: false
+        - text: ./service
+          truncated: false
+        - text: ./controller
+          truncated: false
+        - text: ./common
+          truncated: false
+        - text: -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 8862
+    - id: go-vet-h5-preflight
+      name:
+        text: H5 preflight Go vet
+        truncated: false
+      argv_display:
+        - text: -C
+          truncated: false
+        - text: .worktrees/h5-cors-preflight-fix
+          truncated: false
+        - text: vet
+          truncated: false
+        - text: ./router
+          truncated: false
+        - text: ./middleware
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1357
+    - id: git-diff-check-h5-preflight
+      name:
+        text: H5 preflight diff whitespace check
+        truncated: false
+      argv_display:
+        - text: -C
+          truncated: false
+        - text: .worktrees/h5-cors-preflight-fix
+          truncated: false
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+        - text: origin/main...HEAD
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 53
+  summary:
+    text: H5 跨域登录修复已从合并提交 b5e3bd0224e15832615085080cf8d6471cebcdc6
+      构建并部署到国内和国际应用容器。两个应用均健康运行新镜像 20260905-27ab1a99a，双 origin 可信配置和真实 OPTIONS
+      路由生效；线上 curl 与浏览器无效登录验证通过。
+    truncated: false
+  risks:
+    - text: 未使用真实管理员凭据，因此成功登录、2FA 和真实 refresh/logout Cookie
+        轮换未执行；使用合成无效登录验证了跨域错误响应可读性。
+      truncated: false
+    - text: codezip.io 作为自身页面 origin 的同源请求不需要 CORS 响应头；两个跨站方向均已分别用反向 origin 实测。
+      truncated: false
+    - text: 本机未安装 tsgo，直接 bun run typecheck 未运行；Docker 生产构建已完成前端构建，Go 类型与路由检查均通过。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-05T12:03:40.566Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-05T11:11:31.129Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-05T11:30:05.875Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: H5 跨域登录修复已从合并提交 b5e3bd0224e15832615085080cf8d6471cebcdc6
+        构建并部署到国内和国际应用容器。两个应用均健康运行新镜像 20260905-27ab1a99a，双 origin 可信配置和真实 OPTIONS
+        路由生效；线上 curl 与浏览器无效登录验证通过。
+      truncated: false
+    completed_at: 2026-09-05T12:03:40.566Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-05T10:48:49.333Z

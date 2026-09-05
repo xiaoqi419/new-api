@@ -11,7 +11,7 @@
 ## 验收标准
 
 - A1：允许 `https://aierxin.cc` 和 `https://codezip.io`，响应包含匹配的 `Access-Control-Allow-Origin`、`Access-Control-Allow-Credentials: true` 和 `Vary: Origin`。
-- A2：OPTIONS 预检允许 H5 登录/会话所需的 POST、GET、PUT、DELETE、OPTIONS 方法以及 Content-Type、Authorization、X-Auth-Session、Cache-Control 等请求头。
+- A2：真实 `SetApiRouter` 的 OPTIONS 预检能够命中 H5 CORS middleware，返回 204，并允许 H5 登录/会话所需的 POST、GET、PUT、DELETE、OPTIONS 方法以及 Content-Type、Authorization、X-Auth-Session、Cache-Control 等请求头。
 - A3：未知 origin 没有 CORS 放行头；没有 Origin 的同源请求仍返回业务响应。
 - A4：`/api/user/login`、`/api/user/login/2fa`、`/api/user/auth/refresh`、`/api/user/auth/logout` 和 `/api/status` 都安装 H5 CORS，国际站无效账号请求能够读到后端 JSON 错误而不是浏览器网络错误。
 - A5：Go middleware 回归测试和受影响测试通过；线上 curl/浏览器检查记录两个 origin 的预检和实际请求结果。
