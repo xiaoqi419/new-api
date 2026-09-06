@@ -60,23 +60,23 @@ export function AppShell(): ReactElement {
               </nav>
             ) : null}
           </div>
-          <div
-            className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
-            aria-label={t("site.switcher") as string}
-          >
-            {siteIds.map((siteId) => (
-              <button
-                key={siteId}
-                type="button"
-                disabled={isAuthenticated}
-                title={isAuthenticated ? (t("site.signOutToSwitch") as string) : undefined}
-                onClick={() => setActiveSite(siteId as SiteId)}
-                className={`min-h-9 rounded-md px-2 text-xs font-medium ${activeSiteId === siteId ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"} disabled:cursor-not-allowed disabled:opacity-60`}
-              >
-                {t(`site.${siteId}`, { defaultValue: siteConfigs[siteId].label })}
-              </button>
-            ))}
-          </div>
+          {!isAuthenticated ? (
+            <div
+              className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
+              aria-label={t("site.switcher") as string}
+            >
+              {siteIds.map((siteId) => (
+                <button
+                  key={siteId}
+                  type="button"
+                  onClick={() => setActiveSite(siteId as SiteId)}
+                  className={`min-h-9 rounded-md px-2 text-xs font-medium ${activeSiteId === siteId ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+                >
+                  {t(`site.${siteId}`, { defaultValue: siteConfigs[siteId].label })}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {isAuthenticated ? (
             <button
               type="button"

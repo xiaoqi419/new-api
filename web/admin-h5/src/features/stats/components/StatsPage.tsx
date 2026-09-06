@@ -118,60 +118,74 @@ export function StatsPage(): ReactElement {
       ) : null}
 
       {days.length > 0 && !statsQuery.isError ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <caption className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-              {t("stats.dailyCaption")}
-            </caption>
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t("stats.day")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.requests")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.tokens")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.quota")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {days.map((row) => (
-                <tr key={row.day} className="border-t border-slate-100">
-                  <td className="px-4 py-3">{row.day}</td>
-                  <td className="px-4 py-3">{displayCount(row.count)}</td>
-                  <td className="px-4 py-3">{displayCount(row.tokenUsed)}</td>
-                  <td className="px-4 py-3">{displayQuota(row.quota, systemConfig)}</td>
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <p className="px-4 py-3 text-sm font-medium text-slate-700">{t("stats.dailyCaption")}</p>
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table className="min-w-[36rem] w-full text-left text-sm">
+              <caption className="sr-only">{t("stats.dailyCaption")}</caption>
+              <thead className="bg-slate-50 text-xs text-slate-500">
+                <tr>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.day")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.requests")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.tokens")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.quota")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {days.map((row) => (
+                  <tr key={row.day} className="border-t border-slate-100">
+                    <td className="whitespace-nowrap px-4 py-3">{row.day}</td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayCount(row.count)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayCount(row.tokenUsed)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayQuota(row.quota, systemConfig)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
       {models.length > 0 && !statsQuery.isError ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <caption className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-              {t("stats.modelCaption")}
-            </caption>
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t("stats.model")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.requests")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.tokens")}</th>
-                <th className="px-4 py-3 font-medium">{t("stats.quota")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((row) => (
-                <tr key={row.model || "unknown"} className="border-t border-slate-100">
-                  <td className="px-4 py-3 break-all">
-                    {row.model || t("stats.unknownModel")}
-                  </td>
-                  <td className="px-4 py-3">{displayCount(row.count)}</td>
-                  <td className="px-4 py-3">{displayCount(row.tokenUsed)}</td>
-                  <td className="px-4 py-3">{displayQuota(row.quota, systemConfig)}</td>
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <p className="px-4 py-3 text-sm font-medium text-slate-700">{t("stats.modelCaption")}</p>
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table className="min-w-[40rem] w-full text-left text-sm">
+              <caption className="sr-only">{t("stats.modelCaption")}</caption>
+              <thead className="bg-slate-50 text-xs text-slate-500">
+                <tr>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.model")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.requests")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.tokens")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("stats.quota")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {models.map((row) => (
+                  <tr key={row.model || "unknown"} className="border-t border-slate-100">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono">
+                      {row.model || t("stats.unknownModel")}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayCount(row.count)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayCount(row.tokenUsed)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">
+                      {displayQuota(row.quota, systemConfig)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 

@@ -59,7 +59,9 @@ describe("StatsPage", () => {
     expect(screen.getAllByText(String(10 * USAGE_DISPLAY_MULTIPLIER))).toHaveLength(3);
     expect(screen.getAllByText(String(100 * USAGE_DISPLAY_MULTIPLIER))).toHaveLength(3);
     expect(screen.getByRole("button", { name: "今天" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("gpt-5")).toBeInTheDocument();
+    const modelName = screen.getByText("gpt-5");
+    expect(modelName).toHaveClass("whitespace-nowrap");
+    expect(modelName.closest("div.overflow-x-auto")).not.toBeNull();
   });
 
   it("switches to yesterday when that range is selected", () => {
