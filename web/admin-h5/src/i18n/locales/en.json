@@ -151,7 +151,7 @@
   },
   "stats": {
     "title": "Usage stats",
-    "description": "Site-wide requests, tokens, and spend, shown at {{multiplier}}× the API values.",
+    "description": "Site-wide requests, tokens, and spend.",
     "range": "Date range",
     "today": "Today",
     "yesterday": "Yesterday",

@@ -804,6 +804,63 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	return stat, nil
 }
 
+type ConsumeUsageTotals struct {
+	Count     int64 `json:"count"`
+	Quota     int64 `json:"quota"`
+	TokenUsed int64 `json:"token_used"`
+}
+
+type ConsumeUsageRow struct {
+	ModelName string `json:"model_name"`
+	CreatedAt int64  `json:"created_at"`
+	Count     int64  `json:"count"`
+	Quota     int64  `json:"quota"`
+	TokenUsed int64  `json:"token_used"`
+}
+
+func consumeUsageBase(startTimestamp int64, endTimestamp int64) *gorm.DB {
+	query := LOG_DB.Table("logs").Where("type = ?", LogTypeConsume)
+	if startTimestamp > 0 {
+		query = query.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp > 0 {
+		query = query.Where("created_at <= ?", endTimestamp)
+	}
+	return query
+}
+
+func consumeUsageSelect(extra string) string {
+	return extra + "count(*) as count, COALESCE(sum(quota), 0) as quota, COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0) as token_used"
+}
+
+func GetConsumeUsageStat(startTimestamp int64, endTimestamp int64) (ConsumeUsageTotals, []ConsumeUsageRow, []ConsumeUsageRow, error) {
+	var totals ConsumeUsageTotals
+	if err := consumeUsageBase(startTimestamp, endTimestamp).
+		Select(consumeUsageSelect("")).
+		Scan(&totals).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+
+	var hours []ConsumeUsageRow
+	if err := consumeUsageBase(startTimestamp, endTimestamp).
+		Select(consumeUsageSelect("(created_at / 3600) * 3600 as created_at, ")).
+		Group("created_at / 3600").
+		Order("created_at / 3600").
+		Scan(&hours).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+
+	var models []ConsumeUsageRow
+	if err := consumeUsageBase(startTimestamp, endTimestamp).
+		Select(consumeUsageSelect("model_name, ")).
+		Group("model_name").
+		Order("sum(quota) desc").
+		Scan(&models).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+	return totals, hours, models, nil
+}
+
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) (token int) {
 	tx := LOG_DB.Table("logs").Select("COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0)")
 	if username != "" {
