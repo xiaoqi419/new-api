@@ -64,6 +64,34 @@ type cpaResponsesWebsocketLease struct {
 	reused bool
 }
 
+// cpaResponsesWebsocketError carries safe transport metadata to the adaptor.
+// Error deliberately returns a fixed, redacted reason so dial errors cannot
+// echo URLs, headers, or provider response bodies into request logs.
+type cpaResponsesWebsocketError struct {
+	reason  string
+	reused  bool
+	rebuilt bool
+	err     error
+}
+
+func (e *cpaResponsesWebsocketError) Error() string {
+	if e == nil || e.reason == "" {
+		return "responses websocket failure"
+	}
+	return "responses websocket " + e.reason
+}
+
+func (e *cpaResponsesWebsocketError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func newCPAResponsesWebsocketError(reason string, reused, rebuilt bool, err error) error {
+	return &cpaResponsesWebsocketError{reason: reason, reused: reused, rebuilt: rebuilt, err: err}
+}
+
 var cpaResponsesWebsocketPools = struct {
 	sync.Mutex
 	items map[string]*cpaResponsesWebsocketPool
@@ -171,13 +199,14 @@ func (p *cpaResponsesWebsocketPool) acquire(ctx context.Context, sessionHint, pr
 		if previousResponseID != "" {
 			candidate = p.responseIndex[previousResponseID]
 		}
+		if candidate != nil && sessionHint != "" && candidate.sessionHint != sessionHint {
+			// A client supplied session hint is an isolation boundary. Do not let
+			// a conflicting response id, including one from an anonymous turn,
+			// select another session's socket.
+			candidate = nil
+		}
 		if candidate == nil && sessionHint != "" {
 			candidate = p.sessions[sessionHint]
-		}
-		if candidate != nil && sessionHint != "" && candidate.sessionHint != "" && candidate.sessionHint != sessionHint {
-			// A client supplied session hint is an isolation boundary. Do not
-			// let a conflicting previous_response_id select another session.
-			candidate = nil
 		}
 		if candidate != nil {
 			if candidate.broken {

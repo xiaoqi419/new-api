@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,15 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCPAResponsesWebsocketErrorRedactsUnderlyingDetails(t *testing.T) {
+	err := newCPAResponsesWebsocketError("dial failed", true, true, errors.New("https://cpa.example/v1/responses?api_key=secret"))
+	require.Equal(t, "responses websocket dial failed", err.Error())
+	var transportErr *cpaResponsesWebsocketError
+	require.ErrorAs(t, err, &transportErr)
+	require.True(t, transportErr.reused)
+	require.True(t, transportErr.rebuilt)
+}
 
 func TestBuildResponsesWebsocketRequestEnvelope(t *testing.T) {
 	payload := []byte(`{"model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true}`)
@@ -465,6 +475,79 @@ func TestResponsesWebsocketPoolDoesNotShareUnknownSessions(t *testing.T) {
 	mu.Lock()
 	require.Equal(t, 2, connections, "requests without a stable session must not borrow an idle websocket")
 	mu.Unlock()
+}
+
+func TestResponsesWebsocketPoolDoesNotClaimAnonymousResponseForHintedSession(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	var connections int
+	var mu sync.Mutex
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		mu.Lock()
+		connections++
+		mu.Unlock()
+		defer conn.Close()
+		for {
+			if _, _, err = conn.ReadMessage(); err != nil {
+				return
+			}
+			if err = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"resp-anonymous"}}`)); err != nil {
+				return
+			}
+		}
+	}))
+	defer srv.Close()
+
+	makeRequest := func(payload string, session string) {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		if session != "" {
+			c.Request.Header.Set("X-Codex-Session-Id", session)
+		}
+		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+		resp, err := doResponsesWebsocketRequest(c, info, []byte(payload))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+	}
+
+	makeRequest(`{"model":"gpt-5","stream":true}`, "")
+	makeRequest(`{"model":"gpt-5","stream":true,"previous_response_id":"resp-anonymous"}`, "session-a")
+	mu.Lock()
+	require.Equal(t, 2, connections, "a hinted session must not claim an anonymous response-id connection")
+	mu.Unlock()
+}
+
+func TestResponsesWebsocketPoolUsesHintedSessionWhenPreviousResponseConflicts(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	p := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKey{Endpoint: "conflict", AuthHash: "hash", Model: "model"})
+	now := time.Now()
+	sessionA := &cpaResponsesWebsocketConn{pool: p, sessionHint: "session-a", responseIDs: map[string]struct{}{"resp-a": {}}, createdAt: now, lastUsedAt: now}
+	sessionB := &cpaResponsesWebsocketConn{pool: p, sessionHint: "session-b", responseIDs: make(map[string]struct{}), createdAt: now, lastUsedAt: now}
+	p.connections[sessionA] = struct{}{}
+	p.connections[sessionB] = struct{}{}
+	p.sessions["session-a"] = sessionA
+	p.sessions["session-b"] = sessionB
+	p.responseIndex["resp-a"] = sessionA
+
+	dialCount := 0
+	lease, err := p.acquire(context.Background(), "session-b", "resp-a", func() (*cpaResponsesWebsocketConn, error) {
+		dialCount++
+		return &cpaResponsesWebsocketConn{responseIDs: make(map[string]struct{}), createdAt: now, lastUsedAt: now}, nil
+	})
+	require.NoError(t, err)
+	require.Same(t, sessionB, lease.entry, "the current session socket must win over a conflicting previous response id")
+	require.Zero(t, dialCount, "a conflicting response id must not trigger a duplicate dial loop")
+	lease.releaseHealthy("")
 }
 
 func TestResponsesWebsocketPoolKeepsStoreFalseSessionAffinityWithoutResponseIndex(t *testing.T) {
