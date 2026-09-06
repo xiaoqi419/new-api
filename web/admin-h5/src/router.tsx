@@ -4,6 +4,8 @@ import { isAdminUser } from "./features/auth/types";
 import { AppErrorFallback, AppNotFoundFallback, RootLayout } from "./routes/__root";
 import { SignInPage } from "./routes/sign-in";
 import { UserDetailPage } from "./routes/users.$id";
+import { validateStatsSearch } from "./features/stats/range";
+import { StatsRoutePage } from "./routes/stats";
 import { validateUsersSearch, UsersPage } from "./routes/users";
 import { authStore } from "./stores/auth-store";
 
@@ -54,6 +56,14 @@ const signInRoute = createRoute({
   component: SignInPage,
 });
 
+const statsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/stats",
+  validateSearch: validateStatsSearch,
+  beforeLoad: requireAdmin,
+  component: StatsRoutePage,
+});
+
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/users",
@@ -70,7 +80,13 @@ const userDetailRoute = createRoute({
   component: UserDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, signInRoute, usersRoute, userDetailRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  signInRoute,
+  statsRoute,
+  usersRoute,
+  userDetailRoute,
+]);
 
 export const router = createRouter({
   routeTree,

@@ -2,8 +2,10 @@
   "app": {
     "title": "管理后台",
     "navigation": {
+      "label": "后台导航",
       "signIn": "登录",
-      "users": "用户"
+      "users": "用户",
+      "stats": "统计"
     },
     "fallbacks": {
       "notFoundTitle": "页面未找到",
@@ -146,6 +148,25 @@
       "nonNegative": "覆盖必须使用非负余额。",
       "safeInteger": "请输入有效的余额金额。"
     }
+  },
+  "stats": {
+    "title": "用量统计",
+    "description": "全站调用次数、Token 和花费，展示为接口数据的 {{multiplier}} 倍。",
+    "range": "时间范围",
+    "today": "今天",
+    "yesterday": "昨天",
+    "last7Days": "近 7 天",
+    "last30Days": "近 30 天",
+    "requests": "调用次数",
+    "tokens": "Token",
+    "quota": "花费额度",
+    "day": "日期",
+    "dailyCaption": "按日明细",
+    "loading": "正在加载统计",
+    "empty": "该时间范围内暂无数据。",
+    "error": "无法加载统计数据。",
+    "retry": "重试",
+    "retrying": "正在重试…"
   },
   "site": {
     "switcher": "站点",

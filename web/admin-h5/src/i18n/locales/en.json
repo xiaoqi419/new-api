@@ -2,8 +2,10 @@
   "app": {
     "title": "Admin",
     "navigation": {
+      "label": "Admin navigation",
       "signIn": "Sign in",
-      "users": "Users"
+      "users": "Users",
+      "stats": "Stats"
     },
     "fallbacks": {
       "notFoundTitle": "Page not found",
@@ -146,6 +148,25 @@
       "nonNegative": "Override requires a non-negative balance amount.",
       "safeInteger": "Enter a valid balance amount."
     }
+  },
+  "stats": {
+    "title": "Usage stats",
+    "description": "Site-wide requests, tokens, and spend, shown at {{multiplier}}× the API values.",
+    "range": "Date range",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last7Days": "Last 7 days",
+    "last30Days": "Last 30 days",
+    "requests": "Requests",
+    "tokens": "Tokens",
+    "quota": "Spend",
+    "day": "Date",
+    "dailyCaption": "Daily breakdown",
+    "loading": "Loading stats",
+    "empty": "No usage in this range.",
+    "error": "Unable to load stats.",
+    "retry": "Retry",
+    "retrying": "Retrying…"
   },
   "site": {
     "switcher": "Site",
