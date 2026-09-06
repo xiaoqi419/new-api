@@ -19,6 +19,7 @@ const adminBundle = {
 const protectedRoutes = [
   { to: "/users" as const },
   { to: "/users/$id" as const, params: { id: "example" } },
+  { to: "/stats" as const },
 ];
 
 afterEach(() => {

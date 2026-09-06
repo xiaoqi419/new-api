@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-usage-stats',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '管理 H5 新增全站用量统计页，可看今天、昨天、近 7 天、近 30 天，展示值为接口数据的 2.5 倍。',
+        ],
+      },
+    ],
+  },
+  {
     // Release tag for low-quota reminder compensation and activation-race fixes.
     version: '20260906-ac1d17cc8',
     date: '2026-09-06',

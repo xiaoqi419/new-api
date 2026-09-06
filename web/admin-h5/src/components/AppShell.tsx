@@ -36,12 +36,30 @@ export function AppShell(): ReactElement {
     <div className="min-h-screen bg-slate-50 pb-[env(safe-area-inset-bottom)] text-slate-900">
       <header className="border-b border-slate-200 bg-white pt-[env(safe-area-inset-top)]">
         <div className="safe-area-inline mx-auto flex min-h-14 max-w-3xl items-center justify-between">
-          <Link
-            to={isAuthenticated ? "/users" : "/sign-in"}
-            className="flex min-h-11 items-center text-base font-semibold text-slate-900"
-          >
-            {t("app.title")}
-          </Link>
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              to={isAuthenticated ? "/users" : "/sign-in"}
+              className="flex min-h-11 items-center text-base font-semibold text-slate-900"
+            >
+              {t("app.title")}
+            </Link>
+            {isAuthenticated ? (
+              <nav className="flex items-center gap-1" aria-label={t("app.navigation.label")}>
+                <Link
+                  to="/stats"
+                  className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  {t("app.navigation.stats")}
+                </Link>
+                <Link
+                  to="/users"
+                  className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  {t("app.navigation.users")}
+                </Link>
+              </nav>
+            ) : null}
+          </div>
           <div
             className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
             aria-label={t("site.switcher") as string}
