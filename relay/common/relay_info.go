@@ -99,25 +99,32 @@ type RelayInfo struct {
 	UsePrice               bool
 	RelayMode              int
 	OriginModelName        string
-	RequestURLPath         string
-	RequestHeaders         map[string]string
-	ShouldIncludeUsage     bool
-	DisablePing            bool // 是否禁止向下游发送自定义 Ping
-	ClientWs               *websocket.Conn
-	TargetWs               *websocket.Conn
-	InputAudioFormat       string
-	OutputAudioFormat      string
-	RealtimeTools          []dto.RealTimeTool
-	IsFirstRequest         bool
-	AudioUsage             bool
-	ReasoningEffort        string
-	UserSetting            dto.UserSetting
-	UserEmail              string
-	UserQuota              int
-	RelayFormat            types.RelayFormat
-	SendResponseCount      int
-	ReceivedResponseCount  int
-	FinalPreConsumedQuota  int // 最终预消耗的配额
+	// BillingModelName is the canonical pricing identity for this request.
+	// It remains separate from OriginModelName and UpstreamModelName so model
+	// aliases and reasoning modifiers do not affect channel routing.
+	BillingModelName   string
+	RequestURLPath     string
+	RequestHeaders     map[string]string
+	ShouldIncludeUsage bool
+	DisablePing        bool // 是否禁止向下游发送自定义 Ping
+	ClientWs           *websocket.Conn
+	TargetWs           *websocket.Conn
+	InputAudioFormat   string
+	OutputAudioFormat  string
+	RealtimeTools      []dto.RealTimeTool
+	IsFirstRequest     bool
+	AudioUsage         bool
+	ReasoningEffort    string
+	// ReasoningConversion carries suffix-derived provider-neutral controls
+	// across in-process format pivots without serializing them upstream.
+	ReasoningConversion   *dto.ReasoningConversionState
+	UserSetting           dto.UserSetting
+	UserEmail             string
+	UserQuota             int
+	RelayFormat           types.RelayFormat
+	SendResponseCount     int
+	ReceivedResponseCount int
+	FinalPreConsumedQuota int // 最终预消耗的配额
 	// ForcePreConsume 为 true 时禁用 BillingSession 的信任额度旁路，
 	// 强制预扣全额。用于异步任务（视频/音乐生成等），因为请求返回后任务仍在运行，
 	// 必须在提交前锁定全额。
@@ -175,7 +182,10 @@ type RelayInfo struct {
 	StreamStatus *StreamStatus
 
 	// convOptions caches the converter settings snapshot (see ConvOptions).
-	convOptions *convmeta.Options
+	convOptions                    *convmeta.Options
+	conversionDiagnostics          []types.ConversionDiagnostic
+	conversionDiagnosticKeys       map[conversionDiagnosticKey]struct{}
+	conversionDiagnosticsTruncated bool
 
 	ThinkingContentInfo
 	TokenCountMeta
@@ -237,8 +247,10 @@ func (info *RelayInfo) InitChannelMeta(c *gin.Context) {
 	info.convOptions = nil
 	if model_setting.GetGlobalSettings().PassThroughRequestEnabled || channelMeta.ChannelSetting.PassThroughBodyEnabled {
 		info.ReasoningEffort = ""
+		info.ReasoningConversion = nil
 	} else {
 		info.ReasoningEffort = reasoningEffortFromRequest(info.Request)
+		info.ReasoningConversion = nil
 	}
 
 	// reset some fields based on channel meta
@@ -262,6 +274,9 @@ func (info *RelayInfo) ToString() string {
 	fmt.Fprintf(b, "IsPlayground: %t, ", info.IsPlayground)
 	fmt.Fprintf(b, "RequestURLPath: %q, ", info.RequestURLPath)
 	fmt.Fprintf(b, "OriginModelName: %q, ", info.OriginModelName)
+	if info.BillingModelName != "" && info.BillingModelName != info.OriginModelName {
+		fmt.Fprintf(b, "BillingModelName: %q, ", info.BillingModelName)
+	}
 	fmt.Fprintf(b, "EstimatePromptTokens: %d, ", info.estimatePromptTokens)
 	fmt.Fprintf(b, "ShouldIncludeUsage: %t, ", info.ShouldIncludeUsage)
 	fmt.Fprintf(b, "DisablePing: %t, ", info.DisablePing)
@@ -741,6 +756,27 @@ func (info *RelayInfo) GetOriginModelName() string {
 	return info.OriginModelName
 }
 
+// GetBillingModelName returns the effective pricing identity. When no
+// canonical alias was resolved, pricing falls back to the origin model.
+func (info *RelayInfo) GetBillingModelName() string {
+	if info == nil {
+		return ""
+	}
+	if info.BillingModelName != "" {
+		return info.BillingModelName
+	}
+	return info.OriginModelName
+}
+
+// ReasoningState exposes the suffix-derived reasoning state to relaykit
+// converters while keeping the field out of wire DTOs.
+func (info *RelayInfo) ReasoningState() *dto.ReasoningConversionState {
+	if info == nil {
+		return nil
+	}
+	return info.ReasoningConversion
+}
+
 func (info *RelayInfo) GetUpstreamModelName() string {
 	if info == nil || info.ChannelMeta == nil {
 		return ""
@@ -834,8 +870,12 @@ func (info *RelayInfo) ConvOptions() *convmeta.Options {
 		},
 		OpenRouterDialect:      info != nil && info.GetChannelType() == constant.ChannelTypeOpenRouter,
 		PreserveThinkingSuffix: model_setting.ShouldPreserveThinkingSuffix,
+		PreserveEffortTail:     model_setting.ShouldPreserveEffortTail,
 	}
 	if info != nil {
+		if info.ChannelMeta != nil {
+			options.ToolLossPolicy = types.ConversionLossPolicy(info.ChannelOtherSettings.ToolLossPolicy)
+		}
 		info.convOptions = options
 	}
 	return options

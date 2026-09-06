@@ -34,6 +34,7 @@ const HIDDEN_CONSOLE_SUBNAV_ITEM_KEYS = new Set([
   'identity_verification',
 ]);
 
+// oxlint-disable-next-line react/only-export-components -- shared pure filter is intentionally exported with this module.
 export const filterHiddenConsoleSubNavItems = (items) =>
   items.filter((item) => !HIDDEN_CONSOLE_SUBNAV_ITEM_KEYS.has(item.key));
 

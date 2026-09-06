@@ -111,17 +111,34 @@ func getImageToken(c *gin.Context, fileMeta *types.FileMeta, model string, strea
 
 	width := config.Width
 	height := config.Height
+	if width < 0 || height < 0 {
+		return 0, fmt.Errorf("invalid image dimensions: %dx%d", width, height)
+	}
 	logger.LogDebug(c, "image token input: format=%s, width=%d, height=%d", format, width, height)
 
 	if isPatchBased {
 		// 32x32 patch-based calculation with 1536 cap and model multiplier
-		ceilDiv := func(a, b int) int { return (a + b - 1) / b }
+		// Use (a-1)/b+1 instead of (a+b-1)/b so a maliciously large
+		// dimension cannot wrap before the division.
+		ceilDiv := func(a, b int) int {
+			if a <= 0 {
+				return 0
+			}
+			return (a-1)/b + 1
+		}
 		rawPatchesW := ceilDiv(width, 32)
 		rawPatchesH := ceilDiv(height, 32)
-		rawPatches := rawPatchesW * rawPatchesH
+		rawPatches := rawPatchesW
+		if rawPatchesH > 0 && rawPatchesW > math.MaxInt/rawPatchesH {
+			rawPatches = math.MaxInt
+		} else {
+			rawPatches *= rawPatchesH
+		}
 		if rawPatches > 1536 {
 			// scale down
-			area := float64(width * height)
+			// Convert operands before multiplying; width*height as an int can
+			// overflow even though the resulting float is representable.
+			area := float64(width) * float64(height)
 			r := math.Sqrt(float64(32*32*1536) / area)
 			wScaled := float64(width) * r
 			hScaled := float64(height) * r
@@ -140,11 +157,11 @@ func getImageToken(c *gin.Context, fileMeta *types.FileMeta, model string, strea
 			if imageTokens > 1536 {
 				imageTokens = 1536
 			}
-			return int(math.Round(float64(imageTokens) * multiplier)), nil
+			return common.QuotaRound(float64(imageTokens) * multiplier), nil
 		}
 		// below cap
 		imageTokens := rawPatches
-		return int(math.Round(float64(imageTokens) * multiplier)), nil
+		return common.QuotaRound(float64(imageTokens) * multiplier), nil
 	}
 
 	// Tile-based calculation for 4o/4.1/4.5/o1/o3/etc.
@@ -208,13 +225,17 @@ func EstimateRequestToken(c *gin.Context, meta *types.TokenCountMeta, info *rela
 			if err != nil {
 				return 0, fmt.Errorf("error getting audio duration: %v", err)
 			}
-			// duration 来自用户上传文件的元数据，可被伪造成天文数字或负数。
-			// 负值会让 token 估算变成负数（低估预扣费），先钳到 0 再转换。
-			if duration < 0 {
-				duration = 0
+			// duration comes from user-controlled media metadata. Reject invalid
+			// values and refuse saturated per-file or aggregate token counts so
+			// they cannot become a low/negative pre-consume estimate.
+			var clamp *common.QuotaClamp
+			totalAudioToken, clamp, err = accumulateAudioToken(totalAudioToken, duration)
+			if clamp != nil {
+				noteQuotaClamp(info, clamp)
 			}
-			// 一分钟 1000 token，与 $price / minute 对齐。
-			totalAudioToken += common.QuotaRound(math.Ceil(duration) / 60.0 * 1000)
+			if err != nil {
+				return 0, fmt.Errorf("invalid audio duration/token estimate: %w", err)
+			}
 		}
 		return totalAudioToken, nil
 	}
@@ -396,6 +417,26 @@ func CountAudioTokenOutput(audioBase64 string, audioFormat string) (int, error) 
 	}
 	// duration 来自上游返回的音频元数据，饱和转换防止 int 回绕
 	return common.QuotaFromFloat(duration / 60 * 200 / 0.24), nil
+}
+
+// accumulateAudioToken converts one media duration to quota tokens and adds it
+// to an existing request total. Both conversions use the centralized checked
+// helper; a clamp is returned as an error so callers can attach its audit
+// marker before rejecting the request. Keeping the aggregate conversion here
+// avoids an int overflow when a multipart request contains many files.
+func accumulateAudioToken(total int, duration float64) (int, *common.QuotaClamp, error) {
+	if duration < 0 || math.IsNaN(duration) || math.IsInf(duration, 0) {
+		return 0, nil, fmt.Errorf("duration must be finite and non-negative, got %v", duration)
+	}
+	perFile, clamp := common.QuotaRoundChecked(math.Ceil(duration) / 60.0 * 1000)
+	if clamp != nil {
+		return 0, clamp, clamp
+	}
+	combined, clamp := common.QuotaRoundChecked(float64(total) + float64(perFile))
+	if clamp != nil {
+		return 0, clamp, clamp
+	}
+	return combined, nil, nil
 }
 
 // CountTextToken 统计文本的token数量，仅OpenAI模型使用tokenizer，其余模型使用估算

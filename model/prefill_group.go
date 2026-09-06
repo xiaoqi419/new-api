@@ -24,7 +24,9 @@ func (j JSONValue) Value() (driver.Value, error) {
 	if j == nil {
 		return nil, nil
 	}
-	return []byte(j), nil
+	// Return string so PostgreSQL's simple protocol binds JSON as text rather
+	// than as a bytea hex literal (which fails for json columns).
+	return string(j), nil
 }
 
 // Scan 实现 sql.Scanner 接口，兼容不同驱动返回的类型
@@ -33,18 +35,17 @@ func (j *JSONValue) Scan(value interface{}) error {
 	case nil:
 		*j = nil
 		return nil
-	case []byte:
-		// 拷贝底层字节，避免保留底层缓冲区
-		b := make([]byte, len(v))
-		copy(b, v)
-		*j = JSONValue(b)
-		return nil
-	case string:
-		*j = JSONValue([]byte(v))
+	case []byte, string:
+		// Normalize driver output and copy the bytes so the value does not retain
+		// a driver-owned buffer that may be reused after Scan returns.
+		b := jsonScanBytes(value)
+		copyB := make([]byte, len(b))
+		copy(copyB, b)
+		*j = JSONValue(copyB)
 		return nil
 	default:
 		// 其他类型尝试序列化为 JSON
-		b, err := json.Marshal(v)
+		b, err := common.Marshal(v)
 		if err != nil {
 			return err
 		}

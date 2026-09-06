@@ -71,6 +71,7 @@ const HIDDEN_SIDEBAR_ITEM_KEYS = new Set([
   'identity_verification',
 ]);
 
+// oxlint-disable-next-line react/only-export-components -- shared pure filter is intentionally exported with this module.
 export const filterHiddenSidebarItems = (items) =>
   items.filter((item) => !HIDDEN_SIDEBAR_ITEM_KEYS.has(item.itemKey));
 

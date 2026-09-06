@@ -192,6 +192,7 @@ const EditChannelModal = (props) => {
     force_format: false,
     thinking_to_content: false,
     proxy: '',
+    upstream_transport: 'http',
     pass_through_body_enabled: false,
     system_prompt: '',
     system_prompt_override: false,
@@ -869,6 +870,7 @@ const EditChannelModal = (props) => {
           data.thinking_to_content =
             parsedSettings.thinking_to_content || false;
           data.proxy = parsedSettings.proxy || '';
+          data.upstream_transport = parsedSettings.upstream_transport === 'websocket' ? 'websocket' : 'http';
           data.pass_through_body_enabled =
             parsedSettings.pass_through_body_enabled || false;
           data.system_prompt = parsedSettings.system_prompt || '';
@@ -1021,6 +1023,7 @@ const EditChannelModal = (props) => {
         force_format: data.force_format,
         thinking_to_content: data.thinking_to_content,
         proxy: data.proxy,
+        upstream_transport: data.upstream_transport || 'http',
         pass_through_body_enabled: data.pass_through_body_enabled,
         system_prompt: data.system_prompt,
         system_prompt_override: data.system_prompt_override || false,
@@ -1470,6 +1473,7 @@ const EditChannelModal = (props) => {
       force_format: false,
       thinking_to_content: false,
       proxy: '',
+      upstream_transport: 'http',
       pass_through_body_enabled: false,
       system_prompt: '',
       system_prompt_override: false,
@@ -1839,6 +1843,7 @@ const EditChannelModal = (props) => {
       force_format: localInputs.force_format || false,
       thinking_to_content: localInputs.thinking_to_content || false,
       proxy: localInputs.proxy || '',
+      upstream_transport: localInputs.upstream_transport === 'websocket' ? 'websocket' : 'http',
       pass_through_body_enabled: localInputs.pass_through_body_enabled || false,
       system_prompt: localInputs.system_prompt || '',
       system_prompt_override: localInputs.system_prompt_override || false,
@@ -2837,6 +2842,14 @@ const EditChannelModal = (props) => {
                       )
                     }
                     extraText={t('启用请求体透传功能')}
+                  />
+
+                  <Form.Select
+                    field='upstream_transport'
+                    label={t('上游传输')}
+                    optionList={[{ value: 'http', label: t('HTTP') }, { value: 'websocket', label: t('WebSocket') }]}
+                    onChange={(value) => handleChannelSettingsChange('upstream_transport', value)}
+                    extraText={t('流式 Responses 请求可通过 WebSocket 连接上游渠道')}
                   />
 
                   <Form.Input

@@ -100,9 +100,9 @@ func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) 
 			return errors.New("签到失败，请稍后重试")
 		}
 
-		// 步骤2: 在事务中增加用户额度
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quotaAwarded)).Error; err != nil {
+		// 步骤2: 在事务中增加用户额度。统一走钱包上限守卫，避免
+		// 管理员把签到奖励配置到极大值时绕过原子 ceiling。
+		if err := creditTopUpQuota(tx, userId, quotaAwarded, nil); err != nil {
 			return errors.New("签到失败：更新额度出错")
 		}
 

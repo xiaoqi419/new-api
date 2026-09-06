@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { siteConfigs, type SiteId } from "../env";
 import {
   isAdminUser,
@@ -7,6 +7,7 @@ import {
   type AuthBundle,
 } from "../features/auth/types";
 import { authStore } from "../stores/auth-store";
+
 export const APP_SIGN_IN_PATH = "/sign-in";
 export const SITE_CONFIG_ERROR = "This site is not configured. Contact the administrator.";
 let authNavigation: ((siteId: SiteId) => void) | null = null;
@@ -41,8 +42,9 @@ export function getApiClient(siteId: SiteId, bare = false): AxiosInstance {
     (r) => r,
     async (error: AxiosError) => {
       const config = error.config as AuthRequestConfig | undefined;
-      if (error.response?.status !== 401 || !config || config._authRetry)
-        return Promise.reject(error);
+      if (error.response?.status !== 401 || !config || config._authRetry) {
+        throw error;
+      }
       config._authRetry = true;
       try {
         const bundle = await getRefreshPromise(siteId);
@@ -50,7 +52,7 @@ export function getApiClient(siteId: SiteId, bare = false): AxiosInstance {
         return client.request(config);
       } catch (e) {
         handleAuthRefreshFailure(siteId, config._authGeneration);
-        return Promise.reject(e);
+        throw e;
       }
     },
   );
@@ -111,15 +113,21 @@ async function refreshBundle(siteId: SiteId): Promise<AuthBundle> {
     !response.data.success ||
     !isAuthBundle(response.data.data) ||
     !isAdminUser(response.data.data.user)
-  )
+  ) {
     throw response.data;
+  }
   return response.data.data;
 }
 function getRefreshPromise(siteId: SiteId): Promise<AuthBundle> {
-  refreshPromises[siteId] ??= refreshBundle(siteId).finally(() => {
+  const existing = refreshPromises[siteId];
+  if (existing) {
+    return existing;
+  }
+  const promise = refreshBundle(siteId).finally(() => {
     delete refreshPromises[siteId];
   });
-  return refreshPromises[siteId]!;
+  refreshPromises[siteId] = promise;
+  return promise;
 }
 export function navigateToSignIn(siteId: SiteId = authStore.getState().activeSiteId): void {
   if (authNavigation) {
@@ -127,6 +135,7 @@ export function navigateToSignIn(siteId: SiteId = authStore.getState().activeSit
     return;
   }
   // Kept as a compatibility fallback for non-mounted API consumers and tests.
-  if (typeof window !== "undefined" && typeof window.location?.assign === "function")
+  if (typeof window !== "undefined" && typeof window.location?.assign === "function") {
     window.location.assign(APP_SIGN_IN_PATH);
+  }
 }

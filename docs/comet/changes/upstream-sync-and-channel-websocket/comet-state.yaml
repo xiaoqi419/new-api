@@ -1,0 +1,560 @@
+schema: comet.native.v4
+name: upstream-sync-and-channel-websocket
+language: zh-CN
+phase: verify
+status: active
+state_version: 46
+brief: brief.md
+spec_changes:
+  - capability: channel-upstream-websocket
+    operation: create
+    source: specs/channel-upstream-websocket/spec.md
+  - capability: upstream-compatibility
+    operation: modify
+    source: specs/upstream-compatibility/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/upstream-sync-and-channel-websocket
+  target_branch: main
+  finish: null
+loop:
+  stage: verify-ready
+  goal_cycle: 3
+  iteration: 1
+  attempt: 4
+  retry_epoch: 3
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids:
+    - A10
+  next_action: await-verifier-result
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：官方来源、目标提交、共同基线和每个纳入/排除的提交均有可复核记录；`origin/main`
+      历史可追溯且没有未解决冲突、误删二开文件或冲突标记。
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: A2：官方稳定 relay、计费、认证、数据库兼容、缓存/ETag
+      和前端修复按证据进入；现有支付、H5、低余额提醒、GMPay、视频、代理和双前端能力及测试保持。
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: A3：gpt-6-astra 与模型修饰符/推理力度功能在模型映射、价格、Responses/Chat/Claude
+      转换和计费中保持一致，显式零值与额度安全不回退。
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: A4：WS 设置保存和读取只允许空/http/websocket；默认与未开启渠道行为完全等价，前后端字段和 i18n 一致。
+    result: pending
+    reason: null
+  - id: A5
+    source: brief.md
+    text: A5：开启 WS 的流式 Responses 请求能完成握手、发送 `response.create`、转发事件为标准 SSE，并从
+      `response.completed` usage 进入现有结算；非流式/compact/其他端点仍走 HTTP。
+    result: pending
+    reason: null
+  - id: A6
+    source: brief.md
+    text: A6：WS 401/404/405、握手失败、协议 error、客户端取消和连接关闭均释放资源并回落 HTTP 或返回原有错误；不泄露
+      Authorization、Cookie 或完整请求体。
+    result: pending
+    reason: null
+  - id: A7
+    source: brief.md
+    text: A7：root 和独立 relaykit 构建、受影响 Go/前端测试、类型检查、lint、双前端构建及隔离 CPA WS
+      验证通过；未执行项和线上凭据边界如实记录。
+    result: pending
+    reason: null
+  - id: A8
+    source: brief.md
+    text: A7b：带稳定会话标识或有效 `previous_response_id` 的连续 Responses 请求复用同一 CPA
+      WebSocket；不同会话不共享连接；连接空闲超时、失效淘汰、单连接串行 lease 和客户端取消不会泄漏 goroutine、连接或管道。
+    result: pending
+    reason: null
+  - id: A9
+    source: brief.md
+    text: A7c：复用连接在首帧前失效时最多安全重建一次并保持原请求体；已向客户端输出事件后不自动重放；连接复用失败和 HTTP
+      回落原因可观察但不包含密钥或完整请求体。
+    result: pending
+    reason: null
+  - id: A10
+    source: brief.md
+    text: A8：只从合并后的精确 `origin/main` SHA 构建不可变镜像；发布前不修改数据库、Redis、国内/国际站网关。
+    result: pending
+    reason: null
+  - id: A11
+    source: specs/channel-upstream-websocket/spec.md
+    text: 渠道 `setting` JSON 可选字段 `upstream_transport`：空值或 `http` 表示现有 HTTP
+      上游；`websocket` 只对流式 OpenAI Responses 请求生效。非流式 Responses、Responses
+      compact、Chat Completions、Realtime、音频、图片、视频和其他端点继续使用现有路径。
+    result: pending
+    reason: null
+  - id: A12
+    source: specs/channel-upstream-websocket/spec.md
+    text: new-api 以渠道配置的 Base URL、Authorization 和安全的头部覆盖规则建立 `ws`/`wss`
+      连接。CLIProxyAPI/CPA 的 Responses WebSocket 先升级规范的 `/v1/responses`
+      路由；为兼容旧部署，再按 `/v1/responses/ws`、`/v1/ws` 顺序探测别名。`/v1/ws` 仅作为最后兼容路径，避免误选
+      CPA 的通用 WebSocket relay。不把密钥或完整请求体写入日志。
+    result: pending
+    reason: null
+  - id: A13
+    source: specs/channel-upstream-websocket/spec.md
+    text: WS 连接在 new-api
+      进程内按渠道上游、鉴权指纹和模型隔离。首轮请求只有在提供稳定的会话标识（例如受信任的会话/对话头）时才可绑定空闲连接；没有会话标识的首轮请求必须建立新连接，避免不同会话共享上游上下文。后续请求带有
+      `previous_response_id` 时，优先复用生成该 ID 的连接；`store=false`
+      的请求必须保持同一连接语义，不能仅凭全局空闲连接猜测上下文。
+    result: pending
+    reason: null
+  - id: A14
+    source: specs/channel-upstream-websocket/spec.md
+    text: 每条连接同一时刻只能被一个请求
+      lease；正常终止后归还连接池，连接空闲超时、达到最大生命周期、写入/读取失败或协议错误时淘汰。借用空闲连接时执行有界的健康检查；健康检查或首帧读取失败时允许安全重建一次。请求取消会释放当前
+      lease，所有 goroutine、管道和连接均有确定的退出路径。
+    result: pending
+    reason: null
+  - id: A15
+    source: specs/channel-upstream-websocket/spec.md
+    text: 把已完成的 Responses 请求包为上游要求的 `response.create` 文本事件。上游 Responses 事件按现有 relay
+      SSE 语义发送给客户端，保留事件类型、JSON 内容和顺序；终止事件中的 usage 继续交给既有 Responses
+      handler、预扣、结算和日志链路。
+    result: pending
+    reason: null
+  - id: A16
+    source: specs/channel-upstream-websocket/spec.md
+    text: 握手 401/404/405、拨号失败、上游协议错误或尚未向客户端输出任何事件时，关闭或淘汰当前 WS lease，并使用同一请求体回到 HTTP
+      Responses。复用连接在首帧前失败时，最多安全重建一次；重建仍失败才回落 HTTP。客户端取消、写入失败、读取失败和终止事件都必须停止
+      goroutine、关闭管道并正确归还或淘汰 lease，不产生重复结算。向客户端输出首个事件后发生的断线不得自动重放请求；WS
+      失败日志只记录脱敏原因、渠道、是否复用、是否重建和是否回落。
+    result: pending
+    reason: null
+  - id: A17
+    source: specs/channel-upstream-websocket/spec.md
+    text: default 与 classic 渠道编辑器均显示 HTTP/WebSocket 选项、默认 HTTP、i18n
+      文案和服务端非法值错误映射；配置保存在现有 `setting` JSON，不新增列。
+    result: pending
+    reason: null
+  - id: A18
+    source: specs/channel-upstream-websocket/spec.md
+    text: deterministic fixture 覆盖 URL、鉴权、`response.create`、多帧转 SSE、usage、终止、错误、取消和
+      HTTP 回落。
+    result: pending
+    reason: null
+  - id: A19
+    source: specs/channel-upstream-websocket/spec.md
+    text: deterministic fixture 覆盖稳定会话的连接复用、`previous_response_id`
+      粘性、不同会话隔离、连接失效淘汰、首帧前重建和单连接串行 lease。
+    result: pending
+    reason: null
+  - id: A20
+    source: specs/channel-upstream-websocket/spec.md
+    text: 真实测试 CPA 验证规范 `/v1/responses` WS 路由、`response.create`、Responses 事件和
+      usage，并确认 new-api 客户端仍收到 `text/event-stream` SSE；实现保留 `/v1/responses/ws` 与
+      `/v1/ws` 兼容探测。
+    result: pending
+    reason: null
+  - id: A21
+    source: specs/channel-upstream-websocket/spec.md
+    text: 关闭开关的旧渠道和所有非 Responses 请求行为与基线完全一致。
+    result: pending
+    reason: null
+  - id: A22
+    source: specs/upstream-compatibility/spec.md
+    text: 输入仓库：`https://github.com/QuantumNous/new-api`，官方 `upstream/main`。
+    result: pending
+    reason: null
+  - id: A23
+    source: specs/upstream-compatibility/spec.md
+    text: 目标：`v1.0.0-rc.33`，提交 `eb99ab1b40343c3317bb47981cccdbb2b159a5fa`。
+    result: pending
+    reason: null
+  - id: A24
+    source: specs/upstream-compatibility/spec.md
+    text: 共同基线：`2d8e50bf36e94200b809dfb39e73624ec48b1e23`。
+    result: pending
+    reason: null
+  - id: A25
+    source: specs/upstream-compatibility/spec.md
+    text: 本 fork 生产基线：开始实现前重新 fetch 的 `origin/main`。
+    result: pending
+    reason: null
+  - id: A26
+    source: specs/upstream-compatibility/spec.md
+    text: 逐项审查共同基线之后的官方提交，记录提交、路径、行为、风险、冲突处理和验证证据。
+    result: pending
+    reason: null
+  - id: A27
+    source: specs/upstream-compatibility/spec.md
+    text: 将稳定的安全、协议兼容、数据库兼容、性能、计费完整性、模型/relay 和明确用户功能合入 fork；用户已确认第二批模型/协议/计费改动全部实现。
+    result: pending
+    reason: null
+  - id: A28
+    source: specs/upstream-compatibility/spec.md
+    text: 对与 Torch AI 二开同一行为链的文件做三方语义合并，保留两侧可同时满足的契约；不能同时满足时回到 Shape，不擅自覆盖。
+    result: pending
+    reason: null
+  - id: A29
+    source: specs/upstream-compatibility/spec.md
+    text: 保留现有支付、充值、订阅、GMPay、H5、低余额提醒、视频、代理、双前端和保护性品牌/元数据。
+    result: pending
+    reason: null
+  - id: A30
+    source: specs/upstream-compatibility/spec.md
+    text: 排除官方发布说明标注为实验性、会替换架构或删除现有二开模块的变更；密码传输加密和 int32 迁移按用户确认纳入，但不采用会覆盖二开模块的整段重构。
+    result: pending
+    reason: null
+  - id: A31
+    source: specs/upstream-compatibility/spec.md
+    text: 不新增数据库 schema；数据库、Redis、JSON wrapper、quota safety 和 relaykit 独立性不回退。
+    result: pending
+    reason: null
+  - id: A32
+    source: specs/upstream-compatibility/spec.md
+    text: 合并结果可从官方目标提交和 fork 基线追溯，工作树无冲突标记和意外删除。
+    result: pending
+    reason: null
+  - id: A33
+    source: specs/upstream-compatibility/spec.md
+    text: 官方纳入项的行为测试通过，二开能力的回归测试和关键前端页面保持。
+    result: pending
+    reason: null
+  - id: A34
+    source: specs/upstream-compatibility/spec.md
+    text: root/relaykit/前端检查记录真实结果，未运行项目明确列为限制。
+    result: pending
+    reason: null
+builder_handoff:
+  candidate_id: e7126dac-317b-422a-b9ec-210e41a4a3da
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:d39f215e-86f2-4abb-b372-dcf2c2e46d69
+  iteration: 1
+  summary:
+    text: Implemented an in-process CPA Responses WebSocket pool in new-api.
+      Streaming Responses requests keep the existing HTTP/SSE client contract
+      while reusing sockets only for explicit inbound session/thread hints or a
+      response ID mapped to its producing connection. Pool keys isolate
+      endpoint, authorization fingerprint, and model; leases are serialized,
+      healthy terminals are returned, and broken, canceled, stale, or
+      protocol-failed sockets are evicted. Reused sockets may be rebuilt once
+      before the first response frame; after output begins no request replay
+      occurs. Added deterministic fixtures for stable-session and
+      previous-response reuse, session isolation, store=false affinity, serial
+      leases, closed-connection rebuild, inbound hint validation, and existing
+      fallback/cancellation behavior.
+    truncated: false
+  addressed_acceptance_ids:
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A18
+    - A19
+    - A21
+    - A31
+    - A34
+  checks:
+    - name:
+        text: go test ./relay/channel/openai -count=1
+        truncated: false
+      result: passed
+      note:
+        text: Targeted bridge and pool fixtures pass.
+        truncated: false
+    - name:
+        text: go test ./relay/channel/openai -run TestResponsesWebsocket -count=3
+        truncated: false
+      result: passed
+      note:
+        text: Repeated deterministic WebSocket fixtures pass.
+        truncated: false
+    - name:
+        text: go test ./... -count=1
+        truncated: false
+      result: passed
+      note:
+        text: Full root Go test suite passes.
+        truncated: false
+    - name:
+        text: go build ./...
+        truncated: false
+      result: passed
+      note:
+        text: Root module builds.
+        truncated: false
+    - name:
+        text: GOWORK=off go build ./... (relaykit)
+        truncated: false
+      result: passed
+      note:
+        text: Independent relaykit build passes.
+        truncated: false
+    - name:
+        text: go vet ./relay/channel/openai
+        truncated: false
+      result: passed
+      note:
+        text: Targeted vet passes.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors.
+        truncated: false
+    - name:
+        text: live CPA bridge test
+        truncated: false
+      result: not-run
+      note:
+        text: CPA_WS_LIVE_BASE_URL and CPA_WS_LIVE_KEY are not set in this environment;
+          existing opt-in live fixture remains available.
+        truncated: false
+    - name:
+        text: go test -race ./relay/channel/openai
+        truncated: false
+      result: not-run
+      note:
+        text: The Go tool reports -race requires cgo and CGO_ENABLED is disabled in this
+          environment.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Live CPA validation requires externally supplied CPA_WS_LIVE_BASE_URL and
+        CPA_WS_LIVE_KEY; no credentials were added to the workspace.
+      truncated: false
+    - text: Frontend and historical upstream compatibility checks were not rerun
+        because this candidate changes only the backend WebSocket bridge; prior
+        Comet evidence remains in the change history.
+      truncated: false
+    - text: Pool stale-connection cleanup is lazy on the next acquire, with bounded
+        idle and lifetime limits; no permanent janitor goroutine is created.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-06T17:58:06.002Z
+blockers: []
+verification: null
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A1
+      - A2
+      - A6
+      - A7
+      - A8
+      - A12
+      - A14
+      - A15
+      - A21
+      - A22
+      - A23
+      - A25
+      - A26
+      - A27
+      - A28
+    summary:
+      text: Independent verification failed. The terminal-event fix and Option-table
+        key persistence are correct, but post-event protocol errors can still
+        block, the official wallet-boundary safety port is incomplete, and
+        traceability/release evidence is not yet sufficient for Archive. Return
+        to Build.
+      truncated: false
+    completed_at: 2026-09-06T05:06:54.801Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+      - A8
+      - A15
+    summary:
+      text: 独立只读验证完成。A1-A6、A9-A14、A16-A29 的实现和证据通过；A7 因既有 web/classic lint 非零失败；A8
+        因尚未进行提交/PR/merge/release 被阻塞；A15 因缺少真实 CPA 与 CodexWebsocketsExecutor
+        凭据被阻塞。WS 后续协议 error、钱包 BIGINT/JS-safe 边界和官方 48 提交矩阵已按最新工作树复核。
+      truncated: false
+    completed_at: 2026-09-06T07:02:11.006Z
+  - goal_cycle: 1
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-06T08:29:46.347Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+      - A8
+      - A15
+      - A20
+      - A27
+      - A28
+    summary:
+      text: WS 后续协议错误、额度 helper、官方 relay/模型/计费更新、国内站自建渠道 CPA
+        真实规范路由探测均已完成并通过相应代码或测试复核。仍因未提交/合并/发布、web lint 非零和缺少 new-api 客户端 CPA
+        端到端记录，不能 Archive 或部署。
+      truncated: false
+    completed_at: 2026-09-06T09:35:26.089Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A7
+      - A8
+      - A20
+      - A27
+    summary:
+      text: 实现和隔离/真实验证已完成，包括真实CPA new-api
+        bridge；当前不能Archive，因为全量前端lint仍非零，且尚未提交、合并和发布。
+      truncated: false
+    completed_at: 2026-09-06T10:09:03.873Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A8
+    summary:
+      text: 独立复核确认 A1-A7、A9-A29 均满足；唯一未完成项是 A8 的正式发布门禁，尚未
+        commit/push/PR/merge、构建不可变镜像和部署。
+      truncated: false
+    completed_at: 2026-09-06T11:05:13.406Z
+  - goal_cycle: 2
+    iteration: 3
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 独立 Verify 已确认 A1-A7、A9-A29 通过，但在收尾审计中发现
+        PASSWORD_LOGIN_ENCRYPTION_ENABLED=true 时 LoginEncryptionKey 未加入
+        migrateDB/migrateDBFast 的 AutoMigrate 列表，且正式 upstream-compatibility spec
+        仍残留旧 rc.25 版本号；先修复这两个可验证缺口，再重新 Build/Verify。全量构建完成后清理 Go/Bun/npm 临时缓存。
+      truncated: false
+    completed_at: 2026-09-06T11:05:37.450Z
+  - goal_cycle: 2
+    iteration: 4
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: 独立 Verifier 启动后因外部认证/网络服务不可用异常退出；Runtime 已完成并通过本轮全部 13
+        项命令检查，代码和测试结果未报告失败。未能取得新的语义验收结果，也未修改候选工作树。
+      truncated: false
+    completed_at: 2026-09-06T12:49:49.802Z
+  - goal_cycle: 2
+    iteration: 4
+    attempt: 2
+    outcome: blocked
+    unresolved_ids:
+      - A8
+    summary:
+      text: 独立只读验收覆盖 A1-A29；Runtime 本轮 13 项检查全部通过，A1-A7 与 A9-A29 通过。A8 仅因
+        commit、合并、不可变构建和部署尚未执行而阻塞，整体 verdict 为 blocked。
+      truncated: false
+    completed_at: 2026-09-06T12:56:32.868Z
+  - goal_cycle: 2
+    iteration: 4
+    attempt: 2
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 发现 origin/main 在候选建立后新增 H5 合并提交，需要先纳入最新生产主线并做受影响模块定向检查，再重新提交候选。
+      truncated: false
+    completed_at: 2026-09-06T13:18:22.331Z
+  - goal_cycle: 2
+    iteration: 5
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A8
+    summary:
+      text: "Independent verification passes A1-A7 and A9-A29. The candidate is
+        behaviorally and locally validated, including the latest origin/main
+        merge, 48-commit matrix traceability, deterministic OpenAI Responses
+        WebSocket tests, root and relaykit checks, and frontend checks. Overall
+        status is blocked solely by A8: formal release commit/merge, immutable
+        image build, and deployment have not been performed."
+      truncated: false
+    completed_at: 2026-09-06T16:24:26.971Z
+  - goal_cycle: 2
+    iteration: 5
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户确认将 Sub2API 仅作为设计参考，范围收敛为 new-api 内部直接连接
+        CPA；新增会话级连接复用、previous_response_id 粘性、健康检查和首帧前安全回落，不引入外部网关。
+      truncated: false
+    completed_at: 2026-09-06T17:19:54.507Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A7
+      - A10
+      - A20
+    summary:
+      text: All local pooling, bridge, upstream-traceability, and build checks pass.
+        Verify is blocked only by live CPA validation and the formal release
+        gates.
+      truncated: false
+    completed_at: 2026-09-06T18:14:22.759Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 2
+    outcome: blocked
+    unresolved_ids:
+      - A10
+    summary:
+      text: Real CPA bridge validation now passes through the new-api adaptor. All
+        local and behavioral acceptance criteria pass; only the formal release
+        gate remains blocked.
+      truncated: false
+    completed_at: 2026-09-06T18:30:12.394Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 3
+    outcome: blocked
+    unresolved_ids:
+      - A10
+    summary:
+      text: "独立只读复核确认当前 WS 连接池、匿名/命名会话隔离修正、脱敏回落日志和全部本地 Go/relaykit/前端检查通过；PR #45 已创建且
+        CI 全部成功，唯一阻塞是合并、不可变镜像构建和部署。"
+      truncated: false
+    completed_at: 2026-09-06T19:39:58.074Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-09-05T19:44:34.083Z

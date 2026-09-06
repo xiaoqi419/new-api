@@ -627,6 +627,31 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 		return channel.DoFormRequest(a, c, info, requestBody)
 	} else if info.RelayMode == relayconstant.RelayModeRealtime {
 		return channel.DoWssRequest(a, c, info, requestBody)
+	} else if info.RelayMode == relayconstant.RelayModeResponses && info.IsStream && strings.EqualFold(strings.TrimSpace(info.ChannelSetting.UpstreamTransport), dto.UpstreamTransportWebsocket) {
+		var payload []byte
+		var readErr error
+		if requestBody != nil {
+			payload, readErr = io.ReadAll(requestBody)
+		}
+		if readErr != nil {
+			return nil, fmt.Errorf("read responses websocket request body: %w", readErr)
+		}
+		resp, wsErr := doResponsesWebsocketRequest(c, info, payload)
+		if wsErr == nil {
+			logger.LogInfo(c, fmt.Sprintf("responses upstream transport: websocket channel=%d", info.GetChannelID()))
+			return resp, nil
+		}
+		channelID := 0
+		if info != nil {
+			channelID = info.GetChannelID()
+		}
+		var wsFailure *cpaResponsesWebsocketError
+		if errors.As(wsErr, &wsFailure) {
+			logger.LogWarn(c, fmt.Sprintf("responses websocket unavailable, falling back to HTTP: channel=%d reused=%t rebuilt=%t fallback=true reason=%s", channelID, wsFailure.reused, wsFailure.rebuilt, wsFailure.reason))
+		} else {
+			logger.LogWarn(c, fmt.Sprintf("responses websocket unavailable, falling back to HTTP: channel=%d reused=false rebuilt=false fallback=true reason=setup failure", channelID))
+		}
+		return channel.DoApiRequest(a, c, info, bytes.NewReader(payload))
 	} else {
 		return channel.DoApiRequest(a, c, info, requestBody)
 	}

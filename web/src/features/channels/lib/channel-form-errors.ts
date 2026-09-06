@@ -40,6 +40,7 @@ const ADVANCED_SETTINGS_FIELDS = new Set<FieldPath<ChannelFormValues>>([
   'pass_through_body_enabled',
   'proxy',
   'http_protocol',
+  'upstream_transport',
   'http2_connection_shards',
   'system_prompt',
   'system_prompt_override',

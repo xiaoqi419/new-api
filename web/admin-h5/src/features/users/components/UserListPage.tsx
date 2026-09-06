@@ -50,6 +50,104 @@ export function UserListPage(): ReactElement {
     });
   }
 
+  const errorText =
+    usersQuery.error instanceof Error && usersQuery.error.message.trim()
+      ? usersQuery.error.message
+      : t("users.error");
+
+  let usersContent: ReactElement;
+  if (usersQuery.isPending) {
+    usersContent = (
+      <div className="space-y-3" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">{t("users.loading")}</span>
+        {["one", "two", "three", "four", "five"].map((key) => (
+          <div
+            key={key}
+            className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white"
+          />
+        ))}
+      </div>
+    );
+  } else if (usersQuery.isError) {
+    usersContent = (
+      <div
+        className="rounded-xl border border-red-200 bg-red-50 p-4"
+        role="alert"
+        aria-live="assertive"
+      >
+        <p className="text-sm text-red-800">{errorText}</p>
+        <button
+          type="button"
+          onClick={() => void usersQuery.refetch()}
+          disabled={usersQuery.isFetching}
+          className="mt-3 min-h-11 rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {usersQuery.isFetching ? t("users.retrying") : t("users.retry")}
+        </button>
+      </div>
+    );
+  } else if (usersQuery.data?.items.length === 0) {
+    usersContent = (
+      <div
+        className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600"
+        role="status"
+        aria-live="polite"
+      >
+        {t("users.empty")}
+      </div>
+    );
+  } else {
+    usersContent = (
+      <div className="space-y-3" aria-live="polite">
+        {usersQuery.data?.items.map((user) => (
+          <button
+            key={user.id}
+            type="button"
+            onClick={() => openUser(user)}
+            aria-label={`${user.display_name?.trim() || user.username}${user.email ? ` ${user.email}` : ""}`}
+            className="block min-h-11 w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{user.username}</p>
+                <p className="truncate text-sm text-slate-500">
+                  {user.email || t("users.noEmail")}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  user.status === 1
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {user.status === 1 ? t("users.enabled") : t("users.disabled")}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
+              <span>
+                <strong className="block text-sm font-medium text-slate-800">{user.group}</strong>
+                {t("users.group")}
+              </span>
+              <span>
+                <strong className="block text-sm font-medium text-slate-800">
+                  {formatQuota(user.quota, systemConfig)}
+                </strong>
+                {t("users.quota")}
+              </span>
+              <span>
+                <strong className="block text-sm font-medium text-slate-800">
+                  {formatQuota(user.used_quota, systemConfig)}
+                </strong>
+                {t("users.usedQuota")}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <section className="flex flex-1 flex-col gap-4" aria-labelledby="users-title">
       <div>
@@ -110,93 +208,7 @@ export function UserListPage(): ReactElement {
         </div>
       </fieldset>
 
-      {usersQuery.isPending ? (
-        <div className="space-y-3" role="status" aria-live="polite" aria-busy="true">
-          <span className="sr-only">{t("users.loading")}</span>
-          {Array.from({ length: 5 }, (_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white"
-            />
-          ))}
-        </div>
-      ) : usersQuery.isError ? (
-        <div
-          className="rounded-xl border border-red-200 bg-red-50 p-4"
-          role="alert"
-          aria-live="assertive"
-        >
-          <p className="text-sm text-red-800">
-            {usersQuery.error instanceof Error && usersQuery.error.message.trim()
-              ? usersQuery.error.message
-              : t("users.error")}
-          </p>
-          <button
-            type="button"
-            onClick={() => void usersQuery.refetch()}
-            disabled={usersQuery.isFetching}
-            className="mt-3 min-h-11 rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {usersQuery.isFetching ? t("users.retrying") : t("users.retry")}
-          </button>
-        </div>
-      ) : usersQuery.data?.items.length === 0 ? (
-        <div
-          className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600"
-          role="status"
-          aria-live="polite"
-        >
-          {t("users.empty")}
-        </div>
-      ) : (
-        <div className="space-y-3" aria-live="polite">
-          {usersQuery.data?.items.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              onClick={() => openUser(user)}
-              aria-label={`${user.display_name?.trim() || user.username}${user.email ? ` ${user.email}` : ""}`}
-              className="block min-h-11 w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{user.username}</p>
-                  <p className="truncate text-sm text-slate-500">
-                    {user.email || t("users.noEmail")}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-                    user.status === 1
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {user.status === 1 ? t("users.enabled") : t("users.disabled")}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
-                <span>
-                  <strong className="block text-sm font-medium text-slate-800">{user.group}</strong>
-                  {t("users.group")}
-                </span>
-                <span>
-                  <strong className="block text-sm font-medium text-slate-800">
-                    {formatQuota(user.quota, systemConfig)}
-                  </strong>
-                  {t("users.quota")}
-                </span>
-                <span>
-                  <strong className="block text-sm font-medium text-slate-800">
-                    {formatQuota(user.used_quota, systemConfig)}
-                  </strong>
-                  {t("users.usedQuota")}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      {usersContent}
 
       <nav
         className="flex items-center justify-between gap-3"

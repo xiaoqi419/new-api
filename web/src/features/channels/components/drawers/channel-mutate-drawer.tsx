@@ -4274,6 +4274,40 @@ export function ChannelMutateDrawer({
 
                             <FormField
                               control={form.control}
+                              name='upstream_transport'
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>{t('Upstream Transport')}</FormLabel>
+                                  <Select
+                                    items={[
+                                      { value: 'http', label: t('HTTP') },
+                                      { value: 'websocket', label: t('WebSocket') },
+                                    ]}
+                                    value={field.value || 'http'}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent alignItemWithTrigger={false}>
+                                      <SelectGroup>
+                                        <SelectItem value='http'>{t('HTTP')}</SelectItem>
+                                        <SelectItem value='websocket'>{t('WebSocket')}</SelectItem>
+                                      </SelectGroup>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    {t('Use WebSocket for streaming OpenAI Responses requests when supported by the upstream channel.')}
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
                               name='http_protocol'
                               render={({ field }) => (
                                 <FormItem>

@@ -154,6 +154,31 @@ func TestApplyTerminalTopup_HeldThenResettle(t *testing.T) {
 	assert.Equal(t, 0, after.HeldQuota)
 }
 
+func TestApplyTerminalTopup_HeldPreservesLargeQuota(t *testing.T) {
+	setupAgentSettleTest(t)
+	agent := Agent{Id: 1, OwnerUserId: 9, Name: "a-large-held", Status: AgentStatusActive, WalletQuota: 0, CostRatio: 0.5}
+	require.NoError(t, DB.Create(&agent).Error)
+	user := User{Id: 2, Username: "u-large-held", Password: "password", Status: common.UserStatusEnabled, Quota: 0, AgentId: 1}
+	require.NoError(t, DB.Create(&user).Error)
+	topUp := TopUp{Id: 1, UserId: user.Id, TradeNo: "t-large-held", Status: common.TopUpStatusPending, PaymentMethod: "epay", Amount: 1, CreateTime: common.GetTimestamp()}
+	require.NoError(t, DB.Create(&topUp).Error)
+
+	largeQuota := common.MaxQuota + 1234
+	var credited bool
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		credited, err = ApplyTerminalTopupTx(tx, &topUp, &user, largeQuota)
+		return err
+	})
+	require.NoError(t, err)
+	assert.False(t, credited)
+
+	var held TopUp
+	require.NoError(t, DB.First(&held, topUp.Id).Error)
+	assert.Equal(t, common.TopUpStatusHeld, held.Status)
+	assert.Equal(t, largeQuota, held.HeldQuota)
+}
+
 func TestAdjustAgentWallet_PrepayAndFloor(t *testing.T) {
 	setupAgentSettleTest(t)
 	agent := Agent{Id: 1, OwnerUserId: 9, Name: "a1", Status: AgentStatusActive, WalletQuota: 0, CostRatio: 1}
@@ -173,6 +198,18 @@ func TestAdjustAgentWallet_PrepayAndFloor(t *testing.T) {
 
 	require.NoError(t, AdjustAgentWallet(agent.Id, -300000, AgentLedgerTypeAdjust, "", 0, "调账"))
 	assert.Equal(t, 0, readAgentWallet(t, agent.Id))
+}
+
+func TestAgentWalletRejectsOverflow(t *testing.T) {
+	setupAgentSettleTest(t)
+	agent := Agent{Id: 1, OwnerUserId: 9, Name: "a1", Status: AgentStatusActive, WalletQuota: common.MaxQuota - 1, CostRatio: 1}
+	require.NoError(t, DB.Create(&agent).Error)
+
+	require.ErrorIs(t, IncreaseAgentWallet(agent.Id, 2), ErrAgentWalletQuotaLimitExceeded)
+	assert.Equal(t, common.MaxQuota-1, readAgentWallet(t, agent.Id))
+
+	require.ErrorIs(t, AdjustAgentWallet(agent.Id, 2, AgentLedgerTypeAdjust, "", 0, "overflow"), ErrAgentWalletQuotaLimitExceeded)
+	assert.Equal(t, common.MaxQuota-1, readAgentWallet(t, agent.Id))
 }
 
 func TestDecreaseAgentWalletIfEnough(t *testing.T) {

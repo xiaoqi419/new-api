@@ -146,6 +146,21 @@ func (v *Values) GetEstimatePromptTokens() int {
 	return v.EstimatePromptTokens
 }
 
+// ReasoningStateOf reads optional host attached reasoning conversion state.
+// Older standalone Meta implementations do not expose this extension; those
+// callers simply receive nil and rely on explicit request fields.
+func ReasoningStateOf(m Meta) *dto.ReasoningConversionState {
+	if m == nil {
+		return nil
+	}
+	if reader, ok := m.(interface {
+		ReasoningState() *dto.ReasoningConversionState
+	}); ok {
+		return reader.ReasoningState()
+	}
+	return nil
+}
+
 func (v *Values) EnsureClaudeConvertInfo() *ClaudeConvertInfo {
 	if v == nil {
 		return &ClaudeConvertInfo{LastMessagesType: LastMessageTypeNone}

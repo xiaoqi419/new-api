@@ -69,6 +69,9 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
+	if err = helper.ApplyReasoningModelSuffix(c, info, request); err != nil {
+		return helper.NewReasoningModelAPIError(err)
+	}
 
 	if model_setting.GetGeminiSettings().ThinkingAdapterEnabled {
 		if isNoThinkingRequest(request) {

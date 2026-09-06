@@ -106,16 +106,36 @@ func cacheApplyTokenQuotaDelta(id int, key string, delta int64) (cacheQuotaResul
 // persistUserQuotaDelta 把已在缓存侧预扣成功的增量落库；批量模式下入队，
 // 直写模式下要求行存在（用户已删除时报错，交由调用方补偿缓存）。
 func persistUserQuotaDelta(id int, delta int) error {
+	if delta > 0 {
+		if err := common.ValidateWalletQuota(delta); err != nil {
+			return err
+		}
+	}
 	if common.BatchUpdateEnabled {
 		addNewRecord(BatchUpdateTypeUserQuota, id, delta)
 		return nil
 	}
-	result := DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", delta))
+	query := DB.Model(&User{}).Where("id = ?", id)
+	if delta > 0 {
+		// A positive persistence delta is a wallet credit (for example, a
+		// compensation after a failed reservation). Keep the same atomic
+		// ceiling as the regular credit paths so a stale cache can never push
+		// the database wallet beyond the JavaScript-safe domain.
+		query = query.Where("quota <= ?", common.MaxWalletQuota-delta)
+	}
+	result := query.Update("quota", gorm.Expr("quota + ?", delta))
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected != 1 {
-		return gorm.ErrRecordNotFound
+		var count int64
+		if err := DB.Model(&User{}).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return ErrWalletQuotaLimitExceeded
 	}
 	return nil
 }

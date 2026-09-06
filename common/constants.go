@@ -69,6 +69,7 @@ var ItemsPerPage = 10
 var MaxRecentItems = 1000
 
 var PasswordLoginEnabled = true
+var PasswordLoginEncryptionEnabled = false
 var PasswordRegisterEnabled = true
 var EmailVerificationEnabled = false
 var GitHubOAuthEnabled = false
@@ -204,6 +205,12 @@ var BatchUpdateInterval int
 var RelayTimeout int // unit is second
 
 var RelayIdleConnTimeout int // unit is second
+
+// RelayResponseHeaderTimeout bounds the wait for upstream response headers
+// after the relay request has been written. A zero value disables this bound;
+// once headers arrive, streaming is not affected.
+var RelayResponseHeaderTimeout int // unit is second
+
 var RelayMaxIdleConns int
 var RelayMaxIdleConnsPerHost int
 

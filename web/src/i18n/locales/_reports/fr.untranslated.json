@@ -35,6 +35,7 @@
   "These channels cannot be refunded automatically (e.g. Epay). Refund on the payment platform, then mark as done.": "These channels cannot be refunded automatically (e.g. Epay). Refund on the payment platform, then mark as done.",
   "to form group": "to form group",
   "Use fixed or percent rules in USD. Asset overrides use TOKEN:network keys such as USDT:tron. The user pays the fee; the configured top-up amount remains the credited balance.": "Use fixed or percent rules in USD. Asset overrides use TOKEN:network keys such as USDT:tron. The user pays the fee; the configured top-up amount remains the credited balance.",
+  "Use WebSocket for streaming OpenAI Responses requests when supported by the upstream channel.": "Use WebSocket for streaming OpenAI Responses requests when supported by the upstream channel.",
   "Void this in-progress group buy and refund all paid members?": "Void this in-progress group buy and refund all paid members?",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
   "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"

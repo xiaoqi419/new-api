@@ -69,8 +69,9 @@ export function SignInPage(): ReactElement {
     try {
       const generation = beginSignIn?.() ?? useAuthStore.getState().sites[siteId].generation;
       const response = await signIn(values);
-      if (!mounted.current || useAuthStore.getState().sites[siteId].generation !== generation)
+      if (!mounted.current || useAuthStore.getState().sites[siteId].generation !== generation) {
         return;
+      }
       loginForm.reset({ username: values.username, password: "" });
       if (!response.success) {
         setFormError(response.message || t("auth.errors.signIn"));
@@ -163,6 +164,7 @@ export function SignInPage(): ReactElement {
       {isTwoFactor ? (
         <form
           className="flex flex-col gap-4"
+          // oxlint-disable-next-line react/refs -- react-hook-form exposes handleSubmit as a stable event handler.
           onSubmit={twoFactorForm.handleSubmit(onTwoFactor)}
           noValidate
         >
@@ -199,7 +201,12 @@ export function SignInPage(): ReactElement {
           </button>
         </form>
       ) : (
-        <form className="flex flex-col gap-4" onSubmit={loginForm.handleSubmit(onLogin)} noValidate>
+        <form
+          className="flex flex-col gap-4"
+          // oxlint-disable-next-line react/refs -- react-hook-form exposes handleSubmit as a stable event handler.
+          onSubmit={loginForm.handleSubmit(onLogin)}
+          noValidate
+        >
           <div>
             <label htmlFor="username" className="mb-1 block text-sm font-medium text-slate-700">
               {t("auth.username")}

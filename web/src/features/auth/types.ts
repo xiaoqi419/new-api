@@ -26,6 +26,7 @@ export interface LoginPayload {
   username: string
   password: string
   turnstile?: string
+  passwordEncryptionEnabled?: boolean
   captcha?: CaptchaQuery
 }
 
@@ -170,6 +171,7 @@ export interface SystemStatus {
     oauth_register_enabled?: boolean
     register_enabled?: boolean
     password_login_enabled?: boolean
+    password_login_encryption_enabled?: boolean
     password_register_enabled?: boolean
     custom_oauth_providers?: CustomOAuthProviderInfo[]
     [key: string]: unknown
@@ -221,6 +223,7 @@ export interface SystemStatus {
   oauth_register_enabled?: boolean
   register_enabled?: boolean
   password_login_enabled?: boolean
+  password_login_encryption_enabled?: boolean
   password_register_enabled?: boolean
   default_theme_preset?: string
   custom_oauth_providers?: CustomOAuthProviderInfo[]

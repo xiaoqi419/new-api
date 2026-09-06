@@ -20,6 +20,15 @@ func TestChannelValidateSettingsRejectsInvalidHTTPTransport(t *testing.T) {
 			setting: dto.ChannelSettings{HTTPProtocol: "auto", HTTP2ConnectionShards: 4},
 		},
 		{
+			name:    "websocket upstream transport is valid",
+			setting: dto.ChannelSettings{UpstreamTransport: "websocket"},
+		},
+		{
+			name:    "unknown upstream transport is rejected",
+			setting: dto.ChannelSettings{UpstreamTransport: "grpc"},
+			wantErr: "invalid upstream_transport",
+		},
+		{
 			name:    "http1 with shards greater than one rejected",
 			setting: dto.ChannelSettings{HTTPProtocol: "http1", HTTP2ConnectionShards: 2},
 			wantErr: "http2_connection_shards",

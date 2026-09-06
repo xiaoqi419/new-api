@@ -443,6 +443,8 @@
     "从配置文件同步": "Sync from config file",
     "从默认列表中去掉一个分组": "Remove a group from the default list",
     "代理地址": "Proxy address",
+    "上游传输": "Upstream transport",
+    "流式 Responses 请求可通过 WebSocket 连接上游渠道": "Streaming Responses requests can use WebSocket to connect to the upstream channel",
     "代理设置": "Proxy Settings",
     "代码已复制到剪贴板": "Code copied to clipboard",
     "令牌": "Tokens",
