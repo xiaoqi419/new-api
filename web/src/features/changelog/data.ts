@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-stats-from-logs',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 统计改走消费日志额度，并去掉页面上的 2.5 倍说明。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260906-h5-stats-count-fix',
     date: '2026-09-06',
     changes: [

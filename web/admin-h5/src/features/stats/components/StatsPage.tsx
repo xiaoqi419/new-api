@@ -13,7 +13,6 @@ import {
   applyDisplayMultiplier,
   isStatsRange,
   STATS_RANGES,
-  USAGE_DISPLAY_MULTIPLIER,
   type StatsRange,
 } from "../range";
 
@@ -59,7 +58,7 @@ export function StatsPage(): ReactElement {
           {t("stats.title")}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          {t("stats.description", { multiplier: USAGE_DISPLAY_MULTIPLIER })}
+          {t("stats.description")}
         </p>
       </div>
 
