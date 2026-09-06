@@ -809,6 +809,63 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	return stat, nil
 }
 
+type ConsumeUsageTotals struct {
+	Count     int64 `json:"count"`
+	Quota     int64 `json:"quota"`
+	TokenUsed int64 `json:"token_used"`
+}
+
+type ConsumeUsageRow struct {
+	ModelName string `json:"model_name"`
+	CreatedAt int64  `json:"created_at"`
+	Count     int64  `json:"count"`
+	Quota     int64  `json:"quota"`
+	TokenUsed int64  `json:"token_used"`
+}
+
+func quotaUsageBase(startTimestamp int64, endTimestamp int64) *gorm.DB {
+	query := DB.Table("quota_data")
+	if startTimestamp > 0 {
+		query = query.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp > 0 {
+		query = query.Where("created_at <= ?", endTimestamp)
+	}
+	return query
+}
+
+func quotaUsageSelect(extra string) string {
+	return extra + "COALESCE(sum(count), 0) as count, COALESCE(sum(quota), 0) as quota, COALESCE(sum(token_used), 0) as token_used"
+}
+
+func GetConsumeUsageStat(startTimestamp int64, endTimestamp int64) (ConsumeUsageTotals, []ConsumeUsageRow, []ConsumeUsageRow, error) {
+	var totals ConsumeUsageTotals
+	if err := quotaUsageBase(startTimestamp, endTimestamp).
+		Select(quotaUsageSelect("")).
+		Scan(&totals).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+
+	var hours []ConsumeUsageRow
+	if err := quotaUsageBase(startTimestamp, endTimestamp).
+		Select(quotaUsageSelect("created_at, ")).
+		Group("created_at").
+		Order("created_at").
+		Scan(&hours).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+
+	var models []ConsumeUsageRow
+	if err := quotaUsageBase(startTimestamp, endTimestamp).
+		Select(quotaUsageSelect("model_name, ")).
+		Group("model_name").
+		Order("sum(quota) desc").
+		Scan(&models).Error; err != nil {
+		return ConsumeUsageTotals{}, nil, nil, err
+	}
+	return totals, hours, models, nil
+}
+
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) (token int) {
 	tx := LOG_DB.Table("logs").Select("COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0)")
 	if username != "" {

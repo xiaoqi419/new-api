@@ -44,6 +44,78 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
+    version: '20260906-h5-hide-site-switcher',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 登录后不再显示无法切换的国内站/国际站按钮；统计表可横向滑动，模型名不再竖排错位。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260906-h5-stats-fast',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 统计改走按小时汇总的看板数据，切换今天/近 30 天不再扫全量日志卡住。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260906-h5-session-restore',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 刷新页面时用 refresh cookie 恢复登录，并记住上次选择的国内/国际站。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260906-h5-stats-from-logs',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 统计改走消费日志额度，并去掉页面上的 2.5 倍说明。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260906-h5-stats-count-fix',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复管理 H5 统计页顶部次数/Token 取最近 60 秒 RPM 导致与按日明细不一致，并增加按模型花费。',
+        ],
+      },
+    ],
+  },
+  {
+    version: '20260906-h5-usage-stats',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '管理 H5 新增全站用量统计页，可看今天、昨天、近 7 天、近 30 天，展示值为接口数据的 2.5 倍。',
+        ],
+      },
+    ],
+  },
+  {
     // Release tag for low-quota reminder compensation and activation-race fixes.
     version: '20260906-ac1d17cc8',
     date: '2026-09-06',

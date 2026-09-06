@@ -1,4 +1,5 @@
 import { create } from "zustand";
+
 import { defaultSiteId, type SiteId } from "../env";
 import {
   isAuthBundle,
@@ -6,6 +7,27 @@ import {
   type AuthUser,
   type LoginSession,
 } from "../features/auth/types";
+
+const ACTIVE_SITE_STORAGE_KEY = "admin-h5.active-site";
+
+function readStoredSiteId(): SiteId {
+  try {
+    const stored = localStorage.getItem(ACTIVE_SITE_STORAGE_KEY);
+    if (stored === "domestic" || stored === "international") return stored;
+  } catch {
+    // Ignore storage access errors in private mode or tests without a window.
+  }
+  return defaultSiteId;
+}
+
+function writeStoredSiteId(siteId: SiteId): void {
+  try {
+    localStorage.setItem(ACTIVE_SITE_STORAGE_KEY, siteId);
+  } catch {
+    // Ignore storage access errors in private mode or tests without a window.
+  }
+}
+
 export interface SiteAuthState {
   accessToken: string | null;
   bundle: AuthBundle | null;
@@ -37,7 +59,7 @@ export interface AuthState {
 }
 const initial = () =>
   ({
-    activeSiteId: defaultSiteId,
+    activeSiteId: readStoredSiteId(),
     sites: { domestic: emptySite(), international: emptySite() },
   }) as Pick<AuthState, "activeSiteId" | "sites">;
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -51,6 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (activeSiteId !== current.activeSiteId && current.sites[current.activeSiteId].accessToken) {
       return;
     }
+    writeStoredSiteId(activeSiteId);
     const site = current.sites[activeSiteId];
     set({
       activeSiteId,
@@ -74,6 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isAuthBundle(bundle)) return;
     const current = get().sites[id];
     if (expected !== undefined && current.generation !== expected) return;
+    writeStoredSiteId(id);
     set((s) => ({
       sites: {
         ...s.sites,

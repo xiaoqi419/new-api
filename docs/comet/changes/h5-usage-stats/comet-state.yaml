@@ -1,0 +1,96 @@
+schema: comet.native.v4
+name: h5-usage-stats
+language: zh-CN
+phase: build
+status: active
+state_version: 2
+brief: brief.md
+spec_changes:
+  - capability: h5-usage-stats
+    operation: create
+    source: specs/h5-usage-stats/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/h5-usage-stats
+  target_branch: main
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 登录后可打开统计页，未登录跳转登录。"
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: "A2: 可选今天、昨天、近 7 天、近 30 天。"
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: "A3: 次数、token、额度展示为查询结果的 2.5 倍。"
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: "A4: 接口失败时有错误与重试。"
+    result: pending
+    reason: null
+  - id: A5
+    source: specs/h5-usage-stats/spec.md
+    text: 管理员在 `/admin-h5/stats` 查看当前站点调用量与花费。
+    result: pending
+    reason: null
+  - id: A6
+    source: specs/h5-usage-stats/spec.md
+    text: 时间范围：今天、昨天、近 7 天、近 30 天。请求 `start_timestamp` / `end_timestamp`（本地时区日界）。
+    result: pending
+    reason: null
+  - id: A7
+    source: specs/h5-usage-stats/spec.md
+    text: 数据：
+    result: pending
+    reason: null
+  - id: A8
+    source: specs/h5-usage-stats/spec.md
+    text: "`GET /api/log/stat`：区间合计 `quota`、`rpm`（次数）、`tpm`（token）"
+    result: pending
+    reason: null
+  - id: A9
+    source: specs/h5-usage-stats/spec.md
+    text: "`GET /api/data/`：按时间点的次数/额度/token，用于列表"
+    result: pending
+    reason: null
+  - id: A10
+    source: specs/h5-usage-stats/spec.md
+    text: 展示：各项数值 × 2.5。额度经 `formatQuota`。页面标明 2.5 倍展示。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-09-06T10:00:22.958Z

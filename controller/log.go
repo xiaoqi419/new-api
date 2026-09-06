@@ -106,6 +106,29 @@ func GetLogByKey(c *gin.Context) {
 	})
 }
 
+func GetConsumeUsageStat(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	if startTimestamp < 0 || endTimestamp < 0 || (endTimestamp > 0 && endTimestamp < startTimestamp) {
+		common.ApiErrorMsg(c, "invalid time range")
+		return
+	}
+	totals, hours, models, err := model.GetConsumeUsageStat(startTimestamp, endTimestamp)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"totals": totals,
+			"hours":  hours,
+			"models": models,
+		},
+	})
+}
+
 func GetLogsStat(c *gin.Context) {
 	logType, _ := strconv.Atoi(c.Query("type"))
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)

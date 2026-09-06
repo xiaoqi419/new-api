@@ -4,31 +4,38 @@ import { isAdminUser } from "./features/auth/types";
 import { AppErrorFallback, AppNotFoundFallback, RootLayout } from "./routes/__root";
 import { SignInPage } from "./routes/sign-in";
 import { UserDetailPage } from "./routes/users.$id";
+import { validateStatsSearch } from "./features/stats/range";
+import { StatsRoutePage } from "./routes/stats";
 import { validateUsersSearch, UsersPage } from "./routes/users";
+import { restoreSessionOnce } from "./features/auth/session-bootstrap";
 import { authStore } from "./stores/auth-store";
 
 const signInPath = "/sign-in" as const;
 
-function requireAdmin(): void {
+function hasAdminSession(): boolean {
   const { accessToken, user } = authStore.getState().sites[authStore.getState().activeSiteId];
-  if (
-    typeof accessToken !== "string" ||
-    accessToken.trim().length === 0 ||
-    !user ||
-    !isAdminUser(user)
-  ) {
+  return (
+    typeof accessToken === "string" &&
+    accessToken.trim().length > 0 &&
+    Boolean(user) &&
+    isAdminUser(user)
+  );
+}
+
+async function requireAdmin(): Promise<void> {
+  if (hasAdminSession()) return;
+  await restoreSessionOnce();
+  if (!hasAdminSession()) {
     throw redirect({ to: signInPath });
   }
 }
 
-function redirectAuthenticatedUser(): void {
-  const { accessToken, user } = authStore.getState().sites[authStore.getState().activeSiteId];
-  if (
-    typeof accessToken === "string" &&
-    accessToken.trim().length > 0 &&
-    user &&
-    isAdminUser(user)
-  ) {
+async function redirectAuthenticatedUser(): Promise<void> {
+  if (hasAdminSession()) {
+    throw redirect({ to: "/users" });
+  }
+  await restoreSessionOnce();
+  if (hasAdminSession()) {
     throw redirect({ to: "/users" });
   }
 }
@@ -54,6 +61,14 @@ const signInRoute = createRoute({
   component: SignInPage,
 });
 
+const statsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/stats",
+  validateSearch: validateStatsSearch,
+  beforeLoad: requireAdmin,
+  component: StatsRoutePage,
+});
+
 const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/users",
@@ -70,7 +85,13 @@ const userDetailRoute = createRoute({
   component: UserDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, signInRoute, usersRoute, userDetailRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  signInRoute,
+  statsRoute,
+  usersRoute,
+  userDetailRoute,
+]);
 
 export const router = createRouter({
   routeTree,
