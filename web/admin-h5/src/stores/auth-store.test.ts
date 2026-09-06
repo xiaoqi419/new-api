@@ -18,6 +18,7 @@ const adminBundle = {
 afterEach(() => {
   authStore.getState().reset('domestic')
   authStore.getState().reset('international')
+  localStorage.removeItem('admin-h5.active-site')
   authStore.getState().setActiveSite('domestic')
 })
 
@@ -31,5 +32,10 @@ describe('site authentication state', () => {
     authStore.getState().reset('domestic')
     authStore.getState().setActiveSite('international')
     expect(authStore.getState().activeSiteId).toBe('international')
+  })
+
+  it('remembers the last selected site in localStorage', () => {
+    authStore.getState().setActiveSite('international')
+    expect(localStorage.getItem('admin-h5.active-site')).toBe('international')
   })
 })
