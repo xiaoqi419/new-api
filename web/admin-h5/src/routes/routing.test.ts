@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { router } from "../router";
 import { authStore } from "../stores/auth-store";
+
+vi.mock("../features/auth/session-bootstrap", () => ({
+  restoreSessionOnce: async () => false,
+}));
 
 const adminBundle = {
   access_token: "route-token",

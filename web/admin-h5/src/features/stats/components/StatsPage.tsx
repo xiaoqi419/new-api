@@ -37,8 +37,9 @@ export function StatsPage(): ReactElement {
   const search = useSearch({ from: "/stats" }) as { range?: string };
   const range: StatsRange = isStatsRange(search.range) ? search.range : "today";
   const statsQuery = useUsageStats(range);
+  const activeSiteId = useAuthStore((state) => state.activeSiteId);
   const systemConfig = useSystemConfigStore(
-    (state) => state.configs[useAuthStore.getState().activeSiteId] ?? state.config,
+    (state) => state.configs[activeSiteId] ?? state.config,
   );
   const totals = statsQuery.data?.totals;
   const days = statsQuery.data?.days ?? [];
@@ -58,7 +59,7 @@ export function StatsPage(): ReactElement {
           {t("stats.title")}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          {t("stats.description")}
+          {t("stats.description", { site: t(`site.${activeSiteId}`) })}
         </p>
       </div>
 

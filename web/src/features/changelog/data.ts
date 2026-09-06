@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-session-restore',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 刷新页面时用 refresh cookie 恢复登录，并记住上次选择的国内/国际站。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260906-h5-stats-from-logs',
     date: '2026-09-06',
     changes: [
