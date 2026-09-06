@@ -69,6 +69,7 @@ export function StatsPage(): ReactElement {
             key={option}
             type="button"
             aria-pressed={range === option}
+            disabled={statsQuery.isFetching}
             onClick={() => setRange(option)}
             className={`min-h-11 rounded-xl px-3 text-sm font-medium ${
               range === option
@@ -97,7 +98,10 @@ export function StatsPage(): ReactElement {
       ) : null}
 
       {totals && !statsQuery.isError ? (
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <dl
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-3 ${statsQuery.isFetching ? "opacity-60" : ""}`}
+          aria-busy={statsQuery.isFetching}
+        >
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <dt className="text-xs font-medium text-slate-500">{t("stats.requests")}</dt>
             <dd className="mt-1 text-xl font-semibold">{displayCount(totals.count)}</dd>

@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-stats-fast',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 统计改走按小时汇总的看板数据，切换今天/近 30 天不再扫全量日志卡住。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260906-h5-session-restore',
     date: '2026-09-06',
     changes: [
