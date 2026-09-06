@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-stats-count-fix',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '修复管理 H5 统计页顶部次数/Token 取最近 60 秒 RPM 导致与按日明细不一致，并增加按模型花费。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260906-h5-usage-stats',
     date: '2026-09-06',
     changes: [

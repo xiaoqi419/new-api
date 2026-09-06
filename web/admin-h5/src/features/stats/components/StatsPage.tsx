@@ -4,7 +4,10 @@ import { useTranslation } from "react-i18next";
 
 import { formatQuota } from "../../../lib/format";
 import { useAuthStore } from "../../../stores/auth-store";
-import { useSystemConfigStore } from "../../../stores/system-config-store";
+import {
+  useSystemConfigStore,
+  type SystemConfig,
+} from "../../../stores/system-config-store";
 import { useUsageStats } from "../hooks/useUsageStats";
 import {
   applyDisplayMultiplier,
@@ -21,6 +24,14 @@ const RANGE_LABEL_KEYS: Record<StatsRange, string> = {
   "30d": "stats.last30Days",
 };
 
+function displayCount(value: number): string {
+  return applyDisplayMultiplier(value).toLocaleString();
+}
+
+function displayQuota(value: number, config: SystemConfig): string {
+  return formatQuota(applyDisplayMultiplier(value), config);
+}
+
 export function StatsPage(): ReactElement {
   const { t } = useTranslation();
   const navigate = useNavigate({ from: "/stats" });
@@ -32,6 +43,7 @@ export function StatsPage(): ReactElement {
   );
   const totals = statsQuery.data?.totals;
   const days = statsQuery.data?.days ?? [];
+  const models = statsQuery.data?.models ?? [];
 
   function setRange(next: StatsRange): void {
     void navigate({
@@ -88,21 +100,15 @@ export function StatsPage(): ReactElement {
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <dt className="text-xs font-medium text-slate-500">{t("stats.requests")}</dt>
-            <dd className="mt-1 text-xl font-semibold">
-              {applyDisplayMultiplier(totals.rpm).toLocaleString()}
-            </dd>
+            <dd className="mt-1 text-xl font-semibold">{displayCount(totals.count)}</dd>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <dt className="text-xs font-medium text-slate-500">{t("stats.tokens")}</dt>
-            <dd className="mt-1 text-xl font-semibold">
-              {applyDisplayMultiplier(totals.tpm).toLocaleString()}
-            </dd>
+            <dd className="mt-1 text-xl font-semibold">{displayCount(totals.tokenUsed)}</dd>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <dt className="text-xs font-medium text-slate-500">{t("stats.quota")}</dt>
-            <dd className="mt-1 text-xl font-semibold">
-              {formatQuota(applyDisplayMultiplier(totals.quota), systemConfig)}
-            </dd>
+            <dd className="mt-1 text-xl font-semibold">{displayQuota(totals.quota, systemConfig)}</dd>
           </div>
         </dl>
       ) : null}
@@ -110,7 +116,9 @@ export function StatsPage(): ReactElement {
       {days.length > 0 && !statsQuery.isError ? (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
-            <caption className="sr-only">{t("stats.dailyCaption")}</caption>
+            <caption className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+              {t("stats.dailyCaption")}
+            </caption>
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("stats.day")}</th>
@@ -123,13 +131,39 @@ export function StatsPage(): ReactElement {
               {days.map((row) => (
                 <tr key={row.day} className="border-t border-slate-100">
                   <td className="px-4 py-3">{row.day}</td>
-                  <td className="px-4 py-3">{applyDisplayMultiplier(row.count).toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {applyDisplayMultiplier(row.tokenUsed).toLocaleString()}
+                  <td className="px-4 py-3">{displayCount(row.count)}</td>
+                  <td className="px-4 py-3">{displayCount(row.tokenUsed)}</td>
+                  <td className="px-4 py-3">{displayQuota(row.quota, systemConfig)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {models.length > 0 && !statsQuery.isError ? (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <caption className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+              {t("stats.modelCaption")}
+            </caption>
+            <thead className="bg-slate-50 text-xs text-slate-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">{t("stats.model")}</th>
+                <th className="px-4 py-3 font-medium">{t("stats.requests")}</th>
+                <th className="px-4 py-3 font-medium">{t("stats.tokens")}</th>
+                <th className="px-4 py-3 font-medium">{t("stats.quota")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {models.map((row) => (
+                <tr key={row.model || "unknown"} className="border-t border-slate-100">
+                  <td className="px-4 py-3 break-all">
+                    {row.model || t("stats.unknownModel")}
                   </td>
-                  <td className="px-4 py-3">
-                    {formatQuota(applyDisplayMultiplier(row.quota), systemConfig)}
-                  </td>
+                  <td className="px-4 py-3">{displayCount(row.count)}</td>
+                  <td className="px-4 py-3">{displayCount(row.tokenUsed)}</td>
+                  <td className="px-4 py-3">{displayQuota(row.quota, systemConfig)}</td>
                 </tr>
               ))}
             </tbody>

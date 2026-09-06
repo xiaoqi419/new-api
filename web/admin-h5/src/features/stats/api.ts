@@ -1,6 +1,12 @@
 import { apiClient } from "../../lib/api-client";
 import type { ApiResponse } from "../auth/types";
-import type { QuotaDataPoint, UsageStatTotals, UsageStatsSnapshot } from "./types";
+import type {
+  QuotaDataPoint,
+  UsageDayRow,
+  UsageModelRow,
+  UsageStatsSnapshot,
+  UsageTotals,
+} from "./types";
 
 function readApiData<T>(response: ApiResponse<T>): T {
   if (!response.success || response.data === undefined) {
@@ -14,20 +20,52 @@ function asFiniteNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-export function groupQuotaDataByDay(points: QuotaDataPoint[]): UsageStatsSnapshot["days"] {
-  const buckets = new Map<string, { count: number; quota: number; tokenUsed: number }>();
+function addUsage(
+  current: UsageTotals,
+  point: Pick<QuotaDataPoint, "count" | "quota" | "token_used">,
+): UsageTotals {
+  return {
+    count: current.count + asFiniteNumber(point.count),
+    quota: current.quota + asFiniteNumber(point.quota),
+    tokenUsed: current.tokenUsed + asFiniteNumber(point.token_used),
+  };
+}
+
+export function groupQuotaDataByDay(points: QuotaDataPoint[]): UsageDayRow[] {
+  const buckets = new Map<string, UsageTotals>();
   for (const point of points) {
     const createdAt = asFiniteNumber(point.created_at);
     const day = new Date(createdAt * 1000).toLocaleDateString();
-    const current = buckets.get(day) ?? { count: 0, quota: 0, tokenUsed: 0 };
-    current.count += asFiniteNumber(point.count);
-    current.quota += asFiniteNumber(point.quota);
-    current.tokenUsed += asFiniteNumber(point.token_used);
-    buckets.set(day, current);
+    buckets.set(day, addUsage(buckets.get(day) ?? { count: 0, quota: 0, tokenUsed: 0 }, point));
   }
   return [...buckets.entries()]
     .map(([day, values]) => ({ day, ...values }))
     .sort((left, right) => left.day.localeCompare(right.day, undefined, { numeric: true }));
+}
+
+export function groupQuotaDataByModel(points: QuotaDataPoint[]): UsageModelRow[] {
+  const buckets = new Map<string, UsageTotals>();
+  for (const point of points) {
+    const model = typeof point.model_name === "string" && point.model_name.trim()
+      ? point.model_name.trim()
+      : "";
+    buckets.set(model, addUsage(buckets.get(model) ?? { count: 0, quota: 0, tokenUsed: 0 }, point));
+  }
+  return [...buckets.entries()]
+    .map(([model, values]) => ({ model, ...values }))
+    .sort((left, right) => right.quota - left.quota || left.model.localeCompare(right.model));
+}
+
+export function summarizeQuotaData(points: QuotaDataPoint[]): UsageStatsSnapshot {
+  const totals = points.reduce(
+    (acc, point) => addUsage(acc, point),
+    { count: 0, quota: 0, tokenUsed: 0 },
+  );
+  return {
+    totals,
+    days: groupQuotaDataByDay(points),
+    models: groupQuotaDataByModel(points),
+  };
 }
 
 export async function getUsageStats(
@@ -35,25 +73,10 @@ export async function getUsageStats(
   endTimestamp: number,
   options: { signal?: AbortSignal } = {},
 ): Promise<UsageStatsSnapshot> {
-  const params = { start_timestamp: startTimestamp, end_timestamp: endTimestamp };
-  const [statResponse, dataResponse] = await Promise.all([
-    apiClient.get<ApiResponse<UsageStatTotals>>("/api/log/stat", {
-      params,
-      signal: options.signal,
-    }),
-    apiClient.get<ApiResponse<QuotaDataPoint[]>>("/api/data/", {
-      params,
-      signal: options.signal,
-    }),
-  ]);
-  const totals = readApiData(statResponse.data);
-  const points = readApiData(dataResponse.data) ?? [];
-  return {
-    totals: {
-      quota: asFiniteNumber(totals.quota),
-      rpm: asFiniteNumber(totals.rpm),
-      tpm: asFiniteNumber(totals.tpm),
-    },
-    days: groupQuotaDataByDay(Array.isArray(points) ? points : []),
-  };
+  const response = await apiClient.get<ApiResponse<QuotaDataPoint[]>>("/api/data/", {
+    params: { start_timestamp: startTimestamp, end_timestamp: endTimestamp },
+    signal: options.signal,
+  });
+  const points = readApiData(response.data) ?? [];
+  return summarizeQuotaData(Array.isArray(points) ? points : []);
 }

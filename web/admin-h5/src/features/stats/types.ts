@@ -6,10 +6,10 @@ export interface QuotaDataPoint {
   model_name?: string;
 }
 
-export interface UsageStatTotals {
+export interface UsageTotals {
+  count: number;
   quota: number;
-  rpm: number;
-  tpm: number;
+  tokenUsed: number;
 }
 
 export interface UsageDayRow {
@@ -19,7 +19,15 @@ export interface UsageDayRow {
   tokenUsed: number;
 }
 
+export interface UsageModelRow {
+  model: string;
+  count: number;
+  quota: number;
+  tokenUsed: number;
+}
+
 export interface UsageStatsSnapshot {
-  totals: UsageStatTotals;
+  totals: UsageTotals;
   days: UsageDayRow[];
+  models: UsageModelRow[];
 }
