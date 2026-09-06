@@ -3,7 +3,7 @@ name: upstream-sync-and-channel-websocket
 language: zh-CN
 phase: verify
 status: active
-state_version: 43
+state_version: 46
 brief: brief.md
 spec_changes:
   - capability: channel-upstream-websocket
@@ -21,8 +21,8 @@ loop:
   stage: verify-ready
   goal_cycle: 3
   iteration: 1
-  attempt: 3
-  retry_epoch: 2
+  attempt: 4
+  retry_epoch: 3
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
@@ -533,6 +533,17 @@ history:
         gate remains blocked.
       truncated: false
     completed_at: 2026-09-06T18:30:12.394Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 3
+    outcome: blocked
+    unresolved_ids:
+      - A10
+    summary:
+      text: "独立只读复核确认当前 WS 连接池、匿名/命名会话隔离修正、脱敏回落日志和全部本地 Go/relaykit/前端检查通过；PR #45 已创建且
+        CI 全部成功，唯一阻塞是合并、不可变镜像构建和部署。"
+      truncated: false
+    completed_at: 2026-09-06T19:39:58.074Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null

@@ -38,6 +38,11 @@ func TestBuildResponsesWebsocketRequestEnvelope(t *testing.T) {
 	require.JSONEq(t, `{"type":"response.create","model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true}`, string(got))
 }
 
+func TestBuildResponsesWebsocketRequestEnvelopeRejectsNull(t *testing.T) {
+	_, err := buildResponsesWebsocketRequestEnvelope([]byte(`null`))
+	require.Error(t, err)
+}
+
 func TestResponsesWebsocketURLCandidates(t *testing.T) {
 	got, err := responsesWebsocketURLCandidates("https://cpa.example/v1/responses?api-version=preview")
 	require.NoError(t, err)

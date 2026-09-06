@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relay/channel"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/gin-gonic/gin"
@@ -61,6 +62,9 @@ func buildResponsesWebsocketRequestEnvelope(payload []byte) ([]byte, error) {
 	var body map[string]any
 	if err := common.Unmarshal(payload, &body); err != nil {
 		return nil, err
+	}
+	if body == nil {
+		return nil, fmt.Errorf("responses websocket payload must be a JSON object")
 	}
 	body["type"] = "response.create"
 	return common.Marshal(body)
@@ -149,27 +153,28 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 		return nil, fmt.Errorf("responses websocket dial failed: %w", lastErr)
 	}
 
-	var lease *cpaResponsesWebsocketLease
+	rebuilt := false
 	// Reusing a socket is safe to retry once when it fails before its first
 	// response event. A newly dialed socket is not replayed: the provider may
 	// have accepted the request even though its first frame was lost.
 	for attempt := 0; attempt < 2; attempt++ {
-		lease, err = pool.acquire(ctx, sessionHint, previousResponseID, dial)
-		if err != nil {
-			return nil, err
+		currentLease, acquireErr := pool.acquire(ctx, sessionHint, previousResponseID, dial)
+		if acquireErr != nil {
+			return nil, newCPAResponsesWebsocketError("acquire failed", false, rebuilt, acquireErr)
 		}
-		conn := lease.entry.conn
+		conn := currentLease.entry.conn
 		stopBeforeFirstFrame := context.AfterFunc(ctx, func() {
-			lease.markBroken()
+			currentLease.markBroken()
 		})
 		if err := conn.WriteMessage(websocket.TextMessage, envelope); err != nil {
 			stopBeforeFirstFrame()
-			wasReused := lease.reused
-			lease.markBroken()
+			wasReused := currentLease.reused
+			currentLease.markBroken()
 			if wasReused && attempt == 0 {
+				rebuilt = true
 				continue
 			}
-			return nil, fmt.Errorf("responses websocket write failed: %w", err)
+			return nil, newCPAResponsesWebsocketError("write failed", wasReused, rebuilt, err)
 		}
 
 		// Read one frame before exposing the stream. A CPA error/protocol frame can
@@ -177,49 +182,59 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 		firstType, firstMsg, readErr := conn.ReadMessage()
 		stopBeforeFirstFrame()
 		if readErr != nil {
-			wasReused := lease.reused
-			lease.markBroken()
+			wasReused := currentLease.reused
+			currentLease.markBroken()
 			if wasReused && attempt == 0 {
+				rebuilt = true
 				continue
 			}
-			return nil, fmt.Errorf("responses websocket read failed: %w", readErr)
+			return nil, newCPAResponsesWebsocketError("read failed", wasReused, rebuilt, readErr)
 		}
 		if firstType != websocket.TextMessage && firstType != websocket.BinaryMessage {
-			wasReused := lease.reused
-			lease.markBroken()
+			wasReused := currentLease.reused
+			currentLease.markBroken()
 			if wasReused && attempt == 0 {
+				rebuilt = true
 				continue
 			}
-			return nil, fmt.Errorf("responses websocket returned non-text first frame")
+			return nil, newCPAResponsesWebsocketError("returned non-text first frame", wasReused, rebuilt, nil)
 		}
 		firstMsg = bytes.TrimSpace(firstMsg)
 		var firstEvent struct {
 			Type string `json:"type"`
 		}
 		if err := common.Unmarshal(firstMsg, &firstEvent); err != nil || firstEvent.Type == "" {
-			wasReused := lease.reused
-			lease.markBroken()
+			wasReused := currentLease.reused
+			currentLease.markBroken()
 			if wasReused && attempt == 0 {
+				rebuilt = true
 				continue
 			}
-			return nil, fmt.Errorf("responses websocket returned invalid first event")
+			return nil, newCPAResponsesWebsocketError("returned invalid first event", wasReused, rebuilt, nil)
 		}
 		if isResponsesWebsocketProtocolError(firstEvent.Type) {
-			lease.markBroken()
-			return nil, fmt.Errorf("responses websocket upstream error")
+			currentLease.markBroken()
+			return nil, newCPAResponsesWebsocketError("upstream protocol error", currentLease.reused, rebuilt, nil)
 		}
 
 		pr, pw := io.Pipe()
+		streamReused := currentLease.reused
+		streamRebuilt := rebuilt
 		stopCancel := context.AfterFunc(ctx, func() {
-			lease.markBroken()
+			currentLease.markBroken()
 			_ = pw.CloseWithError(ctx.Err())
 		})
 		finish := func(healthy bool, responseID string) {
 			stopCancel()
 			if healthy {
-				lease.releaseHealthy(responseID)
+				currentLease.releaseHealthy(responseID)
 			} else {
-				lease.markBroken()
+				currentLease.markBroken()
+				channelID := 0
+				if info != nil {
+					channelID = info.GetChannelID()
+				}
+				logger.LogWarn(c, fmt.Sprintf("responses websocket stream failed: channel=%d reused=%t rebuilt=%t fallback=false reason=stream failure", channelID, streamReused, streamRebuilt))
 			}
 			_ = pw.Close()
 		}
@@ -287,5 +302,5 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 			Request:    c.Request,
 		}, nil
 	}
-	return nil, fmt.Errorf("responses websocket request failed before first frame")
+	return nil, newCPAResponsesWebsocketError("request failed before first frame", false, rebuilt, nil)
 }
