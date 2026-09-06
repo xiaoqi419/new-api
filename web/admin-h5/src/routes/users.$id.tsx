@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -91,12 +91,15 @@ export function UserDetailPage(): ReactElement {
     setTopUpPage(1);
   }, [userId]);
 
-  const backSearch = {
-    keyword: search.keyword,
-    status: search.status,
-    balance: search.balance,
-    page: search.page,
-  };
+  const backSearch = useMemo(
+    () => ({
+      keyword: search.keyword,
+      status: search.status,
+      balance: search.balance,
+      page: search.page,
+    }),
+    [search.balance, search.keyword, search.page, search.status],
+  );
 
   useEffect(() => {
     if (!isUserNotFoundError(userQuery.error)) return;
@@ -105,7 +108,7 @@ export function UserDetailPage(): ReactElement {
       search: backSearch,
       replace: true,
     });
-  }, [navigate, search.balance, search.keyword, search.page, search.status, userQuery.error]);
+  }, [backSearch, navigate, userQuery.error]);
   if (isUserNotFoundError(userQuery.error)) {
     return (
       <section className="flex flex-1 flex-col gap-4" aria-labelledby="user-title">
@@ -142,6 +145,147 @@ export function UserDetailPage(): ReactElement {
     );
   }
 
+  let userStatusLabel = String(userQuery.data?.status ?? "");
+  if (userQuery.data?.status === 1) {
+    userStatusLabel = t("users.enabled");
+  } else if (userQuery.data?.status === 2) {
+    userStatusLabel = t("users.disabled");
+  }
+
+  let userContent: ReactElement | null = null;
+  if (userQuery.isPending) {
+    userContent = (
+      <div
+        className="space-y-3"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t("userDetail.loadingUser")}
+      >
+        <div className="h-44 animate-pulse rounded-xl border border-slate-200 bg-white" />
+        <div className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white" />
+      </div>
+    );
+  } else if (userQuery.isError) {
+    userContent = (
+      <div
+        className="rounded-xl border border-red-200 bg-red-50 p-4"
+        role="alert"
+        aria-live="assertive"
+      >
+        <p className="text-sm text-red-800">
+          {errorMessage(userQuery.error, t("userDetail.userError"))}
+        </p>
+        <button
+          type="button"
+          onClick={() => void userQuery.refetch()}
+          disabled={userQuery.isFetching}
+          className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {userQuery.isFetching ? t("userDetail.retrying") : t("userDetail.retry")}
+        </button>
+      </div>
+    );
+  } else if (userQuery.data) {
+    userContent = (
+      <>
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold">{t("userDetail.identity")}</h2>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+            <DetailField label={t("userDetail.username")} value={userQuery.data.username} />
+            <DetailField
+              label={t("userDetail.displayName")}
+              value={userQuery.data.display_name?.trim() || t("userDetail.notAvailable")}
+            />
+            <DetailField
+              label={t("userDetail.email")}
+              value={userQuery.data.email?.trim() || t("userDetail.notAvailable")}
+            />
+            <DetailField label={t("userDetail.status")} value={userStatusLabel} />
+            <DetailField label={t("userDetail.group")} value={userQuery.data.group} />
+            <DetailField label={t("userDetail.id")} value={String(userQuery.data.id)} />
+          </dl>
+        </article>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold">{t("userDetail.quotaOverview")}</h2>
+          <dl className="mt-4 grid grid-cols-3 gap-2">
+            <DetailField
+              label={t("userDetail.totalQuota")}
+              value={formatQuota(userQuery.data.quota + userQuery.data.used_quota, systemConfig)}
+            />
+            <DetailField
+              label={t("userDetail.usedQuota")}
+              value={formatQuota(userQuery.data.used_quota, systemConfig)}
+            />
+            <DetailField
+              label={t("userDetail.remainingQuota")}
+              value={formatQuota(userQuery.data.quota, systemConfig)}
+            />
+          </dl>
+        </article>
+      </>
+    );
+  }
+
+  let topUpsContent: ReactElement;
+  if (topUpsQuery.isPending) {
+    topUpsContent = (
+      <div
+        className="space-y-3"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={t("userDetail.loadingTopups")}
+      >
+        {Array.from({ length: 3 }, (_, index) => (
+          <div
+            key={index}
+            className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white"
+          />
+        ))}
+      </div>
+    );
+  } else if (topUpsQuery.isError) {
+    topUpsContent = (
+      <div
+        className="rounded-xl border border-red-200 bg-red-50 p-4"
+        role="alert"
+        aria-live="assertive"
+      >
+        <p className="text-sm text-red-800">
+          {errorMessage(topUpsQuery.error, t("userDetail.topupError"))}
+        </p>
+        <button
+          type="button"
+          onClick={() => void topUpsQuery.refetch()}
+          disabled={topUpsQuery.isFetching}
+          className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {topUpsQuery.isFetching ? t("userDetail.retrying") : t("userDetail.retry")}
+        </button>
+      </div>
+    );
+  } else if (topUpsQuery.data?.items.length === 0) {
+    topUpsContent = (
+      <div
+        className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600"
+        role="status"
+        aria-live="polite"
+      >
+        {t("userDetail.topupEmpty")}
+      </div>
+    );
+  } else {
+    topUpsContent = (
+      <div className="space-y-3" aria-live="polite">
+        {topUpsQuery.data?.items.map((topUp) => (
+          <TopUpCard key={topUp.id} topUp={topUp} systemConfig={systemConfig} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <section
       className="flex flex-1 flex-col gap-4 pb-[calc(6rem+env(safe-area-inset-bottom))]"
@@ -169,83 +313,7 @@ export function UserDetailPage(): ReactElement {
         </p>
       ) : null}
 
-      {userQuery.isPending ? (
-        <div
-          className="space-y-3"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-          aria-label={t("userDetail.loadingUser")}
-        >
-          <div className="h-44 animate-pulse rounded-xl border border-slate-200 bg-white" />
-          <div className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white" />
-        </div>
-      ) : userQuery.isError ? (
-        <div
-          className="rounded-xl border border-red-200 bg-red-50 p-4"
-          role="alert"
-          aria-live="assertive"
-        >
-          <p className="text-sm text-red-800">
-            {errorMessage(userQuery.error, t("userDetail.userError"))}
-          </p>
-          <button
-            type="button"
-            onClick={() => void userQuery.refetch()}
-            disabled={userQuery.isFetching}
-            className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {userQuery.isFetching ? t("userDetail.retrying") : t("userDetail.retry")}
-          </button>
-        </div>
-      ) : userQuery.data ? (
-        <>
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold">{t("userDetail.identity")}</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-              <DetailField label={t("userDetail.username")} value={userQuery.data.username} />
-              <DetailField
-                label={t("userDetail.displayName")}
-                value={userQuery.data.display_name?.trim() || t("userDetail.notAvailable")}
-              />
-              <DetailField
-                label={t("userDetail.email")}
-                value={userQuery.data.email?.trim() || t("userDetail.notAvailable")}
-              />
-              <DetailField
-                label={t("userDetail.status")}
-                value={
-                  userQuery.data.status === 1
-                    ? t("users.enabled")
-                    : userQuery.data.status === 2
-                      ? t("users.disabled")
-                      : String(userQuery.data.status)
-                }
-              />
-              <DetailField label={t("userDetail.group")} value={userQuery.data.group} />
-              <DetailField label={t("userDetail.id")} value={String(userQuery.data.id)} />
-            </dl>
-          </article>
-
-          <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold">{t("userDetail.quotaOverview")}</h2>
-            <dl className="mt-4 grid grid-cols-3 gap-2">
-              <DetailField
-                label={t("userDetail.totalQuota")}
-                value={formatQuota(userQuery.data.quota + userQuery.data.used_quota, systemConfig)}
-              />
-              <DetailField
-                label={t("userDetail.usedQuota")}
-                value={formatQuota(userQuery.data.used_quota, systemConfig)}
-              />
-              <DetailField
-                label={t("userDetail.remainingQuota")}
-                value={formatQuota(userQuery.data.quota, systemConfig)}
-              />
-            </dl>
-          </article>
-        </>
-      ) : null}
+      {userContent}
 
       {userQuery.data ? (
         <button
@@ -266,54 +334,7 @@ export function UserDetailPage(): ReactElement {
           {t("userDetail.pageOf", { page: topUpPage, total: totalPages })}
         </span>
       </div>
-      {topUpsQuery.isPending ? (
-        <div
-          className="space-y-3"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-          aria-label={t("userDetail.loadingTopups")}
-        >
-          {Array.from({ length: 3 }, (_, index) => (
-            <div
-              key={index}
-              className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white"
-            />
-          ))}
-        </div>
-      ) : topUpsQuery.isError ? (
-        <div
-          className="rounded-xl border border-red-200 bg-red-50 p-4"
-          role="alert"
-          aria-live="assertive"
-        >
-          <p className="text-sm text-red-800">
-            {errorMessage(topUpsQuery.error, t("userDetail.topupError"))}
-          </p>
-          <button
-            type="button"
-            onClick={() => void topUpsQuery.refetch()}
-            disabled={topUpsQuery.isFetching}
-            className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-800 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {topUpsQuery.isFetching ? t("userDetail.retrying") : t("userDetail.retry")}
-          </button>
-        </div>
-      ) : topUpsQuery.data?.items.length === 0 ? (
-        <div
-          className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600"
-          role="status"
-          aria-live="polite"
-        >
-          {t("userDetail.topupEmpty")}
-        </div>
-      ) : (
-        <div className="space-y-3" aria-live="polite">
-          {topUpsQuery.data?.items.map((topUp) => (
-            <TopUpCard key={topUp.id} topUp={topUp} systemConfig={systemConfig} />
-          ))}
-        </div>
-      )}
+      {topUpsContent}
       <nav
         className="flex items-center justify-between gap-3"
         aria-label={t("userDetail.pagination") as string}

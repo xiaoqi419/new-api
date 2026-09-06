@@ -76,7 +76,8 @@ func OpenAIChatRequestToGeminiGenerateContent(c context.Context, textRequest dto
 						case float64:
 							budgetInt := int(v)
 							tempThinkingConfig.ThinkingBudget = kitutil.GetPointer(budgetInt)
-							tempThinkingConfig.IncludeThoughts = budgetInt > 0
+							include := budgetInt > 0
+							tempThinkingConfig.IncludeThoughts = &include
 							hasThinkingConfig = true
 						default:
 							return nil, errors.New("extra_body.google.thinking_config.thinking_budget must be an integer")
@@ -85,7 +86,7 @@ func OpenAIChatRequestToGeminiGenerateContent(c context.Context, textRequest dto
 
 					if includeThoughts, exists := thinkingConfig["include_thoughts"]; exists {
 						if v, ok := includeThoughts.(bool); ok {
-							tempThinkingConfig.IncludeThoughts = v
+							tempThinkingConfig.IncludeThoughts = &v
 							hasThinkingConfig = true
 						} else {
 							return nil, errors.New("extra_body.google.thinking_config.include_thoughts must be a boolean")

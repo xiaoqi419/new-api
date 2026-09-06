@@ -4,9 +4,11 @@ import { useAuthStore } from "../../../stores/auth-store";
 import { login, login2FA, logout, refreshAuth } from "../api";
 import { isAdminUser, isAuthBundle, type LoginRequest, type TwoFactorLoginRequest } from "../types";
 import type { SiteId } from "../../../env";
+
 export function useAuth(siteId: SiteId = useAuthStore((s) => s.activeSiteId)) {
   const auth = useAuthStore();
   const site = auth.sites[siteId];
+  const { installBundle, reset } = auth;
   const signIn = useCallback(
     async (request: LoginRequest) => {
       const response = await login(request, siteId);
@@ -15,11 +17,12 @@ export function useAuth(siteId: SiteId = useAuthStore((s) => s.activeSiteId)) {
         response.data &&
         isAuthBundle(response.data) &&
         isAdminUser(response.data.user)
-      )
-        auth.installBundle(response.data, siteId);
+      ) {
+        installBundle(response.data, siteId);
+      }
       return response;
     },
-    [auth.installBundle, siteId],
+    [installBundle, siteId],
   );
   const verifyTwoFactor = useCallback(
     async (request: TwoFactorLoginRequest) => {
@@ -29,11 +32,12 @@ export function useAuth(siteId: SiteId = useAuthStore((s) => s.activeSiteId)) {
         response.data &&
         isAuthBundle(response.data) &&
         isAdminUser(response.data.user)
-      )
-        auth.installBundle(response.data, siteId);
+      ) {
+        installBundle(response.data, siteId);
+      }
       return response;
     },
-    [auth.installBundle, siteId],
+    [installBundle, siteId],
   );
   const refresh = useCallback(async () => {
     try {
@@ -43,24 +47,26 @@ export function useAuth(siteId: SiteId = useAuthStore((s) => s.activeSiteId)) {
         response.data &&
         isAuthBundle(response.data) &&
         isAdminUser(response.data.user)
-      )
-        auth.installBundle(response.data, siteId, site.generation);
-      else if (!response.success) handleAuthRefreshFailure(siteId, site.generation);
+      ) {
+        installBundle(response.data, siteId, site.generation);
+      } else if (!response.success) {
+        handleAuthRefreshFailure(siteId, site.generation);
+      }
       return response;
     } catch (error) {
       handleAuthRefreshFailure(siteId, site.generation);
       throw error;
     }
-  }, [auth.installBundle, site.generation, siteId]);
+  }, [installBundle, site.generation, siteId]);
   const signOut = useCallback(
     async (sid?: string) => {
       try {
         return await logout(sid, siteId);
       } finally {
-        auth.reset(siteId);
+        reset(siteId);
       }
     },
-    [auth.reset, siteId],
+    [reset, siteId],
   );
   return {
     siteId,
@@ -73,7 +79,7 @@ export function useAuth(siteId: SiteId = useAuthStore((s) => s.activeSiteId)) {
     verifyTwoFactor,
     refresh,
     signOut,
-    reset: () => auth.reset(siteId),
+    reset: () => reset(siteId),
     beginSignIn: () => auth.beginSignIn(siteId),
   };
 }

@@ -311,13 +311,9 @@ func getPayMoneyDecimal(amount int64, group string, unitPrice float64) decimal.D
 // the payment boundary, so a saturated conversion must fail instead of
 // allowing a wrapped value to reach settlement.
 func topupQuotaFromAmount(amount int64) (int, error) {
-	quota, clamp := common.QuotaFromDecimalChecked(
+	return common.WalletQuotaFromDecimalStrict(
 		decimal.NewFromInt(amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0),
 	)
-	if clamp != nil {
-		return 0, clamp
-	}
-	return quota, nil
 }
 
 // getMinTopup 返回最小充值门槛。minTopupOverride>0 时使用代理自定义值，否则回退平台全局。
@@ -329,7 +325,11 @@ func getMinTopup(minTopupOverride int) int64 {
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dMinTopup := decimal.NewFromInt(int64(minTopup))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		minTopup = common.QuotaFromDecimal(dMinTopup.Mul(dQuotaPerUnit))
+		quota, err := common.WalletQuotaFromDecimalStrict(dMinTopup.Mul(dQuotaPerUnit))
+		if err != nil {
+			return common.MaxWalletQuota
+		}
+		minTopup = quota
 	}
 	return int64(minTopup)
 }
@@ -351,7 +351,12 @@ func GetMaxTopup(minTopup int64) int64 {
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dMaxOption := decimal.NewFromInt(int64(maxOption))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		maxOption = int(dMaxOption.Mul(dQuotaPerUnit).IntPart())
+		quota, err := common.WalletQuotaFromDecimalStrict(dMaxOption.Mul(dQuotaPerUnit))
+		if err != nil {
+			maxOption = common.MaxWalletQuota
+		} else {
+			maxOption = quota
+		}
 	}
 	return max(int64(maxOption), minTopup)
 }
@@ -379,7 +384,7 @@ func getTopUpQuota(amount int64) (int, error) {
 	} else {
 		quota = quota.Mul(decimal.NewFromFloat(common.QuotaPerUnit))
 	}
-	return common.QuotaFromDecimalStrict(quota)
+	return common.WalletQuotaFromDecimalStrict(quota)
 }
 
 func getMaxTopUpAmount() int64 {
@@ -387,7 +392,7 @@ func getMaxTopUpAmount() int64 {
 		return 0
 	}
 	quotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-	maxStoredAmount := decimal.NewFromInt(common.MaxQuota - 1).
+	maxStoredAmount := decimal.NewFromInt(common.MaxWalletQuota).
 		Div(quotaPerUnit).
 		Floor()
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
@@ -401,7 +406,7 @@ func getMaxTopUpAmount() int64 {
 }
 
 func validateCreditedQuota(quota decimal.Decimal) (int, error) {
-	value, err := common.QuotaFromDecimalStrict(quota)
+	value, err := common.WalletQuotaFromDecimalStrict(quota)
 	if err != nil {
 		return 0, errors.New("充值额度超出系统可表示范围")
 	}

@@ -24,7 +24,7 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
-	HeldQuota       int     `json:"held_quota" gorm:"type:int;default:0"` // held 状态时记录的待补发到账额度（代理钱包补足后补发）
+	HeldQuota       int     `json:"held_quota" gorm:"type:bigint;default:0"` // held 状态时记录的待补发到账额度（代理钱包补足后补发）
 }
 
 const (
@@ -49,11 +49,12 @@ const (
 )
 
 var (
-	ErrPaymentMethodMismatch   = errors.New("payment method mismatch")
-	ErrTopUpNotFound           = errors.New("topup not found")
-	ErrTopUpStatusInvalid      = errors.New("topup status invalid")
-	ErrInvalidTopUpQuota       = errors.New("invalid top-up quota")
-	ErrTopUpQuotaLimitExceeded = errors.New("top-up quota limit exceeded")
+	ErrPaymentMethodMismatch    = errors.New("payment method mismatch")
+	ErrTopUpNotFound            = errors.New("topup not found")
+	ErrTopUpStatusInvalid       = errors.New("topup status invalid")
+	ErrInvalidTopUpQuota        = errors.New("invalid top-up quota")
+	ErrTopUpQuotaLimitExceeded  = errors.New("top-up quota limit exceeded")
+	ErrWalletQuotaLimitExceeded = errors.New("wallet quota limit exceeded")
 )
 
 // OnTopUpSuccess 充值首次成功时的回调钩子（拼团为成员付款成功时）。
@@ -82,10 +83,10 @@ func (topUp *TopUp) Insert() error {
 }
 
 func topUpQuotaMaxCurrent(creditedQuota int) (int, error) {
-	if creditedQuota <= 0 || creditedQuota >= common.MaxQuota {
+	if creditedQuota <= 0 || creditedQuota > common.MaxWalletQuota {
 		return 0, ErrInvalidTopUpQuota
 	}
-	return common.MaxQuota - 1 - creditedQuota, nil
+	return common.MaxWalletQuota - creditedQuota, nil
 }
 
 // ValidateTopUpQuotaCapacity performs the user-facing pre-payment check. The
@@ -107,8 +108,8 @@ func ValidateTopUpQuotaCapacity(userId int, creditedQuota int) error {
 	return nil
 }
 
-// creditTopUpQuota atomically enforces the int32 wallet ceiling while adding
-// quota. Keeping the predicate and increment in one UPDATE prevents two
+// creditTopUpQuota atomically enforces the wallet ceiling while adding quota.
+// Keeping the predicate and increment in one UPDATE prevents two
 // concurrent callbacks from both passing a separate read/check.
 func creditTopUpQuota(tx *gorm.DB, userId int, creditedQuota int, updates map[string]interface{}) error {
 	maxCurrentQuota, err := topUpQuotaMaxCurrent(creditedQuota)
@@ -237,7 +238,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 			topUp.PaymentMethod = actualPaymentMethod
 		}
 		var quotaErr error
-		quotaToAdd, quotaErr = common.QuotaFromDecimalStrict(
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(
 			decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
 		)
 		if quotaErr != nil || quotaToAdd <= 0 {
@@ -306,12 +307,12 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 			return err
 		}
 
-		var quotaClamp *common.QuotaClamp
-		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(
+		var quotaErr error
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(
 			decimal.NewFromFloat(topUp.Money).
 				Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0),
 		)
-		if quotaClamp != nil {
+		if quotaErr != nil {
 			return errors.New("无效的充值额度")
 		}
 		var e error
@@ -571,17 +572,17 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
 		if topUp.PaymentProvider == PaymentProviderStripe {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			var quotaClamp *common.QuotaClamp
-			quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).Truncate(0))
-			if quotaClamp != nil {
+			var quotaErr error
+			quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).Truncate(0))
+			if quotaErr != nil {
 				return errors.New("无效的充值额度")
 			}
 		} else {
 			dAmount := decimal.NewFromInt(topUp.Amount)
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			var quotaClamp *common.QuotaClamp
-			quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
-			if quotaClamp != nil {
+			var quotaErr error
+			quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+			if quotaErr != nil {
 				return errors.New("无效的充值额度")
 			}
 		}
@@ -651,9 +652,9 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		}
 
 		// Creem 直接使用 Amount 作为充值额度（整数），仍需经过 quota 饱和检查。
-		var quotaClamp *common.QuotaClamp
-		quota, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromInt(topUp.Amount))
-		if quotaClamp != nil || quota <= 0 {
+		var quotaErr error
+		quota, quotaErr = common.WalletQuotaFromDecimalStrict(decimal.NewFromInt(topUp.Amount))
+		if quotaErr != nil || quota <= 0 {
 			return errors.New("无效的充值额度")
 		}
 
@@ -732,9 +733,9 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 
 		dAmount := decimal.NewFromInt(topUp.Amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		var quotaClamp *common.QuotaClamp
-		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
-		if quotaClamp != nil {
+		var quotaErr error
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+		if quotaErr != nil {
 			return errors.New("无效的充值额度")
 		}
 		if quotaToAdd <= 0 {
@@ -803,9 +804,9 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 
 		dAmount := decimal.NewFromInt(topUp.Amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		var quotaClamp *common.QuotaClamp
-		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(dAmount.Mul(dQuotaPerUnit).Truncate(0))
-		if quotaClamp != nil {
+		var quotaErr error
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(dAmount.Mul(dQuotaPerUnit).Truncate(0))
+		if quotaErr != nil {
 			return errors.New("无效的充值额度")
 		}
 		if quotaToAdd <= 0 {
@@ -872,9 +873,9 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return errors.New("充值订单状态错误")
 		}
 
-		var quotaClamp *common.QuotaClamp
-		quotaToAdd, quotaClamp = common.QuotaFromDecimalChecked(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0))
-		if quotaClamp != nil {
+		var quotaErr error
+		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).Truncate(0))
+		if quotaErr != nil {
 			return errors.New("无效的充值额度")
 		}
 		if quotaToAdd <= 0 {

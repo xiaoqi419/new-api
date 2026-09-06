@@ -33,6 +33,10 @@ type ChannelSettings struct {
 	// HTTP2ConnectionShards spreads HTTP/2 traffic across N independent transports
 	// (1-8). Zero/unset means 1. Ignored when HTTPProtocol is "http1".
 	HTTP2ConnectionShards int `json:"http2_connection_shards,omitempty"`
+	// UpstreamTransport selects the channel transport for streaming Responses.
+	// Empty and "http" preserve the default HTTP behavior; "websocket" enables
+	// the CPA Responses WebSocket bridge.
+	UpstreamTransport string `json:"upstream_transport,omitempty"`
 }
 
 // ChannelFallbackUpstream 渠道级兜底转发配置。
@@ -48,6 +52,22 @@ const (
 	HTTPProtocolHTTP1        = "http1"
 	MaxHTTP2ConnectionShards = 8
 )
+
+const UpstreamTransportWebsocket = "websocket"
+
+// ValidateUpstreamTransport validates the optional channel transport selector.
+func (s *ChannelSettings) ValidateUpstreamTransport() error {
+	if s == nil {
+		return nil
+	}
+	transport := strings.ToLower(strings.TrimSpace(s.UpstreamTransport))
+	switch transport {
+	case "", "http", UpstreamTransportWebsocket:
+		return nil
+	default:
+		return fmt.Errorf("invalid upstream_transport: %s", s.UpstreamTransport)
+	}
+}
 
 // ValidateHTTPTransport validates save-time HTTP transport channel settings.
 func (s *ChannelSettings) ValidateHTTPTransport() error {
@@ -103,6 +123,10 @@ type ChannelOtherSettings struct {
 	UpstreamModelUpdateLastRemovedModels  []string              `json:"upstream_model_update_last_removed_models,omitempty"`  // 上次检测到的可删除模型
 	UpstreamModelUpdateIgnoredModels      []string              `json:"upstream_model_update_ignored_models,omitempty"`       // 手动忽略的模型
 	AdvancedCustom                        *AdvancedCustomConfig `json:"advanced_custom,omitempty"`
+	// ToolLossPolicy is a channel-level opt-in for request-phase conversion
+	// rejection. Empty follows the default allow policy. Accepted values:
+	// "", "allow", "safe", "strict".
+	ToolLossPolicy string `json:"tool_loss_policy,omitempty"`
 }
 
 func (s *ChannelOtherSettings) IsOpenRouterEnterprise() bool {
@@ -110,6 +134,20 @@ func (s *ChannelOtherSettings) IsOpenRouterEnterprise() bool {
 		return false
 	}
 	return *s.OpenRouterEnterprise
+}
+
+// ValidateToolLossPolicy validates the channel-level request-phase tool-loss
+// policy. Empty keeps the default allow policy.
+func (s *ChannelOtherSettings) ValidateToolLossPolicy() error {
+	if s == nil {
+		return nil
+	}
+	switch strings.TrimSpace(s.ToolLossPolicy) {
+	case "", string(types.ConversionLossPolicyAllow), string(types.ConversionLossPolicySafe), string(types.ConversionLossPolicyStrict):
+		return nil
+	default:
+		return fmt.Errorf("invalid tool_loss_policy: %s", s.ToolLossPolicy)
+	}
 }
 
 const (

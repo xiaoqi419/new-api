@@ -96,6 +96,24 @@ func TestGeneralOpenAIRequestDropsThinkingBudgetForNonQwenModel(t *testing.T) {
 	assert.False(t, gjson.GetBytes(encoded, "thinking_budget").Exists())
 }
 
+func TestGeneralOpenAIRequestPreservesVLLMThinkingTokenBudget(t *testing.T) {
+	raw := []byte(`{
+		"model":"vllm-model",
+		"thinking_token_budget":0
+	}`)
+
+	var req GeneralOpenAIRequest
+	err := kitutil.Unmarshal(raw, &req)
+	require.NoError(t, err)
+
+	encoded, err := kitutil.Marshal(req)
+	require.NoError(t, err)
+
+	value := gjson.GetBytes(encoded, "thinking_token_budget")
+	assert.True(t, value.Exists())
+	assert.Equal(t, int64(0), value.Int())
+}
+
 func TestIsQwenThinkingBudgetModel(t *testing.T) {
 	tests := []struct {
 		model string

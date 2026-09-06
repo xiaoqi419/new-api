@@ -72,6 +72,13 @@ func sanitizeDBError(err error) error {
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
+		// 08P01 is PgBouncer's protocol error when a prepared statement name is
+		// reused on a transaction-pooled connection; 42P05 is PostgreSQL's
+		// duplicate_prepared_statement. Both indicate session prepared statements
+		// are incompatible with the configured transaction pool.
+		if pgErr.Code == "08P01" || pgErr.Code == "42P05" {
+			return fmt.Errorf("postgres error SQLSTATE %s: prepared statement conflict with a transaction-pooling proxy (PgBouncer/Neon/Supabase); disable prepared statements for clients sharing this database or enable PgBouncer prepared-statement support", pgErr.Code)
+		}
 		return fmt.Errorf("postgres error SQLSTATE %s", pgErr.Code)
 	}
 	var chErr *proto.Exception

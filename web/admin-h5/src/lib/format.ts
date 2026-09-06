@@ -1,5 +1,4 @@
-import type { SystemConfig } from "../stores/system-config-store";
-import { DEFAULT_SYSTEM_CONFIG } from "../stores/system-config-store";
+import { DEFAULT_SYSTEM_CONFIG, type SystemConfig } from "../stores/system-config-store";
 
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);

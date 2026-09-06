@@ -40,6 +40,9 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
+	if err = helper.ApplyReasoningModelSuffix(c, info, request); err != nil {
+		return helper.NewReasoningModelAPIError(err)
+	}
 
 	adaptor := GetAdaptor(info.ApiType)
 	if adaptor == nil {

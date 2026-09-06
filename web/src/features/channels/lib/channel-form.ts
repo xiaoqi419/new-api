@@ -260,6 +260,7 @@ export const channelFormSchema = z
       .optional()
       .refine(isOptionalProxyURL, ERROR_MESSAGES.INVALID_PROXY),
     http_protocol: z.enum(['auto', 'http1']).optional(),
+    upstream_transport: z.enum(['http', 'websocket']).optional(),
     http2_connection_shards: z.number().int().optional(),
     pass_through_body_enabled: z.boolean().optional(),
     system_prompt: z.string().optional(),
@@ -442,6 +443,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   thinking_to_content: false,
   proxy: '',
   http_protocol: HTTP_PROTOCOL_AUTO,
+  upstream_transport: 'http',
   http2_connection_shards: 1,
   pass_through_body_enabled: false,
   system_prompt: '',
@@ -490,6 +492,7 @@ export function transformChannelToFormDefaults(
     thinking_to_content: false,
     proxy: '',
     http_protocol: HTTP_PROTOCOL_AUTO as 'auto' | 'http1',
+    upstream_transport: 'http' as 'http' | 'websocket',
     http2_connection_shards: 1,
     pass_through_body_enabled: false,
     system_prompt: '',
@@ -520,6 +523,7 @@ export function transformChannelToFormDefaults(
         thinking_to_content: parsed.thinking_to_content || false,
         proxy: parsed.proxy || '',
         http_protocol: protocol,
+        upstream_transport: parsed.upstream_transport === 'websocket' ? 'websocket' : 'http',
         http2_connection_shards: protocol === HTTP_PROTOCOL_HTTP1 ? 1 : shards,
         pass_through_body_enabled: parsed.pass_through_body_enabled || false,
         system_prompt: parsed.system_prompt || '',
@@ -660,6 +664,9 @@ export function buildSettingJSON(formData: ChannelFormValues): string {
     volc_asset_sk: formData.volc_asset_sk || '',
     volc_project_name: formData.volc_project_name || '',
   }
+
+  const upstreamTransport = formData.upstream_transport === 'websocket' ? 'websocket' : 'http'
+  if (upstreamTransport === 'websocket') settingObj.upstream_transport = upstreamTransport
 
   const protocol = normalizeHttpProtocol(formData.http_protocol)
   const shards =

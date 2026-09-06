@@ -142,7 +142,7 @@ func PayRebateRecord(id int, operatorIp string) error {
 		if err := tx.Save(record).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&User{}).Where("id = ?", record.InviterId).Update("quota", gorm.Expr("quota + ?", record.RebateQuota)).Error; err != nil {
+		if err := creditTopUpQuota(tx, record.InviterId, record.RebateQuota, nil); err != nil {
 			return err
 		}
 		inviterId = record.InviterId

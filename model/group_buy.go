@@ -640,7 +640,7 @@ func grantGroupBuySuccessTx(tx *gorm.DB, groupBuy *GroupBuy, tierAmount int64) (
 			})
 			continue
 		}
-		if err := tx.Model(&User{}).Where("id = ?", m.UserId).Update("quota", gorm.Expr("quota + ?", quotaPerShare)).Error; err != nil {
+		if err := creditTopUpQuota(tx, m.UserId, quotaPerShare, nil); err != nil {
 			return nil, err
 		}
 		completed = append(completed, completedMember{UserId: m.UserId, TradeNo: m.TradeNo, Quota: quotaPerShare})

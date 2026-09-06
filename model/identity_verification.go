@@ -112,8 +112,7 @@ func ApproveIdentityVerification(id int, quota int, adminId int, processedTime i
 			return err
 		}
 		if quota > 0 {
-			if err := tx.Model(&User{}).Where("id = ?", v.UserId).
-				Update("quota", gorm.Expr("quota + ?", quota)).Error; err != nil {
+			if err := creditTopUpQuota(tx, v.UserId, quota, nil); err != nil {
 				return err
 			}
 		}

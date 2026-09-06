@@ -29,6 +29,21 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-cpa-upstream-websocket',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '渠道支持为流式 OpenAI Responses 请求选择 WebSocket 上游传输，并在握手失败时自动回落 HTTP。',
+          '同步官方兼容升级：模型 @ 修饰符、推理力度保真、GPT-6-Astra 分档计费，以及 Responses、Claude、Gemini 的工具和用量转换保持一致。',
+          '补充 GLM Responses、Ollama Claude/Responses 直通，以及 AQBot 聊天预设。',
+          '可选启用密码登录请求体加密，并在启动时检查 MySQL/PostgreSQL 用户额度列是否具备 64 位容量。',
+        ],
+      },
+    ],
+  },
+  {
     // Release tag for low-quota reminder compensation and activation-race fixes.
     version: '20260906-ac1d17cc8',
     date: '2026-09-06',

@@ -497,7 +497,13 @@ func getStripeMinTopup(minTopupOverride int) int64 {
 		minTopup = minTopupOverride
 	}
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
-		minTopup = minTopup * int(common.QuotaPerUnit)
+		quota, err := common.WalletQuotaFromDecimalStrict(
+			decimal.NewFromInt(int64(minTopup)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+		)
+		if err != nil {
+			return int64(common.MaxWalletQuota)
+		}
+		return int64(quota)
 	}
 	return int64(minTopup)
 }

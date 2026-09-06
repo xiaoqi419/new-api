@@ -536,16 +536,16 @@ func processChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		tokenId := c.GetInt("token_id")
 		userGroup := c.GetString("group")
 		channelId := c.GetInt("channel_id")
-		other := make(map[string]interface{})
+		other := model.NewLogOther()
 		if c.Request != nil && c.Request.URL != nil {
-			other["request_path"] = c.Request.URL.Path
+			other.SetPublic("request_path", c.Request.URL.Path)
 		}
-		other["error_type"] = err.GetErrorType()
-		other["error_code"] = err.GetErrorCode()
-		other["status_code"] = err.StatusCode
-		other["channel_id"] = channelId
-		other["channel_name"] = c.GetString("channel_name")
-		other["channel_type"] = c.GetInt("channel_type")
+		other.SetPublic("error_type", err.GetErrorType())
+		other.SetPublic("error_code", err.GetErrorCode())
+		other.SetPublic("status_code", err.StatusCode)
+		other.SetAdmin("channel_id", channelId)
+		other.SetAdmin("channel_name", c.GetString("channel_name"))
+		other.SetAdmin("channel_type", c.GetInt("channel_type"))
 		adminInfo := make(map[string]interface{})
 		adminInfo["use_channel"] = c.GetStringSlice("use_channel")
 		isMultiKey := common.GetContextKeyBool(c, constant.ContextKeyChannelIsMultiKey)
@@ -554,7 +554,7 @@ func processChannelError(c *gin.Context, channelError types.ChannelError, err *t
 			adminInfo["multi_key_index"] = common.GetContextKeyInt(c, constant.ContextKeyChannelMultiKeyIndex)
 		}
 		service.AppendChannelAffinityAdminInfo(c, adminInfo)
-		other["admin_info"] = adminInfo
+		other.MergeAdmin(adminInfo)
 		startTime := common.GetContextKeyTime(c, constant.ContextKeyRequestStartTime)
 		if startTime.IsZero() {
 			startTime = time.Now()

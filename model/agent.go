@@ -28,6 +28,8 @@ const (
 	AgentLedgerTypeAdjust = "adjust" // 管理员手动调账
 )
 
+var ErrAgentWalletQuotaLimitExceeded = errors.New("agent wallet quota limit exceeded")
+
 // Agent 代理商（白标租户）。owner_user_id 指向平台内的 owner 账号（agent_id=0, is_agent=1）。
 // wallet_quota 为代理在平台的预充值余额（额度制，与用户额度同单位，int32 饱和）。
 // cost_ratio 为结算折扣：终端用户每充值 $M，平台从代理钱包扣 M×cost_ratio。
@@ -309,11 +311,29 @@ func IncreaseAgentWallet(agentId int, quota int) error {
 	if quota < 0 {
 		return errors.New("quota 不能为负数！")
 	}
+	if quota > common.MaxQuota {
+		return ErrAgentWalletQuotaLimitExceeded
+	}
 	if quota == 0 {
 		return nil
 	}
-	return DB.Model(&Agent{}).Where("id = ?", agentId).
-		Update("wallet_quota", gorm.Expr("wallet_quota + ?", quota)).Error
+	result := DB.Model(&Agent{}).
+		Where("id = ? AND wallet_quota <= ?", agentId, common.MaxQuota-quota).
+		Update("wallet_quota", gorm.Expr("wallet_quota + ?", quota))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 1 {
+		return nil
+	}
+	var count int64
+	if err := DB.Model(&Agent{}).Where("id = ?", agentId).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return ErrAgentWalletQuotaLimitExceeded
 }
 
 // DecreaseAgentWalletIfEnough 仅在余额足够时原子扣减，余额不足返回 ok=false（无 error）。
@@ -347,9 +367,9 @@ func AdjustAgentWallet(agentId int, delta int, ledgerType string, refTradeNo str
 		if err := lockForUpdate(tx).Where("id = ?", agentId).First(agent).Error; err != nil {
 			return errors.New("代理不存在")
 		}
-		newBalance := agent.WalletQuota + delta
-		if newBalance < 0 {
-			return errors.New("代理钱包余额不足")
+		newBalance, err := nextAgentWalletBalance(agent.WalletQuota, delta)
+		if err != nil {
+			return err
 		}
 		if err := tx.Model(&Agent{}).Where("id = ?", agentId).
 			Update("wallet_quota", gorm.Expr("wallet_quota + ?", delta)).Error; err != nil {
@@ -375,6 +395,20 @@ func AdjustAgentWallet(agentId int, delta int, ledgerType string, refTradeNo str
 		gopool.Go(func() { ResettleHeldTopups(agentId) })
 	}
 	return nil
+}
+
+func nextAgentWalletBalance(balance, delta int) (int, error) {
+	if balance < 0 {
+		return 0, errors.New("代理钱包余额无效")
+	}
+	if delta > 0 {
+		if delta > common.MaxQuota || balance > common.MaxQuota-delta {
+			return 0, ErrAgentWalletQuotaLimitExceeded
+		}
+	} else if delta < 0 && delta < -balance {
+		return 0, errors.New("代理钱包余额不足")
+	}
+	return balance + delta, nil
 }
 
 func GetAgentLedgers(agentId int, pageInfo *common.PageInfo) (ledgers []*AgentLedger, total int64, err error) {

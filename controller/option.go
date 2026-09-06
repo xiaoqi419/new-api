@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/console_setting"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -189,7 +191,7 @@ func GetOptions(c *gin.Context) {
 	optionValues := make(map[string]string)
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
-		if k == "theme.frontend" {
+		if k == "theme.frontend" || k == billing_setting.BillingModeOptionKey || k == billing_setting.BillingExprOptionKey {
 			continue
 		}
 		value := common.Interface2String(v)
@@ -213,6 +215,19 @@ func GetOptions(c *gin.Context) {
 		}
 	}
 	common.OptionMapRWMutex.Unlock()
+	// Expose effective billing settings, including built-in model defaults,
+	// without writing those defaults back to the administrator option store.
+	for key, values := range map[string]map[string]string{
+		billing_setting.BillingModeOptionKey: billing_setting.GetBillingModeCopy(),
+		billing_setting.BillingExprOptionKey: billing_setting.GetBillingExprCopy(),
+	} {
+		encoded, err := common.Marshal(values)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+			return
+		}
+		options = append(options, &model.Option{Key: key, Value: string(encoded)})
+	}
 	options = append(options, &model.Option{
 		Key:   "CompletionRatioMeta",
 		Value: buildCompletionRatioMetaValue(optionValues),
@@ -453,6 +468,23 @@ func UpdateOption(c *gin.Context) {
 				"message": err.Error(),
 			})
 			return
+		}
+	case billing_setting.BillingExprOptionKey:
+		expressions := make(map[string]string)
+		if err = common.UnmarshalJsonStr(option.Value.(string), &expressions); err != nil {
+			common.ApiErrorMsg(c, "计费表达式配置必须是模型到表达式的 JSON 对象: "+err.Error())
+			return
+		}
+		models := make([]string, 0, len(expressions))
+		for modelName := range expressions {
+			models = append(models, modelName)
+		}
+		sort.Strings(models)
+		for _, modelName := range models {
+			if err = billing_setting.SmokeTestExpr(expressions[modelName]); err != nil {
+				common.ApiErrorMsg(c, fmt.Sprintf("模型 %s 的计费表达式无效: %v", modelName, err))
+				return
+			}
 		}
 	case "console_setting.api_info":
 		err = console_setting.ValidateConsoleSettings(option.Value.(string), "ApiInfo")

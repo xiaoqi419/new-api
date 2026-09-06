@@ -206,7 +206,11 @@ func TryCompleteAgentPrepay(tradeNo, expectedProvider, callerIp string) (handled
 		if creditQuota <= 0 {
 			return errors.New("无效的预充额度")
 		}
+		if _, e := nextAgentWalletBalance(agent.WalletQuota, creditQuota); e != nil {
+			return e
+		}
 		if e := tx.Model(&Agent{}).Where("id = ?", agentId).
+			Where("wallet_quota <= ?", common.MaxQuota-creditQuota).
 			Update("wallet_quota", gorm.Expr("wallet_quota + ?", creditQuota)).Error; e != nil {
 			return e
 		}

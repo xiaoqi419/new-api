@@ -405,8 +405,7 @@ func DrawLottery(userId int, username string) (*LotteryDrawRecord, error) {
 		quotaToGrant = total
 
 		if total > 0 {
-			if err := tx.Model(&User{}).Where("id = ?", userId).
-				Update("quota", gorm.Expr("quota + ?", total)).Error; err != nil {
+			if err := creditTopUpQuota(tx, userId, total, nil); err != nil {
 				return err
 			}
 		}

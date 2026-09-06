@@ -23,7 +23,11 @@ import {
   CHANNEL_TYPE_OPTIONS,
   MODEL_FETCHABLE_TYPES,
 } from '../../constants'
-import { CHANNEL_FORM_DEFAULT_VALUES, channelFormSchema } from '../channel-form'
+import {
+  CHANNEL_FORM_DEFAULT_VALUES,
+  buildSettingJSON,
+  channelFormSchema,
+} from '../channel-form'
 import { getChannelTypeConfig } from '../channel-type-config'
 import { getChannelTypeIcon, getKeyPromptForType } from '../channel-utils'
 
@@ -87,5 +91,20 @@ describe('New API channel', () => {
     })
 
     expect(result.success).toBe(true)
+  })
+
+  test('serializes websocket upstream transport and omits the HTTP default', () => {
+    const httpSettings = JSON.parse(
+      buildSettingJSON({ ...CHANNEL_FORM_DEFAULT_VALUES })
+    )
+    expect(httpSettings.upstream_transport).toBeUndefined()
+
+    const websocketSettings = JSON.parse(
+      buildSettingJSON({
+        ...CHANNEL_FORM_DEFAULT_VALUES,
+        upstream_transport: 'websocket',
+      })
+    )
+    expect(websocketSettings.upstream_transport).toBe('websocket')
   })
 })

@@ -110,11 +110,11 @@ export function QuotaAdjustSheet({
     const focusableSelector =
       'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
     const getFocusable = (): HTMLElement[] =>
-      Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      [...dialog.querySelectorAll<HTMLElement>(focusableSelector)].filter(
         (element) => !element.hasAttribute("disabled"),
       );
 
-    getFocusable()[0]?.focus();
+    getFocusable().at(0)?.focus();
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -129,8 +129,9 @@ export function QuotaAdjustSheet({
         elements[0].focus();
         return;
       }
-      const first = elements[0];
-      const last = elements[elements.length - 1];
+      const first = elements.at(0);
+      const last = elements.at(-1);
+      if (!first || !last) return;
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -159,14 +160,16 @@ export function QuotaAdjustSheet({
       ? Number(parsedValue)
       : null;
   const currentQuota = Number.isSafeInteger(user.quota) ? BigInt(user.quota) : null;
-  const preview =
-    parsedValue !== null && currentQuota !== null
-      ? mode === "add"
-        ? currentQuota + parsedValue
-        : mode === "subtract"
-          ? currentQuota - parsedValue
-          : parsedValue
-      : null;
+  let preview: bigint | null = null;
+  if (parsedValue !== null && currentQuota !== null) {
+    if (mode === "add") {
+      preview = currentQuota + parsedValue;
+    } else if (mode === "subtract") {
+      preview = currentQuota - parsedValue;
+    } else {
+      preview = parsedValue;
+    }
+  }
   const canContinue =
     numericValue !== null &&
     Number.isSafeInteger(numericValue) &&

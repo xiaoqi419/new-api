@@ -297,6 +297,13 @@ func ResolveHeaderOverride(info *common.RelayInfo, c *gin.Context) (map[string]s
 	return processHeaderOverride(info, c)
 }
 
+// ProcessHeaderOverrideForWebsocket applies the same channel header override
+// rules used by HTTP requests. WebSocket handshake headers are still generated
+// by the dialer and credentials are never copied from passthrough rules.
+func ProcessHeaderOverrideForWebsocket(info *common.RelayInfo, c *gin.Context) (map[string]string, error) {
+	return processHeaderOverride(info, c)
+}
+
 func applyHeaderOverrideToRequest(req *http.Request, headerOverride map[string]string) {
 	if req == nil {
 		return
