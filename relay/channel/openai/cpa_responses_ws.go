@@ -117,115 +117,175 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 	if err != nil {
 		return nil, err
 	}
-
-	var conn *websocket.Conn
-	var lastErr error
-	for _, wsURL := range candidates {
-		var hs *http.Response
-		conn, hs, lastErr = websocket.DefaultDialer.DialContext(ctx, wsURL, headers)
-		if lastErr == nil {
-			break
-		}
-		if hs != nil {
-			status := hs.StatusCode
-			if hs.Body != nil {
-				_ = hs.Body.Close()
-			}
-			// CPA path probing continues only for route-not-found responses.
-			if status != http.StatusNotFound && status != http.StatusMethodNotAllowed {
-				break
-			}
-		}
-	}
-	if lastErr != nil {
-		return nil, fmt.Errorf("responses websocket dial failed: %w", lastErr)
-	}
-	pr, pw := io.Pipe()
-	stopCancel := context.AfterFunc(ctx, func() {
-		_ = conn.Close()
-		_ = pw.CloseWithError(ctx.Err())
-	})
-	closeStream := func() {
-		stopCancel()
-		_ = conn.Close()
-		_ = pw.Close()
-	}
-	if err := conn.WriteMessage(websocket.TextMessage, envelope); err != nil {
-		closeStream()
-		_ = pr.Close()
-		return nil, fmt.Errorf("responses websocket write failed: %w", err)
-	}
-
-	// Read one frame before exposing the stream. A CPA error/protocol frame can
-	// then trigger HTTP fallback without having emitted a partial SSE response.
-	firstType, firstMsg, err := conn.ReadMessage()
+	model, previousResponseID, err := responsesWebsocketRequestMetadata(payload)
 	if err != nil {
-		closeStream()
-		_ = pr.Close()
-		return nil, fmt.Errorf("responses websocket read failed: %w", err)
+		return nil, err
 	}
-	if firstType != websocket.TextMessage && firstType != websocket.BinaryMessage {
-		closeStream()
-		_ = pr.Close()
-		return nil, fmt.Errorf("responses websocket returned non-text first frame")
+	if model == "" {
+		model = strings.TrimSpace(info.UpstreamModelName)
 	}
-	firstMsg = bytes.TrimSpace(firstMsg)
-	var firstEvent struct {
-		Type string `json:"type"`
-	}
-	if err := common.Unmarshal(firstMsg, &firstEvent); err != nil || firstEvent.Type == "" {
-		closeStream()
-		_ = pr.Close()
-		return nil, fmt.Errorf("responses websocket returned invalid first event")
-	}
-	if isResponsesWebsocketProtocolError(firstEvent.Type) {
-		closeStream()
-		_ = pr.Close()
-		return nil, fmt.Errorf("responses websocket upstream error")
-	}
-
-	go func() {
-		defer closeStream()
-		writeFrame := func(msg []byte) error {
-			msg = bytes.TrimSpace(msg)
-			if len(msg) == 0 {
-				return nil
+	storeResponse := responsesWebsocketRequestStoresResponse(payload)
+	sessionHint := responsesWebsocketSessionHint(c)
+	pool := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKeyFor(headers, model, httpURL))
+	dial := func() (*cpaResponsesWebsocketConn, error) {
+		var lastErr error
+		for _, wsURL := range candidates {
+			conn, hs, dialErr := websocket.DefaultDialer.DialContext(ctx, wsURL, headers)
+			if dialErr == nil {
+				return &cpaResponsesWebsocketConn{conn: conn, wsURL: wsURL, responseIDs: make(map[string]struct{})}, nil
 			}
-			_, err := fmt.Fprintf(pw, "data: %s\n\n", msg)
-			return err
-		}
-		if err := writeFrame(firstMsg); err != nil {
-			return
-		}
-		if isResponsesWebsocketTerminalEvent(firstEvent.Type) {
-			return
-		}
-		for {
-			mt, msg, readErr := conn.ReadMessage()
-			if readErr != nil {
-				return
-			}
-			if mt != websocket.TextMessage && mt != websocket.BinaryMessage {
-				continue
-			}
-			if err := writeFrame(msg); err != nil {
-				return
-			}
-			var event struct {
-				Type string `json:"type"`
-			}
-			if common.Unmarshal(msg, &event) == nil {
-				if isResponsesWebsocketProtocolError(event.Type) || isResponsesWebsocketTerminalEvent(event.Type) {
-					return
+			lastErr = dialErr
+			if hs != nil {
+				status := hs.StatusCode
+				if hs.Body != nil {
+					_ = hs.Body.Close()
+				}
+				// CPA path probing continues only for route-not-found responses.
+				if status != http.StatusNotFound && status != http.StatusMethodNotAllowed {
+					break
 				}
 			}
 		}
-	}()
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Status:     "200 OK",
-		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
-		Body:       pr,
-		Request:    c.Request,
-	}, nil
+		return nil, fmt.Errorf("responses websocket dial failed: %w", lastErr)
+	}
+
+	var lease *cpaResponsesWebsocketLease
+	// Reusing a socket is safe to retry once when it fails before its first
+	// response event. A newly dialed socket is not replayed: the provider may
+	// have accepted the request even though its first frame was lost.
+	for attempt := 0; attempt < 2; attempt++ {
+		lease, err = pool.acquire(ctx, sessionHint, previousResponseID, dial)
+		if err != nil {
+			return nil, err
+		}
+		conn := lease.entry.conn
+		stopBeforeFirstFrame := context.AfterFunc(ctx, func() {
+			lease.markBroken()
+		})
+		if err := conn.WriteMessage(websocket.TextMessage, envelope); err != nil {
+			stopBeforeFirstFrame()
+			wasReused := lease.reused
+			lease.markBroken()
+			if wasReused && attempt == 0 {
+				continue
+			}
+			return nil, fmt.Errorf("responses websocket write failed: %w", err)
+		}
+
+		// Read one frame before exposing the stream. A CPA error/protocol frame can
+		// then trigger HTTP fallback without having emitted a partial SSE response.
+		firstType, firstMsg, readErr := conn.ReadMessage()
+		stopBeforeFirstFrame()
+		if readErr != nil {
+			wasReused := lease.reused
+			lease.markBroken()
+			if wasReused && attempt == 0 {
+				continue
+			}
+			return nil, fmt.Errorf("responses websocket read failed: %w", readErr)
+		}
+		if firstType != websocket.TextMessage && firstType != websocket.BinaryMessage {
+			wasReused := lease.reused
+			lease.markBroken()
+			if wasReused && attempt == 0 {
+				continue
+			}
+			return nil, fmt.Errorf("responses websocket returned non-text first frame")
+		}
+		firstMsg = bytes.TrimSpace(firstMsg)
+		var firstEvent struct {
+			Type string `json:"type"`
+		}
+		if err := common.Unmarshal(firstMsg, &firstEvent); err != nil || firstEvent.Type == "" {
+			wasReused := lease.reused
+			lease.markBroken()
+			if wasReused && attempt == 0 {
+				continue
+			}
+			return nil, fmt.Errorf("responses websocket returned invalid first event")
+		}
+		if isResponsesWebsocketProtocolError(firstEvent.Type) {
+			lease.markBroken()
+			return nil, fmt.Errorf("responses websocket upstream error")
+		}
+
+		pr, pw := io.Pipe()
+		stopCancel := context.AfterFunc(ctx, func() {
+			lease.markBroken()
+			_ = pw.CloseWithError(ctx.Err())
+		})
+		finish := func(healthy bool, responseID string) {
+			stopCancel()
+			if healthy {
+				lease.releaseHealthy(responseID)
+			} else {
+				lease.markBroken()
+			}
+			_ = pw.Close()
+		}
+
+		go func() {
+			responseID := responsesWebsocketResponseID(firstMsg)
+			writeFrame := func(msg []byte) error {
+				msg = bytes.TrimSpace(msg)
+				if len(msg) == 0 {
+					return nil
+				}
+				_, err := fmt.Fprintf(pw, "data: %s\n\n", msg)
+				return err
+			}
+			if err := writeFrame(firstMsg); err != nil {
+				finish(false, "")
+				return
+			}
+			if isResponsesWebsocketTerminalEvent(firstEvent.Type) {
+				if !storeResponse {
+					responseID = ""
+				}
+				finish(true, responseID)
+				return
+			}
+			for {
+				mt, msg, readErr := conn.ReadMessage()
+				if readErr != nil {
+					finish(false, "")
+					return
+				}
+				if mt != websocket.TextMessage && mt != websocket.BinaryMessage {
+					continue
+				}
+				if id := responsesWebsocketResponseID(msg); id != "" {
+					responseID = id
+				}
+				if err := writeFrame(msg); err != nil {
+					finish(false, "")
+					return
+				}
+				var event struct {
+					Type string `json:"type"`
+				}
+				if common.Unmarshal(msg, &event) == nil {
+					if isResponsesWebsocketProtocolError(event.Type) {
+						finish(false, "")
+						return
+					}
+					if isResponsesWebsocketTerminalEvent(event.Type) {
+						if !storeResponse {
+							responseID = ""
+						}
+						finish(true, responseID)
+						return
+					}
+				}
+			}
+		}()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+			Body:       pr,
+			Request:    c.Request,
+		}, nil
+	}
+	return nil, fmt.Errorf("responses websocket request failed before first frame")
 }

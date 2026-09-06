@@ -2,13 +2,16 @@ package openai
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -33,6 +36,16 @@ func TestResponsesWebsocketURLCandidates(t *testing.T) {
 		"wss://cpa.example/v1/responses/ws?api-version=preview",
 		"wss://cpa.example/v1/ws?api-version=preview",
 	}, got)
+}
+
+func TestResponsesWebsocketSessionHintUsesInboundSessionAndThreadHeaders(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	c.Request.Header.Set("Thread_id", "thread-123")
+	require.Equal(t, "thread-123", responsesWebsocketSessionHint(c))
+
+	c.Request.Header.Set("Thread_id", strings.Repeat("x", cpaResponsesWebsocketMaxSessionHintBytes+1))
+	require.Empty(t, responsesWebsocketSessionHint(c), "oversized client affinity keys must not enter pool maps")
 }
 
 func TestDoResponsesWebsocketRequestBridgesFramesToSSE(t *testing.T) {
@@ -359,4 +372,226 @@ func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T
 			}
 		})
 	}
+}
+
+func TestResponsesWebsocketPoolReusesStableSessionAndPreviousResponse(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	var connections int
+	var mu sync.Mutex
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		mu.Lock()
+		connections++
+		mu.Unlock()
+		defer conn.Close()
+		for {
+			_, payload, readErr := conn.ReadMessage()
+			if readErr != nil {
+				return
+			}
+			var request map[string]any
+			require.NoError(t, common.Unmarshal(payload, &request))
+			id := "resp-1"
+			if request["previous_response_id"] != nil {
+				id = "resp-2"
+			}
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created","response":{"id":"`+id+`"}}`)))
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"`+id+`"}}`)))
+		}
+	}))
+	defer srv.Close()
+
+	makeRequest := func(payload string, session string) {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		c.Request.Header.Set("X-Codex-Session-Id", session)
+		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+		resp, err := doResponsesWebsocketRequest(c, info, []byte(payload))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+	}
+	makeRequest(`{"model":"gpt-5","stream":true}`, "session-a")
+	makeRequest(`{"model":"gpt-5","stream":true,"previous_response_id":"resp-1"}`, "session-a")
+	makeRequest(`{"model":"gpt-5","stream":true}`, "session-b")
+	mu.Lock()
+	require.Equal(t, 2, connections, "stable sessions must reuse their own websocket without sharing")
+	mu.Unlock()
+}
+
+func TestResponsesWebsocketPoolDoesNotShareUnknownSessions(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	var connections int
+	var mu sync.Mutex
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		mu.Lock()
+		connections++
+		mu.Unlock()
+		defer conn.Close()
+		_, _, err = conn.ReadMessage()
+		if err == nil {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed"}`))
+		}
+	}))
+	defer srv.Close()
+	makeRequest := func() {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+		resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+	}
+	makeRequest()
+	makeRequest()
+	mu.Lock()
+	require.Equal(t, 2, connections, "requests without a stable session must not borrow an idle websocket")
+	mu.Unlock()
+}
+
+func TestResponsesWebsocketPoolKeepsStoreFalseSessionAffinityWithoutResponseIndex(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	var connections int
+	var mu sync.Mutex
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		mu.Lock()
+		connections++
+		mu.Unlock()
+		defer conn.Close()
+		for {
+			if _, _, err = conn.ReadMessage(); err != nil {
+				return
+			}
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"resp-not-stored"}}`))
+		}
+	}))
+	defer srv.Close()
+	makeRequest := func(payload string) {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		c.Request.Header.Set("X-Codex-Session-Id", "session-store-false")
+		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+		resp, err := doResponsesWebsocketRequest(c, info, []byte(payload))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+	}
+	makeRequest(`{"model":"gpt-5","stream":true,"store":false}`)
+	makeRequest(`{"model":"gpt-5","stream":true}`)
+	mu.Lock()
+	require.Equal(t, 1, connections, "store=false should keep explicit session affinity without indexing the response id")
+	mu.Unlock()
+}
+
+func TestResponsesWebsocketPoolSerialLease(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	p := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKey{Endpoint: "serial", AuthHash: "hash", Model: "model"})
+	newEntry := func() *cpaResponsesWebsocketConn {
+		return &cpaResponsesWebsocketConn{responseIDs: make(map[string]struct{}), createdAt: time.Now(), lastUsedAt: time.Now()}
+	}
+	dialCount := 0
+	dial := func() (*cpaResponsesWebsocketConn, error) {
+		dialCount++
+		return newEntry(), nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	first, err := p.acquire(ctx, "session-a", "", dial)
+	require.NoError(t, err)
+	secondReady := make(chan *cpaResponsesWebsocketLease, 1)
+	go func() {
+		lease, acquireErr := p.acquire(ctx, "session-a", "", dial)
+		if acquireErr == nil {
+			secondReady <- lease
+		}
+	}()
+	select {
+	case <-secondReady:
+		t.Fatal("same-session lease was acquired concurrently")
+	case <-time.After(50 * time.Millisecond):
+	}
+	first.releaseHealthy("")
+	select {
+	case second := <-secondReady:
+		require.Same(t, first.entry, second.entry)
+		second.releaseHealthy("")
+	case <-time.After(time.Second):
+		t.Fatal("waiting same-session lease was not released")
+	}
+	require.Equal(t, 1, dialCount)
+}
+
+func TestResponsesWebsocketPoolRebuildsClosedReusedConnection(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	var connections int
+	var mu sync.Mutex
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		mu.Lock()
+		connections++
+		connectionNumber := connections
+		mu.Unlock()
+		defer conn.Close()
+		_, _, err = conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		id := fmt.Sprintf("resp-%d", connectionNumber)
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created","response":{"id":"`+id+`"}}`))
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"`+id+`"}}`))
+		// The first socket is deliberately closed after a healthy turn. The
+		// next request must evict it and create one replacement before output.
+	}))
+	defer srv.Close()
+	makeRequest := func() {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		c.Request.Header.Set("X-Codex-Session-Id", "session-a")
+		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+		resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+	}
+	makeRequest()
+	makeRequest()
+	mu.Lock()
+	require.Equal(t, 2, connections)
+	mu.Unlock()
 }

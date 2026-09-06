@@ -10,7 +10,8 @@
 - 重点实现 gpt-6-astra 表达式计费、显式模型修饰符与 reasoning 保真、Responses/Claude/relay 计费完整性、SQLite/PostgreSQL/MySQL 兼容、ETag/缓存、前端修复、密码传输加密、int32 迁移和渠道 WS；每个变更记录来源、冲突取舍和测试证据。
 - 密码传输加密的 RSA 私钥复用既有 `Option` 表中的内部行 `__internal.PasswordLoginRSAKey`，不新增表或列；首次启动通过跨数据库兼容的主键冲突忽略写入确保多实例复用同一密钥。
 - 渠道 WS：在现有 `setting` JSON 增加 `upstream_transport`（空/`http`/`websocket`），默认保持 HTTP；仅对流式 OpenAI Responses 请求按渠道开关使用上游 WebSocket，非流式、compact 和其他端点保持 HTTP。
-- WS 模式由 new-api 作为 WS 客户端连接 CPA/兼容上游，发送 Responses `response.create`，把 Responses 事件转成当前 SSE 输出，沿用现有 usage/额度/日志链路；握手、鉴权、协议错误或上游拒绝时，同一请求回落 HTTP，并记录是否回落。
+- WS 模式由 new-api 作为 WS 客户端直接连接 CPA/兼容上游，发送 Responses `response.create`，把 Responses 事件转成当前 SSE 输出，沿用现有 usage/额度/日志链路；在有明确会话标识或可验证 `previous_response_id` 时复用同一条 CPA 连接，避免每轮重复握手。无会话标识的首轮请求不跨会话借用连接。
+- 连接池只存在于 new-api 进程内，按渠道上游、鉴权指纹、模型和会话绑定；空闲超时、连接生命周期、单连接串行 lease 和失效连接淘汰必须有界。握手、鉴权、协议错误或上游拒绝时，同一请求回落 HTTP，并记录是否回落。
 - 两套前端渠道编辑器提供 HTTP/WebSocket 选择并使用 i18n；不新增数据库列，不改变对外客户端协议，不改 CPA/CPAM 源码。
 
 # Non-goals
@@ -18,7 +19,7 @@
 - 不把官方 upstream/main 直接作为生产基线，不从 upstream 构建或部署。
 - 不直接整段 merge 66 个已知冲突而用 ours/theirs 覆盖行为；不删除本 fork 的受保护品牌、支付、H5 或运营功能。
 - 不在本次同步中启用官方实验性插件系统、会移除现有模块的架构替换或治理/CI 文件；密码传输加密和 int32 迁移已由用户确认纳入本 change，但必须在独立实现单元中完成兼容验证。
-- 不新增 new-api 对外 `/v1/ws`，不修改 Codex/Cursor 客户端，不改变默认 HTTP 行为。
+- 不新增 new-api 对外 `/v1/ws`，不修改 Codex/Cursor 客户端，不改变默认 HTTP 行为；不引入 Sub2API、Bifrost、LiteLLM 等外部网关或运行时依赖。
 - 不修改生产 PostgreSQL、Redis、网关配置；未完成本地和隔离验证前不部署。
 
 # Acceptance examples
@@ -30,6 +31,8 @@
 - A5：开启 WS 的流式 Responses 请求能完成握手、发送 `response.create`、转发事件为标准 SSE，并从 `response.completed` usage 进入现有结算；非流式/compact/其他端点仍走 HTTP。
 - A6：WS 401/404/405、握手失败、协议 error、客户端取消和连接关闭均释放资源并回落 HTTP 或返回原有错误；不泄露 Authorization、Cookie 或完整请求体。
 - A7：root 和独立 relaykit 构建、受影响 Go/前端测试、类型检查、lint、双前端构建及隔离 CPA WS 验证通过；未执行项和线上凭据边界如实记录。
+- A7b：带稳定会话标识或有效 `previous_response_id` 的连续 Responses 请求复用同一 CPA WebSocket；不同会话不共享连接；连接空闲超时、失效淘汰、单连接串行 lease 和客户端取消不会泄漏 goroutine、连接或管道。
+- A7c：复用连接在首帧前失效时最多安全重建一次并保持原请求体；已向客户端输出事件后不自动重放；连接复用失败和 HTTP 回落原因可观察但不包含密钥或完整请求体。
 - A8：只从合并后的精确 `origin/main` SHA 构建不可变镜像；发布前不修改数据库、Redis、国内/国际站网关。
 
 # Constraints and invariants
@@ -44,7 +47,7 @@
 
 - 采用单一 Native change 的双轨范围：先完成上游兼容性矩阵和安全同步，再在同一生产基线上实现渠道 WS；两轨共享 relay/channel、前端和发布验证，但不把规划中的旧 dirty worktree 直接当作候选。
 - 采用“选择性同步 + 行为取并集”而不是整段 upstream merge；原因是 `git merge-tree` 预估 66 个冲突，且官方 rc.33 相对共同基线有大量删除/重构。
-- 渠道 WS 默认关闭、按渠道显式启用，仅用于流式 Responses，失败自动回落 HTTP。
+- 渠道 WS 默认关闭、按渠道显式启用，仅用于流式 Responses，失败自动回落 HTTP；Sub2API 仅作为连接池、会话粘性和首帧恢复的设计参考。
 
 # Open questions
 
