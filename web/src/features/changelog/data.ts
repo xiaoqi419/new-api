@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260906-h5-hide-site-switcher',
+    date: '2026-09-06',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '管理 H5 登录后不再显示无法切换的国内站/国际站按钮；统计表可横向滑动，模型名不再竖排错位。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260906-h5-stats-fast',
     date: '2026-09-06',
     changes: [

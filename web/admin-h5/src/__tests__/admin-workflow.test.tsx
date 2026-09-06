@@ -125,6 +125,8 @@ describe("admin mobile workflow at the app and network boundary", () => {
 
     await installAdminAndRender("/users");
     expect(await screen.findByRole("heading", { name: "Users" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("站点")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Site")).not.toBeInTheDocument();
 
     const search = screen.getByRole("searchbox", { name: "Search users" });
     fireEvent.change(search, { target: { value: "alice" } });
