@@ -29,6 +29,26 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260910-61ed63cab',
+    date: '2026-09-10',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '新增 Responses WebSocket 客户端接入，支持同连接多轮对话、工具结果续接及逐轮权限和用量结算。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复 CPA 上游 WebSocket 空闲复用、大事件、取消和错误回传，防止结果不明的请求重复发送。',
+          '用量日志同时显示输入、输出、总 Token 和缓存率，并兼容旧记录。',
+        ],
+      },
+    ],
+  },
+
+  {
     version: '20260906-cpa-upstream-websocket',
     date: '2026-09-06',
     changes: [

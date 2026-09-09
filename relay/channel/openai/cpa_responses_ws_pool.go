@@ -4,17 +4,28 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
 	"github.com/QuantumNous/new-api/common"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
+
+// IsCPAResponsesWebsocketRequestSent reports whether an error occurred after
+// sending the request envelope was attempted. A failed write may still have
+// delivered bytes to the upstream peer, so such requests cannot be replayed.
+func IsCPAResponsesWebsocketRequestSent(err error) bool {
+	var wsErr *cpaResponsesWebsocketError
+	return errors.As(err, &wsErr) && wsErr.requestSent
+}
 
 // These limits intentionally apply to idle pooled connections only. A leased
 // connection is owned by one response turn and is closed by that turn when it
@@ -22,20 +33,47 @@ import (
 const (
 	cpaResponsesWebsocketIdleTimeout = 2 * time.Minute
 	cpaResponsesWebsocketMaxLifetime = 30 * time.Minute
-	cpaResponsesWebsocketHealthAfter = 30 * time.Second
 	// Session hints are client-provided routing keys. Keep them bounded so an
 	// unusually large header cannot create an unbounded pool-map key.
 	cpaResponsesWebsocketMaxSessionHintBytes = 256
 )
 
 type cpaResponsesWebsocketPoolKey struct {
-	Endpoint string
-	AuthHash string
-	Model    string
+	Endpoint  string
+	AuthHash  string
+	QueryHash string
+	Model     string
+	UserID    int
+	ChannelID int
+	ProxyHash string
 }
 
 func (k cpaResponsesWebsocketPoolKey) String() string {
-	return k.Endpoint + "\x00" + k.AuthHash + "\x00" + k.Model
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%s\x00%d\x00%d\x00%s", k.Endpoint, k.AuthHash, k.QueryHash, k.Model, k.UserID, k.ChannelID, k.ProxyHash)
+}
+
+// cpaResponsesWebsocketPoolIdentity is deliberately derived from server-side
+// request state. Client supplied session headers are useful for affinity, but
+// they are not an authorization boundary and must not be the only isolation
+// key for a pooled socket.
+type cpaResponsesWebsocketPoolIdentity struct {
+	UserID    int
+	ChannelID int
+	ApiKey    string
+	ProxyURL  string
+}
+
+func cpaResponsesWebsocketPoolIdentityFor(info *relaycommon.RelayInfo) cpaResponsesWebsocketPoolIdentity {
+	if info == nil {
+		return cpaResponsesWebsocketPoolIdentity{}
+	}
+	identity := cpaResponsesWebsocketPoolIdentity{UserID: info.UserId}
+	if info.ChannelMeta != nil {
+		identity.ChannelID = info.GetChannelID()
+		identity.ApiKey = info.ApiKey
+		identity.ProxyURL = strings.TrimSpace(info.ChannelSetting.Proxy)
+	}
+	return identity
 }
 
 type cpaResponsesWebsocketPool struct {
@@ -68,10 +106,11 @@ type cpaResponsesWebsocketLease struct {
 // Error deliberately returns a fixed, redacted reason so dial errors cannot
 // echo URLs, headers, or provider response bodies into request logs.
 type cpaResponsesWebsocketError struct {
-	reason  string
-	reused  bool
-	rebuilt bool
-	err     error
+	reason      string
+	reused      bool
+	rebuilt     bool
+	requestSent bool
+	err         error
 }
 
 func (e *cpaResponsesWebsocketError) Error() string {
@@ -88,8 +127,12 @@ func (e *cpaResponsesWebsocketError) Unwrap() error {
 	return e.err
 }
 
-func newCPAResponsesWebsocketError(reason string, reused, rebuilt bool, err error) error {
-	return &cpaResponsesWebsocketError{reason: reason, reused: reused, rebuilt: rebuilt, err: err}
+func newCPAResponsesWebsocketError(reason string, reused, rebuilt bool, err error, requestSent ...bool) error {
+	sent := false
+	if len(requestSent) > 0 {
+		sent = requestSent[0]
+	}
+	return &cpaResponsesWebsocketError{reason: reason, reused: reused, rebuilt: rebuilt, requestSent: sent, err: err}
 }
 
 var cpaResponsesWebsocketPools = struct {
@@ -129,7 +172,7 @@ func resetCPAResponsesWebsocketPools() {
 		for entry := range pool.connections {
 			entry.broken = true
 			if entry.conn != nil {
-				_ = entry.conn.Close()
+				_ = entry.conn.CloseNow()
 			}
 		}
 		pool.connections = make(map[*cpaResponsesWebsocketConn]struct{})
@@ -160,7 +203,7 @@ func (p *cpaResponsesWebsocketPool) removeLocked(entry *cpaResponsesWebsocketCon
 	}
 	entry.broken = true
 	if entry.conn != nil {
-		_ = entry.conn.Close()
+		_ = entry.conn.CloseNow()
 	}
 	p.signalLocked()
 }
@@ -173,19 +216,6 @@ func (p *cpaResponsesWebsocketPool) reapLocked(now time.Time) {
 		if now.Sub(entry.lastUsedAt) >= cpaResponsesWebsocketIdleTimeout || now.Sub(entry.createdAt) >= cpaResponsesWebsocketMaxLifetime {
 			p.removeLocked(entry)
 			continue
-		}
-		if now.Sub(entry.lastUsedAt) >= cpaResponsesWebsocketHealthAfter {
-			// A control ping catches sockets that disappeared while idle without
-			// consuming a response frame. The peer's pong handler is optional.
-			if entry.conn == nil {
-				p.removeLocked(entry)
-				continue
-			}
-			if err := entry.conn.WriteControl(websocket.PingMessage, nil, now.Add(time.Second)); err != nil {
-				p.removeLocked(entry)
-				continue
-			}
-			entry.lastUsedAt = now
 		}
 	}
 }
@@ -263,7 +293,7 @@ func (p *cpaResponsesWebsocketPool) acquire(ctx context.Context, sessionHint, pr
 				// allowing concurrent turns on two sockets for the same session.
 				p.mu.Unlock()
 				if entry.conn != nil {
-					_ = entry.conn.Close()
+					_ = entry.conn.CloseNow()
 				}
 				continue
 			}
@@ -314,14 +344,76 @@ func (l *cpaResponsesWebsocketLease) markBroken() {
 	l.pool.mu.Unlock()
 }
 
-func cpaResponsesWebsocketPoolKeyFor(headers http.Header, model string, httpURL string) cpaResponsesWebsocketPoolKey {
+func cpaResponsesWebsocketPoolKeyFor(headers http.Header, model string, httpURL string, identities ...cpaResponsesWebsocketPoolIdentity) cpaResponsesWebsocketPoolKey {
 	endpoint := httpURL
 	if parsed, err := urlParseWithoutQuery(httpURL); err == nil {
 		endpoint = parsed
 	}
-	auth := headers.Get("Authorization")
-	sum := sha256.Sum256([]byte(auth))
-	return cpaResponsesWebsocketPoolKey{Endpoint: endpoint, AuthHash: hex.EncodeToString(sum[:]), Model: model}
+	identity := cpaResponsesWebsocketPoolIdentity{}
+	if len(identities) > 0 {
+		identity = identities[0]
+	}
+	// Include all stable handshake headers in the fingerprint. This covers
+	// Authorization, Azure api-key, custom x-api-key overrides, and any other
+	// channel authentication headers without retaining their values in memory
+	// as a pool key. Per-request negotiation headers are excluded below.
+	headerValues := make(map[string][]string)
+	for name, values := range headers {
+		if responsesWebsocketPoolHeaderExcluded(name) {
+			continue
+		}
+		canonicalName := http.CanonicalHeaderKey(name)
+		headerValues[canonicalName] = append(headerValues[canonicalName], values...)
+	}
+	headerNames := make([]string, 0, len(headerValues))
+	for name := range headerValues {
+		headerNames = append(headerNames, name)
+	}
+	sort.Strings(headerNames)
+	var fingerprint strings.Builder
+	// Include the configured channel credential as a server-side identity even
+	// when a header override replaces Authorization on the wire.
+	fingerprint.WriteString("channel-api-key:")
+	fingerprint.WriteString(identity.ApiKey)
+	fingerprint.WriteByte('\n')
+	for _, name := range headerNames {
+		fingerprint.WriteString(name)
+		fingerprint.WriteByte(':')
+		values := append([]string(nil), headerValues[name]...)
+		sort.Strings(values)
+		for _, value := range values {
+			fingerprint.WriteString(value)
+			fingerprint.WriteByte('\x00')
+		}
+		fingerprint.WriteByte('\n')
+	}
+	authSum := sha256.Sum256([]byte(fingerprint.String()))
+	rawQuery := ""
+	if idx := strings.IndexByte(httpURL, '?'); idx >= 0 {
+		rawQuery = httpURL[idx+1:]
+	}
+	querySum := sha256.Sum256([]byte(rawQuery))
+	proxySum := sha256.Sum256([]byte(identity.ProxyURL))
+	return cpaResponsesWebsocketPoolKey{
+		Endpoint:  endpoint,
+		AuthHash:  hex.EncodeToString(authSum[:]),
+		QueryHash: hex.EncodeToString(querySum[:]),
+		Model:     model,
+		UserID:    identity.UserID,
+		ChannelID: identity.ChannelID,
+		ProxyHash: hex.EncodeToString(proxySum[:]),
+	}
+}
+
+func responsesWebsocketPoolHeaderExcluded(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "accept", "content-type", "content-length", "x-client-request-id",
+		"sec-websocket-key", "sec-websocket-version", "sec-websocket-extensions",
+		"connection", "host":
+		return true
+	default:
+		return false
+	}
 }
 
 func urlParseWithoutQuery(raw string) (string, error) {

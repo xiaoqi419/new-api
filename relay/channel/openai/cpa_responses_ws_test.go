@@ -3,7 +3,6 @@ package openai
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +16,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relaykit/dto"
+	coderwebsocket "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
@@ -32,10 +32,11 @@ func TestCPAResponsesWebsocketErrorRedactsUnderlyingDetails(t *testing.T) {
 }
 
 func TestBuildResponsesWebsocketRequestEnvelope(t *testing.T) {
-	payload := []byte(`{"model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true}`)
+	payload := []byte(`{"model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true,"metadata":{"large":9007199254740993}}`)
 	got, err := buildResponsesWebsocketRequestEnvelope(payload)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"type":"response.create","model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true}`, string(got))
+	require.JSONEq(t, `{"type":"response.create","model":"gpt-5","input":[{"role":"user","content":"hi"}],"stream":true,"metadata":{"large":9007199254740993}}`, string(got))
+	require.Contains(t, string(got), `9007199254740993`)
 }
 
 func TestBuildResponsesWebsocketRequestEnvelopeRejectsNull(t *testing.T) {
@@ -63,7 +64,52 @@ func TestResponsesWebsocketSessionHintUsesInboundSessionAndThreadHeaders(t *test
 	require.Empty(t, responsesWebsocketSessionHint(c), "oversized client affinity keys must not enter pool maps")
 }
 
+func TestResponsesWebsocketPoolKeyIncludesServerIdentityAndAllAuthHeaders(t *testing.T) {
+	headersA := http.Header{
+		"Authorization":       []string{"Bearer same"},
+		"Api-Key":             []string{"azure-a"},
+		"X-Client-Request-Id": []string{"request-a"},
+	}
+	headersB := http.Header{
+		"Authorization":       []string{"Bearer same"},
+		"Api-Key":             []string{"azure-b"},
+		"X-Client-Request-Id": []string{"request-b"},
+	}
+	keyA := cpaResponsesWebsocketPoolKeyFor(headersA, "gpt-5", "https://cpa.example/v1/responses", cpaResponsesWebsocketPoolIdentity{UserID: 10, ChannelID: 20, ProxyURL: "http://proxy-a:8080"})
+	keyB := cpaResponsesWebsocketPoolKeyFor(headersB, "gpt-5", "https://cpa.example/v1/responses", cpaResponsesWebsocketPoolIdentity{UserID: 11, ChannelID: 20, ProxyURL: "http://proxy-a:8080"})
+	keyC := cpaResponsesWebsocketPoolKeyFor(headersA, "gpt-5", "https://cpa.example/v1/responses", cpaResponsesWebsocketPoolIdentity{UserID: 10, ChannelID: 20, ProxyURL: "http://proxy-b:8080"})
+	require.NotEqual(t, keyA.String(), keyB.String(), "different users must not share a pool")
+	require.NotEqual(t, keyA.String(), keyC.String(), "different proxy identities must not share a pool")
+	require.NotEqual(t, keyA.AuthHash, keyB.AuthHash, "all authentication headers must be fingerprinted")
+	require.NotContains(t, keyA.String(), "Bearer")
+	require.NotContains(t, keyA.String(), "azure-a")
+}
+
+func TestResponsesWebsocketPoolKeySeparatesQueryValuesWithoutRetainingSecrets(t *testing.T) {
+	headers := http.Header{"Authorization": []string{"Bearer same"}}
+	identity := cpaResponsesWebsocketPoolIdentity{UserID: 10, ChannelID: 20, ApiKey: "channel-secret"}
+	keyA := cpaResponsesWebsocketPoolKeyFor(headers, "gpt-5", "https://cpa.example/v1/responses?api-version=2025-01-01&api_key=secret-a", identity)
+	keyB := cpaResponsesWebsocketPoolKeyFor(headers, "gpt-5", "https://cpa.example/v1/responses?api-version=2025-01-01&api_key=secret-b", identity)
+	keyAAgain := cpaResponsesWebsocketPoolKeyFor(headers, "gpt-5", "https://cpa.example/v1/responses?api-version=2025-01-01&api_key=secret-a", identity)
+
+	require.NotEqual(t, keyA.String(), keyB.String())
+	require.Equal(t, keyA.String(), keyAAgain.String())
+	require.NotContains(t, keyA.String(), "secret-a")
+	require.NotContains(t, keyB.String(), "secret-b")
+}
+
+func TestResponsesWebsocketDialerHonorsChannelProxy(t *testing.T) {
+	httpDialer, err := responsesWebsocketDialer("http://proxy.example:8080")
+	require.NoError(t, err)
+	require.NotNil(t, httpDialer.HTTPClient)
+
+	socksDialer, err := responsesWebsocketDialer("socks5://proxy.example:1080")
+	require.NoError(t, err)
+	require.NotNil(t, socksDialer.HTTPClient)
+}
+
 func TestDoResponsesWebsocketRequestBridgesFramesToSSE(t *testing.T) {
+	receivedEnvelope := make(chan []byte, 1)
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/ws" {
@@ -76,6 +122,7 @@ func TestDoResponsesWebsocketRequestBridgesFramesToSSE(t *testing.T) {
 		defer conn.Close()
 		_, payload, err := conn.ReadMessage()
 		require.NoError(t, err)
+		receivedEnvelope <- append([]byte(nil), payload...)
 		require.Contains(t, string(payload), `"type":"response.create"`)
 		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_text.delta","delta":"hi"}`)))
 		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`)))
@@ -85,11 +132,36 @@ func TestDoResponsesWebsocketRequestBridgesFramesToSSE(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
 	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
-	resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+	resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true,"metadata":{"large":9007199254740993}}`))
 	require.NoError(t, err)
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.True(t, strings.Contains(string(body), "data: {\"type\":\"response.completed\""))
+	require.Contains(t, string(<-receivedEnvelope), `9007199254740993`)
+}
+
+func TestDoResponsesWebsocketRequestBridgesLargeFrame(t *testing.T) {
+	largeOutput := strings.Repeat("x", 64<<10)
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		_, _, err = conn.ReadMessage()
+		require.NoError(t, err)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","output":"`+largeOutput+`"}`)))
+	}))
+	defer srv.Close()
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+	resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), largeOutput)
 }
 
 func TestDoResponsesWebsocketRequestStopsOnTerminalEvents(t *testing.T) {
@@ -187,6 +259,38 @@ func TestResponsesWebsocketCancellationBeforeFirstFrame(t *testing.T) {
 	case <-closed:
 	case <-time.After(5 * time.Second):
 		t.Fatal("canceled request did not close the websocket")
+	}
+}
+
+func TestResponsesWebsocketFirstFrameTimeoutIsBounded(t *testing.T) {
+	previousTimeout := cpaResponsesWebsocketFirstFrameTimeout
+	cpaResponsesWebsocketFirstFrameTimeout = 25 * time.Millisecond
+	defer func() { cpaResponsesWebsocketFirstFrameTimeout = previousTimeout }()
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	accepted := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		_, _, err = conn.ReadMessage()
+		require.NoError(t, err)
+		close(accepted)
+		// Keep the peer silent. The client-side first-frame deadline must
+		// terminate the request instead of waiting forever.
+		<-time.After(250 * time.Millisecond)
+	}))
+	defer srv.Close()
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+	started := time.Now()
+	_, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+	require.Error(t, err)
+	require.Less(t, time.Since(started), 200*time.Millisecond)
+	select {
+	case <-accepted:
+	case <-time.After(time.Second):
+		t.Fatal("websocket request was not accepted")
 	}
 }
 
@@ -307,9 +411,10 @@ func TestResponsesWebsocketMethodNotAllowedFallsBackWithSamePayload(t *testing.T
 	require.Equal(t, payload, <-httpPayload)
 }
 
-func TestDoResponsesWebsocketRequestRejectsErrorBeforeOutput(t *testing.T) {
+func TestDoResponsesWebsocketRequestForwardsFirstProtocolErrorWithoutReplay(t *testing.T) {
 	for _, eventType := range []string{"error", "response.error"} {
 		t.Run(eventType, func(t *testing.T) {
+			var envelopes int
 			upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/v1/ws" {
@@ -321,15 +426,23 @@ func TestDoResponsesWebsocketRequestRejectsErrorBeforeOutput(t *testing.T) {
 				defer conn.Close()
 				_, _, err = conn.ReadMessage()
 				require.NoError(t, err)
-				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+eventType+`","error":{"message":"bad request"}}`)))
+				envelopes++
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+eventType+`","error":{"code":"invalid_prompt","message":"bad request"}}`)))
 			}))
 			defer srv.Close()
 			gin.SetMode(gin.TestMode)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
 			info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
-			_, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
-			require.Error(t, err)
+			resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			body, readErr := io.ReadAll(resp.Body)
+			require.Error(t, readErr)
+			require.Equal(t, "responses websocket upstream protocol error", readErr.Error())
+			require.Contains(t, string(body), `"code":"invalid_prompt"`)
+			require.Contains(t, string(body), `"message":"bad request"`)
+			require.Equal(t, 1, envelopes)
 		})
 	}
 }
@@ -350,6 +463,7 @@ func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T
 				_, _, err = conn.ReadMessage()
 				require.NoError(t, err)
 				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created"}`)))
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.in_progress"}`)))
 				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+eventType+`","error":{"message":"upstream failed"}}`)))
 				// Keep the peer open until the client observes the protocol error and
 				// closes the stream. This catches read loops that only stop on EOF.
@@ -374,9 +488,11 @@ func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T
 			}()
 			select {
 			case <-readDone:
-				require.NoError(t, readErr)
+				require.EqualError(t, readErr, "responses websocket upstream protocol error")
 				require.Contains(t, string(body), `"type":"response.created"`)
+				require.Contains(t, string(body), `"type":"response.in_progress"`)
 				require.Contains(t, string(body), `"type":"`+eventType+`"`)
+				require.Contains(t, string(body), `"message":"upstream failed"`)
 			case <-time.After(5 * time.Second):
 				t.Fatal("protocol error after output left the SSE pipe blocked")
 			}
@@ -387,6 +503,29 @@ func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T
 			}
 		})
 	}
+}
+
+func TestDoResponsesWebsocketRequestReportsAbruptDisconnectAfterFirstFrame(t *testing.T) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		_, _, err = conn.ReadMessage()
+		require.NoError(t, err)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created"}`)))
+		require.NoError(t, conn.UnderlyingConn().Close())
+	}))
+	defer srv.Close()
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
+	resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, readErr := io.ReadAll(resp.Body)
+	require.EqualError(t, readErr, "responses websocket stream read failed")
+	require.Contains(t, string(body), `"type":"response.created"`)
 }
 
 func TestResponsesWebsocketPoolReusesStableSessionAndPreviousResponse(t *testing.T) {
@@ -637,10 +776,120 @@ func TestResponsesWebsocketPoolSerialLease(t *testing.T) {
 	require.Equal(t, 1, dialCount)
 }
 
-func TestResponsesWebsocketPoolRebuildsClosedReusedConnection(t *testing.T) {
+func TestResponsesWebsocketPoolReusesIdleSessionWithoutBlocking(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	releaseServer := make(chan struct{})
+	serverReady := make(chan struct{})
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		close(serverReady)
+		<-releaseServer
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	conn, _, err := coderwebsocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	require.NoError(t, err)
+	<-serverReady
+
+	p := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKey{Endpoint: "idle", AuthHash: "hash", Model: "model"})
+	now := time.Now()
+	entry := &cpaResponsesWebsocketConn{pool: p, conn: conn, sessionHint: "session-a", responseIDs: make(map[string]struct{}), createdAt: now, lastUsedAt: now.Add(-cpaResponsesWebsocketIdleTimeout / 2)}
+	p.connections[entry] = struct{}{}
+	p.sessions[entry.sessionHint] = entry
+
+	type acquireResult struct {
+		lease *cpaResponsesWebsocketLease
+		err   error
+	}
+	result := make(chan acquireResult, 1)
+	go func() {
+		lease, acquireErr := p.acquire(ctx, "session-a", "", func() (*cpaResponsesWebsocketConn, error) {
+			return &cpaResponsesWebsocketConn{responseIDs: make(map[string]struct{})}, nil
+		})
+		result <- acquireResult{lease: lease, err: acquireErr}
+	}()
+
+	var got acquireResult
+	timely := false
+	select {
+	case got = <-result:
+		timely = true
+	case <-time.After(100 * time.Millisecond):
+		_ = conn.CloseNow()
+		close(releaseServer)
+		got = <-result
+	}
+	if timely {
+		close(releaseServer)
+	}
+	require.NoError(t, got.err)
+	require.True(t, timely, "idle session acquisition must not wait for a pong without a reader")
+	require.Same(t, entry, got.lease.entry, "an unexpired idle session should preserve websocket affinity")
+	got.lease.markBroken()
+}
+
+func TestResponsesWebsocketPoolCancellationDoesNotWaitForCloseHandshake(t *testing.T) {
+	resetCPAResponsesWebsocketPools()
+	defer resetCPAResponsesWebsocketPools()
+	releaseServer := make(chan struct{})
+	serverReady := make(chan struct{})
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		close(serverReady)
+		<-releaseServer
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	conn, _, err := coderwebsocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	require.NoError(t, err)
+	<-serverReady
+
+	p := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKey{Endpoint: "cancel", AuthHash: "hash", Model: "model"})
+	now := time.Now()
+	entry := &cpaResponsesWebsocketConn{pool: p, conn: conn, sessionHint: "session-a", responseIDs: make(map[string]struct{}), createdAt: now, lastUsedAt: now, inUse: true}
+	p.connections[entry] = struct{}{}
+	p.sessions[entry.sessionHint] = entry
+	lease := &cpaResponsesWebsocketLease{entry: entry, pool: p}
+	done := make(chan struct{})
+	go func() {
+		lease.markBroken()
+		close(done)
+	}()
+
+	timely := false
+	select {
+	case <-done:
+		timely = true
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseServer)
+	if !timely {
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("pool cancellation remained blocked after the peer disconnected")
+		}
+	}
+	require.True(t, timely, "pool cancellation must not wait for the websocket close handshake")
+}
+
+func TestResponsesWebsocketDoesNotReplayAfterEnvelopeWrite(t *testing.T) {
 	resetCPAResponsesWebsocketPools()
 	defer resetCPAResponsesWebsocketPools()
 	var connections int
+	var envelopes int
+	var httpRequests int
 	var mu sync.Mutex
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -648,22 +897,29 @@ func TestResponsesWebsocketPoolRebuildsClosedReusedConnection(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
+		if !websocket.IsWebSocketUpgrade(r) {
+			mu.Lock()
+			httpRequests++
+			mu.Unlock()
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		require.NoError(t, err)
 		mu.Lock()
 		connections++
-		connectionNumber := connections
 		mu.Unlock()
 		defer conn.Close()
 		_, _, err = conn.ReadMessage()
 		if err != nil {
 			return
 		}
-		id := fmt.Sprintf("resp-%d", connectionNumber)
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created","response":{"id":"`+id+`"}}`))
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"`+id+`"}}`))
-		// The first socket is deliberately closed after a healthy turn. The
-		// next request must evict it and create one replacement before output.
+		mu.Lock()
+		envelopes++
+		mu.Unlock()
+		// Deliberately close before sending a first frame. The request was
+		// accepted by the peer, so the client must not replay it over HTTP or
+		// another websocket.
 	}))
 	defer srv.Close()
 	makeRequest := func() {
@@ -671,15 +927,15 @@ func TestResponsesWebsocketPoolRebuildsClosedReusedConnection(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
 		c.Request.Header.Set("X-Codex-Session-Id", "session-a")
 		info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeResponses, IsStream: true, RequestURLPath: "/v1/responses", ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"}}
-		resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		_, err = io.ReadAll(resp.Body)
-		require.NoError(t, err)
+		info.ChannelSetting.UpstreamTransport = dto.UpstreamTransportWebsocket
+		adaptor := &Adaptor{ChannelType: constant.ChannelTypeOpenAI}
+		_, err := adaptor.DoRequest(c, info, strings.NewReader(`{"model":"gpt-5","stream":true}`))
+		require.Error(t, err)
 	}
 	makeRequest()
-	makeRequest()
 	mu.Lock()
-	require.Equal(t, 2, connections)
+	require.Equal(t, 1, connections)
+	require.Equal(t, 1, envelopes)
+	require.Zero(t, httpRequests, "a sent websocket envelope must not be replayed over HTTP")
 	mu.Unlock()
 }
