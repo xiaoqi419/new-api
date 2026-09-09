@@ -73,6 +73,17 @@ func SetRelayRouter(router *gin.Engine) {
 	relayV1Router.Use(middleware.ModelRequestRateLimit())
 	relayV1Router.Use(middleware.ConcurrencyLimit())
 	{
+		wsResponsesRouter := router.Group("/v1")
+		wsResponsesRouter.Use(middleware.RouteTag("relay"))
+		wsResponsesRouter.Use(middleware.SystemPerformanceCheck())
+		wsResponsesRouter.Use(middleware.TokenAuth())
+		wsResponsesRouter.GET("/responses", func(c *gin.Context) {
+			controller.ResponsesWebSocket(c, router)
+		})
+		wsResponsesRouter.GET("/openai/responses", func(c *gin.Context) {
+			controller.ResponsesWebSocket(c, router)
+		})
+
 		// WebSocket 路由（统一到 Relay）
 		wsRouter := relayV1Router.Group("")
 		wsRouter.Use(middleware.Distribute())

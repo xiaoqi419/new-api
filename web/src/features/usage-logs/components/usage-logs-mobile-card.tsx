@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
-import { formatTimestampToDate } from '@/lib/format'
+import { formatTimestampToDate, formatTokens } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { LOG_TYPE_ENUM } from '../constants'
@@ -191,9 +191,10 @@ function MobileTokensField({ log }: { log: UsageLog }) {
 
   if (!isDisplayableLogType(log.type)) return null
 
-  const promptTokens = log.prompt_tokens || 0
-  const completionTokens = log.completion_tokens || 0
-  if (promptTokens === 0 && completionTokens === 0) {
+  const inputTokens = log.input_tokens ?? log.prompt_tokens
+  const outputTokens = log.completion_tokens
+  const totalTokens = inputTokens + outputTokens
+  if (totalTokens === 0) {
     return (
       <div className='bg-muted/20 min-w-0 rounded-md px-2 py-1.5'>
         <span className='text-muted-foreground text-xs'>-</span>
@@ -202,30 +203,46 @@ function MobileTokensField({ log }: { log: UsageLog }) {
   }
 
   const other = parseLogOther(log.other)
-  const cacheReadTokens = other?.cache_tokens || 0
+  const cacheReadTokens = log.cache_read_tokens ?? other?.cache_tokens ?? 0
   const cacheWrite5m = other?.cache_creation_tokens_5m || 0
   const cacheWrite1h = other?.cache_creation_tokens_1h || 0
   const hasSplitCache = cacheWrite5m > 0 || cacheWrite1h > 0
-  const cacheWriteTokens = hasSplitCache
+  const legacyCacheWriteTokens = hasSplitCache
     ? cacheWrite5m + cacheWrite1h
-    : other?.cache_creation_tokens || 0
-  const showCache = cacheReadTokens > 0 || cacheWriteTokens > 0
+    : (other?.cache_creation_tokens ?? 0)
+  const cacheWriteTokens = log.cache_write_tokens ?? legacyCacheWriteTokens
+  const cacheRate =
+    inputTokens > 0 && cacheReadTokens > 0
+      ? `${Math.min(100, (cacheReadTokens / inputTokens) * 100)
+          .toFixed(1)
+          .replace(/\.0$/, '')}%`
+      : null
+  const showCache = Boolean(cacheRate) || cacheWriteTokens > 0
 
   return (
     <div className='bg-muted/20 min-w-0 rounded-md px-2 py-1.5'>
       <div className='flex flex-col gap-0.5'>
-        <span className='font-mono text-xs font-medium tabular-nums'>
-          {promptTokens.toLocaleString()} / {completionTokens.toLocaleString()}
-        </span>
+        <div className='flex flex-wrap items-center gap-x-1.5 font-mono text-xs font-medium tabular-nums'>
+          <span>
+            {t('Input')} {formatTokens(inputTokens)}
+          </span>
+          <span>
+            {t('Output')} {formatTokens(outputTokens)}
+          </span>
+          <span>
+            {t('Total')} {formatTokens(totalTokens)}
+          </span>
+        </div>
         {showCache ? (
           <div className='text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-none'>
-            {cacheReadTokens > 0 && (
+            {cacheRate && (
               <span>
-                {t('Cache')}↓ {cacheReadTokens.toLocaleString()}
+                {t('Cache')} {formatTokens(cacheReadTokens)} /{' '}
+                {formatTokens(inputTokens)} ({cacheRate})
               </span>
             )}
             {cacheWriteTokens > 0 && (
-              <span>↑ {cacheWriteTokens.toLocaleString()}</span>
+              <span>↑ {formatTokens(cacheWriteTokens)}</span>
             )}
           </div>
         ) : (

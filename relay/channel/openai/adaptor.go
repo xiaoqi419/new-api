@@ -621,6 +621,31 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
+	var responsesPayload []byte
+	responsesWarmup := false
+	if info.RelayMode == relayconstant.RelayModeResponses {
+		var readErr error
+		if requestBody != nil {
+			responsesPayload, readErr = io.ReadAll(requestBody)
+		}
+		if readErr != nil {
+			return nil, fmt.Errorf("read responses request body: %w", readErr)
+		}
+		requestBody = bytes.NewReader(responsesPayload)
+		var finalRequest struct {
+			Generate *bool `json:"generate"`
+		}
+		responsesWarmup = common.Unmarshal(responsesPayload, &finalRequest) == nil && finalRequest.Generate != nil && !*finalRequest.Generate
+		usesWebsocket := info.IsStream && strings.EqualFold(strings.TrimSpace(info.ChannelSetting.UpstreamTransport), dto.UpstreamTransportWebsocket)
+		if responsesWarmup && !usesWebsocket {
+			return nil, types.NewErrorWithStatusCode(
+				fmt.Errorf("generate:false requires a streaming Responses websocket upstream"),
+				types.ErrorCodeInvalidRequest,
+				http.StatusBadRequest,
+				types.ErrOptionWithSkipRetry(),
+			)
+		}
+	}
 	if info.RelayMode == relayconstant.RelayModeAudioTranscription ||
 		info.RelayMode == relayconstant.RelayModeAudioTranslation ||
 		(info.RelayMode == relayconstant.RelayModeImagesEdits && !isJSONRequest(c)) {
@@ -628,15 +653,7 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 	} else if info.RelayMode == relayconstant.RelayModeRealtime {
 		return channel.DoWssRequest(a, c, info, requestBody)
 	} else if info.RelayMode == relayconstant.RelayModeResponses && info.IsStream && strings.EqualFold(strings.TrimSpace(info.ChannelSetting.UpstreamTransport), dto.UpstreamTransportWebsocket) {
-		var payload []byte
-		var readErr error
-		if requestBody != nil {
-			payload, readErr = io.ReadAll(requestBody)
-		}
-		if readErr != nil {
-			return nil, fmt.Errorf("read responses websocket request body: %w", readErr)
-		}
-		resp, wsErr := doResponsesWebsocketRequest(c, info, payload)
+		resp, wsErr := doResponsesWebsocketRequest(c, info, responsesPayload)
 		if wsErr == nil {
 			logger.LogInfo(c, fmt.Sprintf("responses upstream transport: websocket channel=%d", info.GetChannelID()))
 			return resp, nil
@@ -645,13 +662,28 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 		if info != nil {
 			channelID = info.GetChannelID()
 		}
+		if responsesWarmup {
+			return nil, types.NewErrorWithStatusCode(
+				fmt.Errorf("responses websocket warmup failed without HTTP fallback: %w", wsErr),
+				types.ErrorCodeDoRequestFailed,
+				http.StatusInternalServerError,
+				types.ErrOptionWithSkipRetry(),
+			)
+		}
 		var wsFailure *cpaResponsesWebsocketError
 		if errors.As(wsErr, &wsFailure) {
+			if wsFailure.requestSent {
+				// The envelope reached CPA, so execution may already be in flight.
+				// Replaying over HTTP would duplicate provider work and billing when
+				// the first websocket frame was lost.
+				logger.LogWarn(c, fmt.Sprintf("responses websocket request outcome unknown: channel=%d reused=%t rebuilt=%t fallback=false reason=%s", channelID, wsFailure.reused, wsFailure.rebuilt, wsFailure.reason))
+				return nil, wsErr
+			}
 			logger.LogWarn(c, fmt.Sprintf("responses websocket unavailable, falling back to HTTP: channel=%d reused=%t rebuilt=%t fallback=true reason=%s", channelID, wsFailure.reused, wsFailure.rebuilt, wsFailure.reason))
 		} else {
 			logger.LogWarn(c, fmt.Sprintf("responses websocket unavailable, falling back to HTTP: channel=%d reused=false rebuilt=false fallback=true reason=setup failure", channelID))
 		}
-		return channel.DoApiRequest(a, c, info, bytes.NewReader(payload))
+		return channel.DoApiRequest(a, c, info, bytes.NewReader(responsesPayload))
 	} else {
 		return channel.DoApiRequest(a, c, info, requestBody)
 	}
