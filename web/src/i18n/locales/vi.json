@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "Dữ liệu dự báo tỷ lệ cache chưa khả dụng cho endpoint này.",
     "Cache prediction details": "Chi tiết dự báo tỷ lệ cache",
     "Cache pricing": "Giá bộ nhớ đệm",
+    "Cache Rate": "Tỷ lệ bộ nhớ đệm",
     "Cache ratio": "Tỷ lệ bộ nhớ đệm",
     "Cache Read": "Đọc bộ nhớ đệm",
     "Cache read price": "Giá đọc cache",

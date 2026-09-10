@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "このエンドポイントではキャッシュ率予測データを利用できません。",
     "Cache prediction details": "キャッシュ率予測の詳細",
     "Cache pricing": "キャッシュ料金",
+    "Cache Rate": "キャッシュ率",
     "Cache ratio": "キャッシュ倍率",
     "Cache Read": "キャッシュ読み取り",
     "Cache read price": "キャッシュ読み取り価格",

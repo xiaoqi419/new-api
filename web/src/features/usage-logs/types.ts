@@ -429,6 +429,19 @@ export interface GetLogStatsResponse {
   data?: LogStatistics
 }
 
+export interface DailyUsageSummary {
+  input_tokens: number
+  total_tokens: number
+  cache_read_tokens: number
+  cache_rate: number | null
+}
+
+export interface DailyUsageResponse {
+  success: boolean
+  message?: string
+  data?: DailyUsageSummary
+}
+
 // ============================================================================
 // Drawing Log Types
 // ============================================================================

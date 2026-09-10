@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "此端點暫無快取率預測資料。",
     "Cache prediction details": "快取率預測詳情",
     "Cache pricing": "緩存定價",
+    "Cache Rate": "快取命中率",
     "Cache ratio": "緩存倍率",
     "Cache Read": "緩存讀取",
     "Cache read price": "緩存讀取價格",
