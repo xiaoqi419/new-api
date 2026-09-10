@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "此接口暂不提供缓存率预测数据。",
     "Cache prediction details": "缓存率预测详情",
     "Cache pricing": "缓存定价",
+    "Cache Rate": "缓存命中率",
     "Cache ratio": "缓存倍率",
     "Cache Read": "缓存读取",
     "Cache read price": "缓存读取价格",

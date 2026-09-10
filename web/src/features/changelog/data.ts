@@ -29,6 +29,19 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260910-daily-usage-summary',
+    date: '2026-09-10',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '用量日志页新增当前登录用户的当日总 Token 与缓存命中率，按浏览器本地自然日统计，切换日志筛选条件不会改变汇总口径。',
+        ],
+      },
+    ],
+  },
+
+  {
     version: '20260910-61ed63cab',
     date: '2026-09-10',
     changes: [

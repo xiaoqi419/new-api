@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "Les données de prévision du cache ne sont pas disponibles pour ce point de terminaison.",
     "Cache prediction details": "Détails de la prévision du cache",
     "Cache pricing": "Tarification du cache",
+    "Cache Rate": "Taux de cache",
     "Cache ratio": "Ratio de cache",
     "Cache Read": "Lecture du cache",
     "Cache read price": "Prix de lecture du cache",

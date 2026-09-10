@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { getLogStats, getUserLogStats } from '../api'
 import { DEFAULT_LOG_STATS } from '../constants'
 import { buildApiParams } from '../lib/utils'
+import { DailyUsageStats } from './daily-usage-stats'
 import { useLogsViewScope, useUsageLogsContext } from './usage-logs-provider'
 
 const route = getRouteApi('/_authenticated/usage-logs/$section')
@@ -102,6 +103,7 @@ export function CommonLogsStats() {
         value={stats?.tpm || 0}
         accent='bg-neutral/70'
       />
+      <DailyUsageStats />
     </div>
   )
 }

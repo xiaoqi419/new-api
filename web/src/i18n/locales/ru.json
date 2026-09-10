@@ -855,6 +855,7 @@
     "Cache prediction data is unavailable for this endpoint.": "Данные прогноза кэша недоступны для этой конечной точки.",
     "Cache prediction details": "Сведения о прогнозе кэша",
     "Cache pricing": "Цены кэша",
+    "Cache Rate": "Доля кэша",
     "Cache ratio": "Коэффициент кэша",
     "Cache Read": "Чтение кэша",
     "Cache read price": "Цена чтения кэша",

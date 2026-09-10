@@ -1,11 +1,13 @@
 package openai
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -21,6 +23,23 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+type synchronizedBuffer struct {
+	mu sync.Mutex
+	bytes.Buffer
+}
+
+func (b *synchronizedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.Write(p)
+}
+
+func (b *synchronizedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.String()
+}
 
 func TestCPAResponsesWebsocketErrorRedactsUnderlyingDetails(t *testing.T) {
 	err := newCPAResponsesWebsocketError("dial failed", true, true, errors.New("https://cpa.example/v1/responses?api_key=secret"))
@@ -213,6 +232,145 @@ func TestDoResponsesWebsocketRequestStopsOnTerminalEvents(t *testing.T) {
 			case <-time.After(2 * time.Second):
 				t.Fatal("terminal response event did not close the websocket")
 			}
+		})
+	}
+}
+
+func TestDoResponsesWebsocketRequestLogsTerminalTimingStages(t *testing.T) {
+	previousWriter := gin.DefaultWriter
+	var logs synchronizedBuffer
+	gin.DefaultWriter = &logs
+	t.Cleanup(func() { gin.DefaultWriter = previousWriter })
+
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "timing-test-request", r.Header.Get("X-Client-Request-Id"))
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		_, _, err = conn.ReadMessage()
+		require.NoError(t, err)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created"}`)))
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_text.delta","delta":"ok"}`)))
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed"}`)))
+	}))
+	defer srv.Close()
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	c.Set(common.RequestIdKey, "timing-test-request")
+	info := &relaycommon.RelayInfo{
+		StartTime:      time.Now(),
+		RelayMode:      relayconstant.RelayModeResponses,
+		IsStream:       true,
+		RequestURLPath: "/v1/responses",
+		ChannelMeta:    &relaycommon.ChannelMeta{ChannelBaseUrl: srv.URL, ChannelType: constant.ChannelTypeOpenAI, ApiKey: "test"},
+	}
+	resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	_, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var line string
+	require.Eventually(t, func() bool {
+		for _, candidate := range strings.Split(logs.String(), "\n") {
+			if strings.Contains(candidate, "request_id=timing-test-request") {
+				line = candidate
+				return true
+			}
+		}
+		return false
+	}, time.Second, 10*time.Millisecond)
+	t.Logf("staged timing sample: %s", strings.TrimSpace(line))
+	require.Contains(t, line, "request_id=timing-test-request")
+	stages := map[string]int64{}
+	for _, field := range strings.Fields(line) {
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) != 2 || !strings.HasSuffix(parts[0], "_ms") {
+			continue
+		}
+		value, parseErr := strconv.ParseInt(parts[1], 10, 64)
+		require.NoError(t, parseErr)
+		stages[parts[0]] = value
+	}
+	for _, name := range []string{
+		"bridge_start_ms",
+		"bridge_to_lease_ms",
+		"upstream_first_event_ms",
+		"upstream_first_text_ms",
+		"upstream_terminal_ms",
+		"bridge_terminal_write_ms",
+		"cleanup_ms",
+	} {
+		value, ok := stages[name]
+		require.Truef(t, ok, "timing line is missing %s", name)
+		require.GreaterOrEqualf(t, value, int64(0), "timing stage %s must be non-negative", name)
+	}
+	require.GreaterOrEqual(t, stages["bridge_to_lease_ms"], stages["bridge_start_ms"])
+	require.GreaterOrEqual(t, stages["upstream_first_event_ms"], stages["bridge_to_lease_ms"])
+	require.GreaterOrEqual(t, stages["upstream_first_text_ms"], stages["upstream_first_event_ms"])
+	require.GreaterOrEqual(t, stages["upstream_terminal_ms"], stages["upstream_first_text_ms"])
+	require.GreaterOrEqual(t, stages["bridge_terminal_write_ms"], stages["upstream_terminal_ms"])
+	require.GreaterOrEqual(t, stages["cleanup_ms"], int64(0))
+}
+
+func TestDoResponsesWebsocketRequestKeepsRelayRequestIDAfterHeaderOverrides(t *testing.T) {
+	for _, testCase := range []struct {
+		name            string
+		headerOverrides map[string]interface{}
+		incomingID      string
+	}{
+		{
+			name:            "explicit override",
+			headerOverrides: map[string]interface{}{"X-Client-Request-Id": "channel-override"},
+		},
+		{
+			name:            "wildcard passthrough",
+			headerOverrides: map[string]interface{}{"*": ""},
+			incomingID:      "incoming-request-id",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			resetCPAResponsesWebsocketPools()
+			defer resetCPAResponsesWebsocketPools()
+
+			receivedHeader := make(chan string, 1)
+			upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedHeader <- r.Header.Get("X-Client-Request-Id")
+				conn, err := upgrader.Upgrade(w, r, nil)
+				require.NoError(t, err)
+				defer conn.Close()
+				_, _, err = conn.ReadMessage()
+				require.NoError(t, err)
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed"}`)))
+			}))
+			defer srv.Close()
+
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+			if testCase.incomingID != "" {
+				c.Request.Header.Set("X-Client-Request-Id", testCase.incomingID)
+			}
+			c.Set(common.RequestIdKey, "relay-request-id")
+			info := &relaycommon.RelayInfo{
+				RelayMode:      relayconstant.RelayModeResponses,
+				IsStream:       true,
+				RequestURLPath: "/v1/responses",
+				ChannelMeta: &relaycommon.ChannelMeta{
+					ChannelBaseUrl:  srv.URL,
+					ChannelType:     constant.ChannelTypeOpenAI,
+					ApiKey:          "test",
+					HeadersOverride: testCase.headerOverrides,
+				},
+			}
+			resp, err := doResponsesWebsocketRequest(c, info, []byte(`{"model":"gpt-5","stream":true}`))
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			_, err = io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Equal(t, "relay-request-id", <-receivedHeader)
 		})
 	}
 }
@@ -411,7 +569,7 @@ func TestResponsesWebsocketMethodNotAllowedFallsBackWithSamePayload(t *testing.T
 	require.Equal(t, payload, <-httpPayload)
 }
 
-func TestDoResponsesWebsocketRequestForwardsFirstProtocolErrorWithoutReplay(t *testing.T) {
+func TestDoResponsesWebsocketRequestForwardsFirstProviderErrorWithoutReplay(t *testing.T) {
 	for _, eventType := range []string{"error", "response.error"} {
 		t.Run(eventType, func(t *testing.T) {
 			var envelopes int
@@ -427,7 +585,7 @@ func TestDoResponsesWebsocketRequestForwardsFirstProtocolErrorWithoutReplay(t *t
 				_, _, err = conn.ReadMessage()
 				require.NoError(t, err)
 				envelopes++
-				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+eventType+`","error":{"code":"invalid_prompt","message":"bad request"}}`)))
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+eventType+`","status":404,"error":{"code":"model_not_found","message":"bad request"}}`)))
 			}))
 			defer srv.Close()
 			gin.SetMode(gin.TestMode)
@@ -438,16 +596,16 @@ func TestDoResponsesWebsocketRequestForwardsFirstProtocolErrorWithoutReplay(t *t
 			require.NoError(t, err)
 			defer resp.Body.Close()
 			body, readErr := io.ReadAll(resp.Body)
-			require.Error(t, readErr)
-			require.Equal(t, "responses websocket upstream protocol error", readErr.Error())
-			require.Contains(t, string(body), `"code":"invalid_prompt"`)
+			require.NoError(t, readErr)
+			require.Contains(t, string(body), `"type":"`+eventType+`"`)
+			require.Contains(t, string(body), `"code":"model_not_found"`)
 			require.Contains(t, string(body), `"message":"bad request"`)
 			require.Equal(t, 1, envelopes)
 		})
 	}
 }
 
-func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T) {
+func TestDoResponsesWebsocketRequestStopsOnProviderErrorAfterOutput(t *testing.T) {
 	for _, eventType := range []string{"error", "response.error"} {
 		t.Run(eventType, func(t *testing.T) {
 			closed := make(chan struct{})
@@ -488,7 +646,7 @@ func TestDoResponsesWebsocketRequestStopsOnProtocolErrorAfterOutput(t *testing.T
 			}()
 			select {
 			case <-readDone:
-				require.EqualError(t, readErr, "responses websocket upstream protocol error")
+				require.NoError(t, readErr)
 				require.Contains(t, string(body), `"type":"response.created"`)
 				require.Contains(t, string(body), `"type":"response.in_progress"`)
 				require.Contains(t, string(body), `"type":"`+eventType+`"`)

@@ -24,6 +24,7 @@ import type {
   GetLogsResponse,
   GetLogStatsParams,
   GetLogStatsResponse,
+  DailyUsageResponse,
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
   UserInfo,
@@ -85,6 +86,18 @@ export const getLogStats = (params: GetLogStatsParams = {}) =>
 export const getUserLogStats = (
   params: Omit<GetLogStatsParams, 'username' | 'channel'> = {}
 ) => fetchLogStats('/api/log', params, false)
+
+export async function getDailyUsage(params: {
+  start_timestamp: number
+  end_timestamp: number
+}): Promise<DailyUsageResponse> {
+  const query = new URLSearchParams({
+    start_timestamp: String(params.start_timestamp),
+    end_timestamp: String(params.end_timestamp),
+  })
+  const res = await api.get(`/api/log/self/daily_usage?${query.toString()}`)
+  return res.data
+}
 
 export async function getUserInfo(
   userId: number

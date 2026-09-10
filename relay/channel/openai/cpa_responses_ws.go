@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -90,12 +91,24 @@ func isResponsesWebsocketTerminalEvent(eventType string) bool {
 	}
 }
 
-func isResponsesWebsocketProtocolError(eventType string) bool {
+func isResponsesWebsocketErrorEvent(eventType string) bool {
 	// CPA/Responses implementations use both the generic `error` event and
-	// the Responses-specific `response.error` name. Treat either as terminal
-	// so a peer that keeps the socket open after reporting an error cannot
-	// leave the SSE pipe blocked indefinitely.
+	// the Responses-specific `response.error` name. Treat either as a
+	// provider-error terminal event so a peer that keeps the socket open after
+	// reporting an error cannot leave the SSE pipe blocked indefinitely.
 	return eventType == "error" || eventType == "response.error"
+}
+
+// isResponsesWebsocketTextEvent reports whether an upstream event carries
+// assistant text. Timing evidence must never treat a bookkeeping event such as
+// response.created or response.in_progress as the first real text.
+func isResponsesWebsocketTextEvent(eventType string) bool {
+	switch eventType {
+	case "response.output_text.delta", "response.output_text.done":
+		return true
+	default:
+		return false
+	}
 }
 
 func responsesWebsocketDialer(rawProxyURL string) (*websocket.DialOptions, error) {
@@ -143,37 +156,77 @@ func responsesWebsocketReadDeadline(ctx context.Context, timeout time.Duration) 
 // are marked non-replayable because the provider may have received the bytes.
 func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, payload []byte) (*http.Response, error) {
 	ctx := c.Request.Context()
+	requestID := c.GetString(common.RequestIdKey)
+	if requestID == "" && info != nil {
+		requestID = info.RequestId
+	}
+
+	// Staged timing evidence for one websocket attempt. All stages are
+	// measured from bridge start so a slow response can be attributed to
+	// lease acquisition, first upstream event, first real text, upstream
+	// terminal or bridge pipe writes instead of one opaque duration.
+	timingStart := time.Now()
+	stageMs := func() int64 { return time.Since(timingStart).Milliseconds() }
+	bridgeToLeaseMs, firstEventMs, firstTextMs, terminalMs, terminalWriteMs := int64(-1), int64(-1), int64(-1), int64(-1), int64(-1)
+	var timingOnce sync.Once
+	logTiming := func(reason string, reused bool) {
+		timingOnce.Do(func() {
+			channelID := 0
+			if info != nil {
+				channelID = info.GetChannelID()
+			}
+			safeRequestID := strings.NewReplacer("\r", "_", "\n", "_", "\t", "_", " ", "_").Replace(requestID)
+			if len(safeRequestID) > 128 {
+				safeRequestID = safeRequestID[:128]
+			}
+			if safeRequestID == "" {
+				safeRequestID = "unknown"
+			}
+			logger.LogInfo(c, fmt.Sprintf(
+				"responses websocket timing: request_id=%s reason=%s channel=%d reused=%t bridge_start_ms=0 bridge_to_lease_ms=%d upstream_first_event_ms=%d upstream_first_text_ms=%d upstream_terminal_ms=%d bridge_terminal_write_ms=%d cleanup_ms=%d",
+				safeRequestID, reason, channelID, reused, bridgeToLeaseMs, firstEventMs, firstTextMs, terminalMs, terminalWriteMs, stageMs(),
+			))
+		})
+	}
 	adaptor := &Adaptor{}
 	httpURL, err := adaptor.GetRequestURL(info)
 	if err != nil {
+		logTiming("request_url_failed", false)
 		return nil, err
 	}
 	candidates, err := responsesWebsocketURLCandidates(httpURL)
 	if err != nil {
+		logTiming("websocket_url_failed", false)
 		return nil, err
 	}
 	headers := http.Header{}
 	if err := adaptor.SetupRequestHeader(c, &headers, info); err != nil {
+		logTiming("header_setup_failed", false)
 		return nil, err
 	}
 	headers.Set("Accept", "application/json")
 	headers.Set("Content-Type", "application/json")
-	if requestID := c.GetString(common.RequestIdKey); requestID != "" {
-		headers.Set("X-Client-Request-Id", requestID)
-	}
 	override, err := channel.ProcessHeaderOverrideForWebsocket(info, c)
 	if err != nil {
+		logTiming("header_override_failed", false)
 		return nil, err
 	}
 	for k, v := range override {
 		headers.Set(k, v)
 	}
+	// Keep the relay request ID authoritative after channel overrides and
+	// passthrough rules so CPA records remain joinable with New API logs.
+	if requestID != "" {
+		headers.Set("X-Client-Request-Id", requestID)
+	}
 	envelope, err := buildResponsesWebsocketRequestEnvelope(payload)
 	if err != nil {
+		logTiming("envelope_build_failed", false)
 		return nil, err
 	}
 	model, previousResponseID, err := responsesWebsocketRequestMetadata(payload)
 	if err != nil {
+		logTiming("request_metadata_failed", false)
 		return nil, err
 	}
 	if model == "" {
@@ -184,6 +237,7 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 	pool := cpaResponsesWebsocketPoolFor(cpaResponsesWebsocketPoolKeyFor(headers, model, httpURL, cpaResponsesWebsocketPoolIdentityFor(info)))
 	dialer, err := responsesWebsocketDialer(info.ChannelSetting.Proxy)
 	if err != nil {
+		logTiming("proxy_setup_failed", false)
 		return nil, newCPAResponsesWebsocketError("proxy setup failed", false, false, err)
 	}
 	dialer.HTTPHeader = headers
@@ -218,8 +272,10 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 	// Write returns an error. Only failures before this point may fall back.
 	currentLease, acquireErr := pool.acquire(ctx, sessionHint, previousResponseID, dial)
 	if acquireErr != nil {
+		logTiming("acquire_failed", false)
 		return nil, newCPAResponsesWebsocketError("acquire failed", false, false, acquireErr)
 	}
+	bridgeToLeaseMs = stageMs()
 	conn := currentLease.entry.conn
 	stopBeforeFirstFrame := context.AfterFunc(ctx, func() {
 		currentLease.markBroken()
@@ -228,6 +284,7 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 		stopBeforeFirstFrame()
 		wasReused := currentLease.reused
 		currentLease.markBroken()
+		logTiming("envelope_write_failed", wasReused)
 		return nil, newCPAResponsesWebsocketError("write failed", wasReused, false, err, true)
 	}
 
@@ -240,11 +297,13 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 	if readErr != nil {
 		wasReused := currentLease.reused
 		currentLease.markBroken()
+		logTiming("first_frame_read_failed", wasReused)
 		return nil, newCPAResponsesWebsocketError("read failed", wasReused, false, readErr, true)
 	}
 	if firstType != websocket.MessageText && firstType != websocket.MessageBinary {
 		wasReused := currentLease.reused
 		currentLease.markBroken()
+		logTiming("first_frame_not_text", wasReused)
 		return nil, newCPAResponsesWebsocketError("returned non-text first frame", wasReused, false, nil, true)
 	}
 	firstMsg = bytes.TrimSpace(firstMsg)
@@ -254,9 +313,18 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 	if err := common.Unmarshal(firstMsg, &firstEvent); err != nil || firstEvent.Type == "" {
 		wasReused := currentLease.reused
 		currentLease.markBroken()
+		logTiming("first_frame_invalid", wasReused)
 		return nil, newCPAResponsesWebsocketError("returned invalid first event", wasReused, false, nil, true)
 	}
-	firstProtocolError := isResponsesWebsocketProtocolError(firstEvent.Type)
+	firstEventMs = stageMs()
+	if isResponsesWebsocketTextEvent(firstEvent.Type) {
+		firstTextMs = firstEventMs
+	}
+	firstErrorEvent := isResponsesWebsocketErrorEvent(firstEvent.Type)
+	firstTerminal := isResponsesWebsocketTerminalEvent(firstEvent.Type)
+	if firstErrorEvent || firstTerminal {
+		terminalMs = firstEventMs
+	}
 
 	pr, pw := io.Pipe()
 	streamReused := currentLease.reused
@@ -264,7 +332,7 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 		currentLease.markBroken()
 		_ = pw.CloseWithError(ctx.Err())
 	})
-	finish := func(healthy bool, responseID string, cause error) {
+	finish := func(healthy bool, responseID string, reason string, cause error) {
 		stopCancel()
 		if healthy {
 			currentLease.releaseHealthy(responseID)
@@ -274,13 +342,18 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 			if info != nil {
 				channelID = info.GetChannelID()
 			}
-			logger.LogWarn(c, fmt.Sprintf("responses websocket stream failed: channel=%d reused=%t rebuilt=false fallback=false reason=%v", channelID, streamReused, cause))
+			failureReason := reason
+			if cause != nil {
+				failureReason = cause.Error()
+			}
+			logger.LogWarn(c, fmt.Sprintf("responses websocket stream failed: channel=%d reused=%t rebuilt=false fallback=false reason=%s", channelID, streamReused, failureReason))
 		}
 		if cause != nil {
 			_ = pw.CloseWithError(cause)
 		} else {
 			_ = pw.Close()
 		}
+		logTiming(reason, streamReused)
 	}
 
 	go func() {
@@ -294,18 +367,23 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 			return err
 		}
 		if err := writeFrame(firstMsg); err != nil {
-			finish(false, "", newCPAResponsesWebsocketError("stream write failed", streamReused, false, nil, true))
+			finish(false, "", "downstream_write_failed", newCPAResponsesWebsocketError("stream write failed", streamReused, false, nil, true))
 			return
 		}
-		if firstProtocolError {
-			finish(false, "", newCPAResponsesWebsocketError("upstream protocol error", streamReused, false, nil, true))
+		if firstErrorEvent {
+			terminalWriteMs = stageMs()
+			// A valid Responses error event is provider data, not a broken
+			// websocket. It has already been forwarded as SSE, so close the
+			// bridge cleanly and let the client consume the actual error payload.
+			finish(false, "", "upstream_error_event", nil)
 			return
 		}
-		if isResponsesWebsocketTerminalEvent(firstEvent.Type) {
+		if firstTerminal {
+			terminalWriteMs = stageMs()
 			if !storeResponse {
 				responseID = ""
 			}
-			finish(true, responseID, nil)
+			finish(true, responseID, "healthy", nil)
 			return
 		}
 		for {
@@ -317,7 +395,7 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 			mt, msg, readErr := conn.Read(readCtx)
 			cancelRead()
 			if readErr != nil {
-				finish(false, "", newCPAResponsesWebsocketError("stream read failed", streamReused, false, readErr, true))
+				finish(false, "", "upstream_read_failed", newCPAResponsesWebsocketError("stream read failed", streamReused, false, readErr, true))
 				return
 			}
 			if mt != websocket.MessageText && mt != websocket.MessageBinary {
@@ -326,25 +404,37 @@ func doResponsesWebsocketRequest(c *gin.Context, info *relaycommon.RelayInfo, pa
 			if id := responsesWebsocketResponseID(msg); id != "" {
 				responseID = id
 			}
-			if err := writeFrame(msg); err != nil {
-				finish(false, "", newCPAResponsesWebsocketError("stream write failed", streamReused, false, nil, true))
-				return
-			}
 			var event struct {
 				Type string `json:"type"`
 			}
-			if common.Unmarshal(msg, &event) == nil {
-				if isResponsesWebsocketProtocolError(event.Type) {
-					finish(false, "", newCPAResponsesWebsocketError("upstream protocol error", streamReused, false, nil, true))
-					return
+			_ = common.Unmarshal(msg, &event)
+			isErrorEvent := isResponsesWebsocketErrorEvent(event.Type)
+			isTerminal := isResponsesWebsocketTerminalEvent(event.Type)
+			if isTextEvent := isResponsesWebsocketTextEvent(event.Type); isTextEvent && firstTextMs < 0 {
+				firstTextMs = stageMs()
+			}
+			if isErrorEvent || isTerminal {
+				terminalMs = stageMs()
+			}
+			if err := writeFrame(msg); err != nil {
+				finish(false, "", "downstream_write_failed", newCPAResponsesWebsocketError("stream write failed", streamReused, false, nil, true))
+				return
+			}
+			if isErrorEvent {
+				terminalWriteMs = stageMs()
+				// Preserve the upstream error event in the SSE stream. Returning
+				// a synthetic transport error here hides useful provider details
+				// such as model_not_found or access failures from the caller.
+				finish(false, "", "upstream_error_event", nil)
+				return
+			}
+			if isTerminal {
+				terminalWriteMs = stageMs()
+				if !storeResponse {
+					responseID = ""
 				}
-				if isResponsesWebsocketTerminalEvent(event.Type) {
-					if !storeResponse {
-						responseID = ""
-					}
-					finish(true, responseID, nil)
-					return
-				}
+				finish(true, responseID, "healthy", nil)
+				return
 			}
 		}
 	}()

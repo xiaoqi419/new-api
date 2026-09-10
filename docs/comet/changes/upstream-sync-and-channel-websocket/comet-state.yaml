@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: upstream-sync-and-channel-websocket
 language: zh-CN
 phase: verify
-status: active
-state_version: 46
+status: await-user
+state_version: 61
 brief: brief.md
 spec_changes:
   - capability: channel-upstream-websocket
@@ -18,334 +18,593 @@ workspace:
   target_branch: main
   finish: null
 loop:
-  stage: verify-ready
-  goal_cycle: 3
+  stage: await-user
+  goal_cycle: 5
   iteration: 1
-  attempt: 4
-  retry_epoch: 3
+  attempt: 1
+  retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids:
-    - A10
-  next_action: await-verifier-result
+    - A6
+  next_action: resolve-verifier-blocker
 acceptance:
   - id: A1
     source: brief.md
-    text: A1：官方来源、目标提交、共同基线和每个纳入/排除的提交均有可复核记录；`origin/main`
-      历史可追溯且没有未解决冲突、误删二开文件或冲突标记。
-    result: pending
-    reason: null
+    text: "A1: 现有 WS/SSE、连续会话和防重复请求测试通过。"
+    result: passed
+    reason:
+      text: Existing Responses WebSocket/SSE bridge, continuous turns, and
+        duplicate-request protections remain covered by deterministic controller
+        and OpenAI relay tests; affected backend suite passed.
+      truncated: false
   - id: A2
     source: brief.md
-    text: A2：官方稳定 relay、计费、认证、数据库兼容、缓存/ETag
-      和前端修复按证据进入；现有支付、H5、低余额提醒、GMPay、视频、代理和双前端能力及测试保持。
-    result: pending
-    reason: null
+    text: "A2: 今日汇总仅当前用户，按自然日边界统计，列表筛选和其它用户数据不影响结果。"
+    result: passed
+    reason:
+      text: Daily usage is authenticated and restricted to the current user, uses
+        half-open browser-local day bounds, and backend tests cover user
+        isolation, day validation, filters, and empty results.
+      truncated: false
   - id: A3
     source: brief.md
-    text: A3：gpt-6-astra 与模型修饰符/推理力度功能在模型映射、价格、Responses/Chat/Claude
-      转换和计费中保持一致，显式零值与额度安全不回退。
-    result: pending
-    reason: null
+    text: "A3: 缓存率加权汇总正确，总 Token 不重复计算缓存，空数据和历史缺失数据可读。"
+    result: passed
+    reason:
+      text: Aggregation calculates weighted cache rate from valid canonical input
+        tokens and total usage as canonical input plus completion, avoiding
+        cached-token double counting and handling missing telemetry.
+      truncated: false
   - id: A4
     source: brief.md
-    text: A4：WS 设置保存和读取只允许空/http/websocket；默认与未开启渠道行为完全等价，前后端字段和 i18n 一致。
-    result: pending
-    reason: null
+    text: "A4: 桌面日志顶部顺序为用量、RPM、TPM、缓存率、总用量；窄屏可读，支持翻译和隐私遮罩。"
+    result: passed
+    reason:
+      text: Desktop log statistics retain Usage, RPM, TPM, Cache Rate, Total Usage
+        order with responsive presentation, i18n, and privacy masking; frontend
+        tests, typecheck, i18n sync, and build passed.
+      truncated: false
   - id: A5
     source: brief.md
-    text: A5：开启 WS 的流式 Responses 请求能完成握手、发送 `response.create`、转发事件为标准 SSE，并从
-      `response.completed` usage 进入现有结算；非流式/compact/其他端点仍走 HTTP。
-    result: pending
-    reason: null
+    text: "A5: 记录长耗时样本和分阶段证据，明确可归因与尚无法归因部分；本地修复需有回归验证，不用改变生成参数制造改善。"
+    result: passed
+    reason:
+      text: Request-correlated timing records lease, first-event, first-text,
+        upstream-terminal, terminal-pipe-write, and cleanup stages; repeated
+        deterministic timing tests passed.
+      truncated: false
   - id: A6
     source: brief.md
-    text: A6：WS 401/404/405、握手失败、协议 error、客户端取消和连接关闭均释放资源并回落 HTTP 或返回原有错误；不泄露
-      Authorization、Cookie 或完整请求体。
-    result: pending
-    reason: null
+    text: "A6: 受影响后端测试、前端类型检查/测试/构建通过；发布通过主线 PR、CI、不可变镜像，两站代码一致。"
+    result: blocked
+    reason:
+      text: All Runtime checks passed, but formal scoped commit, mainline PR/CI,
+        merge, immutable image build, deployment, and two-site consistency
+        verification remain unfinished.
+      truncated: false
   - id: A7
-    source: brief.md
-    text: A7：root 和独立 relaykit 构建、受影响 Go/前端测试、类型检查、lint、双前端构建及隔离 CPA WS
-      验证通过；未执行项和线上凭据边界如实记录。
-    result: pending
-    reason: null
-  - id: A8
-    source: brief.md
-    text: A7b：带稳定会话标识或有效 `previous_response_id` 的连续 Responses 请求复用同一 CPA
-      WebSocket；不同会话不共享连接；连接空闲超时、失效淘汰、单连接串行 lease 和客户端取消不会泄漏 goroutine、连接或管道。
-    result: pending
-    reason: null
-  - id: A9
-    source: brief.md
-    text: A7c：复用连接在首帧前失效时最多安全重建一次并保持原请求体；已向客户端输出事件后不自动重放；连接复用失败和 HTTP
-      回落原因可观察但不包含密钥或完整请求体。
-    result: pending
-    reason: null
-  - id: A10
-    source: brief.md
-    text: A8：只从合并后的精确 `origin/main` SHA 构建不可变镜像；发布前不修改数据库、Redis、国内/国际站网关。
-    result: pending
-    reason: null
-  - id: A11
     source: specs/channel-upstream-websocket/spec.md
     text: 渠道 `setting` JSON 可选字段 `upstream_transport`：空值或 `http` 表示现有 HTTP
       上游；`websocket` 只对流式 OpenAI Responses 请求生效。非流式 Responses、Responses
       compact、Chat Completions、Realtime、音频、图片、视频和其他端点继续使用现有路径。
-    result: pending
-    reason: null
-  - id: A12
+    result: passed
+    reason:
+      text: upstream_transport remains optional; empty/http preserves HTTP and
+        websocket is limited to streaming OpenAI Responses while other paths
+        retain baseline behavior.
+      truncated: false
+  - id: A8
     source: specs/channel-upstream-websocket/spec.md
     text: new-api 以渠道配置的 Base URL、Authorization 和安全的头部覆盖规则建立 `ws`/`wss`
       连接。CLIProxyAPI/CPA 的 Responses WebSocket 先升级规范的 `/v1/responses`
       路由；为兼容旧部署，再按 `/v1/responses/ws`、`/v1/ws` 顺序探测别名。`/v1/ws` 仅作为最后兼容路径，避免误选
       CPA 的通用 WebSocket relay。不把密钥或完整请求体写入日志。
-    result: pending
-    reason: null
-  - id: A13
+    result: passed
+    reason:
+      text: Bridge builds ws/wss candidates, tries canonical /v1/responses before
+        aliases, applies trusted relay request ID after overrides, and does not
+        log bodies or secrets.
+      truncated: false
+  - id: A9
     source: specs/channel-upstream-websocket/spec.md
     text: WS 连接在 new-api
       进程内按渠道上游、鉴权指纹和模型隔离。首轮请求只有在提供稳定的会话标识（例如受信任的会话/对话头）时才可绑定空闲连接；没有会话标识的首轮请求必须建立新连接，避免不同会话共享上游上下文。后续请求带有
       `previous_response_id` 时，优先复用生成该 ID 的连接；`store=false`
       的请求必须保持同一连接语义，不能仅凭全局空闲连接猜测上下文。
-    result: pending
-    reason: null
-  - id: A14
+    result: passed
+    reason:
+      text: Pool keys isolate endpoint, authentication, query, model, user, channel,
+        and proxy; session reuse, previous_response_id affinity, and store=false
+        behavior are covered.
+      truncated: false
+  - id: A10
     source: specs/channel-upstream-websocket/spec.md
     text: 每条连接同一时刻只能被一个请求
-      lease；正常终止后归还连接池，连接空闲超时、达到最大生命周期、写入/读取失败或协议错误时淘汰。借用空闲连接时执行有界的健康检查；健康检查或首帧读取失败时允许安全重建一次。请求取消会释放当前
+      lease；正常终止后归还连接池，连接空闲超时、达到最大生命周期、写入/读取失败或协议错误时淘汰。借用空闲连接时执行有界的健康检查；仅请求尚未尝试发送时允许安全重建；发送后读取失败不重放。请求取消会释放当前
       lease，所有 goroutine、管道和连接均有确定的退出路径。
-    result: pending
-    reason: null
-  - id: A15
+    result: passed
+    reason:
+      text: Leases are serial, healthy entries return, unhealthy/cancelled entries are
+        evicted, and timeout/rebuild/no-replay rules are implemented and tested.
+      truncated: false
+  - id: A11
     source: specs/channel-upstream-websocket/spec.md
     text: 把已完成的 Responses 请求包为上游要求的 `response.create` 文本事件。上游 Responses 事件按现有 relay
       SSE 语义发送给客户端，保留事件类型、JSON 内容和顺序；终止事件中的 usage 继续交给既有 Responses
       handler、预扣、结算和日志链路。
-    result: pending
-    reason: null
-  - id: A16
+    result: passed
+    reason:
+      text: Payload is wrapped as response.create; event JSON and ordering are
+        forwarded as SSE and usage remains on the established handler and
+        billing path.
+      truncated: false
+  - id: A12
     source: specs/channel-upstream-websocket/spec.md
-    text: 握手 401/404/405、拨号失败、上游协议错误或尚未向客户端输出任何事件时，关闭或淘汰当前 WS lease，并使用同一请求体回到 HTTP
-      Responses。复用连接在首帧前失败时，最多安全重建一次；重建仍失败才回落 HTTP。客户端取消、写入失败、读取失败和终止事件都必须停止
-      goroutine、关闭管道并正确归还或淘汰 lease，不产生重复结算。向客户端输出首个事件后发生的断线不得自动重放请求；WS
-      失败日志只记录脱敏原因、渠道、是否复用、是否重建和是否回落。
-    result: pending
-    reason: null
-  - id: A17
+    text: 只有尚未尝试发送请求的握手失败可安全回落 HTTP。尝试写入后，即使首帧未到也不得自动重放。取消、错误与终止事件及时释放资源。上游返回的合法
+      Responses `error` / `response.error` 事件按 SSE
+      原样传递给客户端，并作为终止事件记录分阶段时序；本地无法解析的首帧仍视为 bridge 协议错误。
+    result: passed
+    reason:
+      text: Only pre-write failures can fall back; post-write errors do not replay,
+        and valid provider-error events are forwarded as SSE with cleanup.
+      truncated: false
+  - id: A13
     source: specs/channel-upstream-websocket/spec.md
     text: default 与 classic 渠道编辑器均显示 HTTP/WebSocket 选项、默认 HTTP、i18n
       文案和服务端非法值错误映射；配置保存在现有 `setting` JSON，不新增列。
-    result: pending
-    reason: null
-  - id: A18
+    result: passed
+    reason:
+      text: Channel configuration validates HTTP/WebSocket values, preserves HTTP
+        default, serializes without a schema column, and frontend forms cover
+        the option.
+      truncated: false
+  - id: A14
     source: specs/channel-upstream-websocket/spec.md
     text: deterministic fixture 覆盖 URL、鉴权、`response.create`、多帧转 SSE、usage、终止、错误、取消和
       HTTP 回落。
-    result: pending
-    reason: null
-  - id: A19
+    result: passed
+    reason:
+      text: Deterministic fixtures cover URL/auth, response.create, multi-frame SSE,
+        usage, terminal events, provider errors, cancellation, and HTTP
+        fallback.
+      truncated: false
+  - id: A15
     source: specs/channel-upstream-websocket/spec.md
     text: deterministic fixture 覆盖稳定会话的连接复用、`previous_response_id`
-      粘性、不同会话隔离、连接失效淘汰、首帧前重建和单连接串行 lease。
-    result: pending
-    reason: null
-  - id: A20
+      粘性、不同会话隔离、连接失效淘汰、发送前安全重建、发送后禁止重放和单连接串行 lease。
+    result: passed
+    reason:
+      text: Fixtures cover session reuse, previous_response_id stickiness, identity
+        isolation, eviction, pre-send rebuild, post-send no replay, and
+        single-lease behavior.
+      truncated: false
+  - id: A16
     source: specs/channel-upstream-websocket/spec.md
     text: 真实测试 CPA 验证规范 `/v1/responses` WS 路由、`response.create`、Responses 事件和
       usage，并确认 new-api 客户端仍收到 `text/event-stream` SSE；实现保留 `/v1/responses/ws` 与
       `/v1/ws` 兼容探测。
-    result: pending
-    reason: null
-  - id: A21
+    result: passed
+    reason:
+      text: Fresh live CPA evidence exercised canonical /v1/responses. A legal
+        type:error/model_not_found event was preserved as SSE with
+        upstream_error_event timing, and gpt-5.6-terra returned
+        response.completed plus usage in about three seconds.
+      truncated: false
+  - id: A17
     source: specs/channel-upstream-websocket/spec.md
     text: 关闭开关的旧渠道和所有非 Responses 请求行为与基线完全一致。
-    result: pending
-    reason: null
-  - id: A22
+    result: passed
+    reason:
+      text: WebSocket use is gated to explicit streaming Responses; disabled settings
+        and non-Responses paths retain baseline HTTP behavior.
+      truncated: false
+  - id: A18
+    source: specs/channel-upstream-websocket/spec.md
+    text: 长耗时使用同请求分阶段证据定位，区分首事件、首文本、终止和记录时间，不承诺上游生成速度。日志顶部 TPM 右侧增加当前登录用户今日缓存率与总
+      Token；使用本地自然日，独立列表过滤，加权缓存率，不重复计入缓存，支持空值、翻译、隐私和跨日刷新。
+    result: passed
+    reason:
+      text: Staged timing and request correlation are implemented, provider errors are
+        handled correctly, and daily usage covers user scope, local-day refresh,
+        cache rate, totals, empty state, i18n, privacy, and filter independence.
+      truncated: false
+  - id: A19
     source: specs/upstream-compatibility/spec.md
     text: 输入仓库：`https://github.com/QuantumNous/new-api`，官方 `upstream/main`。
-    result: pending
-    reason: null
-  - id: A23
+    result: passed
+    reason:
+      text: Traceability identifies https://github.com/QuantumNous/new-api and
+        official upstream/main.
+      truncated: false
+  - id: A20
     source: specs/upstream-compatibility/spec.md
     text: 目标：`v1.0.0-rc.33`，提交 `eb99ab1b40343c3317bb47981cccdbb2b159a5fa`。
-    result: pending
-    reason: null
-  - id: A24
+    result: passed
+    reason:
+      text: Target commit eb99ab1b40343c3317bb47981cccdbb2b159a5fa is present in
+        upstream/main ancestry.
+      truncated: false
+  - id: A21
     source: specs/upstream-compatibility/spec.md
     text: 共同基线：`2d8e50bf36e94200b809dfb39e73624ec48b1e23`。
-    result: pending
-    reason: null
-  - id: A25
+    result: passed
+    reason:
+      text: Common baseline 2d8e50bf36e94200b809dfb39e73624ec48b1e23 is an ancestor
+        and the checked range contains 48 commits.
+      truncated: false
+  - id: A22
     source: specs/upstream-compatibility/spec.md
     text: 本 fork 生产基线：开始实现前重新 fetch 的 `origin/main`。
-    result: pending
-    reason: null
-  - id: A26
+    result: passed
+    reason:
+      text: Recorded origin/main refresh evidence supports the fork production
+        baseline before implementation.
+      truncated: false
+  - id: A23
     source: specs/upstream-compatibility/spec.md
     text: 逐项审查共同基线之后的官方提交，记录提交、路径、行为、风险、冲突处理和验证证据。
-    result: pending
-    reason: null
-  - id: A27
+    result: passed
+    reason:
+      text: Commit matrix records commit, path, behavior, risk, conflict treatment,
+        and validation evidence for the 48-commit range.
+      truncated: false
+  - id: A24
     source: specs/upstream-compatibility/spec.md
     text: 将稳定的安全、协议兼容、数据库兼容、性能、计费完整性、模型/relay 和明确用户功能合入 fork；用户已确认第二批模型/协议/计费改动全部实现。
-    result: pending
-    reason: null
-  - id: A28
+    result: passed
+    reason:
+      text: Matrix and candidate document stable security, protocol, database,
+        performance, billing, model, relay, and user-facing compatibility work.
+      truncated: false
+  - id: A25
     source: specs/upstream-compatibility/spec.md
     text: 对与 Torch AI 二开同一行为链的文件做三方语义合并，保留两侧可同时满足的契约；不能同时满足时回到 Shape，不擅自覆盖。
-    result: pending
-    reason: null
-  - id: A29
+    result: passed
+    reason:
+      text: Traceability documents semantic three-way handling for shared Torch AI
+        behavior; no unmerged paths or conflict markers found.
+      truncated: false
+  - id: A26
     source: specs/upstream-compatibility/spec.md
     text: 保留现有支付、充值、订阅、GMPay、H5、低余额提醒、视频、代理、双前端和保护性品牌/元数据。
-    result: pending
-    reason: null
-  - id: A30
+    result: passed
+    reason:
+      text: Compatibility record preserves payment, top-up, subscription, GMPay, H5,
+        low-balance, video, proxy, dual-frontend, and protected identity
+        behavior.
+      truncated: false
+  - id: A27
     source: specs/upstream-compatibility/spec.md
     text: 排除官方发布说明标注为实验性、会替换架构或删除现有二开模块的变更；密码传输加密和 int32 迁移按用户确认纳入，但不采用会覆盖二开模块的整段重构。
-    result: pending
-    reason: null
-  - id: A31
+    result: passed
+    reason:
+      text: Matrix records exclusion of experimental or architecture-replacement work
+        while retaining confirmed password-encryption and int32 migration
+        behavior.
+      truncated: false
+  - id: A28
     source: specs/upstream-compatibility/spec.md
     text: 不新增数据库 schema；数据库、Redis、JSON wrapper、quota safety 和 relaykit 独立性不回退。
-    result: pending
-    reason: null
-  - id: A32
+    result: passed
+    reason:
+      text: Daily usage reads existing logs and adds no schema; query portability,
+        JSON wrapper use, quota safeguards, and relaykit independence remain
+        intact.
+      truncated: false
+  - id: A29
     source: specs/upstream-compatibility/spec.md
     text: 合并结果可从官方目标提交和 fork 基线追溯，工作树无冲突标记和意外删除。
-    result: pending
-    reason: null
-  - id: A33
+    result: passed
+    reason:
+      text: Official target and fork baseline traceability are recorded; no conflict
+        markers or unmerged files found.
+      truncated: false
+  - id: A30
     source: specs/upstream-compatibility/spec.md
     text: 官方纳入项的行为测试通过，二开能力的回归测试和关键前端页面保持。
-    result: pending
-    reason: null
-  - id: A34
+    result: passed
+    reason:
+      text: Runtime passed affected backend, relaykit, and frontend checks;
+        compatibility matrix records broader upstream and fork regression
+        evidence.
+      truncated: false
+  - id: A31
     source: specs/upstream-compatibility/spec.md
     text: root/relaykit/前端检查记录真实结果，未运行项目明确列为限制。
-    result: pending
-    reason: null
+    result: passed
+    reason:
+      text: Root, relaykit, frontend, focused provider-error, and diff-hygiene results
+        are recorded; unrun production and formal release work is listed as a
+        limitation.
+      truncated: false
 builder_handoff:
-  candidate_id: e7126dac-317b-422a-b9ec-210e41a4a3da
+  candidate_id: 552c7dd3-2f13-43ef-94d4-b646c19e42e8
   identity_provider: skill-coordinated
-  builder_execution_ref: skill-coordinated:builder:d39f215e-86f2-4abb-b372-dcf2c2e46d69
+  builder_execution_ref: skill-coordinated:builder:aaef943b-a241-4469-973c-08f069ba3dfb
   iteration: 1
   summary:
-    text: Implemented an in-process CPA Responses WebSocket pool in new-api.
-      Streaming Responses requests keep the existing HTTP/SSE client contract
-      while reusing sockets only for explicit inbound session/thread hints or a
-      response ID mapped to its producing connection. Pool keys isolate
-      endpoint, authorization fingerprint, and model; leases are serialized,
-      healthy terminals are returned, and broken, canceled, stale, or
-      protocol-failed sockets are evicted. Reused sockets may be rebuilt once
-      before the first response frame; after output begins no request replay
-      occurs. Added deterministic fixtures for stable-session and
-      previous-response reuse, session isolation, store=false affinity, serial
-      leases, closed-connection rebuild, inbound hint validation, and existing
-      fallback/cancellation behavior.
+    text: 修复真实 CPA Responses WebSocket error 事件被误报为 bridge transport error 的问题：合法
+      error/response.error 事件先按 SSE 原样透传，再记录 upstream_error_event
+      分阶段时序并干净结束；保留不可解析首帧和真实读取失败的 transport error 语义。新增 provider error
+      首帧与中途错误回归测试，更新规格和 live CPA 证据。服务器 CPA 的 gpt-5.6-terra live success path
+      已通过，gpt-5.5 的失败已确认是 CPA 上游模型权限/存在性错误。
     truncated: false
   addressed_acceptance_ids:
+    - A1
     - A5
     - A6
-    - A7
-    - A8
-    - A9
-    - A11
-    - A12
-    - A13
-    - A14
-    - A15
-    - A16
-    - A18
-    - A19
-    - A21
-    - A31
-    - A34
   checks:
     - name:
-        text: go test ./relay/channel/openai -count=1
+        text: focused provider-error bridge tests
         truncated: false
       result: passed
       note:
-        text: Targeted bridge and pool fixtures pass.
+        text: go test ./relay/channel/openai -run
+          'TestDoResponsesWebsocketRequest(ForwardsFirstProviderErrorWithoutReplay|StopsOnProviderErrorAfterOutput|LogsTerminalTimingStages|KeepsRelayRequestIDAfterHeaderOverrides)$'
+          -count=50
         truncated: false
     - name:
-        text: go test ./relay/channel/openai -run TestResponsesWebsocket -count=3
+        text: affected backend tests
         truncated: false
       result: passed
       note:
-        text: Repeated deterministic WebSocket fixtures pass.
+        text: go test ./relay/channel/openai ./model ./controller ./router -count=1
         truncated: false
     - name:
-        text: go test ./... -count=1
+        text: backend vet and root build
         truncated: false
       result: passed
       note:
-        text: Full root Go test suite passes.
+        text: go vet ./relay/channel/openai ./model ./controller ./router; go build .
         truncated: false
     - name:
-        text: go build ./...
+        text: live CPA error propagation
         truncated: false
       result: passed
       note:
-        text: Root module builds.
+        text: Real CPA returned a legal type:error event; bridge response body reached
+          clean EOF with the original provider payload and
+          reason=upstream_error_event.
         truncated: false
     - name:
-        text: GOWORK=off go build ./... (relaykit)
+        text: live CPA successful Responses websocket
         truncated: false
       result: passed
       note:
-        text: Independent relaykit build passes.
+        text: Same bridge against server CPA with model gpt-5.6-terra completed with
+          response.completed and usage in about 3 seconds.
         truncated: false
     - name:
-        text: go vet ./relay/channel/openai
-        truncated: false
-      result: passed
-      note:
-        text: Targeted vet passes.
-        truncated: false
-    - name:
-        text: git diff --check
-        truncated: false
-      result: passed
-      note:
-        text: No whitespace errors.
-        truncated: false
-    - name:
-        text: live CPA bridge test
+        text: formal release gates
         truncated: false
       result: not-run
       note:
-        text: CPA_WS_LIVE_BASE_URL and CPA_WS_LIVE_KEY are not set in this environment;
-          existing opt-in live fixture remains available.
-        truncated: false
-    - name:
-        text: go test -race ./relay/channel/openai
-        truncated: false
-      result: not-run
-      note:
-        text: The Go tool reports -race requires cgo and CGO_ENABLED is disabled in this
-          environment.
+        text: Commit/PR/merge/immutable image/deployment remain outside this local
+          repair turn.
         truncated: false
   checks_truncated: false
   known_limits:
-    - text: Live CPA validation requires externally supplied CPA_WS_LIVE_BASE_URL and
-        CPA_WS_LIVE_KEY; no credentials were added to the workspace.
+    - text: Live evidence validates the bridge and CPA route, not a production
+        channel-35 latency percentile.
       truncated: false
-    - text: Frontend and historical upstream compatibility checks were not rerun
-        because this candidate changes only the backend WebSocket bridge; prior
-        Comet evidence remains in the change history.
-      truncated: false
-    - text: Pool stale-connection cleanup is lazy on the next acquire, with bounded
-        idle and lifetime limits; no permanent janitor goroutine is created.
+    - text: Provider generation time and upstream rate limiting remain outside the
+        bridge's control.
       truncated: false
   known_limits_truncated: false
-  submitted_at: 2026-09-06T17:58:06.002Z
-blockers: []
-verification: null
+  submitted_at: 2026-09-10T19:42:31.912Z
+blockers:
+  - owner: user
+    reason:
+      text: "Independent read-only review found the CPA provider-error repair correct:
+        valid error and response.error events are forwarded unchanged as SSE,
+        terminate without replay, record upstream_error_event timing, and do not
+        expose secret transport data. A1-A5 and A7-A31 pass; overall verdict is
+        blocked solely by A6 formal release gates."
+      truncated: false
+    acceptance_ids:
+      - A6
+    resolution_action: resolve-verifier-blocker
+verification:
+  candidate_id: 552c7dd3-2f13-43ef-94d4-b646c19e42e8
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:b804e85a-af8c-4ac1-bb7a-cbe04784cac1
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: blocked
+  checks:
+    - id: ws-provider-error-regression-50x
+      name:
+        text: Responses WS provider error and timing regression repeated
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: go test ./relay/channel/openai -run
+            'TestDoResponsesWebsocketRequest(ForwardsFirstProviderErrorWithoutReplay|StopsOnProviderErrorAfterOutput|LogsTerminalTimingStages|KeepsRelayRequestIDAfterHeaderOverrides)$'
+            -count=50
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 2199
+    - id: affected-backend-tests
+      name:
+        text: Affected backend package tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: go test ./relay/channel/openai ./model ./controller ./router -count=1
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 13965
+    - id: affected-backend-vet
+      name:
+        text: Affected backend vet
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: go vet ./relay/channel/openai ./model ./controller ./router
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1204
+    - id: root-go-build
+      name:
+        text: Root Go build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: go build .
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1283
+    - id: frontend-usage-tests
+      name:
+        text: Frontend usage daily stats tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun x vitest run
+            src/features/usage-logs/components/__tests__/daily-usage-stats.test.tsx
+            src/features/usage-logs/hooks/__tests__/use-daily-usage-summary.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 21631
+    - id: frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 15886
+    - id: frontend-i18n-sync
+      name:
+        text: Frontend i18n sync
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run i18n:sync
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 711
+    - id: frontend-build
+      name:
+        text: Frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 35251
+    - id: relaykit-independent-build
+      name:
+        text: Relaykit independent build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK = 'off'; go build ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: relaykit
+      status: passed
+      exit_code: 0
+      duration_ms: 1177
+    - id: git-diff-check
+      name:
+        text: Whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 945
+  summary:
+    text: "Independent read-only review found the CPA provider-error repair correct:
+      valid error and response.error events are forwarded unchanged as SSE,
+      terminate without replay, record upstream_error_event timing, and do not
+      expose secret transport data. A1-A5 and A7-A31 pass; overall verdict is
+      blocked solely by A6 formal release gates."
+    truncated: false
+  risks:
+    - text: Live CPA success validates canonical routing, handshake, event forwarding,
+        terminal behavior, usage, and repaired provider-error handling; it is
+        not a production latency percentile for channel 35.
+      truncated: false
+    - text: bridge_terminal_write_ms is internal io.Pipe completion, not browser
+        rendering or network delivery completion.
+      truncated: false
+    - text: Formal release evidence is absent because commit, PR/CI, merge, immutable
+        image, deployment, and two-site verification are not complete.
+      truncated: false
+    - text: The shared worktree remains broadly dirty from pre-existing concurrent
+        work; release review must scope intended files.
+      truncated: false
+    - text: Race detector and production MySQL/PostgreSQL, SMTP/Redis, and dual-site
+        online integration checks remain environment-dependent.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-10T19:57:43.631Z
 history:
   - goal_cycle: 1
     iteration: 1
@@ -544,6 +803,82 @@ history:
         CI 全部成功，唯一阻塞是合并、不可变镜像构建和部署。"
       truncated: false
     completed_at: 2026-09-06T19:39:58.074Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 4
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: User explicitly confirms continue long total-duration repair and include
+        today self cache rate/total usage header; retain already-released WS
+        fixes and finish H5 separately.
+      truncated: false
+    completed_at: 2026-09-10T03:26:49.959Z
+  - goal_cycle: 4
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A6
+      - A16
+    summary:
+      text: No acceptance-impacting implementation defect was found in locally
+        verifiable WS telemetry, request correlation, daily usage, or upstream
+        traceability. Local behavior is supported by passing focused and
+        affected-package checks, including 50 consecutive timing runs. Overall
+        status is blocked by formal release completion and fresh live CPA
+        evidence; the Runtime lint failure is command resolution rather than a
+        source lint failure.
+      truncated: false
+    completed_at: 2026-09-10T17:51:41.141Z
+  - goal_cycle: 4
+    iteration: 1
+    attempt: 2
+    outcome: blocked
+    unresolved_ids:
+      - A6
+      - A16
+    summary:
+      text: Independent inspection and local verification found no
+        acceptance-impacting implementation defect. Local behavior and
+        compatibility evidence pass; the overall result is blocked only by
+        formal release gates and unavailable fresh live CPA evidence.
+        Supplemental direct frontend lint and format checks passed.
+      truncated: false
+    completed_at: 2026-09-10T18:14:23.256Z
+  - goal_cycle: 4
+    iteration: 1
+    attempt: 2
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 真实 CPA WS 验证显示上游会以 Responses error 事件返回模型/权限错误；需要把 upstream error 事件按 SSE
+        透传并记录终止时序，而不是作为不可读的 bridge transport error。
+      truncated: false
+    completed_at: 2026-09-10T18:33:25.822Z
+  - goal_cycle: 4
+    iteration: 2
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-10T19:41:02.553Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 1
+    outcome: blocked
+    unresolved_ids:
+      - A6
+    summary:
+      text: "Independent read-only review found the CPA provider-error repair correct:
+        valid error and response.error events are forwarded unchanged as SSE,
+        terminate without replay, record upstream_error_event timing, and do not
+        expose secret transport data. A1-A5 and A7-A31 pass; overall verdict is
+        blocked solely by A6 formal release gates."
+      truncated: false
+    completed_at: 2026-09-10T19:57:43.631Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null
@@ -554,7 +889,7 @@ history_overflow:
     blocked: 0
     execution-error: 0
     recovery: 0
-verification_result: pending
-verification_report: null
+verification_result: blocked
+verification_report: verification.md
 archived: false
 created_at: 2026-09-05T19:44:34.083Z
