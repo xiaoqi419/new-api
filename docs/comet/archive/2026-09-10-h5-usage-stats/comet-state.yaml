@@ -1,0 +1,246 @@
+schema: comet.native.v4
+name: h5-usage-stats
+language: zh-CN
+phase: archive
+status: done
+state_version: 16
+brief: brief.md
+spec_changes:
+  - capability: h5-usage-stats
+    operation: create
+    source: specs/h5-usage-stats/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/h5-usage-stats
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 3
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 登录后可打开统计页，未登录跳转登录。"
+    result: passed
+    reason:
+      text: Stats route admin authentication and redirect tests pass.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 可选今天、昨天、近 7 天、近 30 天。"
+    result: passed
+    reason:
+      text: Four local-day ranges implemented and tested.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 次数、token、额度展示为查询结果的 2.5 倍。"
+    result: passed
+    reason:
+      text: 2.5 display multiplier applied to totals and rows.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 接口失败时有错误与重试。"
+    result: passed
+    reason:
+      text: Error retry invokes refetch and is tested.
+      truncated: false
+  - id: A5
+    source: specs/h5-usage-stats/spec.md
+    text: 管理员在 `/admin-h5/stats` 查看当前站点调用量与花费。
+    result: passed
+    reason:
+      text: Protected /admin-h5/stats route and navigation confirmed.
+      truncated: false
+  - id: A6
+    source: specs/h5-usage-stats/spec.md
+    text: 时间范围：今天、昨天、近 7 天、近 30 天。请求 `start_timestamp` / `end_timestamp`（本地时区日界）。
+    result: passed
+    reason:
+      text: Local day timestamp bounds tested.
+      truncated: false
+  - id: A7
+    source: specs/h5-usage-stats/spec.md
+    text: 数据：
+    result: passed
+    reason:
+      text: Totals, daily and model rows rendered.
+      truncated: false
+  - id: A8
+    source: specs/h5-usage-stats/spec.md
+    text: "`GET /api/log/usage_stat`：区间合计
+      `totals.quota`、`totals.count`（次数）、`totals.token_used`（token）"
+    result: passed
+    reason:
+      text: Admin usage_stat totals contract confirmed.
+      truncated: false
+  - id: A9
+    source: specs/h5-usage-stats/spec.md
+    text: 同一接口的 `hours` 和 `models` 提供按时间和模型的次数/额度/token，用于列表。
+    result: passed
+    reason:
+      text: hours/models quota_data aggregates confirmed.
+      truncated: false
+  - id: A10
+    source: specs/h5-usage-stats/spec.md
+    text: 展示：各项数值 × 2.5。额度经 `formatQuota`。页面不显示倍率说明，保留主线提交 2bb864e41 的现有行为。
+    result: passed
+    reason:
+      text: Multiplier and formatQuota preserved; no multiplier copy as committed
+        main.
+      truncated: false
+builder_handoff:
+  candidate_id: 9dd2520d-3bfa-444b-8874-8a44b0772585
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:be77c222-7a54-425b-9509-88526134d6f0
+  iteration: 1
+  summary:
+    text: Verified existing main H5 statistics; corrected obsolete specification
+      endpoint references to usage_stat; changed nullable admin guard from
+      Boolean(user) to explicit user !== null so TypeScript narrows safely. No
+      stats behavior change.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+  checks:
+    - name:
+        text: H5 typecheck
+        truncated: false
+      result: passed
+      note: null
+    - name:
+        text: H5 full tests
+        truncated: false
+      result: passed
+      note:
+        text: 110 tests across 15 files
+        truncated: false
+  checks_truncated: false
+  known_limits: []
+  known_limits_truncated: false
+  submitted_at: 2026-09-10T03:14:29.168Z
+blockers: []
+verification:
+  candidate_id: 9dd2520d-3bfa-444b-8874-8a44b0772585
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:c7634412-4983-409d-9b4c-061e4374e40c
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: h5-typecheck
+      name:
+        text: H5 typecheck
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/admin-h5
+      status: passed
+      exit_code: 0
+      duration_ms: 1652
+    - id: h5-test
+      name:
+        text: H5 test
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: test
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/admin-h5
+      status: passed
+      exit_code: 0
+      duration_ms: 2766
+    - id: h5-build
+      name:
+        text: H5 build
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/admin-h5
+      status: passed
+      exit_code: 0
+      duration_ms: 667
+  summary:
+    text: Independent verifier passes A1-A10 candidate
+      9dd2520d-3bfa-444b-8874-8a44b0772585 state12. Runtime H5
+      typecheck,110tests,build passed.
+    truncated: false
+  risks: []
+  risks_truncated: false
+  completed_at: 2026-09-10T03:19:34.924Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Reconcile old endpoint specification to main usage_stat contract; user
+        authorized H5 validation and archive, no visible behavior change.
+      truncated: false
+    completed_at: 2026-09-10T03:00:23.668Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Reconcile obsolete 2.5 disclaimer criterion with committed main change
+        2bb864e41 which intentionally removed copy; preserve current visible
+        behavior as user confirmed.
+      truncated: false
+    completed_at: 2026-09-10T03:13:12.849Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent verifier passes A1-A10 candidate
+        9dd2520d-3bfa-444b-8874-8a44b0772585 state12. Runtime H5
+        typecheck,110tests,build passed.
+      truncated: false
+    completed_at: 2026-09-10T03:19:34.924Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-06T10:00:22.958Z
