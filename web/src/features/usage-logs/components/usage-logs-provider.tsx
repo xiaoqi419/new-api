@@ -25,6 +25,27 @@ import type { ChannelAffinityInfo } from '../types'
 
 export type LogsViewScope = 'all' | 'self'
 
+export const SHOW_REASONING_EFFORT_STORAGE_KEY =
+  'usage-logs-show-reasoning-effort'
+
+function readShowReasoningEffort(): boolean {
+  try {
+    const raw = localStorage.getItem(SHOW_REASONING_EFFORT_STORAGE_KEY)
+    if (raw === null) return true
+    return raw === 'true'
+  } catch {
+    return true
+  }
+}
+
+function writeShowReasoningEffort(value: boolean) {
+  try {
+    localStorage.setItem(SHOW_REASONING_EFFORT_STORAGE_KEY, String(value))
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
 interface UsageLogsContextValue {
   selectedUserId: number | null
   setSelectedUserId: (userId: number | null) => void
@@ -36,6 +57,8 @@ interface UsageLogsContextValue {
   setAffinityDialogOpen: (open: boolean) => void
   sensitiveVisible: boolean
   setSensitiveVisible: (visible: boolean) => void
+  showReasoningEffort: boolean
+  setShowReasoningEffort: (visible: boolean) => void
   viewScope: LogsViewScope
   setViewScope: (scope: LogsViewScope) => void
 }
@@ -51,7 +74,15 @@ export function UsageLogsProvider({ children }: { children: ReactNode }) {
     useState<ChannelAffinityInfo | null>(null)
   const [affinityDialogOpen, setAffinityDialogOpen] = useState(false)
   const [sensitiveVisible, setSensitiveVisible] = useState(true)
+  const [showReasoningEffort, setShowReasoningEffortState] = useState(
+    readShowReasoningEffort
+  )
   const [viewScope, setViewScope] = useState<LogsViewScope>('all')
+
+  const setShowReasoningEffort = (visible: boolean) => {
+    setShowReasoningEffortState(visible)
+    writeShowReasoningEffort(visible)
+  }
 
   return (
     <UsageLogsContext.Provider
@@ -66,6 +97,8 @@ export function UsageLogsProvider({ children }: { children: ReactNode }) {
         setAffinityDialogOpen,
         sensitiveVisible,
         setSensitiveVisible,
+        showReasoningEffort,
+        setShowReasoningEffort,
         viewScope,
         setViewScope,
       }}
