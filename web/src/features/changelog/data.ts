@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '20260911-logs-reasoning-effort',
+    date: '2026-09-11',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '通用日志模型列可显示思考强度（如 grok-4.6(high)），默认开启，可在筛选栏关闭并记住选择。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260910-daily-usage-summary',
     date: '2026-09-10',
     changes: [
