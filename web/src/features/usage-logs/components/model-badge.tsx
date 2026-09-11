@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 
 interface ModelBadgeProps {
   modelName: string
+  displayName?: string
   actualModel?: string
   className?: string
 }
@@ -147,7 +148,9 @@ function ModelBadgeContent(props: ModelBadgeProps) {
             {getLobeIcon(provider.icon, 18)}
           </span>
         )}
-        <span className='whitespace-nowrap'>{props.modelName}</span>
+        <span className='whitespace-nowrap'>
+          {props.displayName ?? props.modelName}
+        </span>
       </span>
     </StatusBadge>
   )
