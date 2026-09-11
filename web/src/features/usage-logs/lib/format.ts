@@ -252,6 +252,17 @@ export function formatModelName(log: UsageLog): {
   }
 }
 
+export function formatModelDisplayName(
+  modelName: string,
+  reasoningEffort: string | undefined,
+  showReasoningEffort: boolean
+): string {
+  if (!showReasoningEffort) return modelName
+  const effort = reasoningEffort?.trim()
+  if (!effort) return modelName
+  return `${modelName}(${effort})`
+}
+
 /**
  * Decode a base64-encoded billing expression. Safely returns an empty string
  * when the input is missing or malformed (e.g. legacy logs without expr_b64).
