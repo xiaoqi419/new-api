@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils'
 import { LOG_TYPE_ALL_VALUE } from '../../constants'
 import type { UsageLog } from '../../data/schema'
 import {
+  formatModelDisplayName,
   formatModelName,
   getTieredBillingSummary,
   hasAnyCacheTokens,
@@ -607,14 +608,22 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
       header: t('Model'),
       cell: function ModelCell({ row }) {
         const log = row.original
+        const { showReasoningEffort } = useUsageLogsContext()
         if (!isDisplayableLogType(log.type)) return null
 
         const modelInfo = formatModelName(log)
+        const other = parseLogOther(log.other)
+        const displayName = formatModelDisplayName(
+          modelInfo.name,
+          other?.reasoning_effort,
+          showReasoningEffort
+        )
 
         return (
           <div className='flex w-fit flex-col gap-0.5'>
             <ModelBadge
               modelName={modelInfo.name}
+              displayName={displayName}
               actualModel={modelInfo.actualModel}
             />
           </div>
