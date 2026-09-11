@@ -22,7 +22,7 @@ import type { Table } from '@tanstack/react-table'
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Eye, EyeOff } from '@/components/icons'
+import { BrainIcon, Eye, EyeOff } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -37,6 +37,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 import {
   LOG_QUOTA_STATUS_ALL_VALUE,
@@ -124,7 +125,12 @@ export function CommonLogsFilterBar<TData>(
   const queryClient = useQueryClient()
   const searchParams = route.useSearch()
   const { isAdminView: isAdmin } = useLogsViewScope()
-  const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
+  const {
+    sensitiveVisible,
+    setSensitiveVisible,
+    showReasoningEffort,
+    setShowReasoningEffort,
+  } = useUsageLogsContext()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
 
   const searchState = useMemo<CommonLogDraft>(() => {
@@ -316,6 +322,38 @@ export function CommonLogsFilterBar<TData>(
       </TooltipContent>
     </Tooltip>
   )
+  const reasoningEffortToggle = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={() => setShowReasoningEffort(!showReasoningEffort)}
+            aria-label={
+              showReasoningEffort
+                ? t('Hide reasoning effort')
+                : t('Show reasoning effort')
+            }
+            aria-pressed={showReasoningEffort}
+            className={cn(
+              'size-7',
+              showReasoningEffort
+                ? 'text-primary hover:text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          />
+        }
+      >
+        <BrainIcon />
+      </TooltipTrigger>
+      <TooltipContent>
+        {showReasoningEffort
+          ? t('Hide reasoning effort')
+          : t('Show reasoning effort')}
+      </TooltipContent>
+    </Tooltip>
+  )
 
   const dateRangeFilter = (
     <LogsFilterField wide>
@@ -468,7 +506,12 @@ export function CommonLogsFilterBar<TData>(
     <LogsFilterToolbar
       table={props.table}
       stats={statsBar}
-      actionStart={sensitiveToggle}
+      actionStart={
+        <>
+          {sensitiveToggle}
+          {reasoningEffortToggle}
+        </>
+      }
       primaryFilters={
         <>
           {dateRangeFilter}
