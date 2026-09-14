@@ -29,6 +29,20 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    // Replace the suffix with the immutable image tag when this change is released.
+    version: '20260914-canvas-embedded-chrome',
+    date: '2026-09-14',
+    changes: [
+      {
+        kind: 'improvement',
+        items: [
+          '内嵌「无限画布」时隐藏 Agent、文档和上游 GitHub 入口,保留配置与版本更新;独立部署仍保留完整入口。',
+          '画布内核已同步到无限画布 v0.18.0,继续使用本站接口与登录用户自己的 API 密钥。',
+        ],
+      },
+    ],
+  },
+  {
     version: '20260911-logs-reasoning-effort',
     date: '2026-09-11',
     changes: [
@@ -1038,7 +1052,7 @@ export const CHANGELOG: ChangelogEntry[] = [
           '画布直接嵌在站内页面里,侧边栏和顶栏都还在,不会跳出去;配色跟随本站主题,切换明暗时画布一起变。',
           '接口地址已锁定为本站,不用填也改不了;API 密钥可以直接从下拉里挑你自己的令牌,不用去复制粘贴,用量按该令牌正常计费,和直接调用 API 完全一致。',
           '画布、素材和生成记录保存在你自己的浏览器本地,不上传服务器。换浏览器、换设备或清理浏览器数据后不会同步,重要素材请用画布内的导出功能自行备份。',
-          '基于开源项目「无限画布」(infinite-canvas,AGPL-3.0) 构建,随镜像一起发布,无需额外部署。',
+          '基于开源项目「无限画布」(infinite-canvas v0.12.1,AGPL-3.0) 构建,随镜像一起发布,无需额外部署。',
         ],
       },
       {

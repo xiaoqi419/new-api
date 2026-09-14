@@ -6,11 +6,11 @@ const neutral = {
         primary: "#171717",
         primaryHover: "#000000",
         primaryText: "#ffffff",
-        menuBg: "#f5f5f5",
-        menuText: "#171717",
-        selectActiveBg: "#f5f5f5",
-        selectSelectedBg: "#f0f0f0",
-        selectText: "#171717",
+        elevatedBg: "#ffffff",
+        itemHoverBg: "rgba(23, 23, 23, 0.06)",
+        itemSelectedBg: "rgba(23, 23, 23, 0.1)",
+        itemSelectedHoverBg: "rgba(23, 23, 23, 0.14)",
+        itemText: "#171717",
         tableSelectedBg: "rgba(17, 17, 17, 0.05)",
         tableSelectedHoverBg: "rgba(17, 17, 17, 0.08)",
     },
@@ -18,18 +18,16 @@ const neutral = {
         primary: "#fafafa",
         primaryHover: "#ffffff",
         primaryText: "#171717",
-        menuBg: "#262626",
-        menuText: "#fafafa",
-        selectActiveBg: "#262626",
-        selectSelectedBg: "#333333",
-        selectText: "#fafafa",
+        elevatedBg: "#1c1917",
+        itemHoverBg: "rgba(250, 250, 249, 0.08)",
+        itemSelectedBg: "rgba(250, 250, 249, 0.12)",
+        itemSelectedHoverBg: "rgba(250, 250, 249, 0.16)",
+        itemText: "#fafafa",
         tableSelectedBg: "rgba(255, 255, 255, 0.08)",
         tableSelectedHoverBg: "rgba(255, 255, 255, 0.12)",
     },
 };
 
-// 内嵌在主站里时,主色与基底色改用主站下发的颜色,让 antd 组件和被 CSS 变量
-// 接管的其余界面保持一致;非内嵌时 host 为空,沿用上游的中性配色。
 export type HostColors = {
     accent: string;
     accentText: string;
@@ -40,7 +38,12 @@ export type HostColors = {
 export function getAntThemeConfig(dark: boolean, host?: HostColors | null): ThemeConfig {
     const neutralColor = dark ? neutral.dark : neutral.light;
     const color = host
-        ? { ...neutralColor, primary: host.accent, primaryHover: host.accent, primaryText: host.accentText }
+        ? {
+              ...neutralColor,
+              primary: host.accent,
+              primaryHover: host.accent,
+              primaryText: host.accentText,
+          }
         : neutralColor;
 
     return {
@@ -53,25 +56,38 @@ export function getAntThemeConfig(dark: boolean, host?: HostColors | null): Them
             colorLinkHover: color.primaryHover,
             colorLinkActive: color.primary,
             colorTextLightSolid: color.primaryText,
+            colorBgElevated: color.elevatedBg,
+            controlItemBgHover: color.itemHoverBg,
+            controlItemBgActive: color.itemSelectedBg,
+            controlItemBgActiveHover: color.itemSelectedHoverBg,
             ...(host ? { colorBgBase: host.surface, colorTextBase: host.text } : {}),
         },
         components: {
             Button: {
                 primaryShadow: "none",
             },
+            Dropdown: {
+                colorBgElevated: color.elevatedBg,
+                colorText: color.itemText,
+                controlItemBgHover: color.itemHoverBg,
+                controlItemBgActive: color.itemSelectedBg,
+                controlItemBgActiveHover: color.itemSelectedHoverBg,
+            },
             Menu: {
-                itemActiveBg: color.menuBg,
-                itemHoverBg: color.menuBg,
-                itemSelectedBg: color.menuBg,
-                itemSelectedColor: color.menuText,
-                darkItemHoverBg: neutral.dark.menuBg,
-                darkItemSelectedBg: neutral.dark.menuBg,
-                darkItemSelectedColor: neutral.dark.menuText,
+                popupBg: color.elevatedBg,
+                itemActiveBg: color.itemSelectedBg,
+                itemHoverBg: color.itemHoverBg,
+                itemSelectedBg: color.itemSelectedBg,
+                itemSelectedColor: color.itemText,
+                darkPopupBg: neutral.dark.elevatedBg,
+                darkItemHoverBg: neutral.dark.itemHoverBg,
+                darkItemSelectedBg: neutral.dark.itemSelectedBg,
+                darkItemSelectedColor: neutral.dark.itemText,
             },
             Select: {
-                optionActiveBg: color.selectActiveBg,
-                optionSelectedBg: color.selectSelectedBg,
-                optionSelectedColor: color.selectText,
+                optionActiveBg: color.itemHoverBg,
+                optionSelectedBg: color.itemSelectedBg,
+                optionSelectedColor: color.itemText,
             },
             Table: {
                 rowSelectedBg: color.tableSelectedBg,

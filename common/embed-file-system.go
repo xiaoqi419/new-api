@@ -17,10 +17,11 @@ type embedFileSystem struct {
 }
 
 func (e *embedFileSystem) Exists(prefix string, path string) bool {
-	_, err := e.Open(path)
+	file, err := e.Open(path)
 	if err != nil {
 		return false
 	}
+	defer file.Close()
 	return true
 }
 
@@ -53,10 +54,34 @@ type subPathFileSystem struct {
 }
 
 func (s *subPathFileSystem) Exists(prefix string, path string) bool {
-	if !strings.HasPrefix(path, s.prefix) {
+	// Match a complete URL path segment. A byte-prefix check would also accept
+	// lookalike mounts such as /canvas-app2 and let this filesystem claim paths
+	// owned by another handler. Keep the exact mount root out of the static
+	// lookup: embedFileSystem deliberately reports its root as missing so the
+	// caller's SPA fallback can provide index.html.
+	if path != s.prefix {
+		childPrefix := s.prefix
+		if !strings.HasSuffix(childPrefix, "/") {
+			childPrefix += "/"
+		}
+		if !strings.HasPrefix(path, childPrefix) {
+			return false
+		}
+	}
+
+	relativePath := strings.TrimPrefix(path, s.prefix)
+	if relativePath == "" || relativePath == "/" {
 		return false
 	}
-	return s.ServeFileSystem.Exists(prefix, strings.TrimPrefix(path, s.prefix))
+	// http.FS expects a slash-free, fs.ValidPath-compatible name after its
+	// leading slash is removed. Reject dot segments here as well so a custom
+	// ServeFileSystem cannot reinterpret an encoded traversal differently from
+	// the embedded filesystem used by EmbedFolder.
+	relativeName := strings.TrimPrefix(relativePath, "/")
+	if relativeName == "." || !fs.ValidPath(relativeName) {
+		return false
+	}
+	return s.ServeFileSystem.Exists(prefix, relativePath)
 }
 
 func EmbedFolderAt(fsEmbed embed.FS, targetPath string, urlPrefix string) static.ServeFileSystem {

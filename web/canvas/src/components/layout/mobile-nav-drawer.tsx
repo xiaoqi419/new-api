@@ -1,7 +1,9 @@
 import { Drawer } from "antd";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
+import { isEmbedded } from "@/lib/host-bridge";
 import { cn } from "@/lib/utils";
 
 type MobileNavDrawerProps = {
@@ -11,10 +13,14 @@ type MobileNavDrawerProps = {
 };
 
 export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDrawerProps) {
+    const { t } = useTranslation();
+    const embedded = isEmbedded();
+    const visibleNavigationTools = embedded ? navigationTools.filter((tool) => tool.slug !== "video") : navigationTools;
+
     return (
-        <Drawer title="导航" placement="left" size={280} open={open} onClose={onClose} className="md:hidden">
+        <Drawer title={t("topNav.navigation")} placement="left" size={280} open={open} onClose={onClose} className="md:hidden">
             <div className="space-y-1">
-                {navigationTools.map((tool) => {
+                {visibleNavigationTools.map((tool) => {
                     const Icon = tool.icon;
                     const active = tool.slug === activeToolSlug;
                     return (
@@ -28,7 +34,7 @@ export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDraw
                             )}
                         >
                             <Icon className="size-5" />
-                            <span>{tool.label}</span>
+                            <span>{t(`navigation.${tool.slug}`)}</span>
                         </Link>
                     );
                 })}

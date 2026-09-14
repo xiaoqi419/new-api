@@ -14,7 +14,7 @@
 # so your working tree ends unchanged (net-zero).
 #
 # Notes:
-#   - Runs the whole build inside Docker (Go + web/default + web/classic),
+#   - Runs the whole build inside Docker (Go + web/default + web/classic + web/canvas),
 #     so you don't need to pre-build anything.
 #   - Uses your CURRENT default buildx builder. On this machine that is the
 #     Docker Desktop "desktop-linux" builder, which (a) has the containerd

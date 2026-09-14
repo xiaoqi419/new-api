@@ -1,27 +1,12 @@
 import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
 import { ListPlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { lockedApiBaseUrl, requestHostTokens, useHostTokensStore, type HostTokensState } from "@/lib/host-bridge";
+import { isEmbedded, lockedApiBaseUrl, requestHostTokens, useHostTokensStore, type HostTokensState } from "@/lib/host-bridge";
 import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
-
-const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
-    { label: "OpenAI", value: "openai" },
-    { label: "Gemini", value: "gemini" },
-    { label: "火山方舟", value: "ark" },
-];
-
-// 内嵌时地址锁死在主站,火山方舟的 /api/v3 主站不提供,留着只会选了就报错。
-const embeddedApiFormatOptions = apiFormatOptions.filter((option) => option.value !== "ark");
-
-const capabilityOptions: Array<{ label: string; value: ModelCapability }> = [
-    { label: "生图", value: "image" },
-    { label: "视频", value: "video" },
-    { label: "文本", value: "text" },
-    { label: "音频", value: "audio" },
-];
 
 type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
@@ -29,14 +14,12 @@ function maskKey(key: string) {
     return key.length > 12 ? `${key.slice(0, 7)}…${key.slice(-4)}` : key;
 }
 
-// 内嵌时主站会把当前登录用户的令牌发过来,省得用户自己去复制粘贴;
-// 手填仍然可用,取不到令牌时就退回纯手填。
-function HostTokenPicker({ tokens, value, onPick }: { tokens: HostTokensState; value: string; onPick: (key: string) => void }) {
+function HostTokenPicker({ tokens, value, onPick, t }: { tokens: HostTokensState; value: string; onPick: (key: string) => void; t: (key: string, options?: Record<string, unknown>) => string }) {
     if (tokens.status === "error") {
-        return <div className="mb-2 text-xs text-amber-600 dark:text-amber-500">读取我的令牌失败（{tokens.error}），可手动填写。</div>;
+        return <div className="mb-2 text-xs text-amber-600 dark:text-amber-500">{t("config.channelEditor.hostTokenReadFailed", { error: tokens.error })}</div>;
     }
     if (tokens.status === "ready" && !tokens.tokens.length) {
-        return <div className="mb-2 text-xs text-stone-500">当前账号还没有可用令牌，请先到本站「API 密钥」页面创建一个。</div>;
+        return <div className="mb-2 text-xs text-stone-500">{t("config.channelEditor.hostTokenEmpty")}</div>;
     }
     return (
         <Select
@@ -44,7 +27,7 @@ function HostTokenPicker({ tokens, value, onPick }: { tokens: HostTokensState; v
             loading={tokens.status === "loading"}
             disabled={tokens.status !== "ready"}
             value={tokens.tokens.some((token) => token.key === value) ? value : undefined}
-            placeholder={tokens.status === "loading" ? "正在读取我的令牌…" : "从我的令牌中选择"}
+            placeholder={tokens.status === "loading" ? t("config.channelEditor.hostTokenLoading") : t("config.channelEditor.hostTokenSelect")}
             options={tokens.tokens.map((token) => ({ label: `${token.name} · ${maskKey(token.key)}`, value: token.key }))}
             onChange={onPick}
         />
@@ -52,17 +35,34 @@ function HostTokenPicker({ tokens, value, onPick }: { tokens: HostTokensState; v
 }
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
-    const [draft, setDraft] = useState<ModelChannel | null>(channel);
+    const { t } = useTranslation();
+    const embedded = isEmbedded();
+    const lockedBaseUrl = embedded ? lockedApiBaseUrl() : "";
+    const embeddedOriginUnavailable = embedded && !lockedBaseUrl;
+    const sanitizeDraft = (value: ModelChannel): ModelChannel =>
+        embedded
+            ? {
+                  ...value,
+                  // An embedded document must never retain an endpoint or key
+                  // when its origin is opaque and cannot be authenticated.
+                  baseUrl: lockedBaseUrl,
+                  apiKey: lockedBaseUrl ? value.apiKey : "",
+              }
+            : value;
+    const [draft, setDraft] = useState<ModelChannel | null>(() => (channel ? sanitizeDraft(channel) : null));
     const [selectOpen, setSelectOpen] = useState(false);
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
-    const lockedBaseUrl = lockedApiBaseUrl();
     const hostTokens = useHostTokensStore();
+    const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
+        { label: "OpenAI", value: "openai" },
+        { label: "Gemini", value: "gemini" },
+    ];
+    const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
 
     useEffect(() => {
-        if (open && channel) setDraft(channel);
-    }, [open, channel]);
+        if (open && channel) setDraft(sanitizeDraft(channel));
+    }, [open, channel, lockedBaseUrl, embedded]);
 
-    // 令牌由主站代取,抽屉打开时才要,避免没人用配置也去消耗取密钥接口的限流额度。
     useEffect(() => {
         if (open && lockedBaseUrl) requestHostTokens();
     }, [open, lockedBaseUrl]);
@@ -91,7 +91,11 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const removeModel = (name: string) => setModels(draft.models.filter((model) => model.name !== name));
 
     const save = () => {
-        onSave({ ...draft, name: draft.name.trim() || "未命名渠道", models: normalizeChannelModels(draft.models) });
+        // An opaque embedded frame has no trustworthy host origin. Do not
+        // persist a manually entered endpoint or key, and do not close the
+        // drawer as if the save succeeded.
+        if (embeddedOriginUnavailable) return;
+        onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), baseUrl: embedded ? lockedBaseUrl : draft.baseUrl.trim(), apiKey: embedded ? draft.apiKey.trim() : draft.apiKey, models: normalizeChannelModels(draft.models) });
         onClose();
     };
 
@@ -99,46 +103,51 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         <Drawer
             open={open}
             width={640}
-            title="编辑渠道"
+            title={t("config.channelEditor.title")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
             extra={
                 <Space>
-                    <Button onClick={onClose}>取消</Button>
-                    <Button type="primary" onClick={save}>
-                        保存
+                    <Button onClick={onClose}>{t("common.cancel")}</Button>
+                    <Button type="primary" disabled={embeddedOriginUnavailable} onClick={save}>
+                        {t("common.save")}
                     </Button>
                 </Space>
             }
         >
             <div className="grid gap-4 md:grid-cols-2">
                 <label className="block">
-                    <span className="mb-1 block text-sm font-medium">渠道名称</span>
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.name")}</span>
                     <Input value={draft.name} onChange={(event) => patch({ name: event.target.value })} />
                 </label>
                 <label className="block">
-                    <span className="mb-1 block text-sm font-medium">协议</span>
-                    <Select className="w-full" value={draft.apiFormat} options={lockedBaseUrl ? embeddedApiFormatOptions : apiFormatOptions} onChange={changeApiFormat} />
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.protocol")}</span>
+                    <Select className="w-full" value={draft.apiFormat} options={lockedBaseUrl ? apiFormatOptions : apiFormatOptions} onChange={changeApiFormat} />
                 </label>
                 <label className="block md:col-span-2">
-                    <span className="mb-1 block text-sm font-medium">接口地址</span>
-                    <Input value={lockedBaseUrl || draft.baseUrl} disabled={Boolean(lockedBaseUrl)} onChange={(event) => patch({ baseUrl: event.target.value })} placeholder="https://api.example.com" />
-                    {lockedBaseUrl ? <span className="mt-1 block text-xs text-stone-500">已锁定为本站,填自己的令牌即可使用。</span> : null}
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.baseUrl")}</span>
+                    <Input value={embedded ? lockedBaseUrl : draft.baseUrl} disabled={embedded} onChange={(event) => patch({ baseUrl: event.target.value })} placeholder="https://api.example.com" />
+                    {embeddedOriginUnavailable ? (
+                        <span role="alert" className="mt-1 block text-xs text-amber-600 dark:text-amber-500">
+                            {t("config.channelEditor.embeddedOriginUnavailable")}
+                        </span>
+                    ) : null}
+                    {lockedBaseUrl ? <span className="mt-1 block text-xs text-stone-500">{t("config.channelEditor.embeddedBaseUrlHint")}</span> : null}
                 </label>
                 <label className="block md:col-span-2">
-                    <span className="mb-1 block text-sm font-medium">API Key</span>
-                    {lockedBaseUrl ? <HostTokenPicker tokens={hostTokens} value={draft.apiKey} onPick={(apiKey) => patch({ apiKey })} /> : null}
-                    <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.apiKey")}</span>
+                    {lockedBaseUrl ? <HostTokenPicker tokens={hostTokens} value={draft.apiKey} onPick={(apiKey) => patch({ apiKey })} t={t} /> : null}
+                    <Input.Password value={embeddedOriginUnavailable ? "" : draft.apiKey} disabled={embeddedOriginUnavailable} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
                 </label>
             </div>
 
             <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                    <div className="text-sm font-semibold">渠道模型</div>
-                    <div className="mt-0.5 text-xs text-stone-500">已选 {draft.models.length} 个；为每个模型指定能力并可自定义调用脚本。</div>
+                    <div className="text-sm font-semibold">{t("config.channelEditor.models")}</div>
+                    <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.modelDescription", { count: draft.models.length })}</div>
                 </div>
                 <Button type="primary" icon={<ListPlus className="size-4" />} onClick={() => setSelectOpen(true)}>
-                    选择模型
+                    {t("config.channelEditor.selectModels")}
                 </Button>
             </div>
 
@@ -152,14 +161,14 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                             <div className="flex shrink-0 items-center gap-2">
                                 <Segmented size="small" value={model.capability} options={capabilityOptions} onChange={(value) => setCapability(model.name, value as ModelCapability)} />
                                 <Button size="small" type={model.script ? "primary" : "default"} ghost={Boolean(model.script)} onClick={() => setScriptTarget({ name: model.name, capability: model.capability, value: model.script || "" })}>
-                                    {model.script ? "脚本已设" : "调用脚本"}
+                                    {t(model.script ? "config.channelEditor.scriptReady" : "config.channelEditor.script")}
                                 </Button>
                                 <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} onClick={() => removeModel(model.name)} />
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="px-2 py-8 text-center text-sm text-stone-500">点击「选择模型」拉取或手动增加模型。</div>
+                    <div className="px-2 py-8 text-center text-sm text-stone-500">{t("config.channelEditor.empty")}</div>
                 )}
             </div>
 

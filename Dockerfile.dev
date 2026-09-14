@@ -24,9 +24,10 @@ RUN go mod download
 
 COPY . .
 
-RUN mkdir -p web/dist web/classic/dist && \
+RUN mkdir -p web/dist web/classic/dist web/canvas/dist && \
     echo '<!doctype html><html><head><title>dev</title></head><body>use frontend dev server</body></html>' > web/dist/index.html && \
-    echo '<!doctype html><html><head><title>dev</title></head><body>use frontend dev server</body></html>' > web/classic/dist/index.html
+    echo '<!doctype html><html><head><title>dev</title></head><body>use frontend dev server</body></html>' > web/classic/dist/index.html && \
+    echo '<!doctype html><html><head><title>dev</title></head><body>use canvas frontend dev server</body></html>' > web/canvas/dist/index.html
 
 RUN go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
 
@@ -39,6 +40,7 @@ RUN apt-get update \
 
 COPY --from=builder /build/new-api /
 COPY LICENSE NOTICE THIRD-PARTY-LICENSES.md /licenses/
+COPY web/canvas/LICENSE /licenses/infinite-canvas-LICENSE
 EXPOSE 3000
 WORKDIR /data
 ENTRYPOINT ["/new-api"]

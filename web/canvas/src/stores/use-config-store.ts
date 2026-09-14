@@ -4,9 +4,10 @@ import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
 import { DEFAULT_API_BASE_URL } from "@/constant/runtime-config";
-import { lockedApiBaseUrl } from "@/lib/host-bridge";
+import i18n from "@/i18n";
+import { hasTrustedEmbeddedOrigin, isEmbedded, lockedApiBaseUrl } from "@/lib/host-bridge";
 
-export type ApiCallFormat = "openai" | "gemini" | "ark";
+export type ApiCallFormat = "openai" | "gemini";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
@@ -14,6 +15,10 @@ export type ChannelModel = {
     name: string;
     capability: ModelCapability;
     script?: string;
+    /** Set only after the current relay catalog confirms image capability. */
+    verified?: boolean;
+    /** Relay key used for the verification marker; prevents cross-account reuse. */
+    verifiedKey?: string;
 };
 
 export type ModelChannel = {
@@ -44,6 +49,7 @@ export type AiConfig = {
     vquality: string;
     videoGenerateAudio: string;
     videoWatermark: string;
+    videoMode: string;
     systemPrompt: string;
     reasoningEffort: ReasoningEffort;
     models: string[];
@@ -52,6 +58,8 @@ export type AiConfig = {
     background: string;
     count: string;
     canvasImageCount: string;
+    proxyEnabled: boolean;
+    proxyUrl: string;
 };
 
 export type WebdavSyncConfig = {
@@ -61,14 +69,110 @@ export type WebdavSyncConfig = {
     directory: string;
     lastSyncedAt: string;
 };
-export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webdav";
+export type ConfigTabKey = "channels" | "local-proxy" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+
+export type ChannelCredentialsImportResult = {
+    status: "created" | "updated" | "missing-base-url" | "invalid-base-url";
+    channelName?: string;
+};
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
-// 内嵌发布时默认指向本站（同源），上游默认的 api.openai.com 作为兜底保留。
+// Embedded builds resolve this at runtime so one artifact follows whichever
+// New API origin serves the iframe. Standalone Canvas keeps OpenAI as fallback.
 const OPENAI_BASE_URL = DEFAULT_API_BASE_URL || "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
-const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
+export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
+
+const CONFIG_STRING_KEYS: Array<keyof AiConfig> = [
+    "baseUrl",
+    "apiKey",
+    "model",
+    "imageModel",
+    "videoModel",
+    "textModel",
+    "audioModel",
+    "audioVoice",
+    "audioFormat",
+    "audioSpeed",
+    "audioInstructions",
+    "videoSeconds",
+    "vquality",
+    "videoGenerateAudio",
+    "videoWatermark",
+    "videoMode",
+    "systemPrompt",
+    "quality",
+    "size",
+    "background",
+    "count",
+    "canvasImageCount",
+    "proxyUrl",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isModelCapability(value: unknown): value is ModelCapability {
+    return value === "image" || value === "video" || value === "text" || value === "audio";
+}
+
+function normalizeString(value: unknown, fallback: string) {
+    return typeof value === "string" ? value : fallback;
+}
+
+function normalizeReasoningEffort(value: unknown): ReasoningEffort {
+    return value === "low" || value === "medium" || value === "high" || value === "xhigh" ? value : "auto";
+}
+
+/**
+ * Remove credentials left by older embedded builds before Zustand hydrates the
+ * config store. Canvas projects/assets use separate storage keys and remain
+ * untouched. An opaque iframe origin fails closed by dropping this envelope.
+ */
+export function sanitizeEmbeddedConfigStorage() {
+    if (typeof window === "undefined" || !isEmbedded()) return;
+    let storage: Storage;
+    try {
+        storage = window.localStorage;
+    } catch {
+        return;
+    }
+    try {
+        const raw = storage.getItem(CONFIG_STORE_KEY);
+        if (!hasTrustedEmbeddedOrigin()) {
+            if (raw !== null) storage.removeItem(CONFIG_STORE_KEY);
+            return;
+        }
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as unknown;
+        if (!isRecord(parsed) || !isRecord(parsed.state) || !isRecord(parsed.state.config)) {
+            storage.removeItem(CONFIG_STORE_KEY);
+            return;
+        }
+        const locked = lockedApiBaseUrl();
+        const sourceConfig = parsed.state.config;
+        const channels = Array.isArray(sourceConfig.channels) ? sourceConfig.channels.map((channel) => (isRecord(channel) ? { ...channel, baseUrl: locked, apiKey: "" } : channel)) : [];
+        storage.setItem(
+            CONFIG_STORE_KEY,
+            JSON.stringify({
+                ...parsed,
+                state: { ...parsed.state, config: { ...sourceConfig, baseUrl: locked, apiKey: "", channels } },
+            }),
+        );
+    } catch {
+        try {
+            storage.removeItem(CONFIG_STORE_KEY);
+        } catch {
+            // Ignore storage security/quota errors; hydration normalization
+            // below still fails closed.
+        }
+    }
+}
+
+sanitizeEmbeddedConfigStorage();
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
@@ -78,7 +182,7 @@ export const defaultConfig: AiConfig = {
     channels: [
         {
             id: "default",
-            name: "默认渠道",
+            name: i18n.t("config.channels.defaultName"),
             baseUrl: OPENAI_BASE_URL,
             apiKey: "",
             apiFormat: "openai",
@@ -103,6 +207,7 @@ export const defaultConfig: AiConfig = {
     vquality: "720",
     videoGenerateAudio: "true",
     videoWatermark: "false",
+    videoMode: "frames",
     systemPrompt: "",
     reasoningEffort: "auto",
     models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
@@ -111,6 +216,8 @@ export const defaultConfig: AiConfig = {
     background: "",
     count: "1",
     canvasImageCount: "3",
+    proxyEnabled: false,
+    proxyUrl: DEFAULT_LOCAL_PROXY_URL,
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -121,6 +228,58 @@ export const defaultWebdavSyncConfig: WebdavSyncConfig = {
     lastSyncedAt: "",
 };
 
+/**
+ * Normalize persisted browser state before any UI code calls string/array
+ * methods. The config envelope is user-controlled local data and may have
+ * been exported by an older Canvas version or edited manually.
+ */
+function normalizePersistedConfig(value: unknown): AiConfig {
+    const source = isRecord(value) ? value : {};
+    const config = { ...defaultConfig, ...source } as AiConfig;
+    const embedded = isEmbedded();
+    const locked = embedded ? lockedApiBaseUrl() : "";
+    for (const key of CONFIG_STRING_KEYS) config[key] = normalizeString(source[key], defaultConfig[key] as string) as never;
+    config.channelMode = "local";
+    config.apiFormat = normalizeApiFormat(source.apiFormat);
+    config.reasoningEffort = normalizeReasoningEffort(source.reasoningEffort);
+    config.models = Array.isArray(source.models) ? source.models.filter((item): item is string => typeof item === "string") : [];
+    config.proxyEnabled = source.proxyEnabled === true;
+    config.proxyUrl = normalizeString(source.proxyUrl, DEFAULT_LOCAL_PROXY_URL);
+    // Embedded relay keys are supplied by the authenticated host at runtime;
+    // never hydrate or persist a real key from localStorage.
+    if (embedded) {
+        config.apiKey = "";
+        config.baseUrl = locked;
+        config.channels = Array.isArray(source.channels) ? (source.channels.map((channel) => (isRecord(channel) ? { ...channel, baseUrl: locked, apiKey: "" } : channel)) as ModelChannel[]) : [];
+    } else {
+        config.channels = Array.isArray(source.channels) ? (source.channels as ModelChannel[]) : [];
+    }
+    return config;
+}
+
+/** Keep host supplied keys in memory only; persisted Canvas data remains safe. */
+function persistableConfig(config: AiConfig): AiConfig {
+    if (!isEmbedded()) return config;
+    const locked = lockedApiBaseUrl();
+    return {
+        ...config,
+        baseUrl: locked,
+        apiKey: "",
+        channels: Array.isArray(config.channels) ? config.channels.map((channel) => ({ ...channel, baseUrl: locked, apiKey: "" })) : [],
+    };
+}
+
+function initialRuntimeConfig(): AiConfig {
+    if (!isEmbedded()) return defaultConfig;
+    const locked = lockedApiBaseUrl();
+    return {
+        ...defaultConfig,
+        baseUrl: locked,
+        apiKey: "",
+        channels: defaultConfig.channels.map((channel) => ({ ...channel, baseUrl: locked, apiKey: "" })),
+    };
+}
+
 type ConfigStore = {
     config: AiConfig;
     webdav: WebdavSyncConfig;
@@ -128,6 +287,7 @@ type ConfigStore = {
     configTab: ConfigTabKey;
     shouldPromptContinue: boolean;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
+    importChannelCredentials: (input: { baseUrl?: string | null; apiKey?: string | null }) => ChannelCredentialsImportResult;
     updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
     openConfigDialog: (shouldPromptContinue?: boolean, tab?: ConfigTabKey) => void;
@@ -135,7 +295,11 @@ type ConfigStore = {
     clearPromptContinue: () => void;
 };
 
-const VIDEO_KEYWORDS = ["seedance", "video", "sora", "veo", "kling", "wan", "hailuo"];
+const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo"];
+
+export function boolConfig(value: string, fallback: boolean) {
+    return value ? value === "true" : fallback;
+}
 const AUDIO_KEYWORDS = ["audio", "tts", "speech", "voice", "music", "sound"];
 const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "imagen", "flux", "sdxl", "stable-diffusion", "midjourney"];
 
@@ -170,6 +334,9 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
     const fallbackModel = capability === "image" ? defaultConfig.imageModel : capability === "video" ? defaultConfig.videoModel : capability === "audio" ? defaultConfig.audioModel : defaultConfig.textModel;
     if (currentModel && modelMatchesCapability(config, currentModel, capability)) return currentModel;
     if (defaultModel && modelMatchesCapability(config, defaultModel, capability)) return defaultModel;
+    // Embedded Canvas waits for the host catalog rather than falling back to
+    // the vendored demo model, which could issue an unintended relay request.
+    if (isEmbedded()) return "";
     return fallbackModel;
 }
 
@@ -191,7 +358,7 @@ function isAiConfigReady(config: AiConfig, model: string) {
 export const useConfigStore = create<ConfigStore>()(
     persist(
         (set, get) => ({
-            config: defaultConfig,
+            config: initialRuntimeConfig(),
             webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
             configTab: "channels",
@@ -203,6 +370,12 @@ export const useConfigStore = create<ConfigStore>()(
                         [key]: value,
                     },
                 })),
+            importChannelCredentials: (input) => {
+                const currentConfig = get().config;
+                const result = upsertChannelCredentials(currentConfig, input);
+                if (result.config !== currentConfig) set({ config: result.config });
+                return { status: result.status, channelName: result.channelName };
+            },
             updateWebdavConfig: (key, value) =>
                 set((state) => ({
                     webdav: {
@@ -217,23 +390,39 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
-            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
+            partialize: (state) => ({ config: persistableConfig(state.config), webdav: state.webdav }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
                 const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
-                const config = { ...defaultConfig, ...persistedConfig };
+                const config = normalizePersistedConfig(persistedConfig);
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
-                const channels = normalizeChannels(config);
+                let channels = normalizeChannels(config);
+                if (isEmbedded()) {
+                    const persistedModel = typeof config.model === "string" ? config.model : "";
+                    const persistedImageModel = typeof config.imageModel === "string" ? config.imageModel : "";
+                    const oldCapability = modelCapabilityOf({ ...config, channels }, persistedModel);
+                    channels = channels.map((channel) => ({
+                        ...channel,
+                        baseUrl: lockedApiBaseUrl(),
+                        apiKey: "",
+                        models: channel.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })),
+                    }));
+                    config.apiKey = "";
+                    config.baseUrl = lockedApiBaseUrl();
+                    config.imageModel = "";
+                    if (persistedModel === persistedImageModel || oldCapability === "image" || guessCapability(modelOptionName(persistedModel)) === "image") config.model = "";
+                }
                 const models = modelOptionsFromChannels(channels);
                 return {
                     ...current,
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config: {
                         ...config,
-                        baseUrl: lockedApiBaseUrl() || config.baseUrl,
                         channelMode: "local",
                         apiFormat: normalizeApiFormat(config.apiFormat),
+                        baseUrl: isEmbedded() ? lockedApiBaseUrl() : config.baseUrl,
+                        apiKey: isEmbedded() ? "" : config.apiKey,
                         channels,
                         models,
                         imageModel: normalizeModelOptionValue(config.imageModel || config.model, channels),
@@ -249,7 +438,10 @@ export const useConfigStore = create<ConfigStore>()(
                         vquality: config.vquality || "720",
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
+                        videoMode: config.videoMode === "reference" ? "reference" : "frames",
                         canvasImageCount: config.canvasImageCount || "3",
+                        proxyEnabled: Boolean(config.proxyEnabled),
+                        proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
                     },
                 };
             },
@@ -270,24 +462,99 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
         const name = (typeof item === "string" ? item : item?.name || "").trim();
         if (!name || seen.has(name)) continue;
         seen.add(name);
-        const capability = typeof item === "string" ? guessCapability(name) : item.capability || guessCapability(name);
-        const script = typeof item === "string" ? undefined : item.script?.trim() || undefined;
-        result.push({ name, capability, script });
+        const capability = typeof item === "string" || !isModelCapability(item.capability) ? guessCapability(name) : item.capability;
+        const script = typeof item === "string" || typeof item.script !== "string" ? undefined : item.script.trim() || undefined;
+        result.push({
+            name,
+            capability,
+            script,
+            ...(typeof item !== "string" && item.verified === true ? { verified: true } : {}),
+            ...(typeof item !== "string" && typeof item.verifiedKey === "string" ? { verifiedKey: item.verifiedKey.trim() } : {}),
+        });
     }
     return result;
 }
 
 export function createModelChannel(channel?: Partial<ModelChannel>): ModelChannel {
     const apiFormat = normalizeApiFormat(channel?.apiFormat);
+    const embedded = isEmbedded();
+    const locked = embedded ? lockedApiBaseUrl() : "";
     return {
         id: channel?.id?.trim() || nanoid(),
-        name: channel?.name?.trim() || "新渠道",
-        // 内嵌发布时地址锁定为主站,连带把此前存下来的旧地址一并纠正过来。
-        baseUrl: lockedApiBaseUrl() || channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
-        apiKey: channel?.apiKey || "",
+        name: channel?.name?.trim() || i18n.t("config.channels.newName"),
+        // Every embedded channel is pinned to the host origin, including
+        // channels rehydrated from an older export or created by plugins.
+        baseUrl: embedded ? locked : channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
+        apiKey: embedded && !locked ? "" : channel?.apiKey || "",
         apiFormat,
         models: normalizeChannelModels(channel?.models),
     };
+}
+
+export function upsertChannelCredentials(
+    config: AiConfig,
+    input: { baseUrl?: string | null; apiKey?: string | null },
+): ChannelCredentialsImportResult & { config: AiConfig } {
+    const rawBaseUrl = input.baseUrl?.trim() || "";
+    if (!rawBaseUrl) return { status: "missing-base-url", config };
+    if (!isHttpBaseUrl(rawBaseUrl)) return { status: "invalid-base-url", config };
+
+    const baseUrl = isEmbedded() ? lockedApiBaseUrl() : normalizeImportedBaseUrl(rawBaseUrl);
+    if (!baseUrl) return { status: "invalid-base-url", config };
+    const apiKey = input.apiKey?.trim() || "";
+    const channels = Array.isArray(config.channels) ? config.channels : [];
+    const matchingIndex = channels.findIndex((channel) => normalizedBaseUrlKey(channel.baseUrl) === normalizedBaseUrlKey(baseUrl));
+
+    if (matchingIndex >= 0) {
+        const existing = channels[matchingIndex];
+        if (existing.baseUrl === baseUrl && (!apiKey || existing.apiKey === apiKey)) {
+            return { status: "updated", channelName: existing.name, config };
+        }
+        const updated = { ...existing, baseUrl, ...(apiKey ? { apiKey } : {}) };
+        const nextChannels = channels.map((channel, index) => (index === matchingIndex ? updated : channel));
+        return { status: "updated", channelName: existing.name, config: { ...config, channels: nextChannels } };
+    }
+
+    const channel = createModelChannel({
+        name: importedChannelName(baseUrl),
+        baseUrl,
+        apiKey,
+        apiFormat: "openai",
+        models: [],
+    });
+    return { status: "created", channelName: channel.name, config: { ...config, channels: [...channels, channel] } };
+}
+
+function isHttpBaseUrl(baseUrl: string) {
+    try {
+        const url = new URL(baseUrl);
+        return (url.protocol === "http:" || url.protocol === "https:") && Boolean(url.hostname);
+    } catch {
+        return false;
+    }
+}
+
+function normalizedBaseUrlKey(baseUrl: string) {
+    try {
+        return stripTrailingApiVersion(normalizeImportedBaseUrl(baseUrl));
+    } catch {
+        return stripTrailingApiVersion(baseUrl.trim().replace(/\/+$/, ""));
+    }
+}
+
+function normalizeImportedBaseUrl(baseUrl: string) {
+    const url = new URL(baseUrl.trim());
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
+}
+
+function stripTrailingApiVersion(baseUrl: string) {
+    return baseUrl.replace(/\/v1$/i, "");
+}
+
+function importedChannelName(baseUrl: string) {
+    const hostname = new URL(baseUrl).hostname;
+    return hostname.replace(/^(?:www|api)\./i, "") || i18n.t("config.channels.newName");
 }
 
 export function encodeChannelModel(channelId: string, model: string) {
@@ -335,7 +602,7 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
     const model = decoded?.model || value;
     const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: "默认渠道", baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
@@ -355,7 +622,7 @@ function normalizeChannels(config: AiConfig) {
         createModelChannel({
             ...channel,
             id: channel.id || (index === 0 ? "default" : `channel-${index + 1}`),
-            name: channel.name || (index === 0 ? "默认渠道" : `渠道 ${index + 1}`),
+            name: channel.name || (index === 0 ? i18n.t("config.channels.defaultName") : i18n.t("config.channels.indexedName", { index: index + 1 })),
             models: normalizeChannelModels(channel.models),
         }),
     );
@@ -363,7 +630,7 @@ function normalizeChannels(config: AiConfig) {
         channels.push(
             createModelChannel({
                 id: "default",
-                name: "默认渠道",
+                name: i18n.t("config.channels.defaultName"),
                 baseUrl: config.baseUrl || defaultConfig.baseUrl,
                 apiKey: config.apiKey || "",
                 apiFormat: config.apiFormat || defaultConfig.apiFormat,
@@ -375,16 +642,12 @@ function normalizeChannels(config: AiConfig) {
 }
 
 export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
-    // 内嵌时无论哪种协议都打到主站:OpenAI 走 /v1、Gemini 走 /v1beta,后端都提供。
-    const locked = lockedApiBaseUrl();
-    if (locked) return locked;
     if (apiFormat === "gemini") return GEMINI_BASE_URL;
-    if (apiFormat === "ark") return ARK_BASE_URL;
     return OPENAI_BASE_URL;
 }
 
 function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" || apiFormat === "ark" ? apiFormat : "openai";
+    return apiFormat === "gemini" ? apiFormat : "openai";
 }
 
 function uniqueModelOptions(models: string[]) {
@@ -392,27 +655,33 @@ function uniqueModelOptions(models: string[]) {
 }
 
 export function buildApiUrl(baseUrl: string, path: string) {
-    let normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, "");
-    normalizedBaseUrl = normalizeArkPlanBaseUrl(normalizedBaseUrl);
+    const normalizedBaseUrl = resolveRelayBaseUrl(baseUrl).trim().replace(/\/+$/, "");
     const lowerBaseUrl = normalizedBaseUrl.toLowerCase();
-    const apiBaseUrl = lowerBaseUrl.endsWith("/v1") || lowerBaseUrl.endsWith("/api/v3") || lowerBaseUrl.endsWith("/api/plan/v3") ? normalizedBaseUrl : `${normalizedBaseUrl}/v1`;
-    return `${apiBaseUrl}${path}`;
+    const apiBaseUrl = lowerBaseUrl.endsWith("/v1") ? normalizedBaseUrl : `${normalizedBaseUrl}/v1`;
+    return withLocalProxy(`${apiBaseUrl}${path}`);
 }
 
-function normalizeArkPlanBaseUrl(baseUrl: string) {
-    try {
-        const url = new URL(baseUrl);
-        const path = url.pathname.replace(/\/+$/, "");
-        const lowerPath = path.toLowerCase();
-        const arkPlanIndex = lowerPath.indexOf("/api/plan/v3");
-        if (arkPlanIndex < 0) return baseUrl;
-        const end = arkPlanIndex + "/api/plan/v3".length;
-        if (lowerPath.length !== end && lowerPath[end] !== "/") return baseUrl;
-        url.pathname = path.slice(0, end);
-        url.search = "";
-        url.hash = "";
-        return url.toString().replace(/\/+$/, "");
-    } catch {
-        return baseUrl;
+/** Resolve the relay origin while enforcing the embedded same-origin boundary. */
+export function resolveRelayBaseUrl(baseUrl: string) {
+    if (isEmbedded()) {
+        const locked = lockedApiBaseUrl();
+        if (!locked) throw new Error("内嵌画布无法验证主站地址");
+        return locked;
     }
+    return typeof baseUrl === "string" ? baseUrl : "";
+}
+
+export function normalizeLocalProxyUrl(value: string) {
+    const trimmed = value.trim().replace(/\/+$/, "");
+    if (!trimmed) return "";
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+}
+
+/** Prefix an outgoing request with the local forwarding proxy so the browser is not blocked by CORS. */
+export function withLocalProxy(url: string) {
+    const { proxyEnabled, proxyUrl } = useConfigStore.getState().config;
+    if (!proxyEnabled || !/^https?:\/\//i.test(url)) return url;
+    const base = normalizeLocalProxyUrl(proxyUrl);
+    if (!base || url.startsWith(`${base}/`)) return url;
+    return `${base}/${url}`;
 }

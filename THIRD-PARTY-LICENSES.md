@@ -150,12 +150,14 @@ dependencies, so they are listed separately from the inventory above.
 
 | Area | Path | Application | Upstream | Version | License |
 |------|------|-------------|----------|---------|---------|
-| web | `web/canvas` | 无限画布 (infinite-canvas) | https://github.com/basketikun/infinite-canvas | `v0.12.1` | AGPL-3.0 |
+| web | `web/canvas` | 无限画布 (infinite-canvas) | https://github.com/basketikun/infinite-canvas | `v0.18.0` | MIT |
 
-The upstream license text ships at `web/canvas/LICENSE`. The vendored copy carries
-local modifications; see `web/canvas/VENDOR.md` for the provenance record, the full
-patch list, and the upgrade procedure. Upstream author attribution and in-app
-identity are preserved as required by the upstream project.
+The upstream `v0.18.0` license text ships at `web/canvas/LICENSE` (tag commit
+`d213a74614e0e4bd8a26383d1e1e907249e9c61`, released 2026-09-07). The vendored copy
+carries local modifications; see `web/canvas/VENDOR.md` for the provenance record,
+the full patch list, and the upgrade procedure. Upstream author attribution and
+in-app identity are preserved as required by the upstream project. The surrounding
+New API source remains covered by its own project license and notices.
 
 ## License Texts
 

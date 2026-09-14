@@ -61,6 +61,9 @@ RUN apt-get update \
 
 COPY --from=builder2 /build/new-api /
 COPY LICENSE NOTICE THIRD-PARTY-LICENSES.md /licenses/
+# Keep the vendored Infinite Canvas license next to the aggregate notices so
+# the distributed image carries the exact third-party license text as well.
+COPY web/canvas/LICENSE /licenses/infinite-canvas-LICENSE
 EXPOSE 3000
 WORKDIR /data
 ENTRYPOINT ["/new-api"]

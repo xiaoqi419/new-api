@@ -7,15 +7,12 @@ import { defineConfig, type Plugin } from "vite";
 import { parseChangelog } from "./src/lib/release";
 
 const webDir = dirname(fileURLToPath(import.meta.url));
-// 上游把 VERSION/CHANGELOG.md 放在仓库根目录，vendor 进来后改为与本目录同级。
 const localVersion = readFileSync(resolve(webDir, "VERSION"), "utf8").trim() || "dev";
 const localChangelog = readFileSync(resolve(webDir, "CHANGELOG.md"), "utf8");
+const basePath = (process.env.VITE_BASE || "/").replace(/\/+$/, "") || "/";
 
-// 挂在子路径发布时,清单里的插件地址也要带上同一个前缀。
-const basePath = (process.env.VITE_BASE || "/").replace(/\/*$/, "/");
-
-// 暴露 /plugins/index.json:列出 public/plugins 下的本地插件文件,
-// 供前端自动发现并加入插件列表(默认关闭)。dev 下实时读目录,构建时产出静态清单。
+// Expose /plugins/index.json with local plugin files from public/plugins.
+// The frontend can discover and list them when enabled; development reads the directory live, while builds emit a static registry.
 function localPluginsManifest(): Plugin {
     const pluginsDir = resolve(webDir, "public/plugins");
     const listLocalPlugins = () => {
@@ -23,7 +20,7 @@ function localPluginsManifest(): Plugin {
             return readdirSync(pluginsDir)
                 .filter((file) => file.endsWith(".js"))
                 .sort()
-                .map((file) => `${basePath}plugins/${file}`);
+                .map((file) => `${basePath === "/" ? "" : basePath}/plugins/${file}`);
         } catch {
             return [];
         }
@@ -31,7 +28,7 @@ function localPluginsManifest(): Plugin {
     return {
         name: "local-plugins-manifest",
         configureServer(server) {
-            server.middlewares.use("/plugins/index.json", (_req, res) => {
+            server.middlewares.use(`${basePath === "/" ? "" : basePath}/plugins/index.json`, (_req, res) => {
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(listLocalPlugins()));
             });
@@ -43,7 +40,7 @@ function localPluginsManifest(): Plugin {
 }
 
 export default defineConfig({
-    base: basePath,
+    base: process.env.VITE_BASE || "/",
     plugins: [react(), localPluginsManifest()],
     resolve: {
         alias: {
