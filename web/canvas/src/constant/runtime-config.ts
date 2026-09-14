@@ -1,14 +1,13 @@
-// 运行期配置读取层。
-// 优先级：window.__RUNTIME_CONFIG__（容器启动时由 entrypoint 注入）> 构建期 VITE_ 变量 > 默认值。
-// 这样既支持「同一镜像 docker run -e 配置」，也兼容自行 build 时的构建期注入。
+// Runtime configuration access layer.
+// Priority: window.__RUNTIME_CONFIG__ (injected by the container entrypoint) > build-time VITE_ variables > defaults.
+// This supports both configuring the same image with docker run -e and injecting values during custom builds.
 //
-// 统计按「每家一个独立变量」配置：填了谁就启用谁，可同时启用多家，默认全空即关闭。
-// 仅支持 GA4 与百度：两者都只接受 ID，脚本地址由代码固定拼接，不接受任意脚本/内联 JS。
+// Each analytics provider has its own variable; configured providers are enabled independently and all are disabled by default.
+// Only GA4 and Baidu are supported. Both accept IDs only, and script URLs are assembled in code without arbitrary scripts or inline JavaScript.
 
 type RuntimeConfig = {
-    ANALYTICS_GA4_ID?: string; // GA4 衡量 ID（G-XXXX）
-    ANALYTICS_BAIDU_ID?: string; // 百度统计站点 ID
-    DEFAULT_API_BASE_URL?: string; // 首次进入时预填的接口地址（不含 /v1）
+    ANALYTICS_GA4_ID?: string; // GA4 measurement ID (G-XXXX)
+    ANALYTICS_BAIDU_ID?: string; // Baidu Analytics site ID
 };
 
 declare global {
@@ -29,11 +28,9 @@ function read(key: keyof RuntimeConfig, buildTime: string | undefined, fallback 
 export const ANALYTICS_GA4_ID = read("ANALYTICS_GA4_ID", import.meta.env.VITE_ANALYTICS_GA4_ID);
 export const ANALYTICS_BAIDU_ID = read("ANALYTICS_BAIDU_ID", import.meta.env.VITE_ANALYTICS_BAIDU_ID);
 
-// 作为 new-api 站点的一部分发布：默认同源，用户只需填自己的令牌，不用手填地址。
-// 兜底取当前 origin 而非固定域名，这样同一份产物换任何部署域名都不用重新构建。
-export const DEFAULT_API_BASE_URL = read(
-    "DEFAULT_API_BASE_URL",
-    import.meta.env.VITE_DEFAULT_API_BASE_URL,
-    typeof window === "undefined" ? "" : window.location.origin,
-);
-
+/**
+ * The embedded build must use the origin that served the iframe.  Keeping this
+ * value runtime-derived lets one image work behind any New API deployment
+ * domain and avoids baking a production hostname into the Canvas bundle.
+ */
+export const DEFAULT_API_BASE_URL = typeof window !== "undefined" && window.location.origin && window.location.origin !== "null" ? window.location.origin : "";

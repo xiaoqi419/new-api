@@ -51,6 +51,24 @@ jobs:
           DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags) bun run build
           cd ..
 
+      - name: Build classic frontend
+        working-directory: web/classic
+        env:
+          CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: |
+          bun install --frozen-lockfile
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags) bun run build
+
+      - name: Build Infinite Canvas frontend
+        working-directory: web/canvas
+        env:
+          CI: ""
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: |
+          bun install --frozen-lockfile
+          VITE_BASE=/canvas-app/ bun run build
+
       # - name: Build Go binary (macos/Linux)
       #   if: runner.os != 'Windows'
       #   run: |

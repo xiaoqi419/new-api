@@ -1,6 +1,7 @@
 .github
 .git
 *.md
+!web/canvas/CHANGELOG.md
 .vscode
 .gitignore
 Makefile
@@ -11,5 +12,7 @@ docs
 /web/dist
 /web/classic/node_modules
 /web/classic/dist
+/web/canvas/node_modules
+/web/canvas/dist
 /new-api2
 !THIRD-PARTY-LICENSES.md

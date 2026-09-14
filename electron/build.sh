@@ -8,10 +8,20 @@ echo "Step 1: Building frontend..."
 cd ../web
 bun install --frozen-lockfile
 DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags --always) bun run build
-cd ../electron
+
+echo "Step 1b: Building classic frontend..."
+cd classic
+bun install --frozen-lockfile
+DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags --always) bun run build
+
+echo "Step 1c: Building Infinite Canvas frontend..."
+cd ../canvas
+bun install --frozen-lockfile
+VITE_BASE=/canvas-app/ bun run build
+
+cd ../..
 
 echo "Step 2: Building Go backend..."
-cd ..
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Building for macOS..."

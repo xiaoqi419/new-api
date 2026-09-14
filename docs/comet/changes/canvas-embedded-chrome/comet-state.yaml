@@ -1,0 +1,756 @@
+schema: comet.native.v4
+name: canvas-embedded-chrome
+language: zh-CN
+phase: archive
+status: active
+state_version: 9
+brief: brief.md
+spec_changes:
+  - capability: embedded-navigation-visibility
+    operation: create
+    source: specs/embedded-navigation-visibility/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/canvas-embedded-chrome
+  target_branch: main
+  finish: keep
+loop:
+  stage: archive-ready
+  goal_cycle: 2
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Embedded page has no Agent controls - **Given** the Canvas document is
+      loaded in an iframe - **When** the root layout and a canvas project render
+      - **Then** no Agent opening control, status control, or Agent panel is
+      present in the accessible/rendered UI
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A2
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Standalone page keeps Agent controls - **Given** the Canvas document is
+      the top-level window - **When** the root layout and a canvas project
+      render - **Then** the existing Agent controls and panel behavior remain
+      available
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A3
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Embedded canvas menu omits documentation - **Given** the Canvas project is
+      embedded - **When** the canvas menu is opened - **Then** the menu has no
+      “文档” item
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A4
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Authenticated user opens Canvas - **Given** the user is authenticated and
+      visits `/canvas` - **When** the host route renders - **Then** it loads the
+      upgraded Canvas application from the same-origin `/canvas-app` path and
+      responds to the iframe readiness/token messages
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A5
+    source: specs/embedded-navigation-visibility/spec.md
+    text: When Infinite Canvas is hosted by New API in its same-origin iframe, the
+      host owns the surrounding product navigation. Canvas must therefore omit
+      the upstream Agent, documentation, and GitHub entry points while retaining
+      the controls that are still useful inside the host.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A6
+    source: specs/embedded-navigation-visibility/spec.md
+    text: The visibility decisions MUST use the existing `isEmbedded()` helper from
+      `src/lib/host-bridge.ts`. A top-level window is independent mode; a window
+      whose parent is different is embedded mode.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A7
+    source: specs/embedded-navigation-visibility/spec.md
+    text: "In embedded mode the application MUST NOT render:"
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A8
+    source: specs/embedded-navigation-visibility/spec.md
+    text: the `AppTopNav` button labelled “打开 Agent” (or its “收起 Agent” tooltip);
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A9
+    source: specs/embedded-navigation-visibility/spec.md
+    text: the `CanvasTopBar` Codex compact status control;
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A10
+    source: specs/embedded-navigation-visibility/spec.md
+    text: the `CanvasTopBar` right-side Agent button;
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A11
+    source: specs/embedded-navigation-visibility/spec.md
+    text: the Agent side panel, including a panel left mounted or opened by
+      persisted state;
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A12
+    source: specs/embedded-navigation-visibility/spec.md
+    text: automatic Agent connection or URL-triggered automatic panel opening.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A13
+    source: specs/embedded-navigation-visibility/spec.md
+    text: The Agent stores, API clients, panel components, plugin host operations,
+      and independent-mode behavior MUST remain available in source code.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A14
+    source: specs/embedded-navigation-visibility/spec.md
+    text: In embedded mode the application MUST NOT render the top-level
+      documentation link or the canvas menu item that opens `DOCS_URL`.
+      Independent mode MUST retain both links.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A15
+    source: specs/embedded-navigation-visibility/spec.md
+    text: In embedded mode the top-level `GitHubLink` control MUST NOT be rendered.
+      GitHub URLs used for version checks and prompt source metadata are data
+      dependencies and MUST remain unchanged.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A16
+    source: specs/embedded-navigation-visibility/spec.md
+    text: In embedded mode configuration and version-release controls MUST remain
+      usable. Version checking MUST continue to read the vendored
+      `web/canvas/VERSION` constant and use the existing upstream check URLs.
+      The upgrade sets that file exactly to the pinned upstream `v0.18.0`;
+      runtime or unrelated changes MUST NOT mutate it after the upgrade.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A17
+    source: specs/embedded-navigation-visibility/spec.md
+    text: When not embedded, all existing navigation controls, Agent behavior,
+      documentation links, GitHub link, and theme behavior MUST remain
+      unchanged.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A18
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Hidden controls MUST be conditionally omitted rather than visually hidden
+      with CSS.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A19
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Existing labels and accessible names for controls that remain visible MUST
+      not change.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A20
+    source: specs/embedded-navigation-visibility/spec.md
+    text: No server API or stored canvas data format changes are permitted.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A21
+    source: specs/embedded-navigation-visibility/spec.md
+    text: The vendored application MUST be upgraded from the current `v0.12.1`
+      baseline to the upstream latest formal release `v0.18.0`. The upgrade MUST
+      use the tagged source rather than changing only the version string, replay
+      all local path/host-bridge/security patches, refresh dependency locks and
+      license/vendor metadata, and pass an independent build and compatibility
+      review. The built-in version value and release modal MUST report `v0.18.0`
+      after the upgrade.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A22
+    source: specs/embedded-navigation-visibility/spec.md
+    text: The upgrade MUST preserve existing Canvas data where the upstream format
+      is compatible. If a stored record cannot be read, the application MUST
+      surface a clear error and MUST NOT silently overwrite it.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A23
+    source: specs/embedded-navigation-visibility/spec.md
+    text: This capability owns the vendored Canvas application's navigation and the
+      host route required to make it reachable. The production `origin/main`
+      route at `/canvas` currently points to the host application's `ComingSoon`
+      component; the previously archived `integrate-infinite-canvas` change is
+      therefore deliberately replayed as part of this change. The replay MUST be
+      based on `origin/main`, include only the necessary static embedding, host
+      bridge, token/bootstrap, route and security changes, and be adapted to the
+      upgraded `v0.18.0` source rather than blindly cherry-picking the old
+      commit.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+  - id: A24
+    source: specs/embedded-navigation-visibility/spec.md
+    text: Authenticated users visiting `/canvas` MUST receive the New API
+      `CanvasStudio` host page. The host MUST serve the built Canvas application
+      at `/canvas-app`, embed it same-origin, and preserve the existing
+      authentication, theme, API-key and endpoint bridge contract. The route
+      MUST no longer render `ComingSoon` after the change.
+    result: passed
+    reason:
+      text: Supported by independent source audit and the recorded deterministic
+        tests/builds.
+      truncated: false
+builder_handoff:
+  candidate_id: 3d7051c8-de39-4e32-a8ad-321428303433
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:b4293602-ecfc-4940-af07-16cbd4f71aaa
+  iteration: 1
+  summary:
+    text: 完成 Infinite Canvas v0.18.0 升级与 New API /canvas 同源嵌入：挂载 /canvas-app 静态资源、恢复
+      CanvasStudio 主站路由和认证桥接；嵌入模式按 isEmbedded() 条件移除 Agent、文档、GitHub
+      和独立视频工作台入口，保留独立部署能力；加入 API key/model bootstrap、origin/source/request/user
+      隔离、错误脱敏、插件来源限制、旧画布数据迁移与 fail-closed 错误处理，并同步构建、许可证和 vendor 元数据。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+  checks:
+    - name:
+        text: Canvas typecheck
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; bun run typecheck
+        truncated: false
+    - name:
+        text: Canvas tests
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; bun run test — 12 files / 107 tests
+        truncated: false
+    - name:
+        text: Canvas production build
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; VITE_BASE=/canvas-app/ bun run build
+        truncated: false
+    - name:
+        text: Canvas integration format check
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; bun run format:check — 61 files
+        truncated: false
+    - name:
+        text: Embedded navigation regression tests
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; bun run test --
+          src/components/layout/__tests__/embedded-visibility.test.tsx — 10
+          tests
+        truncated: false
+    - name:
+        text: Canvas data migration tests
+        truncated: false
+      result: passed
+      note:
+        text: cd web/canvas; bun run test --
+          src/lib/canvas/canvas-data-migration.test.ts — 10 tests
+        truncated: false
+    - name:
+        text: New API host bridge tests
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run test --
+          src/features/canvas/__tests__/host-contract.test.ts
+          src/features/canvas/__tests__/host-lifecycle.test.tsx — 2 files / 15
+          tests
+        truncated: false
+    - name:
+        text: Main web typecheck
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run typecheck
+        truncated: false
+    - name:
+        text: Main web production build
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run build
+        truncated: false
+    - name:
+        text: Main web lint
+        truncated: false
+      result: passed
+      note:
+        text: cd web; bun run lint — exit 0 with pre-existing warnings
+        truncated: false
+    - name:
+        text: Root Go tests
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go test ./...
+        truncated: false
+    - name:
+        text: Root Go build
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go build ./...
+        truncated: false
+    - name:
+        text: Root Go vet
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go vet ./...
+        truncated: false
+    - name:
+        text: Relaykit independent build
+        truncated: false
+      result: passed
+      note:
+        text: cd relaykit; GOWORK=off go build ./...
+        truncated: false
+    - name:
+        text: Whitespace check
+        truncated: false
+      result: passed
+      note:
+        text: git diff --check
+        truncated: false
+    - name:
+        text: Workflow shell/YAML checks
+        truncated: false
+      result: passed
+      note:
+        text: release and electron workflow YAML parse plus bash -n electron/build.sh
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: web bun run format:check
+        未通过：web/classic/node_modules/tailwindcss/theme.css 缺失导致 Oxfmt
+        sortTailwindcss ENOENT；Canvas 专用格式检查通过。
+      truncated: false
+    - text: Docker CLI/daemon 当前不可用，未运行真实 Docker clean build。
+      truncated: false
+    - text: 未运行真实浏览器、外部 provider 或线上部署验收；本地构建、静态安全边界和确定性测试已完成。
+      truncated: false
+    - text: Canvas build 保留既有非 module config.js、动态/静态 import 和大 chunk 警告。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-14T06:21:04.598Z
+blockers: []
+verification:
+  candidate_id: 3d7051c8-de39-4e32-a8ad-321428303433
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:fae7db75-80d2-41b0-9a5a-0623e9e91435
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: canvas-typecheck
+      name:
+        text: Canvas TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 10338
+    - id: canvas-tests
+      name:
+        text: Canvas full test suite
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 6791
+    - id: canvas-build
+      name:
+        text: Canvas production build with host base path
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:VITE_BASE='/canvas-app/'; bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 20191
+    - id: canvas-format
+      name:
+        text: Canvas integration format audit
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run format:check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 1933
+    - id: canvas-embedded-tests
+      name:
+        text: Embedded navigation visibility regression tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test --
+            src/components/layout/__tests__/embedded-visibility.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 2479
+    - id: canvas-migration-tests
+      name:
+        text: Canvas data migration regression tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test -- src/lib/canvas/canvas-data-migration.test.ts
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 1908
+    - id: host-bridge-tests
+      name:
+        text: New API Canvas host bridge tests
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test -- src/features/canvas/__tests__/host-contract.test.ts
+            src/features/canvas/__tests__/host-lifecycle.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6090
+    - id: web-typecheck
+      name:
+        text: Main web TypeScript typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 3466
+    - id: web-build
+      name:
+        text: Main web production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 11712
+    - id: web-lint
+      name:
+        text: Main web lint
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run lint
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 1532
+    - id: classic-build
+      name:
+        text: Classic frontend production build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:DISABLE_ESLINT_PLUGIN='true'; $env:VITE_REACT_APP_VERSION='v0.18.0';
+            bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/classic
+      status: passed
+      exit_code: 0
+      duration_ms: 5536
+    - id: root-go-tests
+      name:
+        text: Root Go test suite
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go test ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 29194
+    - id: root-go-build
+      name:
+        text: Root Go build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go build ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 29971
+    - id: root-go-vet
+      name:
+        text: Root Go vet
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go vet ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 28043
+    - id: relaykit-build
+      name:
+        text: Relaykit independent build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go build ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: relaykit
+      status: passed
+      exit_code: 0
+      duration_ms: 522
+    - id: diff-check
+      name:
+        text: Repository whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 661
+  summary:
+    text: Independent verification passed A1-A24 using source audit, deterministic
+      tests, builds, upstream tag/provenance checks, migration coverage, and
+      host bridge tests. Environment-dependent checks remain documented as known
+      limitations.
+    truncated: false
+  risks:
+    - text: No real browser, provider, Docker clean build, or live deployment was
+        available in this environment.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-14T06:54:29.220Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-09-14T06:20:30.001Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent verification passed A1-A24 using source audit, deterministic
+        tests, builds, upstream tag/provenance checks, migration coverage, and
+        host bridge tests. Environment-dependent checks remain documented as
+        known limitations.
+      truncated: false
+    completed_at: 2026-09-14T06:54:29.220Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-14T01:58:34.822Z

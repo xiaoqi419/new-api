@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
 import { nanoid } from "nanoid";
+import i18n from "@/i18n";
+import { migrateCanvasPersistedState, type CanvasMigrationResult } from "@/lib/canvas/canvas-data-migration";
 import { localForageStorage } from "@/lib/localforage-storage";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
@@ -20,35 +22,64 @@ export type CanvasProject = {
     viewport: ViewportTransform;
 };
 
+export type CanvasDeletedProject = {
+    id: string;
+    deletedAt: string;
+};
+
 type CanvasStore = {
     hydrated: boolean;
+    hydrationError: string | null;
     projects: CanvasProject[];
+    deletedProjects: CanvasDeletedProject[];
     createProject: (title?: string) => string;
     importProject: (project: Partial<CanvasProject>) => string;
     openProject: (id: string) => CanvasProject | null;
     renameProject: (id: string, title: string) => void;
     deleteProjects: (ids: string[]) => void;
-    replaceProjects: (projects: CanvasProject[]) => void;
+    replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void;
     updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">>) => void;
 };
 
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 };
 const CANVAS_STORE_KEY = "infinite-canvas:canvas_store";
-type PersistedCanvasState = Pick<CanvasStore, "projects">;
+type PersistedCanvasState = Pick<CanvasStore, "projects" | "deletedProjects">;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let queuedPersistState: PersistedCanvasState | null = null;
+let migrationWritePending = false;
+let storageReadError = false;
 
 const canvasStorage: PersistStorage<CanvasStore> = {
     getItem: async (name) => {
         const value = await localForageStorage.getItem(name);
-        if (!value) return null;
-        const parsed = JSON.parse(value) as StorageValue<CanvasStore>;
-        queuedPersistState = parsed.state as PersistedCanvasState;
-        return parsed;
+        if (!value) {
+            storageReadError = false;
+            return null;
+        }
+        let parsed: StorageValue<CanvasStore>;
+        try {
+            parsed = JSON.parse(value) as StorageValue<CanvasStore>;
+        } catch (error) {
+            storageReadError = true;
+            throw new Error(`Canvas data migration failed: persisted JSON is invalid (${error instanceof Error ? error.message : "unknown parse error"})`);
+        }
+        let migration: CanvasMigrationResult;
+        try {
+            migration = migrateCanvasPersistedState(parsed.state);
+        } catch (error) {
+            storageReadError = true;
+            throw error;
+        }
+        storageReadError = false;
+        queuedPersistState = migration.state;
+        migrationWritePending = migration.migrated;
+        return { ...parsed, state: migration.state as unknown as CanvasStore };
     },
     setItem: (name, value) => {
+        if (storageReadError) return;
         const nextState = value.state as PersistedCanvasState;
-        if (queuedPersistState && queuedPersistState.projects === nextState.projects) return;
+        if (!migrationWritePending && queuedPersistState && queuedPersistState.projects === nextState.projects && queuedPersistState.deletedProjects === nextState.deletedProjects) return;
+        migrationWritePending = false;
         queuedPersistState = nextState;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
@@ -63,8 +94,10 @@ export const useCanvasStore = create<CanvasStore>()(
     persist(
         (set, get) => ({
             hydrated: false,
+            hydrationError: null,
             projects: [],
-            createProject: (title = "未命名画布") => {
+            deletedProjects: [],
+            createProject: (title = i18n.t("canvas.project.untitled")) => {
                 const now = new Date().toISOString();
                 const id = nanoid();
                 const project: CanvasProject = {
@@ -87,7 +120,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 const now = new Date().toISOString();
                 const project: CanvasProject = {
                     id: nanoid(),
-                    title: source.title || "导入画布",
+                    title: source.title || i18n.t("canvas.project.imported"),
                     createdAt: source.createdAt || now,
                     updatedAt: now,
                     nodes: source.nodes || [],
@@ -110,10 +143,13 @@ export const useCanvasStore = create<CanvasStore>()(
                 })),
             deleteProjects: (ids) =>
                 set((state) => {
-                    const projects = state.projects.filter((project) => !ids.includes(project.id));
-                    return { projects };
+                    const now = new Date().toISOString();
+                    const removing = new Set(ids);
+                    const projects = state.projects.filter((project) => !removing.has(project.id));
+                    const deletedProjects = [...state.deletedProjects.filter((item) => !removing.has(item.id)), ...ids.map((id) => ({ id, deletedAt: now }))];
+                    return { projects, deletedProjects };
                 }),
-            replaceProjects: (projects) => set({ projects }),
+            replaceProjects: (projects, deletedProjects = []) => set({ projects, deletedProjects }),
             updateProject: (id, patch) =>
                 set((state) => ({
                     projects: state.projects.map((project) => (project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project)),
@@ -125,9 +161,16 @@ export const useCanvasStore = create<CanvasStore>()(
             partialize: (state) =>
                 ({
                     projects: state.projects,
+                    deletedProjects: state.deletedProjects,
                 }) as StorageValue<CanvasStore>["state"],
-            onRehydrateStorage: () => () => {
-                useCanvasStore.setState({ hydrated: true });
+            onRehydrateStorage: () => (_state, error) => {
+                if (error) {
+                    const message = error instanceof Error ? error.message : "Canvas data could not be read";
+                    console.error(message);
+                    useCanvasStore.setState({ hydrated: true, hydrationError: message });
+                    return;
+                }
+                useCanvasStore.setState({ hydrated: true, hydrationError: null });
             },
         },
     ),

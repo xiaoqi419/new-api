@@ -1,4 +1,6 @@
 WEB_DIR = ./web
+CLASSIC_WEB_DIR = ./web/classic
+CANVAS_WEB_DIR = ./web/canvas
 API_DIR = .
 DEV_WEB_PORT ?= 5173
 DEV_COMPOSE_FILE = docker-compose.dev.yml
@@ -8,7 +10,7 @@ DEV_POSTGRES_DB = new-api
 DEV_POSTGRES_USER = root
 DEV_SQLITE_PATH ?= one-api.db
 
-.PHONY: all build-web build-all-web start-api dev dev-api dev-api-rebuild dev-web reset-setup test
+.PHONY: all build-web build-classic build-canvas build-all-web start-api dev dev-api dev-api-rebuild dev-web reset-setup test
 
 all: build-all-web start-api
 
@@ -17,7 +19,17 @@ build-web:
 	@cd $(WEB_DIR) && bun install --frozen-lockfile
 	@cd $(WEB_DIR) && DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$$(cat ../VERSION) bun run build
 
-build-all-web: build-web
+build-classic:
+	@echo "Building classic web frontend..."
+	@cd $(CLASSIC_WEB_DIR) && bun install --frozen-lockfile
+	@cd $(CLASSIC_WEB_DIR) && DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$$(cat ../../VERSION) bun run build
+
+build-canvas:
+	@echo "Building Infinite Canvas frontend..."
+	@cd $(CANVAS_WEB_DIR) && bun install --frozen-lockfile
+	@cd $(CANVAS_WEB_DIR) && VITE_BASE=/canvas-app/ bun run build
+
+build-all-web: build-web build-classic build-canvas
 
 start-api:
 	@echo "Starting api dev server..."
@@ -39,7 +51,8 @@ dev-web:
 
 dev: dev-api dev-web
 
-# The main package embeds the ignored web/dist output and is covered after build-web.
+# The main package embeds the ignored web/dist, web/classic/dist, and
+# web/canvas/dist outputs and is covered after build-all-web.
 test:
 	@echo "Testing root Go module..."
 	@root_module=$$(GOWORK=off go list -m); \
