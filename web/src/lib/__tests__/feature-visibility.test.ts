@@ -17,9 +17,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
-import { describe, test } from 'vitest'
+import { describe, test, vi } from 'vitest'
 
 import { ComingSoon } from '@/components/coming-soon'
+import { CanvasStudio } from '@/features/canvas'
+
+// The route only needs the component identity for this contract test. Mocking
+// the feature boundary keeps Vitest in its Node environment from evaluating
+// CanvasStudio's browser-only dependency graph (including emoji assets).
+vi.mock('@/features/canvas', () => ({
+  CanvasStudio: () => null,
+}))
 
 const routeModules = await Promise.all([
   import('@/routes/_authenticated/canvas'),
@@ -27,10 +35,10 @@ const routeModules = await Promise.all([
   import('@/routes/_authenticated/agent-apply'),
 ])
 
-describe('retired user feature routes', () => {
-  test('use the ComingSoon page without importing feature implementations', () => {
-    for (const module of routeModules) {
-      assert.equal(module.Route.options.component, ComingSoon)
-    }
+describe('authenticated feature routes', () => {
+  test('uses CanvasStudio for canvas while retired routes remain ComingSoon', () => {
+    assert.equal(routeModules[0].Route.options.component, CanvasStudio)
+    assert.equal(routeModules[1].Route.options.component, ComingSoon)
+    assert.equal(routeModules[2].Route.options.component, ComingSoon)
   })
 })
