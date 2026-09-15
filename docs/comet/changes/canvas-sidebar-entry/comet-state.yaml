@@ -3,7 +3,7 @@ name: canvas-sidebar-entry
 language: zh-CN
 phase: verify
 status: await-user
-state_version: 12
+state_version: 13
 brief: brief.md
 spec_changes:
   - capability: canvas-sidebar-entry
