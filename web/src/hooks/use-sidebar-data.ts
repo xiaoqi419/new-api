@@ -32,6 +32,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
+  Palette,
   Radio,
   ReceiptText,
   Rocket,
@@ -103,6 +104,17 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/playground/image', '/playground/video'],
             configUrls: ['/playground'],
             icon: FlaskConical,
+          },
+        ],
+      },
+      {
+        id: 'media',
+        title: t('AI Media'),
+        items: [
+          {
+            title: t('Infinite Canvas'),
+            url: '/canvas',
+            icon: Palette,
           },
         ],
       },

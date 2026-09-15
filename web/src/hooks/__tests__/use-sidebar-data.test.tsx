@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
+  Palette,
   Radio,
   ReceiptText,
   Rocket,
@@ -153,6 +154,7 @@ describe('root sidebar navigation data', () => {
 
     expect(data.navGroups.map((group) => group.id)).toEqual([
       'chat',
+      'media',
       'general',
       'billing',
       'growth',
@@ -173,6 +175,15 @@ describe('root sidebar navigation data', () => {
         activeUrls: ['/playground/image', '/playground/video'],
         configUrls: ['/playground'],
         icon: FlaskConical,
+      },
+    ])
+    expect(linkContract(getGroup(data, 'media'))).toEqual([
+      {
+        title: 'Infinite Canvas',
+        url: '/canvas',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: Palette,
       },
     ])
     expect(linkContract(getGroup(data, 'general'))).toEqual([
@@ -322,6 +333,7 @@ describe('root sidebar navigation data', () => {
     expect(data.navGroups.map((group) => group.id)).toEqual([
       'agent',
       'chat',
+      'media',
       'general',
       'billing',
       'growth',
@@ -337,16 +349,23 @@ describe('root sidebar navigation data', () => {
         icon: Share2,
       },
     ])
+    expect(linkContract(getGroup(data, 'media'))).toEqual([
+      {
+        title: 'Infinite Canvas',
+        url: '/canvas',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: Palette,
+      },
+    ])
 
     const links = data.navGroups.flatMap((group) => getLinks(group))
-    expect(data.navGroups.some((group) => group.id === 'media')).toBe(false)
     expect(
       links.some(
         (item) =>
           item.title === 'AI Media' ||
           item.title === 'Become an Agent' ||
           item.url === '/asset-library' ||
-          item.url === '/canvas' ||
           item.url === '/agent-apply'
       )
     ).toBe(false)
