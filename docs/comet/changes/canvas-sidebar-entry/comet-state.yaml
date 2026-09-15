@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: canvas-sidebar-entry
 language: zh-CN
-phase: archive
-status: active
-state_version: 14
+phase: verify
+status: await-user
+state_version: 17
 brief: brief.md
 spec_changes:
   - capability: canvas-sidebar-entry
@@ -15,16 +15,16 @@ workspace:
   target_branch: codex/canvas-sidebar-base
   finish: merge
 loop:
-  stage: archive-ready
+  stage: await-user
   goal_cycle: 1
   iteration: 1
-  attempt: 4
+  attempt: 5
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: confirm-skill-coordinated-pass
 acceptance:
   - id: A1
     source: specs/canvas-sidebar-entry/spec.md
@@ -301,13 +301,20 @@ builder_handoff:
       truncated: false
   known_limits_truncated: false
   submitted_at: 2026-09-15T03:33:28.898Z
-blockers: []
+blockers:
+  - owner: user
+    reason:
+      text: The generic Skill bridge cannot prove an independent Verifier execution;
+        user confirmation is required before Archive.
+      truncated: false
+    acceptance_ids: []
+    resolution_action: await-user
 verification:
   candidate_id: 76519d16-c029-4415-b91b-80a0ce6d9ce5
   identity_provider: skill-coordinated
-  verifier_execution_ref: skill-coordinated:verifier:f52895c2-15d2-496f-82fd-1e303eca1b24
+  verifier_execution_ref: skill-coordinated:verifier:5f2750c2-2e9a-4d10-a4fd-1ca3f95b66e0
   iteration: 1
-  attempt: 4
+  attempt: 5
   assurance: skill-coordinated
   verdict: pass
   checks:
@@ -330,7 +337,7 @@ verification:
       cwd_ref: web
       status: passed
       exit_code: 0
-      duration_ms: 31307
+      duration_ms: 31623
     - id: frontend-typecheck
       name:
         text: Frontend typecheck
@@ -344,7 +351,7 @@ verification:
       cwd_ref: web
       status: passed
       exit_code: 0
-      duration_ms: 20170
+      duration_ms: 16441
     - id: frontend-lint
       name:
         text: Frontend lint
@@ -358,7 +365,7 @@ verification:
       cwd_ref: web
       status: passed
       exit_code: 0
-      duration_ms: 36257
+      duration_ms: 36749
     - id: frontend-build
       name:
         text: Frontend production build
@@ -372,7 +379,7 @@ verification:
       cwd_ref: web
       status: passed
       exit_code: 0
-      duration_ms: 22172
+      duration_ms: 18861
     - id: changed-files-format
       name:
         text: Changed file format check
@@ -394,7 +401,7 @@ verification:
       cwd_ref: web
       status: passed
       exit_code: 0
-      duration_ms: 383
+      duration_ms: 608
     - id: git-diff-check
       name:
         text: Git diff check
@@ -408,7 +415,7 @@ verification:
       cwd_ref: .
       status: passed
       exit_code: 0
-      duration_ms: 62
+      duration_ms: 57
   summary:
     text: 独立只读 Verify 复核了导航源码、普通/Agent 契约测试、隐藏入口、路由保持、Classic 未修改和 Runtime 检查结果；全部
       21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。
@@ -419,7 +426,7 @@ verification:
         navigation files, while changelog follows existing baseline formatting.
       truncated: false
   risks_truncated: false
-  completed_at: 2026-09-15T06:52:26.321Z
+  completed_at: 2026-09-15T07:30:39.728Z
 history:
   - goal_cycle: 1
     iteration: 1
@@ -451,6 +458,26 @@ history:
         21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。
       truncated: false
     completed_at: 2026-09-15T06:52:26.321Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 4
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Local Runtime was unavailable at Archive ready; the synchronized
+        implementation must be verified again.
+      truncated: false
+    completed_at: 2026-09-15T07:21:30.080Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 5
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立只读 Verify 复核了导航源码、普通/Agent 契约测试、隐藏入口、路由保持、Classic 未修改和 Runtime 检查结果；全部
+        21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。
+      truncated: false
+    completed_at: 2026-09-15T07:30:39.728Z
 history_overflow:
   dropped_entries: 0
   first_dropped_at: null

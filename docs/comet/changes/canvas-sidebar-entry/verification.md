@@ -1,17 +1,17 @@
 ---
-generated_from_state_version: 14
+generated_from_state_version: 17
 ---
 
 # Verification
 
 ## Current result
 
-- Result: **Passed**
+- Result: **Passed, user confirmation required**
 - Assurance: **skill-coordinated**
 - Goal cycle: 1
 - Iteration: 1
-- Verifier attempt: 4
-- Completed: 2026-09-15T06:52:26.321Z
+- Verifier attempt: 5
+- Completed: 2026-09-15T07:30:39.728Z
 - Summary: 独立只读 Verify 复核了导航源码、普通/Agent 契约测试、隐藏入口、路由保持、Classic 未修改和 Runtime 检查结果；全部 21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。
 
 ## Acceptance
@@ -44,16 +44,16 @@ generated_from_state_version: 14
 
 | Check | Command | Working directory | Status | Exit | Duration |
 | --- | --- | --- | --- | ---: | ---: |
-| Sidebar navigation targeted tests | run test -- src/hooks/__tests__/use-sidebar-data.test.tsx src/hooks/__tests__/navigation-visibility.test.ts | web | passed | 0 | 31307 ms |
-| Frontend typecheck | run typecheck | web | passed | 0 | 20170 ms |
-| Frontend lint | run lint | web | passed | 0 | 36257 ms |
-| Frontend production build | run build | web | passed | 0 | 22172 ms |
-| Changed file format check | x oxfmt --check src/hooks/use-sidebar-data.ts src/hooks/__tests__/use-sidebar-data.test.tsx src/features/changelog/data.ts | web | passed | 0 | 383 ms |
-| Git diff check | diff --check | . | passed | 0 | 62 ms |
+| Sidebar navigation targeted tests | run test -- src/hooks/__tests__/use-sidebar-data.test.tsx src/hooks/__tests__/navigation-visibility.test.ts | web | passed | 0 | 31623 ms |
+| Frontend typecheck | run typecheck | web | passed | 0 | 16441 ms |
+| Frontend lint | run lint | web | passed | 0 | 36749 ms |
+| Frontend production build | run build | web | passed | 0 | 18861 ms |
+| Changed file format check | x oxfmt --check src/hooks/use-sidebar-data.ts src/hooks/__tests__/use-sidebar-data.test.tsx src/features/changelog/data.ts | web | passed | 0 | 608 ms |
+| Git diff check | diff --check | . | passed | 0 | 57 ms |
 
 ## Blockers
 
-_None._
+- **user**: The generic Skill bridge cannot prove an independent Verifier execution; user confirmation is required before Archive. — next: `await-user`
 
 ## Risks and skipped work
 
@@ -66,6 +66,8 @@ _None._
 | 1 | 1 | 1 | execution-error | — | Native Verifier response was invalid: Native verification cannot pass before every required check succeeds | 2026-09-15T04:05:15.497Z |
 | 1 | 1 | 2 | execution-error | — | Native Verifier response was invalid: Native Verifier check ID changed-files-format conflicts with a Runtime check | 2026-09-15T05:59:44.584Z |
 | 1 | 1 | 4 | pass | — | 独立只读 Verify 复核了导航源码、普通/Agent 契约测试、隐藏入口、路由保持、Classic 未修改和 Runtime 检查结果；全部 21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。 | 2026-09-15T06:52:26.321Z |
+| 1 | 1 | 4 | recovery | — | Local Runtime was unavailable at Archive ready; the synchronized implementation must be verified again. | 2026-09-15T07:21:30.080Z |
+| 1 | 1 | 5 | pass | — | 独立只读 Verify 复核了导航源码、普通/Agent 契约测试、隐藏入口、路由保持、Classic 未修改和 Runtime 检查结果；全部 21 项验收通过。唯一限制是仓库既有全量格式检查基线问题，未因本 change 重写无关文件。 | 2026-09-15T07:30:39.728Z |
 
 ## Conclusion
 
