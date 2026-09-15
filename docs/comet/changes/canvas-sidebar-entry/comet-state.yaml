@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: canvas-sidebar-entry
 language: zh-CN
-phase: verify
-status: await-user
-state_version: 13
+phase: archive
+status: active
+state_version: 14
 brief: brief.md
 spec_changes:
   - capability: canvas-sidebar-entry
@@ -15,7 +15,7 @@ workspace:
   target_branch: codex/canvas-sidebar-base
   finish: merge
 loop:
-  stage: await-user
+  stage: archive-ready
   goal_cycle: 1
   iteration: 1
   attempt: 4
@@ -24,7 +24,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: confirm-skill-coordinated-pass
+  next_action: archive
 acceptance:
   - id: A1
     source: specs/canvas-sidebar-entry/spec.md
@@ -301,14 +301,7 @@ builder_handoff:
       truncated: false
   known_limits_truncated: false
   submitted_at: 2026-09-15T03:33:28.898Z
-blockers:
-  - owner: user
-    reason:
-      text: The generic Skill bridge cannot prove an independent Verifier execution;
-        user confirmation is required before Archive.
-      truncated: false
-    acceptance_ids: []
-    resolution_action: await-user
+blockers: []
 verification:
   candidate_id: 76519d16-c029-4415-b91b-80a0ce6d9ce5
   identity_provider: skill-coordinated
