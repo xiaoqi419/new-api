@@ -30,6 +30,17 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     // Replace the suffix with the immutable image tag when this change is released.
+    version: '20260915-canvas-sidebar-entry',
+    date: '2026-09-15',
+    changes: [
+      {
+        kind: 'fix',
+        items: ['恢复认证用户侧边栏中的「无限画布」入口，位于 AI 媒体分组下。'],
+      },
+    ],
+  },
+  {
+    // Replace the suffix with the immutable image tag when this change is released.
     version: '20260914-canvas-embedded-chrome',
     date: '2026-09-14',
     changes: [
@@ -144,9 +155,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       {
         kind: 'fix',
-        items: [
-          '管理 H5 统计改走消费日志额度，并去掉页面上的 2.5 倍说明。',
-        ],
+        items: ['管理 H5 统计改走消费日志额度，并去掉页面上的 2.5 倍说明。'],
       },
     ],
   },
@@ -220,9 +229,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       {
         kind: 'fix',
-        items: [
-          '修复更新日志页因 feat 分类无法识别而崩溃的问题。',
-        ],
+        items: ['修复更新日志页因 feat 分类无法识别而崩溃的问题。'],
       },
     ],
   },
