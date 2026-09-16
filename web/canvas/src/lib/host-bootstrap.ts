@@ -149,7 +149,16 @@ function clearLegacySessionMarker() {
     if (typeof localStorage !== "undefined") localStorage.removeItem("infinite-canvas:host-user-id");
 }
 
-/** Remove unverified image models from an embedded config. */
+function keepEmbeddedChannelModels(channel: ModelChannel, currentKey: string): ChannelModel[] {
+    return (Array.isArray(channel.models) ? channel.models : []).filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        if (entry.capability !== "image") return true;
+        const key = currentKey || channel.apiKey || "";
+        return entry.verified === true && Boolean(key) && entry.verifiedKey === key;
+    });
+}
+
+/** Remove unverified image models from an embedded config, keeping user-saved verified ones. */
 export function clearUnavailableImageConfig(config: AiConfig): AiConfig {
     const embedded = isEmbedded();
     if (!embedded || !config || typeof config !== "object") return config;
@@ -157,22 +166,27 @@ export function clearUnavailableImageConfig(config: AiConfig): AiConfig {
     const hasTrustedOrigin = Boolean(baseUrl);
     const model = typeof config.model === "string" ? config.model : "";
     const imageModel = typeof config.imageModel === "string" ? config.imageModel : "";
-    const shouldClearCurrentModel = Boolean(model && (model === imageModel || modelCapabilityOf(config, model) === "image"));
     const channels = (Array.isArray(config.channels) ? config.channels : [])
         .filter((channel) => channel && typeof channel === "object")
-        .map((channel) => ({
-            ...channel,
-            baseUrl,
-            apiKey: hasTrustedOrigin ? channel.apiKey : "",
-            models: (Array.isArray(channel.models) ? channel.models : []).filter((entry) => entry && entry.capability !== "image"),
-        }));
+        .map((channel) => {
+            const apiKey = hasTrustedOrigin ? channel.apiKey : "";
+            return {
+                ...channel,
+                baseUrl,
+                apiKey,
+                models: keepEmbeddedChannelModels(channel, apiKey),
+            };
+        });
+    const nextModels = modelOptionsFromChannels(channels);
+    const imageModelStillPresent = Boolean(imageModel && nextModels.includes(imageModel));
+    const shouldClearCurrentModel = Boolean(model && (model === imageModel || modelCapabilityOf(config, model) === "image") && !nextModels.includes(model));
     return {
         ...config,
         baseUrl,
         apiKey: hasTrustedOrigin ? config.apiKey : "",
         channels,
-        models: modelOptionsFromChannels(channels),
-        imageModel: "",
+        models: nextModels,
+        imageModel: imageModelStillPresent ? imageModel : "",
         ...(shouldClearCurrentModel ? { model: "" } : {}),
     };
 }

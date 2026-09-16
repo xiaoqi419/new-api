@@ -30,6 +30,20 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     // Replace the suffix with the immutable image tag when this change is released.
+    version: '20260916-repair-canvas-embedded-chrome',
+    date: '2026-09-16',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '内嵌无限画布缺配置时打开「配置与用户偏好」，不再用鉴权失败横幅当入口；保存所选模型后渠道数量不再被清成 0。',
+          '无限画布内核升级到 v0.19.0。',
+        ],
+      },
+    ],
+  },
+  {
+    // Replace the suffix with the immutable image tag when this change is released.
     version: '20260915-canvas-sidebar-entry',
     date: '2026-09-15',
     changes: [

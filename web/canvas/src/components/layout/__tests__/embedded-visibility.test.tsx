@@ -12,6 +12,7 @@ const agentState = vi.hoisted(() => ({
 
 const connectAgent = vi.hoisted(() => vi.fn());
 const togglePanel = vi.hoisted(() => vi.fn());
+const openConfigDialog = vi.hoisted(() => vi.fn());
 
 vi.mock("react-router-dom", () => ({
     Link: ({ to, children, ...props }: { to: string; children?: ReactNode; [key: string]: unknown }) => (
@@ -64,7 +65,7 @@ vi.mock("@/stores/use-agent-store", () => ({
 }));
 
 vi.mock("@/stores/use-config-store", () => ({
-    useConfigStore: (selector: (state: { openConfigDialog: () => void }) => unknown) => selector({ openConfigDialog: vi.fn() }),
+    useConfigStore: (selector: (state: { openConfigDialog: typeof openConfigDialog; isConfigOpen: boolean }) => unknown) => selector({ openConfigDialog, isConfigOpen: false }),
 }));
 
 vi.mock("@/stores/use-theme-store", () => ({
@@ -154,6 +155,7 @@ beforeEach(() => {
     setEmbedded(false);
     connectAgent.mockClear();
     togglePanel.mockClear();
+    openConfigDialog.mockClear();
     agentState.token = "stored-agent-token";
     agentState.enabled = false;
     agentState.connected = false;
@@ -283,7 +285,7 @@ describe("embedded navigation visibility", () => {
         else expect(screen.getByTestId("agent-panel")).toBeInTheDocument();
     });
 
-    test("shows the embedded host bootstrap status for an account without an enabled key", () => {
+    test("opens the config dialog when an embedded account has no enabled key", async () => {
         setEmbedded(true);
         useHostTokensStore.setState({ status: "ready", tokens: [], error: "", userId: 42, requestId: "request-1" });
 
@@ -293,11 +295,11 @@ describe("embedded navigation visibility", () => {
             </UserLayout>,
         );
 
-        expect(screen.getByRole("alert")).toHaveTextContent("This account has no enabled API keys");
-        expect(screen.getByRole("button", { name: "Manage API keys" })).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).toBeNull();
+        await waitFor(() => expect(openConfigDialog).toHaveBeenCalledWith(false, "channels"));
     });
 
-    test("shows model bootstrap errors only while embedded", () => {
+    test("opens the config dialog instead of the model-check banner while embedded", async () => {
         useHostTokensStore.setState({ status: "ready", tokens: [{ id: 1, name: "canvas", key: "sk-test" }], error: "", userId: 42, requestId: "request-1" });
         useHostBootstrapStore.setState({
             status: "ready",
@@ -314,10 +316,11 @@ describe("embedded navigation visibility", () => {
                 <div data-testid="layout-child">Canvas</div>
             </UserLayout>,
         );
-        expect(screen.getByRole("alert")).toHaveTextContent("Check the image model configuration");
-        expect(screen.getByRole("alert")).toHaveTextContent("图片模型不可用");
+        expect(screen.queryByText("Check the image model configuration")).toBeNull();
+        await waitFor(() => expect(openConfigDialog).toHaveBeenCalledWith(false, "channels"));
 
         unmount();
+        openConfigDialog.mockClear();
         setEmbedded(false);
         render(
             <UserLayout>
@@ -325,5 +328,6 @@ describe("embedded navigation visibility", () => {
             </UserLayout>,
         );
         expect(screen.queryByRole("alert")).toBeNull();
+        expect(openConfigDialog).not.toHaveBeenCalled();
     });
 });

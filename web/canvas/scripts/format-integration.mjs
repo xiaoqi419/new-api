@@ -18,7 +18,7 @@ const pristineRoot = process.env.CANVAS_PRISTINE_WEB ? resolve(process.env.CANVA
 const supportedExtensions = new Set([".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx", ".json", ".md", ".yaml", ".yml"]);
 
 // These are the files whose contents differ semantically from the pristine
-// upstream v0.18.0 web/ tree. Keeping this list explicit makes an upgrade
+// upstream v0.19.0 web/ tree. Keeping this list explicit makes an upgrade
 // reviewable and prevents the formatter from silently taking ownership of the
 // entire vendored application.
 const semanticPatchFiles = [
@@ -88,7 +88,7 @@ const testDirectories = ["src/components/agent/__tests__", "src/components/layou
 const explicitTestFiles = ["src/components/agent/use-agent-message-asset-url.test.tsx", "src/lib/canvas/canvas-data-migration.test.ts", "src/services/api/canvas-agent.test.ts", "src/services/app-sync.test.ts"];
 
 // These files contain upstream code plus a small local patch. The pristine
-// v0.18.0 source itself is not formatted by the current Prettier release, so a
+// v0.19.0 source itself is not formatted by the current Prettier release, so a
 // whole-file check would rewrite unrelated vendored code. They are still
 // parser-checked by default and receive a changed-line audit when
 // CANVAS_PRISTINE_WEB points to a clean upstream web/ checkout.
@@ -250,7 +250,7 @@ function readUpstreamFiles(path) {
 
 function auditPristineTree() {
     if (!pristineRoot) {
-        console.error("Pristine audit requires CANVAS_PRISTINE_WEB to point to a clean upstream v0.18.0 web/ checkout.");
+        console.error("Pristine audit requires CANVAS_PRISTINE_WEB to point to a clean upstream v0.19.0 web/ checkout.");
         process.exitCode = 2;
         return;
     }
