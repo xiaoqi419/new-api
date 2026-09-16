@@ -13,6 +13,10 @@ const agentState = vi.hoisted(() => ({
 const connectAgent = vi.hoisted(() => vi.fn());
 const togglePanel = vi.hoisted(() => vi.fn());
 const openConfigDialog = vi.hoisted(() => vi.fn());
+const configState = vi.hoisted(() => ({
+    isConfigOpen: false,
+    channels: [] as Array<{ apiKey: string; models: Array<{ name: string }> }>,
+}));
 
 vi.mock("react-router-dom", () => ({
     Link: ({ to, children, ...props }: { to: string; children?: ReactNode; [key: string]: unknown }) => (
@@ -65,7 +69,8 @@ vi.mock("@/stores/use-agent-store", () => ({
 }));
 
 vi.mock("@/stores/use-config-store", () => ({
-    useConfigStore: (selector: (state: { openConfigDialog: typeof openConfigDialog; isConfigOpen: boolean }) => unknown) => selector({ openConfigDialog, isConfigOpen: false }),
+    useConfigStore: (selector: (state: { openConfigDialog: typeof openConfigDialog; isConfigOpen: boolean; config: { channels: typeof configState.channels } }) => unknown) =>
+        selector({ openConfigDialog, isConfigOpen: configState.isConfigOpen, config: { channels: configState.channels } }),
 }));
 
 vi.mock("@/stores/use-theme-store", () => ({
@@ -156,6 +161,8 @@ beforeEach(() => {
     connectAgent.mockClear();
     togglePanel.mockClear();
     openConfigDialog.mockClear();
+    configState.isConfigOpen = false;
+    configState.channels = [];
     agentState.token = "stored-agent-token";
     agentState.enabled = false;
     agentState.connected = false;
@@ -328,6 +335,59 @@ describe("embedded navigation visibility", () => {
             </UserLayout>,
         );
         expect(screen.queryByRole("alert")).toBeNull();
+        expect(openConfigDialog).not.toHaveBeenCalled();
+    });
+
+    test("does not auto-open the config dialog after a channel has a key and models", async () => {
+        configState.channels = [{ apiKey: "sk-user", models: [{ name: "gpt-image-1" }, { name: "flux-1" }] }];
+        useHostTokensStore.setState({ status: "ready", tokens: [{ id: 1, name: "canvas", key: "sk-user" }], error: "", userId: 42, requestId: "request-1" });
+        useHostBootstrapStore.setState({
+            status: "ready",
+            error: "",
+            modelStatus: "error",
+            modelError: "图片模型不可用",
+            availableImageModels: [],
+            userId: 42,
+        });
+        setEmbedded(true);
+
+        render(
+            <UserLayout>
+                <div data-testid="layout-child">Canvas</div>
+            </UserLayout>,
+        );
+
+        expect(screen.queryByText("Check the image model configuration")).toBeNull();
+        await waitFor(() => expect(screen.getByTestId("layout-child")).toBeInTheDocument());
+        expect(openConfigDialog).not.toHaveBeenCalled();
+    });
+
+    test("does not reopen the config dialog after the user closes it", async () => {
+        setEmbedded(true);
+        useHostTokensStore.setState({ status: "ready", tokens: [], error: "", userId: 42, requestId: "request-1" });
+
+        const view = render(
+            <UserLayout>
+                <div data-testid="layout-child">Canvas</div>
+            </UserLayout>,
+        );
+        await waitFor(() => expect(openConfigDialog).toHaveBeenCalledWith(false, "channels"));
+        openConfigDialog.mockClear();
+
+        configState.isConfigOpen = true;
+        view.rerender(
+            <UserLayout>
+                <div data-testid="layout-child">Canvas</div>
+            </UserLayout>,
+        );
+        configState.isConfigOpen = false;
+        view.rerender(
+            <UserLayout>
+                <div data-testid="layout-child">Canvas</div>
+            </UserLayout>,
+        );
+
+        await waitFor(() => expect(screen.getByTestId("layout-child")).toBeInTheDocument());
         expect(openConfigDialog).not.toHaveBeenCalled();
     });
 });
