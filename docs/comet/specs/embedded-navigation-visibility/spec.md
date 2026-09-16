@@ -50,7 +50,7 @@ In embedded mode the top-level `GitHubLink` control MUST NOT be rendered. GitHub
 
 ### Requirement: Preserve host-owned controls and version behavior
 
-In embedded mode configuration and version-release controls MUST remain usable. Version checking MUST continue to read the vendored `web/canvas/VERSION` constant and use the existing upstream check URLs. The upgrade sets that file exactly to the pinned upstream `v0.18.0`; runtime or unrelated changes MUST NOT mutate it after the upgrade.
+In embedded mode configuration and version-release controls MUST remain usable. Version checking MUST continue to read the vendored `web/canvas/VERSION` constant and use the existing upstream check URLs. The upgrade sets that file exactly to the pinned upstream `v0.19.0`; runtime or unrelated changes MUST NOT mutate it after the upgrade.
 
 ### Requirement: Preserve independent deployment
 
@@ -64,20 +64,10 @@ When not embedded, all existing navigation controls, Agent behavior, documentati
 
 ## Version baseline and upgrade
 
-The vendored application MUST be upgraded from the current `v0.12.1` baseline to the upstream latest formal release `v0.18.0`. The upgrade MUST use the tagged source rather than changing only the version string, replay all local path/host-bridge/security patches, refresh dependency locks and license/vendor metadata, and pass an independent build and compatibility review. The built-in version value and release modal MUST report `v0.18.0` after the upgrade.
+The vendored application MUST be upgraded from the current `v0.18.0` baseline to the upstream latest formal release `v0.19.0`. The upgrade MUST use the tagged source rather than changing only the version string, replay all local path/host-bridge/security patches, refresh dependency locks and license/vendor metadata, and pass an independent build and compatibility review. The built-in version value and release modal MUST report `v0.19.0` after the upgrade.
 
 The upgrade MUST preserve existing Canvas data where the upstream format is compatible. If a stored record cannot be read, the application MUST surface a clear error and MUST NOT silently overwrite it.
 
 ## Integration baseline
 
-This capability owns the vendored Canvas application's navigation and the host route required to make it reachable. The production `origin/main` route at `/canvas` currently points to the host application's `ComingSoon` component; the previously archived `integrate-infinite-canvas` change is therefore deliberately replayed as part of this change. The replay MUST be based on `origin/main`, include only the necessary static embedding, host bridge, token/bootstrap, route and security changes, and be adapted to the upgraded `v0.18.0` source rather than blindly cherry-picking the old commit.
-
-### Requirement: Expose the upgraded Canvas from the host
-
-Authenticated users visiting `/canvas` MUST receive the New API `CanvasStudio` host page. The host MUST serve the built Canvas application at `/canvas-app`, embed it same-origin, and preserve the existing authentication, theme, API-key and endpoint bridge contract. The route MUST no longer render `ComingSoon` after the change.
-
-#### Scenario: Authenticated user opens Canvas
-
-- **Given** the user is authenticated and visits `/canvas`
-- **When** the host route renders
-- **Then** it loads the upgraded Canvas application from the same-origin `/canvas-app` path and responds to the iframe readiness/token messages
+Authenticated users visiting `/canvas` MUST receive the New API `CanvasStudio` host page. The host MUST serve the built Canvas application at `/canvas-app`, embed it same-origin, and preserve the existing authentication, theme, and endpoint-lock contract. Host configuration UX for API keys and selected models is specified by `embedded-host-config`.
