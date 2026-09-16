@@ -83,7 +83,18 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     const applySelection = (names: string[]) => {
         const map = new Map(draft.models.map((model) => [model.name, model]));
-        setModels(names.map((name) => map.get(name) || { name, capability: guessCapability(name) }));
+        setModels(
+            names.map((name) => {
+                const previous = map.get(name);
+                return {
+                    name,
+                    capability: previous?.capability || guessCapability(name),
+                    script: previous?.script,
+                    verified: true,
+                    verifiedKey: draft.apiKey,
+                };
+            }),
+        );
     };
 
     const setCapability = (name: string, capability: ModelCapability) => setModels(draft.models.map((model) => (model.name === name ? { ...model, capability } : model)));

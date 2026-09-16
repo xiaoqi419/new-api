@@ -188,6 +188,50 @@ describe("embedded host bootstrap recovery", () => {
         vi.stubGlobal("window", originalWindow);
     });
 
+    test("keeps user-saved verified image models when catalog scrub runs", () => {
+        Object.defineProperty(window, "parent", { configurable: true, value: parentSource });
+        const saved = config(
+            [
+                {
+                    id: "default",
+                    name: "默认渠道",
+                    baseUrl: window.location.origin,
+                    apiKey: "sk-user",
+                    apiFormat: "openai",
+                    models: [{ name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "sk-user" }],
+                },
+            ],
+            { apiKey: "sk-user", imageModel: "default::gpt-image-1" },
+        );
+
+        const next = clearUnavailableImageConfig(saved);
+
+        expect(next.channels[0]?.models).toEqual([expect.objectContaining({ name: "gpt-image-1", verified: true, verifiedKey: "sk-user" })]);
+        expect(next.imageModel).toBe("default::gpt-image-1");
+    });
+
+    test("still drops unverified image models during catalog scrub", () => {
+        Object.defineProperty(window, "parent", { configurable: true, value: parentSource });
+        const saved = config(
+            [
+                {
+                    id: "default",
+                    name: "默认渠道",
+                    baseUrl: window.location.origin,
+                    apiKey: "sk-user",
+                    apiFormat: "openai",
+                    models: [{ name: "stale-image", capability: "image" }],
+                },
+            ],
+            { apiKey: "sk-user", imageModel: "default::stale-image" },
+        );
+
+        const next = clearUnavailableImageConfig(saved);
+
+        expect(next.channels[0]?.models).toEqual([]);
+        expect(next.imageModel).toBe("");
+    });
+
     test("scrubs old credentials and verified image models while a new host request is loading", () => {
         const oldConfig = config([channel("account", "gpt-image-1", "image"), channel("text", "gpt-5.5", "text")], {
             baseUrl: window.location.origin,
