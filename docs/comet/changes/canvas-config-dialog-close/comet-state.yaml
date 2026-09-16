@@ -1,0 +1,259 @@
+schema: comet.native.v4
+name: canvas-config-dialog-close
+language: zh-CN
+phase: archive
+status: active
+state_version: 6
+brief: brief.md
+spec_changes:
+  - capability: embedded-config-dialog-dismiss
+    operation: create
+    source: specs/embedded-config-dialog-dismiss/spec.md
+workspace:
+  isolation: worktree
+  change_branch: comet/canvas-config-dialog-close
+  target_branch: codex/canvas-config-close-base
+  finish: null
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: dismiss after successful save - **Given** the default channel shows a
+      non-zero model count after save - **When** the user clicks「完成」or close -
+      **Then** the dialog remains closed
+    result: passed
+    reason:
+      text: "Configured channels skip auto-open; finishConfig still closes the dialog.
+        Test: does not auto-open after a channel has a key and models."
+      truncated: false
+  - id: A2
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: bootstrap error does not trap the dialog - **Given** a channel already has
+      a key and models - **And** host bootstrap `modelStatus` is `error` -
+      **When** the dialog is closed - **Then** it is not reopened automatically
+    result: passed
+    reason:
+      text: needsConfigDialog is false when a channel has apiKey and models, even if
+        modelStatus is error.
+      truncated: false
+  - id: A3
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: When an embedded Infinite Canvas user has successfully saved at least one
+      channel with an API key and selected models, the「配置与用户偏好」dialog MUST close
+      and stay closed. Host bootstrap catalog errors MUST NOT reopen it.
+    result: passed
+    reason:
+      text: Successful save leaves models on the channel; HostBootstrapStatus no
+        longer reopens solely on catalog error.
+      truncated: false
+  - id: A4
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: "If any channel has a non-empty `apiKey` and `models.length > 0`:"
+    result: passed
+    reason:
+      text: hasConfiguredChannel requires a trimmed apiKey and models.length > 0.
+      truncated: false
+  - id: A5
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: Clicking「完成」or the dialog close control MUST set the dialog closed.
+    result: passed
+    reason:
+      text: AppConfigModal finishConfig still calls setConfigDialogOpen(false);
+        dismiss flag prevents reopen.
+      truncated: false
+  - id: A6
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: '`HostBootstrapStatus` MUST NOT call `openConfigDialog` solely because
+      `modelStatus === "error"` or host token bootstrap failed.'
+    result: passed
+    reason:
+      text: modelStatus error is ignored when a channel is already configured;
+        unconfigured close also sets dismissedRef.
+      truncated: false
+  - id: A7
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: If no channel has both a key and at least one model, the dialog MAY open
+      automatically once so the user can configure a key.
+    result: passed
+    reason:
+      text: Empty channels still auto-open once; existing no-key test still passes.
+      truncated: false
+  - id: A8
+    source: specs/embedded-config-dialog-dismiss/spec.md
+    text: The existing configuration button MUST still open the dialog at any time.
+    result: passed
+    reason:
+      text: embedded-visibility still asserts the 配置 button is present while
+        Agent/docs/GitHub are hidden.
+      truncated: false
+builder_handoff:
+  candidate_id: 7ccbc092-56e9-4d15-82cf-6c5c5697cddd
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:59813b49-e60e-4e4c-b3ad-c5260e0d4dd2
+  iteration: 1
+  summary:
+    text: HostBootstrapStatus no longer auto-opens the config dialog when any
+      channel already has an API key and models. Closing the dialog also sets a
+      session dismiss flag so the same bootstrap error cannot reopen it.
+      Regression tests cover configured channels and user dismiss. Changelog
+      entry added. Production was not deployed.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+  checks:
+    - name:
+        text: bun run test embedded-visibility
+        truncated: false
+      result: passed
+      note:
+        text: 12 tests passed.
+        truncated: false
+    - name:
+        text: bun run typecheck (web/canvas)
+        truncated: false
+      result: passed
+      note:
+        text: tsc --noEmit exited 0.
+        truncated: false
+    - name:
+        text: bun run format:check (web/canvas)
+        truncated: false
+      result: passed
+      note:
+        text: Owned integration files formatted.
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: CRLF warnings only.
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Production remains on 20260911-11bd2e13d until the user authorizes a later
+        hot-update.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-16T16:59:31.808Z
+blockers: []
+verification:
+  candidate_id: 7ccbc092-56e9-4d15-82cf-6c5c5697cddd
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:c6e65768-1c32-478b-ba96-c634b7a9ba77
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: canvas-dialog-tests
+      name:
+        text: Embedded visibility and dialog tests
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: test
+          truncated: false
+        - text: --
+          truncated: false
+        - text: src/components/layout/__tests__/embedded-visibility.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 2107
+    - id: canvas-typecheck
+      name:
+        text: Canvas typecheck
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 6970
+    - id: canvas-format
+      name:
+        text: Canvas integration format check
+        truncated: false
+      argv_display:
+        - text: run
+          truncated: false
+        - text: format:check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web/canvas
+      status: passed
+      exit_code: 0
+      duration_ms: 1374
+    - id: git-diff-check
+      name:
+        text: Git diff check
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 65
+  summary:
+    text: HostBootstrapStatus no longer traps the config dialog after a successful
+      save. Runtime tests, typecheck, and format checks passed.
+    truncated: false
+  risks:
+    - text: Production remains on 20260911-11bd2e13d until an authorized hot-update.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-16T17:00:20.897Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: HostBootstrapStatus no longer traps the config dialog after a successful
+        save. Runtime tests, typecheck, and format checks passed.
+      truncated: false
+    completed_at: 2026-09-16T17:00:20.897Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-16T16:53:13.804Z

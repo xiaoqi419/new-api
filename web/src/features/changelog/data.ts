@@ -30,6 +30,17 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     // Replace the suffix with the immutable image tag when this change is released.
+    version: '20260917-canvas-config-dialog-close',
+    date: '2026-09-17',
+    changes: [
+      {
+        kind: 'fix',
+        items: ['内嵌无限画布保存渠道模型后，「配置与用户偏好」可以关闭，不会因模型检查失败被反复打开。'],
+      },
+    ],
+  },
+  {
+    // Replace the suffix with the immutable image tag when this change is released.
     version: '20260916-repair-canvas-embedded-chrome',
     date: '2026-09-16',
     changes: [
