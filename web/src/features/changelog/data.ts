@@ -30,6 +30,17 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     // Replace the suffix with the immutable image tag when this change is released.
+    version: '20260917-canvas-model-persist',
+    date: '2026-09-17',
+    changes: [
+      {
+        kind: 'fix',
+        items: ['内嵌无限画布保存的模型列表会跨页面保留，离开后再进入不必重新拉取；API Key 仍不写入本地存储。'],
+      },
+    ],
+  },
+  {
+    // Replace the suffix with the immutable image tag when this change is released.
     version: '20260917-canvas-config-dialog-close',
     date: '2026-09-17',
     changes: [

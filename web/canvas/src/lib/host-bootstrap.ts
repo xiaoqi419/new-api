@@ -153,9 +153,21 @@ function keepEmbeddedChannelModels(channel: ModelChannel, currentKey: string): C
     return (Array.isArray(channel.models) ? channel.models : []).filter((entry) => {
         if (!entry || typeof entry !== "object") return false;
         if (entry.capability !== "image") return true;
+        if (entry.verified !== true) return false;
         const key = currentKey || channel.apiKey || "";
-        return entry.verified === true && Boolean(key) && entry.verifiedKey === key;
+        const bound = typeof entry.verifiedKey === "string" ? entry.verifiedKey : "";
+        if (key && bound && bound !== key) return false;
+        return true;
     });
+}
+
+function stampVerifiedKeys(config: AiConfig, currentKey: string): AiConfig {
+    if (!currentKey) return config;
+    const channels = (Array.isArray(config.channels) ? config.channels : []).map((channel) => ({
+        ...channel,
+        models: (Array.isArray(channel.models) ? channel.models : []).map((model) => (model.verified ? { ...model, verifiedKey: currentKey } : model)),
+    }));
+    return { ...config, channels };
 }
 
 /** Remove unverified image models from an embedded config, keeping user-saved verified ones. */
@@ -170,11 +182,12 @@ export function clearUnavailableImageConfig(config: AiConfig): AiConfig {
         .filter((channel) => channel && typeof channel === "object")
         .map((channel) => {
             const apiKey = hasTrustedOrigin ? channel.apiKey : "";
+            const models = keepEmbeddedChannelModels(channel, apiKey).map((model) => (model.verified && apiKey ? { ...model, verifiedKey: apiKey } : model));
             return {
                 ...channel,
                 baseUrl,
                 apiKey,
-                models: keepEmbeddedChannelModels(channel, apiKey),
+                models,
             };
         });
     const nextModels = modelOptionsFromChannels(channels);
@@ -386,6 +399,19 @@ async function processHostTokens(tokens: HostToken[], userId: number) {
                 modelStatus: "error",
                 modelError: canvasText("host.noModelChannel"),
                 availableImageModels: [],
+                userId,
+            });
+            return;
+        }
+        const savedModels = (Array.isArray(channel.models) ? channel.models : []).filter((model) => model && typeof model.name === "string" && model.name.trim());
+        if (savedModels.length) {
+            replaceConfig(stampVerifiedKeys(currentConfig, reconciled.selectedKey));
+            useHostBootstrapStore.setState({
+                status: "ready",
+                error: "",
+                modelStatus: "ready",
+                modelError: "",
+                availableImageModels: savedModels.filter((model) => model.capability === "image").map((model) => ({ name: model.name, capability: "image" as const, supportsImage: true, capabilitySource: "metadata" as const })),
                 userId,
             });
             return;
