@@ -258,14 +258,21 @@ function normalizePersistedConfig(value: unknown): AiConfig {
 }
 
 /** Keep host supplied keys in memory only; persisted Canvas data remains safe. */
-function persistableConfig(config: AiConfig): AiConfig {
+export function persistableConfig(config: AiConfig): AiConfig {
     if (!isEmbedded()) return config;
     const locked = lockedApiBaseUrl();
     return {
         ...config,
         baseUrl: locked,
         apiKey: "",
-        channels: Array.isArray(config.channels) ? config.channels.map((channel) => ({ ...channel, baseUrl: locked, apiKey: "" })) : [],
+        channels: Array.isArray(config.channels)
+            ? config.channels.map((channel) => ({
+                  ...channel,
+                  baseUrl: locked,
+                  apiKey: "",
+                  models: Array.isArray(channel.models) ? channel.models.map((model) => ({ ...model, verifiedKey: "" })) : [],
+              }))
+            : [],
     };
 }
 
@@ -406,12 +413,14 @@ export const useConfigStore = create<ConfigStore>()(
                         ...channel,
                         baseUrl: lockedApiBaseUrl(),
                         apiKey: "",
-                        models: channel.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })),
+                        models: channel.models.map((model) => ({ ...model, verifiedKey: "" })),
                     }));
                     config.apiKey = "";
                     config.baseUrl = lockedApiBaseUrl();
-                    config.imageModel = "";
-                    if (persistedModel === persistedImageModel || oldCapability === "image" || guessCapability(modelOptionName(persistedModel)) === "image") config.model = "";
+                    if (!channels.some((channel) => channel.models.length)) {
+                        config.imageModel = "";
+                        if (persistedModel === persistedImageModel || oldCapability === "image" || guessCapability(modelOptionName(persistedModel)) === "image") config.model = "";
+                    }
                 }
                 const models = modelOptionsFromChannels(channels);
                 return {

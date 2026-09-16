@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { applyModelCatalog, clearUnavailableImageConfig, reconcileHostConfig, retryHostBootstrap, startHostBootstrap, stopHostBootstrap, useHostBootstrapStore } from "@/lib/host-bootstrap";
 import { HOST_TOKENS_REQUEST_MESSAGE, resetHostTokens, useHostTokensStore } from "@/lib/host-bridge";
-import { defaultConfig, encodeChannelModel, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { defaultConfig, encodeChannelModel, persistableConfig, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import type { AvailableModel } from "@/services/api/image";
 
 function channel(id: string, modelName: string, capability: "image" | "text"): ModelChannel {
@@ -252,5 +252,96 @@ describe("embedded host bootstrap recovery", () => {
         expect(next.channels.find((item) => item.id === "text")).toMatchObject({ apiKey: "", models: [{ name: "gpt-5.5", capability: "text" }] });
         expect(useHostTokensStore.getState().tokens).toEqual([]);
         expect(useHostBootstrapStore.getState()).toMatchObject({ status: "loading", userId: 22, availableImageModels: [] });
+    });
+
+    test("keeps verified image models while the host key is not restored yet", () => {
+        Object.defineProperty(window, "parent", { configurable: true, value: parentSource });
+        const saved = config(
+            [
+                {
+                    id: "default",
+                    name: "默认渠道",
+                    baseUrl: window.location.origin,
+                    apiKey: "",
+                    apiFormat: "openai",
+                    models: [
+                        { name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "" },
+                        { name: "flux-1", capability: "image", verified: true, verifiedKey: "" },
+                    ],
+                },
+            ],
+            { apiKey: "", imageModel: "default::gpt-image-1" },
+        );
+
+        const next = clearUnavailableImageConfig(saved);
+
+        expect(next.channels[0]?.models).toHaveLength(2);
+        expect(next.imageModel).toBe("default::gpt-image-1");
+    });
+
+    test("drops verified image models only when the bound key differs from the current key", () => {
+        Object.defineProperty(window, "parent", { configurable: true, value: parentSource });
+        const saved = config(
+            [
+                {
+                    id: "default",
+                    name: "默认渠道",
+                    baseUrl: window.location.origin,
+                    apiKey: "sk-new",
+                    apiFormat: "openai",
+                    models: [{ name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "sk-old" }],
+                },
+            ],
+            { apiKey: "sk-new", imageModel: "default::gpt-image-1" },
+        );
+
+        const next = clearUnavailableImageConfig(saved);
+
+        expect(next.channels[0]?.models).toEqual([]);
+        expect(next.imageModel).toBe("");
+    });
+
+    test("persistableConfig stores verified models without keys", () => {
+        Object.defineProperty(window, "parent", { configurable: true, value: parentSource });
+        const saved = config(
+            [
+                {
+                    id: "default",
+                    name: "默认渠道",
+                    baseUrl: window.location.origin,
+                    apiKey: "sk-user",
+                    apiFormat: "openai",
+                    models: [{ name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "sk-user" }],
+                },
+            ],
+            { apiKey: "sk-user" },
+        );
+
+        const persisted = persistableConfig(saved);
+
+        expect(persisted.apiKey).toBe("");
+        expect(persisted.channels[0]).toMatchObject({ apiKey: "", models: [{ name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "" }] });
+    });
+
+    test("keeps verified image models while a new host token request is loading", () => {
+        const oldConfig = config(
+            [
+                {
+                    id: "account",
+                    name: "account",
+                    baseUrl: window.location.origin,
+                    apiKey: "sk-old-account",
+                    apiFormat: "openai",
+                    models: [{ name: "gpt-image-1", capability: "image", verified: true, verifiedKey: "sk-old-account" }],
+                },
+            ],
+            { apiKey: "sk-old-account", imageModel: "account::gpt-image-1" },
+        );
+        useConfigStore.setState({ config: oldConfig });
+        startHostBootstrap();
+        useHostTokensStore.setState({ status: "loading", tokens: [{ id: 1, key: "sk-old-account", name: "Old account" }], error: "", userId: 22, requestId: "account-switch" });
+
+        const next = useConfigStore.getState().config;
+        expect(next.channels.find((item) => item.id === "account")?.models).toEqual([expect.objectContaining({ name: "gpt-image-1", verified: true })]);
     });
 });
