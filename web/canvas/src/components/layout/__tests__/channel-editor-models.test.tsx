@@ -130,9 +130,6 @@ describe("ChannelEditorDrawer model save", () => {
         expect(onSave).toHaveBeenCalledTimes(1);
         const saved = onSave.mock.calls[0][0];
         expect(saved.models).toHaveLength(2);
-        expect(saved.models).toEqual([
-            expect.objectContaining({ name: "gpt-image-1", verified: true, verifiedKey: "sk-user" }),
-            expect.objectContaining({ name: "flux-1", verified: true, verifiedKey: "sk-user" }),
-        ]);
+        expect(saved.models).toEqual([expect.objectContaining({ name: "gpt-image-1", verified: true, verifiedKey: "sk-user" }), expect.objectContaining({ name: "flux-1", verified: true, verifiedKey: "sk-user" })]);
     });
 });
