@@ -1,0 +1,170 @@
+schema: comet.native.v4
+name: retire-secondary-dev
+language: zh-CN
+phase: archive
+status: done
+state_version: 8
+brief: brief.md
+spec_changes:
+  - capability: local-branch-lifecycle
+    operation: create
+    source: specs/local-branch-lifecycle/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/retire-secondary-dev
+  target_branch: main
+  finish: keep
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 规范明确 main 是唯一长期本地分支，功能以最新 origin/main 为基准在临时分支/worktree 中开发。"
+    result: passed
+    reason:
+      text: 独立核对AGENTS与Spec：main唯一长期分支，最新origin/main临时worktree开发。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 规范保留验证、PR、CI、合并后精确 SHA 构建及应用部署顺序，不允许脏目录部署；保留未提交内容须先审查与备份。"
+    result: passed
+    reason:
+      text: 原验证、PR、CI、合并SHA构建部署顺序保持，新增先审查备份旧内容边界。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: 变更仅包含治理文档和 Comet 正式产物，项目身份与许可证信息不变。"
+    result: passed
+    reason:
+      text: git status仅AGENTS和正式Comet产物，项目身份和许可不变。
+      truncated: false
+  - id: A4
+    source: specs/local-branch-lifecycle/spec.md
+    text: main is the sole long-lived local branch and origin/main is the sole
+      production source of truth. Start each implementation from the current
+      fetched origin/main in one temporary feature branch and worktree. Keep the
+      main checkout clean. Validate locally, create a scoped commit and PR, pass
+      required CI, merge to main, and only then build an immutable image from
+      the merge SHA for application-only deployment when a deployment is
+      required. Documentation-only changes do not require deployment.
+    result: passed
+    reason:
+      text: Spec完整明确main/临时worktree/PR/CI流程与仅在需要时部署。
+      truncated: false
+  - id: A5
+    source: specs/local-branch-lifecycle/spec.md
+    text: Remove temporary worktrees and feature branches after verified merge.
+      secondary-dev is retired; it is not a development baseline. Before
+      retiring a legacy checkout, review and preserve unique commits,
+      uncommitted source, and unresolved drafts in a verified external recovery
+      archive. Do not discard unreviewed work or recursively clean independent
+      repositories, runtime databases, logs or user assets.
+    result: passed
+    reason:
+      text: Spec明确secondary-dev退休，独有提交和草稿须外部可恢复备份，不清除数据库或用户资料。
+      truncated: false
+  - id: A6
+    source: specs/local-branch-lifecycle/spec.md
+    text: Only one Native change and one implementation worktree own a requirement
+      at a time. Existing production safeguards, project identity, attribution
+      and licenses remain unchanged.
+    result: passed
+    reason:
+      text: 保留一个Native change和一个实现worktree以及现有生产保障。
+      truncated: false
+builder_handoff:
+  candidate_id: 2ebdd10a-2e9b-4bc1-9876-a5f513e8fdb7
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:d716ceef-6cd0-4dba-8778-d1550cc1c53a
+  iteration: 1
+  summary:
+    text: AGENTS改为仅保留main长期分支，沿用最新origin/main临时worktree开发和PR流程，增加旧工作区审查备份与数据保留边界；仅治理文档。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+  checks:
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: 无空白错误
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 本机目录清理在治理PR合并后执行；未运行应用测试，不需要部署。
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-17T07:00:32.495Z
+blockers: []
+verification:
+  candidate_id: 2ebdd10a-2e9b-4bc1-9876-a5f513e8fdb7
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:4bf3bfc0-6ed6-49e7-81a0-78e5e56ea8e0
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: whitespace
+      name:
+        text: git diff whitespace
+        truncated: false
+      argv_display:
+        - text: diff
+          truncated: false
+        - text: --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 446
+  summary:
+    text: 独立只读Verifier通过A1-A6；本人及Runtime git diff --check均exit0。
+    truncated: false
+  risks:
+    - text: 本机实际整理为PR合并后交付，尚待执行验证。
+      truncated: false
+    - text: 仅治理文档，应用测试和部署不适用。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-17T07:09:11.288Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立只读Verifier通过A1-A6；本人及Runtime git diff --check均exit0。
+      truncated: false
+    completed_at: 2026-09-17T07:09:11.288Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-09-17T06:57:27.678Z
