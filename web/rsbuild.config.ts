@@ -75,6 +75,11 @@ export default defineConfig(({ envMode }) => {
       },
     },
     source: {
+      define: {
+        'import.meta.env.VITE_REACT_APP_VERSION': JSON.stringify(
+          process.env.VITE_REACT_APP_VERSION || 'development'
+        ),
+      },
       entry: {
         index: './src/main.tsx',
       },

@@ -161,11 +161,10 @@ function keepEmbeddedChannelModels(channel: ModelChannel, currentKey: string): C
     });
 }
 
-function stampVerifiedKeys(config: AiConfig, currentKey: string): AiConfig {
-    if (!currentKey) return config;
+function stampVerifiedKeys(config: AiConfig): AiConfig {
     const channels = (Array.isArray(config.channels) ? config.channels : []).map((channel) => ({
         ...channel,
-        models: (Array.isArray(channel.models) ? channel.models : []).map((model) => (model.verified ? { ...model, verifiedKey: currentKey } : model)),
+        models: (Array.isArray(channel.models) ? channel.models : []).map((model) => (model.verified ? { ...model, verifiedKey: channel.apiKey } : model)),
     }));
     return { ...config, channels };
 }
@@ -205,12 +204,11 @@ export function clearUnavailableImageConfig(config: AiConfig): AiConfig {
 }
 
 /**
- * Keep only keys that the current host response explicitly authorizes. This is
- * deliberately based on key values rather than a browser user-id marker: a
- * stale persisted config is then harmless even after storage is copied between
- * accounts or the dashboard cache is cleared.
+ * Keep only keys that the current host response explicitly authorizes.
+ * Saved token identities must match both the current account and its authorized
+ * token list. Legacy in-memory keys are accepted only when explicitly listed.
  */
-export function reconcileHostConfig(config: AiConfig, tokens: HostToken[]): { config: AiConfig; selectedKey: string } {
+export function reconcileHostConfig(config: AiConfig, tokens: HostToken[], userId = useHostTokensStore.getState().userId): { config: AiConfig; selectedKey: string } {
     const safeConfig = config && typeof config === "object" ? config : ({} as AiConfig);
     const embedded = isEmbedded();
     const lockedBaseUrl = embedded ? lockedApiBaseUrl() : "";
@@ -226,17 +224,24 @@ export function reconcileHostConfig(config: AiConfig, tokens: HostToken[]): { co
 
     let channels: ModelChannel[] = (Array.isArray(safeConfig.channels) ? safeConfig.channels : [])
         .filter((channel): channel is ModelChannel => Boolean(channel) && typeof channel === "object")
-        .map((channel, index) =>
-            createModelChannel({
+        .map((channel, index) => {
+            const hasSelection = channel.hostTokenId !== undefined || channel.hostUserId !== undefined;
+            const selectedToken = hasSelection ? normalizedTokens.find((token) => channel.hostUserId === userId && token.id === channel.hostTokenId) : normalizedTokens.find((token) => token.key === normalizeAllowed(channel.apiKey));
+            const apiKey = selectedToken?.key || "";
+            // Keep preferences during a pending handshake, but never transfer
+            // verification evidence to a different account or revoked token.
+            const rejectedSelection = hasSelection && (tokens.length > 0 || useHostTokensStore.getState().status === "ready") && !selectedToken;
+            return createModelChannel({
                 ...channel,
-                id: typeof channel.id === "string" && channel.id.trim() ? channel.id : index === 0 ? "default" : `channel-${index + 1}`,
-                name: typeof channel.name === "string" && channel.name.trim() ? channel.name : index === 0 ? "默认渠道" : `渠道 ${index + 1}`,
-                baseUrl: embedded ? lockedBaseUrl : typeof channel.baseUrl === "string" ? channel.baseUrl : "",
-                apiKey: normalizeAllowed(channel.apiKey),
-                models: Array.isArray(channel.models) ? channel.models : [],
-            }),
-        );
-    const globalKey = normalizeAllowed(safeConfig.apiKey);
+                id: (typeof channel.id === "string" && channel.id.trim() && channel.id) || (index === 0 ? "default" : `channel-${index + 1}`),
+                name: (typeof channel.name === "string" && channel.name.trim() && channel.name) || (index === 0 ? "默认渠道" : `渠道 ${index + 1}`),
+                baseUrl: embedded ? lockedBaseUrl : (typeof channel.baseUrl === "string" && channel.baseUrl) || "",
+                apiKey,
+                ...(selectedToken && userId > 0 ? { hostTokenId: selectedToken.id, hostUserId: userId } : {}),
+                models: (Array.isArray(channel.models) ? channel.models : []).map((model) => ({ ...model, ...(rejectedSelection ? { verified: false } : {}), verifiedKey: apiKey && model.verified && !rejectedSelection ? apiKey : "" })),
+            });
+        });
+    const globalKey = channels.some((channel) => channel.hostTokenId !== undefined || channel.hostUserId !== undefined) ? "" : normalizeAllowed(safeConfig.apiKey);
     if (!channels.length) {
         channels = [
             createModelChannel({
@@ -251,12 +256,13 @@ export function reconcileHostConfig(config: AiConfig, tokens: HostToken[]): { co
     }
 
     let selectedKey = channels.find((channel) => channel.apiKey)?.apiKey || globalKey;
-    if (!selectedKey) selectedKey = normalizedTokens[0]?.key || "";
+    if (!selectedKey && !channels.some((channel) => channel.hostTokenId !== undefined || channel.hostUserId !== undefined)) selectedKey = normalizedTokens[0]?.key || "";
     // The catalog request is made for the channel carrying the selected key.
     // If the key only came from the global field (or the first host token),
     // associate it with the first channel so model and request routing agree.
     if (selectedKey && !channels.some((channel) => channel.apiKey === selectedKey)) {
-        channels = channels.map((channel, index) => (index === 0 ? { ...channel, apiKey: selectedKey } : channel));
+        const token = normalizedTokens.find((item) => item.key === selectedKey);
+        channels = channels.map((channel, index) => (index === 0 ? { ...channel, apiKey: selectedKey, ...(token && userId > 0 ? { hostTokenId: token.id, hostUserId: userId } : {}) } : channel));
     }
 
     const firstChannelKey = channels[0]?.apiKey || "";
@@ -370,11 +376,25 @@ async function waitForConfigHydration() {
 
 async function processHostTokens(tokens: HostToken[], userId: number) {
     const run = ++generation;
+    let requestedChannel: ModelChannel | undefined;
+    const requestIsCurrent = () => {
+        if (run !== generation) return false;
+        if (!requestedChannel) return true;
+        const current = useConfigStore.getState().config.channels.find((item) => item.id === requestedChannel?.id);
+        return Boolean(
+            current &&
+            current.apiKey === requestedChannel.apiKey &&
+            current.baseUrl === requestedChannel.baseUrl &&
+            current.apiFormat === requestedChannel.apiFormat &&
+            current.hostUserId === requestedChannel.hostUserId &&
+            current.hostTokenId === requestedChannel.hostTokenId,
+        );
+    };
     try {
         await waitForConfigHydration();
         if (run !== generation) return;
         clearLegacySessionMarker();
-        const reconciled = reconcileHostConfig(useConfigStore.getState().config, tokens);
+        const reconciled = reconcileHostConfig(useConfigStore.getState().config, tokens, userId);
         replaceConfig(reconciled.config);
         useHostBootstrapStore.setState({
             status: "ready",
@@ -405,7 +425,7 @@ async function processHostTokens(tokens: HostToken[], userId: number) {
         }
         const savedModels = (Array.isArray(channel.models) ? channel.models : []).filter((model) => model && typeof model.name === "string" && model.name.trim());
         if (savedModels.length) {
-            replaceConfig(stampVerifiedKeys(currentConfig, reconciled.selectedKey));
+            replaceConfig(stampVerifiedKeys(currentConfig));
             useHostBootstrapStore.setState({
                 status: "ready",
                 error: "",
@@ -416,12 +436,13 @@ async function processHostTokens(tokens: HostToken[], userId: number) {
             });
             return;
         }
+        requestedChannel = channel;
         const catalog = await fetchModelCatalog({
             baseUrl: isEmbedded() ? lockedApiBaseUrl() : channel.baseUrl,
             apiKey: reconciled.selectedKey,
             apiFormat: channel.apiFormat,
         });
-        if (run !== generation) return;
+        if (!requestIsCurrent()) return;
         const nextConfig = catalog.length ? applyModelCatalog(useConfigStore.getState().config, catalog, channel.id) : clearUnavailableImageConfig(useConfigStore.getState().config);
         replaceConfig(nextConfig);
         const imageModels = catalog.filter((item) => item.supportsImage);
@@ -434,7 +455,7 @@ async function processHostTokens(tokens: HostToken[], userId: number) {
             userId,
         });
     } catch (error) {
-        if (run !== generation) return;
+        if (!requestIsCurrent()) return;
         replaceConfig(clearUnavailableImageConfig(useConfigStore.getState().config));
         useHostBootstrapStore.setState({
             status: "ready",

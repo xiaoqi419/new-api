@@ -1,6 +1,6 @@
 import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
 import { ListPlus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { isEmbedded, lockedApiBaseUrl, requestHostTokens, useHostTokensStore, type HostTokensState } from "@/lib/host-bridge";
@@ -39,20 +39,27 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const embedded = isEmbedded();
     const lockedBaseUrl = embedded ? lockedApiBaseUrl() : "";
     const embeddedOriginUnavailable = embedded && !lockedBaseUrl;
-    const sanitizeDraft = (value: ModelChannel): ModelChannel =>
-        embedded
-            ? {
-                  ...value,
-                  // An embedded document must never retain an endpoint or key
-                  // when its origin is opaque and cannot be authenticated.
-                  baseUrl: lockedBaseUrl,
-                  apiKey: lockedBaseUrl ? value.apiKey : "",
-              }
-            : value;
+    const sanitizeDraft = useCallback(
+        (value: ModelChannel): ModelChannel =>
+            embedded
+                ? {
+                      ...value,
+                      // An embedded document must never retain an endpoint or key
+                      // when its origin is opaque and cannot be authenticated.
+                      baseUrl: lockedBaseUrl,
+                      apiKey: lockedBaseUrl ? value.apiKey : "",
+                      models: lockedBaseUrl ? value.models : value.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })),
+                  }
+                : value,
+        [embedded, lockedBaseUrl],
+    );
     const [draft, setDraft] = useState<ModelChannel | null>(() => (channel ? sanitizeDraft(channel) : null));
     const [selectOpen, setSelectOpen] = useState(false);
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
     const hostTokens = useHostTokensStore();
+    const waitingForHostTokens = embedded && (hostTokens.status === "loading" || hostTokens.status === "idle");
+    const editorSession = useRef<{ id: string; open: boolean }>({ id: "", open: false });
+    const draftUserId = useRef(hostTokens.userId);
     const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
         { label: "OpenAI", value: "openai" },
         { label: "Gemini", value: "gemini" },
@@ -60,8 +67,27 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
 
     useEffect(() => {
-        if (open && channel) setDraft(sanitizeDraft(channel));
-    }, [open, channel, lockedBaseUrl, embedded]);
+        if (open && channel && (!editorSession.current.open || editorSession.current.id !== channel.id)) {
+            setDraft(sanitizeDraft(channel));
+            setSelectOpen(false);
+            setScriptTarget(null);
+        }
+        editorSession.current = { id: channel?.id || "", open };
+    }, [open, channel, sanitizeDraft]);
+
+    useEffect(() => {
+        const accountChanged = draftUserId.current !== hostTokens.userId;
+        draftUserId.current = hostTokens.userId;
+        if (!embedded) return;
+        setDraft((current) => {
+            if (!current) return current;
+            const token = hostTokens.tokens.find((item) => item.id === current.hostTokenId && current.hostUserId === hostTokens.userId);
+            const unavailable = !lockedBaseUrl || accountChanged || hostTokens.status !== "ready" || (current.hostTokenId !== undefined && !token);
+            const apiKey = unavailable ? "" : token?.key || current.apiKey;
+            if (current.baseUrl === lockedBaseUrl && current.apiKey === apiKey && !(unavailable && current.models.some((model) => model.verifiedKey))) return current;
+            return { ...current, baseUrl: lockedBaseUrl, apiKey, models: current.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })) };
+        });
+    }, [open, channel?.id, embedded, lockedBaseUrl, hostTokens.status, hostTokens.userId, hostTokens.tokens]);
 
     useEffect(() => {
         if (open && lockedBaseUrl) requestHostTokens();
@@ -105,8 +131,16 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         // An opaque embedded frame has no trustworthy host origin. Do not
         // persist a manually entered endpoint or key, and do not close the
         // drawer as if the save succeeded.
-        if (embeddedOriginUnavailable) return;
-        onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), baseUrl: embedded ? lockedBaseUrl : draft.baseUrl.trim(), apiKey: embedded ? draft.apiKey.trim() : draft.apiKey, models: normalizeChannelModels(draft.models) });
+        if (embeddedOriginUnavailable || waitingForHostTokens) return;
+        const token = embedded && hostTokens.status === "ready" ? hostTokens.tokens.find((item) => item.key === draft.apiKey.trim()) : undefined;
+        onSave({
+            ...draft,
+            ...(token ? { hostTokenId: token.id, hostUserId: hostTokens.userId } : {}),
+            name: draft.name.trim() || t("config.channels.unnamed"),
+            baseUrl: embedded ? lockedBaseUrl : draft.baseUrl.trim(),
+            apiKey: embedded ? draft.apiKey.trim() : draft.apiKey,
+            models: normalizeChannelModels(draft.models),
+        });
         onClose();
     };
 
@@ -120,7 +154,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             extra={
                 <Space>
                     <Button onClick={onClose}>{t("common.cancel")}</Button>
-                    <Button type="primary" disabled={embeddedOriginUnavailable} onClick={save}>
+                    <Button type="primary" disabled={embeddedOriginUnavailable || waitingForHostTokens} onClick={save}>
                         {t("common.save")}
                     </Button>
                 </Space>
@@ -147,8 +181,22 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 </label>
                 <label className="block md:col-span-2">
                     <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.apiKey")}</span>
-                    {lockedBaseUrl ? <HostTokenPicker tokens={hostTokens} value={draft.apiKey} onPick={(apiKey) => patch({ apiKey })} t={t} /> : null}
-                    <Input.Password value={embeddedOriginUnavailable ? "" : draft.apiKey} disabled={embeddedOriginUnavailable} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
+                    {lockedBaseUrl ? (
+                        <HostTokenPicker
+                            tokens={hostTokens}
+                            value={draft.apiKey}
+                            onPick={(apiKey) =>
+                                patch({ apiKey, hostTokenId: hostTokens.tokens.find((token) => token.key === apiKey)?.id, hostUserId: hostTokens.userId, models: draft.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })) })
+                            }
+                            t={t}
+                        />
+                    ) : null}
+                    <Input.Password
+                        value={embeddedOriginUnavailable ? "" : draft.apiKey}
+                        disabled={embeddedOriginUnavailable}
+                        onChange={(event) => patch({ apiKey: event.target.value, hostTokenId: undefined, hostUserId: undefined, models: draft.models.map((model) => ({ ...model, verified: false, verifiedKey: "" })) })}
+                        placeholder="sk-..."
+                    />
                 </label>
             </div>
 

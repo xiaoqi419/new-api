@@ -133,3 +133,18 @@ describe("ChannelEditorDrawer model save", () => {
         expect(saved.models).toEqual([expect.objectContaining({ name: "gpt-image-1", verified: true, verifiedKey: "sk-user" }), expect.objectContaining({ name: "flux-1", verified: true, verifiedKey: "sk-user" })]);
     });
 });
+
+test("background replacement of the same channel does not discard the selected draft token", () => {
+    hostTokensState.tokens = [
+        { id: 1, name: "Relay", key: "sk-user" },
+        { id: 2, name: "Second", key: "sk-second" },
+    ];
+    const onSave = vi.fn();
+    const props = { open: true, channel: emptyChannel, onSave, onClose: vi.fn() };
+    const view = render(<ChannelEditorDrawer {...props} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Select token" }), { target: { value: "sk-second" } });
+    view.rerender(<ChannelEditorDrawer {...props} channel={{ ...emptyChannel }} />);
+    expect(screen.getByPlaceholderText("sk-...")).toHaveValue("sk-second");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "sk-second", hostTokenId: 2, hostUserId: 1 }));
+});

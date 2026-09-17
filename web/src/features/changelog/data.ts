@@ -29,6 +29,18 @@ import type { ChangelogEntry } from './types'
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-17',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '无限画布选择分组后无需先保存即可拉取模型；保存、刷新和生成图片时保持所选令牌，避免后台请求切回其他分组。',
+        ],
+      },
+    ],
+  },
+  {
     // Replace the suffix with the immutable image tag when this change is released.
     version: '20260917-canvas-model-persist',
     date: '2026-09-17',

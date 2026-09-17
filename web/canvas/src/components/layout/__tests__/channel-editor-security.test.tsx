@@ -205,3 +205,17 @@ describe("ChannelEditorDrawer endpoint and key isolation", () => {
         expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ baseUrl: channel.baseUrl, apiKey: channel.apiKey }));
     });
 });
+
+test("an open editor clears its secret when the embedded origin becomes opaque", () => {
+    embeddedState.value = true;
+    lockedOrigin.value = "https://new-api.example";
+    hostTokensState.status = "ready";
+    hostTokensState.tokens = [{ id: 7, name: "Relay", key: "host-token" }];
+    const props = { open: true, channel, onSave: vi.fn(), onClose: vi.fn() };
+    const view = render(<ChannelEditorDrawer {...props} />);
+    expect(screen.getByPlaceholderText("sk-...")).toHaveValue("manual-secret");
+    lockedOrigin.value = "";
+    view.rerender(<ChannelEditorDrawer {...props} />);
+    expect(screen.getByPlaceholderText("sk-...")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+});
