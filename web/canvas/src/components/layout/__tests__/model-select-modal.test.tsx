@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -105,4 +105,37 @@ describe("ModelSelectModal fetch and confirm", () => {
         await waitFor(() => expect(message.error).toHaveBeenCalledWith("config.modelSelect.missingConfig"));
         expect(fetchChannelModels).not.toHaveBeenCalled();
     });
+});
+
+test.each(["success", "failure"])("ignores a late model-list %s after the draft key changes", async (outcome) => {
+    let resolve!: (models: string[]) => void;
+    let reject!: (error: Error) => void;
+    fetchChannelModels.mockImplementation(
+        () =>
+            new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            }),
+    );
+    const props = { open: true, channel, selectedNames: [], onConfirm: vi.fn(), onClose: vi.fn() };
+    const view = render(<ModelSelectModal {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "config.modelSelect.fetch" }));
+    view.rerender(<ModelSelectModal {...props} channel={{ ...channel, apiKey: "sk-new-group" }} />);
+    await act(async () => {
+        if (outcome === "success") resolve(["old-group-model"]);
+        else reject(new Error("old-group failure"));
+    });
+    expect(screen.queryByRole("checkbox", { name: "old-group-model" })).not.toBeInTheDocument();
+    expect(message.error).not.toHaveBeenCalled();
+    expect(message.success).not.toHaveBeenCalled();
+});
+
+test("a parent rerender with an equivalent selection preserves fetched choices", async () => {
+    fetchChannelModels.mockResolvedValue(["gpt-image-1"]);
+    const props = { open: true, channel, selectedNames: [], onConfirm: vi.fn(), onClose: vi.fn() };
+    const view = render(<ModelSelectModal {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "config.modelSelect.fetch" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "gpt-image-1" }));
+    view.rerender(<ModelSelectModal {...props} selectedNames={[]} />);
+    expect(screen.getByRole("checkbox", { name: "gpt-image-1" })).toBeChecked();
 });

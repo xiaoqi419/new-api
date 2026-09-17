@@ -1,6 +1,6 @@
 import { App, Button, Checkbox, Input, Modal, Tabs } from "antd";
 import { RefreshCw, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { fetchChannelModels } from "@/services/api/image";
@@ -17,16 +17,25 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
     const [search, setSearch] = useState("");
     const [manual, setManual] = useState("");
     const [loading, setLoading] = useState(false);
+    const requestVersion = useRef({ value: 0 }).current;
+    const selectionAtOpen = useRef(selectedNames);
+    selectionAtOpen.current = selectedNames;
 
     useEffect(() => {
+        ++requestVersion.value;
+        setLoading(false);
         if (!open) return;
-        setExisting(selectedNames);
+        const names = selectionAtOpen.current;
+        setExisting(names);
         setFetched([]);
-        setSelected(new Set(selectedNames));
-        setActiveTab(selectedNames.length ? "existing" : "new");
+        setSelected(new Set(names));
+        setActiveTab(names.length ? "existing" : "new");
         setSearch("");
         setManual("");
-    }, [open, selectedNames]);
+        return () => {
+            ++requestVersion.value;
+        };
+    }, [open, channel?.id, channel?.apiKey, channel?.baseUrl, channel?.apiFormat, channel?.hostUserId, channel?.hostTokenId, requestVersion]);
 
     const currentList = activeTab === "new" ? fetched : existing;
     const visibleList = useMemo(() => {
@@ -66,15 +75,18 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
             return;
         }
         setLoading(true);
+        const version = ++requestVersion.value;
         try {
             const models = await fetchChannelModels(channel);
+            if (version !== requestVersion.value) return;
             setFetched(models);
             setActiveTab("new");
             message.success(t("config.modelSelect.fetched", { count: models.length }));
         } catch (error) {
+            if (version !== requestVersion.value) return;
             message.error(error instanceof Error ? error.message : t("config.modelSelect.fetchFailed"));
         } finally {
-            setLoading(false);
+            if (version === requestVersion.value) setLoading(false);
         }
     };
 

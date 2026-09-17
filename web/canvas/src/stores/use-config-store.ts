@@ -26,6 +26,9 @@ export type ModelChannel = {
     name: string;
     baseUrl: string;
     apiKey: string;
+    /** Non-secret selection identity; credentials are restored only by the host. */
+    hostTokenId?: number;
+    hostUserId?: number;
     apiFormat: ApiCallFormat;
     models: ChannelModel[];
 };
@@ -154,7 +157,11 @@ export function sanitizeEmbeddedConfigStorage() {
         }
         const locked = lockedApiBaseUrl();
         const sourceConfig = parsed.state.config;
-        const channels = Array.isArray(sourceConfig.channels) ? sourceConfig.channels.map((channel) => (isRecord(channel) ? { ...channel, baseUrl: locked, apiKey: "" } : channel)) : [];
+        const channels = Array.isArray(sourceConfig.channels)
+            ? sourceConfig.channels.map((channel) =>
+                  isRecord(channel) ? { ...channel, baseUrl: locked, apiKey: "", models: Array.isArray(channel.models) ? channel.models.map((model) => (isRecord(model) ? { ...model, verifiedKey: "" } : model)) : [] } : channel,
+              )
+            : [];
         storage.setItem(
             CONFIG_STORE_KEY,
             JSON.stringify({
@@ -337,8 +344,9 @@ export function modelMatchesCapability(config: AiConfig, value: string, capabili
 }
 
 export function resolveModelForCapability(config: AiConfig, currentModel: string | undefined, capability: ModelCapability) {
-    const defaultModel = capability === "image" ? config.imageModel : capability === "video" ? config.videoModel : capability === "audio" ? config.audioModel : config.textModel;
-    const fallbackModel = capability === "image" ? defaultConfig.imageModel : capability === "video" ? defaultConfig.videoModel : capability === "audio" ? defaultConfig.audioModel : defaultConfig.textModel;
+    const modelKey = { image: "imageModel", video: "videoModel", audio: "audioModel", text: "textModel" } as const;
+    const defaultModel = config[modelKey[capability]];
+    const fallbackModel = defaultConfig[modelKey[capability]];
     if (currentModel && modelMatchesCapability(config, currentModel, capability)) return currentModel;
     if (defaultModel && modelMatchesCapability(config, defaultModel, capability)) return defaultModel;
     // Embedded Canvas waits for the host catalog rather than falling back to
@@ -488,6 +496,8 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
     const apiFormat = normalizeApiFormat(channel?.apiFormat);
     const embedded = isEmbedded();
     const locked = embedded ? lockedApiBaseUrl() : "";
+    const hostTokenId = channel?.hostTokenId;
+    const hostUserId = channel?.hostUserId;
     return {
         id: channel?.id?.trim() || nanoid(),
         name: channel?.name?.trim() || i18n.t("config.channels.newName"),
@@ -495,15 +505,13 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         // channels rehydrated from an older export or created by plugins.
         baseUrl: embedded ? locked : channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
         apiKey: embedded && !locked ? "" : channel?.apiKey || "",
+        ...(typeof hostTokenId === "number" && typeof hostUserId === "number" && Number.isSafeInteger(hostTokenId) && Number.isSafeInteger(hostUserId) && hostTokenId > 0 && hostUserId > 0 ? { hostTokenId, hostUserId } : {}),
         apiFormat,
         models: normalizeChannelModels(channel?.models),
     };
 }
 
-export function upsertChannelCredentials(
-    config: AiConfig,
-    input: { baseUrl?: string | null; apiKey?: string | null },
-): ChannelCredentialsImportResult & { config: AiConfig } {
+export function upsertChannelCredentials(config: AiConfig, input: { baseUrl?: string | null; apiKey?: string | null }): ChannelCredentialsImportResult & { config: AiConfig } {
     const rawBaseUrl = input.baseUrl?.trim() || "";
     if (!rawBaseUrl) return { status: "missing-base-url", config };
     if (!isHttpBaseUrl(rawBaseUrl)) return { status: "invalid-base-url", config };
@@ -611,7 +619,18 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
     const model = decoded?.model || value;
     const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return (
+        matched ||
+        config.channels[0] ||
+        createModelChannel({
+            id: "default",
+            name: i18n.t("config.channels.defaultName"),
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            apiFormat: config.apiFormat,
+            models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })),
+        })
+    );
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
@@ -660,7 +679,7 @@ function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
 }
 
 function uniqueModelOptions(models: string[]) {
-    return Array.from(new Set((models || []).map((model) => model.trim()).filter(Boolean)));
+    return [...new Set((models || []).map((model) => model.trim()).filter(Boolean))];
 }
 
 export function buildApiUrl(baseUrl: string, path: string) {
