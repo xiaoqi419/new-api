@@ -187,6 +187,10 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		requestBody = body
 	}
 
+	requestBody, err = relaycommon.ReasoningEffortModelSuffixBody(info, requestBody)
+	if err != nil {
+		return helper.NewReasoningModelAPIError(err)
+	}
 	var httpResp *http.Response
 	resp, err := adaptor.DoRequest(c, info, requestBody)
 	if err != nil {

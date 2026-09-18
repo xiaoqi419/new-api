@@ -290,6 +290,7 @@ const SENSITIVE_FORM_FIELDS = [
   'http_protocol',
   'http2_connection_shards',
   'pass_through_body_enabled',
+  'reasoning_effort_to_model_suffix',
   'system_prompt',
   'system_prompt_override',
   'fallback',
@@ -351,6 +352,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.force_format ||
     values.thinking_to_content ||
     values.pass_through_body_enabled ||
+    values.reasoning_effort_to_model_suffix ||
     values.system_prompt_override ||
     values.fallback ||
     values.fallback_upstream_enabled ||
@@ -765,6 +767,9 @@ export function ChannelMutateDrawer({
   const currentForceFormat = form.watch('force_format')
   const currentThinkingToContent = form.watch('thinking_to_content')
   const currentPassThroughBodyEnabled = form.watch('pass_through_body_enabled')
+  const currentReasoningEffortToModelSuffix = form.watch(
+    'reasoning_effort_to_model_suffix'
+  )
   const currentDisableTaskPollingSleep = form.watch(
     'disable_task_polling_sleep'
   )
@@ -1042,6 +1047,7 @@ export function ChannelMutateDrawer({
     currentForceFormat ||
     currentThinkingToContent ||
     currentPassThroughBodyEnabled ||
+    currentReasoningEffortToModelSuffix ||
     currentDisableTaskPollingSleep ||
     currentProxy?.trim() ||
     currentSystemPrompt?.trim() ||
@@ -4224,6 +4230,32 @@ export function ChannelMutateDrawer({
 
                               <FormField
                                 control={form.control}
+                                name='reasoning_effort_to_model_suffix'
+                                render={({ field }) => (
+                                  <FormItem className='flex items-center justify-between gap-3 px-4 py-3'>
+                                    <div className='min-w-0 space-y-0.5'>
+                                      <FormLabel>
+                                        {t('Reasoning effort as model suffix')}
+                                      </FormLabel>
+                                      <FormDescription>
+                                        {t(
+                                          'Append Chat reasoning_effort or Responses reasoning.effort to the upstream model name and remove the effort field. Billing uses the original base model. Works with body passthrough; no effort means no suffix. Does not infer fast mode.'
+                                        )}
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </div>
+                                    <FormControl>
+                                      <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
                                 name='disable_task_polling_sleep'
                                 render={({ field }) => (
                                   <FormItem className='flex items-center justify-between px-4 py-3'>
@@ -4277,11 +4309,16 @@ export function ChannelMutateDrawer({
                               name='upstream_transport'
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>{t('Upstream Transport')}</FormLabel>
+                                  <FormLabel>
+                                    {t('Upstream Transport')}
+                                  </FormLabel>
                                   <Select
                                     items={[
                                       { value: 'http', label: t('HTTP') },
-                                      { value: 'websocket', label: t('WebSocket') },
+                                      {
+                                        value: 'websocket',
+                                        label: t('WebSocket'),
+                                      },
                                     ]}
                                     value={field.value || 'http'}
                                     onValueChange={field.onChange}
@@ -4293,13 +4330,19 @@ export function ChannelMutateDrawer({
                                     </FormControl>
                                     <SelectContent alignItemWithTrigger={false}>
                                       <SelectGroup>
-                                        <SelectItem value='http'>{t('HTTP')}</SelectItem>
-                                        <SelectItem value='websocket'>{t('WebSocket')}</SelectItem>
+                                        <SelectItem value='http'>
+                                          {t('HTTP')}
+                                        </SelectItem>
+                                        <SelectItem value='websocket'>
+                                          {t('WebSocket')}
+                                        </SelectItem>
                                       </SelectGroup>
                                     </SelectContent>
                                   </Select>
                                   <FormDescription>
-                                    {t('Use WebSocket for streaming OpenAI Responses requests when supported by the upstream channel.')}
+                                    {t(
+                                      'Use WebSocket for streaming OpenAI Responses requests when supported by the upstream channel.'
+                                    )}
                                   </FormDescription>
                                   <FormMessage />
                                 </FormItem>

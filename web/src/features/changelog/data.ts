@@ -30,6 +30,18 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-18',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '渠道新增默认关闭的「思考等级转模型后缀」开关：将 Chat 或 Responses 的标准思考等级追加到上游模型名，仍按原始主模型计费；可与请求体透传同时启用。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-09-17',
     changes: [
       {
@@ -47,7 +59,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       {
         kind: 'fix',
-        items: ['内嵌无限画布保存的模型列表会跨页面保留，离开后再进入不必重新拉取；API Key 仍不写入本地存储。'],
+        items: [
+          '内嵌无限画布保存的模型列表会跨页面保留，离开后再进入不必重新拉取；API Key 仍不写入本地存储。',
+        ],
       },
     ],
   },
@@ -58,7 +72,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       {
         kind: 'fix',
-        items: ['内嵌无限画布保存渠道模型后，「配置与用户偏好」可以关闭，不会因模型检查失败被反复打开。'],
+        items: [
+          '内嵌无限画布保存渠道模型后，「配置与用户偏好」可以关闭，不会因模型检查失败被反复打开。',
+        ],
       },
     ],
   },
