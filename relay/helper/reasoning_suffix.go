@@ -43,18 +43,25 @@ func ApplyReasoningModelSuffix(c *gin.Context, info *relaycommon.RelayInfo, outb
 	}
 
 	opts := info.ConvOptions()
+	preserveEffortSuffix := false
+	if info.ChannelMeta != nil && info.ChannelSetting.ReasoningEffortToModelSuffix {
+		switch info.Request.(type) {
+		case *dto.GeneralOpenAIRequest, *dto.OpenAIResponsesRequest:
+			preserveEffortSuffix = true
+		}
+	}
 	origin := info.GetOriginModelName()
 	upstream := ""
 	if info.ChannelMeta != nil {
 		upstream = info.UpstreamModelName
 	}
-	originParsed, err := parseRequestModelName(origin, opts)
+	originParsed, err := parseRequestModelName(origin, opts, preserveEffortSuffix)
 	if err != nil {
 		return reasoning.AsClientError(err)
 	}
 	upstreamParsed := originParsed
 	if upstream != origin {
-		upstreamParsed, err = parseRequestModelName(upstream, opts)
+		upstreamParsed, err = parseRequestModelName(upstream, opts, preserveEffortSuffix)
 		if err != nil {
 			return reasoning.AsClientError(err)
 		}
@@ -131,7 +138,7 @@ func ApplyReasoningModelSuffix(c *gin.Context, info *relaycommon.RelayInfo, outb
 	return nil
 }
 
-func parseRequestModelName(name string, opts *convmeta.Options) (parsedModelModifiers, error) {
+func parseRequestModelName(name string, opts *convmeta.Options, preserveEffortSuffix bool) (parsedModelModifiers, error) {
 	if opts.ShouldPreserveThinkingSuffix(name) {
 		return parsedModelModifiers{base: name}, nil
 	}
@@ -139,7 +146,7 @@ func parseRequestModelName(name string, opts *convmeta.Options) (parsedModelModi
 	if err != nil {
 		return parsedModelModifiers{}, err
 	}
-	if opts.ShouldPreserveThinkingSuffix(parsed.base) {
+	if preserveEffortSuffix || opts.ShouldPreserveThinkingSuffix(parsed.base) {
 		return parsed, nil
 	}
 	legacyBase, legacyIntent, legacyFound, err := parseHostModelSuffix(parsed.base, opts)

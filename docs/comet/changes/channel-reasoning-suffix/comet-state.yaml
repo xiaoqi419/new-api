@@ -1,0 +1,358 @@
+schema: comet.native.v4
+name: channel-reasoning-suffix
+language: zh-CN
+phase: archive
+status: active
+state_version: 7
+brief: brief.md
+spec_changes:
+  - capability: channel-reasoning-suffix
+    operation: create
+    source: specs/channel-reasoning-suffix/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/channel-reasoning-suffix
+  target_branch: main
+  finish: keep
+loop:
+  stage: archive-ready
+  goal_cycle: 1
+  iteration: 1
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: archive
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 开关默认关闭，保存和重新编辑保持值，关闭时原有请求和计费行为保持。"
+    result: passed
+    reason:
+      text: Default-off persisted bool, form serialization and disabled no-op verified
+        in DTO/form/transformer and regression tests.
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: "A2: 开启后 Chat model=gpt-5.6-sol 与 reasoning_effort=low 转为上游
+      gpt-5.6-sol-low，并移除 effort。"
+    result: passed
+    reason:
+      text: Chat effort becomes upstream suffix and consumed field is removed;
+        supported-effort wire tests pass.
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: "A3: Responses reasoning.effort 同样转换，保留其他 reasoning 字段。"
+    result: passed
+    reason:
+      text: Responses removes only reasoning.effort and retains siblings; production
+        wire test retains summary.
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: "A4: 无等级不追加后缀，避免重复后缀，非法等级返回明确客户端错误。"
+    result: passed
+    reason:
+      text: Missing/null/empty effort unchanged; recognized suffix replacement and
+        invalid effort HTTP400 covered.
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: "A5: 生成后缀不需另配价格；输入输出缓存价格及阶梯计费使用原主模型，预扣和结算一致。"
+    result: passed
+    reason:
+      text: BillingModelName/OriginModelName unchanged; conflicting suffix prices,
+        cache, preconsume and tiered settlement tested.
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: "A6: 显式转换与透传组合时保留未知字段；仅透传时渠道测试不再剥除 GPT 后缀。"
+    result: passed
+    reason:
+      text: RawMessage preserves unknown fields and precision; mapped passthrough and
+        passthrough-only GPT tests covered.
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: "A7: 流式与非流式以及后台测试采用一致转换规则。"
+    result: passed
+    reason:
+      text: Shared final transformer used for Chat, Responses, bridge and channel
+        tests, with both stream flags covered.
+      truncated: false
+  - id: A8
+    source: brief.md
+    text: "A8: 界面多语言和更新日志完整，Go 定向测试、relaykit 独立构建与前端检查通过。"
+    result: passed
+    reason:
+      text: All seven locales and changelog updated; six Runtime command checks
+        passed.
+      truncated: false
+  - id: A9
+    source: specs/channel-reasoning-suffix/spec.md
+    text: 渠道编辑提供默认关闭的 reasoning_effort_to_model_suffix 布尔设置。未开启时使用既有行为。
+    result: passed
+    reason:
+      text: Advanced setting switch defaults off and form save/reopen/re-disable tests
+        pass.
+      truncated: false
+  - id: A10
+    source: specs/channel-reasoning-suffix/spec.md
+    text: 开启后对 OpenAI Chat reasoning_effort、Responses
+      reasoning.effort，将上游模型变成主模型-等级，并移除消费的 effort 字段。支持
+      none/minimal/low/medium/high/xhigh/max，保留 Responses 其他 reasoning
+      字段，无等级不追加，避免重复后缀，非法等级返回 400。模型映射先于最终转换；原始计费身份保持。不推断 fast。
+    result: passed
+    reason:
+      text: Accepted vocabulary and mappings applied before outbound suffix; no fast
+        inference; original billing identity retained.
+      truncated: false
+  - id: A11
+    source: specs/channel-reasoning-suffix/spec.md
+    text: 显式转换在透传时仍生效，保留其他未知字段。仅开启透传时不额外转换。渠道测试和实际转发、流式及非流式采用一致规则。
+    result: passed
+    reason:
+      text: Explicit conversion works with passthrough; passthrough alone preserves
+        existing suffix and unknown fields.
+      truncated: false
+  - id: A12
+    source: specs/channel-reasoning-suffix/spec.md
+    text: 计费使用原始主模型价格，包括输入输出、缓存和阶梯表达式。生成的上游后缀不是新的必需定价项；既有独立请求模型定价优先级保持。预扣和结算安全边界保持。
+    result: passed
+    reason:
+      text: Pricing uses original/canonical billing model; deliberately divergent
+        suffix prices do not affect tested settlement.
+      truncated: false
+  - id: A13
+    source: specs/channel-reasoning-suffix/spec.md
+    text: 界面支持所有已有语言并解释主模型计费，附更新日志。以请求体和计费结果回归验证。
+    result: passed
+    reason:
+      text: UI explanations, all locales, test effort selector, request-body and
+        billing-result regressions present.
+      truncated: false
+builder_handoff:
+  candidate_id: 80bfe574-a405-4e4d-b137-802360696269
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:6df1fffd-0cc3-4313-8fe4-22dc93efb5ed
+  iteration: 1
+  summary:
+    text: Implemented optional channel reasoning-effort model suffix transformation
+      for Chat/Responses and bridge paths with unchanged billing identity; fixed
+      passthrough channel tests and added optional test effort selector, all
+      locales, admin docs, changelog and regression coverage.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+  checks:
+    - name:
+        text: Go affected packages
+        truncated: false
+      result: passed
+      note:
+        text: go test ./relay/common ./relay/helper ./relay/channel/openai ./relay
+          ./controller ./service; affected controller regressions rerun after
+          mapping parity fix
+        truncated: false
+    - name:
+        text: relaykit independent build
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go build ./...
+        truncated: false
+    - name:
+        text: Frontend regressions
+        truncated: false
+      result: passed
+      note:
+        text: 22 channel library tests and 3 dialog interaction tests
+        truncated: false
+    - name:
+        text: Frontend typecheck/build/lint/format
+        truncated: false
+      result: passed
+      note:
+        text: Bun typecheck/build and scoped lint/format
+        truncated: false
+    - name:
+        text: git diff --check
+        truncated: false
+      result: passed
+      note:
+        text: No whitespace errors
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: No production deployment or live upstream requests. Tests use
+        deterministic local mock upstreams.
+      truncated: false
+    - text: Responses compact and incoming Claude/Gemini formats are not within this
+        channel feature scope.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-18T05:03:21.969Z
+blockers: []
+verification:
+  candidate_id: 80bfe574-a405-4e4d-b137-802360696269
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:f8017b8b-dfbb-4d9d-b479-4794d48e8b1d
+  iteration: 1
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: backend
+      name:
+        text: Go affected packages
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: go test ./relay/common ./relay/helper ./relay/channel/openai ./relay
+            ./controller ./service
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 5587
+    - id: relaykit
+      name:
+        text: Independent relaykit build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: $env:GOWORK='off'; go build ./...
+          truncated: false
+      argv_truncated: false
+      cwd_ref: relaykit
+      status: passed
+      exit_code: 0
+      duration_ms: 357
+    - id: frontend-tests
+      name:
+        text: Frontend regressions
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run test src/features/channels/lib/__tests__
+            src/features/channels/components/dialogs/__tests__/reasoning-effort.test.tsx
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6486
+    - id: frontend-typecheck
+      name:
+        text: Frontend typecheck
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run typecheck
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 2374
+    - id: frontend-build
+      name:
+        text: Frontend build
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: bun run build
+          truncated: false
+      argv_truncated: false
+      cwd_ref: web
+      status: passed
+      exit_code: 0
+      duration_ms: 6178
+    - id: diff
+      name:
+        text: Whitespace check
+        truncated: false
+      argv_display:
+        - text: -NoProfile
+          truncated: false
+        - text: -Command
+          truncated: false
+        - text: git diff --check
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 243
+  summary:
+    text: Independent read-only verifier suffix_independent_verify accepted all 13
+      criteria after brief/spec, implementation, regression-test and Runtime
+      check review. Main agent independently reviewed critical request and
+      billing paths. No substantive contract error found.
+    truncated: false
+  risks:
+    - text: No live upstream requests; mock upstream tests verify outgoing payloads
+        but not full live SSE consumption.
+      truncated: false
+    - text: Responses compact and incoming Claude/Gemini formats are outside scope.
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-09-18T05:14:25.384Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: Independent read-only verifier suffix_independent_verify accepted all 13
+        criteria after brief/spec, implementation, regression-test and Runtime
+        check review. Main agent independently reviewed critical request and
+        billing paths. No substantive contract error found.
+      truncated: false
+    completed_at: 2026-09-18T05:14:25.384Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: false
+created_at: 2026-09-18T04:43:56.024Z

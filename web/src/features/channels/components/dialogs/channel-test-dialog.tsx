@@ -333,6 +333,7 @@ function ChannelTestDialogContent({
     typeof toast.loading
   > | null>(null)
   const [endpointType, setEndpointType] = useState('auto')
+  const [reasoningEffort, setReasoningEffort] = useState('default')
   const [isStreamTest, setIsStreamTest] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({})
@@ -400,6 +401,7 @@ function ChannelTestDialogContent({
   const resetState = useCallback(() => {
     batchStopRequestedRef.current = true
     setEndpointType('auto')
+    setReasoningEffort('default')
     setIsStreamTest(false)
     setSearchTerm('')
     setTestResults({})
@@ -417,6 +419,9 @@ function ChannelTestDialogContent({
 
   const streamDisabled = STREAM_INCOMPATIBLE_ENDPOINTS.has(endpointType)
   const effectiveStreamTest = !streamDisabled && isStreamTest
+  const reasoningEffortEnabled = ['auto', 'openai', 'openai-response'].includes(
+    endpointType
+  )
 
   const handleEndpointTypeChange = useCallback((value: string | null) => {
     if (value === null) return
@@ -562,6 +567,10 @@ function ChannelTestDialogContent({
             testModel: model,
             endpointType: endpointType === 'auto' ? undefined : endpointType,
             stream: effectiveStreamTest || undefined,
+            reasoningEffort:
+              reasoningEffortEnabled && reasoningEffort !== 'default'
+                ? reasoningEffort
+                : undefined,
             silent,
           },
           (success, responseTime, error, errorCode) => {
@@ -600,6 +609,8 @@ function ChannelTestDialogContent({
       currentRow,
       endpointType,
       effectiveStreamTest,
+      reasoningEffort,
+      reasoningEffortEnabled,
       markModelTesting,
       refreshChannelLists,
       t,
@@ -1031,6 +1042,52 @@ function ChannelTestDialogContent({
                   'Override the endpoint used for testing. Leave empty to auto detect.'
                 )}
               </p>
+            </div>
+            <div className='grid gap-2'>
+              <Label htmlFor='test-reasoning-effort'>
+                {t('Test reasoning effort (Chat / Responses only)')}
+              </Label>
+              <Select
+                value={reasoningEffort}
+                onValueChange={(value) => {
+                  if (value !== null) setReasoningEffort(value)
+                }}
+                disabled={!reasoningEffortEnabled || isBatchTesting}
+                items={[
+                  { value: 'default', label: t('Default (no override)') },
+                  ...[
+                    'none',
+                    'minimal',
+                    'low',
+                    'medium',
+                    'high',
+                    'xhigh',
+                    'max',
+                  ].map((value) => ({ value, label: value })),
+                ]}
+              >
+                <SelectTrigger id='test-reasoning-effort' className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='default'>
+                    {t('Default (no override)')}
+                  </SelectItem>
+                  {[
+                    'none',
+                    'minimal',
+                    'low',
+                    'medium',
+                    'high',
+                    'xhigh',
+                    'max',
+                  ].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className='grid gap-2'>
               <Label htmlFor='stream-toggle'>{t('Stream Mode')}</Label>
