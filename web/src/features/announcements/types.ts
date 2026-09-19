@@ -5,7 +5,12 @@ export interface ApiResponse<T = unknown> {
 }
 
 export type AnnouncementType = 'version' | 'system' | 'activity'
-export type AnnouncementLevel = 'default' | 'success' | 'warning' | 'error'
+export type AnnouncementLevel =
+  | 'default'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'modal'
 
 export interface Announcement {
   id: number
@@ -21,15 +26,17 @@ export interface Announcement {
   updated_at: number
 }
 
+export interface AnnouncementPage {
+  items: Announcement[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface AnnouncementListResponse {
   success: boolean
   message?: string
-  data?: {
-    items: Announcement[]
-    total: number
-    page: number
-    page_size: number
-  }
+  data?: AnnouncementPage
 }
 
 export type AnnouncementsDialogType = 'create' | 'update' | 'delete'

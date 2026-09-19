@@ -2,7 +2,10 @@ import { api } from '@/lib/api'
 
 import type {
   Announcement,
+  AnnouncementLevel,
   AnnouncementListResponse,
+  AnnouncementPage,
+  AnnouncementType,
   ApiResponse,
 } from './types'
 
@@ -12,6 +15,38 @@ export async function getPublicAnnouncements(
 ): Promise<ApiResponse<Announcement[]>> {
   const q = type ? `?type=${encodeURIComponent(type)}` : ''
   const res = await api.get(`/api/announcements${q}`)
+  return res.data
+}
+
+type PublicAnnouncementsPageParams = {
+  level?: AnnouncementLevel
+  p?: number
+  page_size?: number
+  type?: AnnouncementType
+}
+
+// Public history uses the same endpoint as the header cache, but pagination
+// keeps the center from silently dropping older announcements.
+export async function getPublicAnnouncementsPage(
+  params: PublicAnnouncementsPageParams = {}
+): Promise<ApiResponse<AnnouncementPage>> {
+  const { p = 1, page_size = 20, type, level } = params
+  const query = new URLSearchParams({
+    p: String(p),
+    page_size: String(page_size),
+  })
+
+  if (type) query.set('type', type)
+  if (level) query.set('level', level)
+
+  const res = await api.get(`/api/announcements?${query.toString()}`)
+  return res.data
+}
+
+export async function getPublicAnnouncementDetail(
+  id: number
+): Promise<ApiResponse<Announcement>> {
+  const res = await api.get(`/api/announcements/detail/${id}`)
   return res.data
 }
 

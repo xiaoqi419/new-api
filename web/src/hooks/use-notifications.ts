@@ -20,8 +20,10 @@ import { useState, useMemo } from 'react'
 
 import {
   announcementReadKey,
+  modalAnnouncementKey,
   usePublicAnnouncements,
 } from '@/hooks/use-public-announcements'
+import { useAuthStore } from '@/stores/auth-store'
 import { useNotificationStore } from '@/stores/notification-store'
 
 export type NotificationTab = 'announcements' | 'timeline'
@@ -35,13 +37,21 @@ export function useNotifications() {
   const [activeTab, setActiveTab] = useState<NotificationTab>('announcements')
 
   const { items, versions, loading } = usePublicAnnouncements()
-  const { markAnnouncementsRead, isAnnouncementRead } = useNotificationStore()
+  const userId = useAuthStore((state) => state.auth.user?.id)
+  const { acknowledgedModalKeys, markAnnouncementsRead, readAnnouncementKeys } =
+    useNotificationStore()
 
   const unreadCount = useMemo(
     () =>
-      items.filter((item) => !isAnnouncementRead(announcementReadKey(item)))
-        .length,
-    [items, isAnnouncementRead]
+      items.filter((item) => {
+        if (item.level === 'modal' && userId !== undefined) {
+          return !acknowledgedModalKeys.includes(
+            modalAnnouncementKey(item, userId)
+          )
+        }
+        return !readAnnouncementKeys.includes(announcementReadKey(item))
+      }).length,
+    [acknowledgedModalKeys, items, readAnnouncementKeys, userId]
   )
 
   const markAllRead = () => {

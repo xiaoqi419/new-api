@@ -1,48 +1,56 @@
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ChevronLeft, ChevronRight } from '@/components/icons'
 import { SectionPageLayout } from '@/components/layout'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Markdown } from '@/components/ui/markdown'
 import { Skeleton } from '@/components/ui/skeleton'
-import { usePublicAnnouncements } from '@/hooks/use-public-announcements'
 import { formatTimestampToDate } from '@/lib/format'
 
+import { getPublicAnnouncementsPage } from './api'
 import {
+  ANNOUNCEMENT_ERROR,
   ANNOUNCEMENT_TYPE_LABEL_KEYS,
   ANNOUNCEMENT_TYPE_VARIANTS,
 } from './constants'
+import { getAnnouncementSummary } from './lib/announcement-summary'
 import type { AnnouncementType } from './types'
 
 type TabValue = 'all' | AnnouncementType
 
+const PAGE_SIZE = 20
+
 export function AnnouncementCenter() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<TabValue>('all')
+  const [page, setPage] = useState(1)
 
-  // Shared with the header notification bell so both read one cache entry.
-  const { items, loading: isLoading } = usePublicAnnouncements()
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ['announcements-public-page', page, tab],
+    queryFn: () =>
+      getPublicAnnouncementsPage({
+        p: page,
+        page_size: PAGE_SIZE,
+        type: tab === 'all' ? undefined : tab,
+      }),
+  })
 
-  const counts = useMemo(() => {
-    const c: Record<TabValue, number> = {
-      all: items.length,
-      version: 0,
-      system: 0,
-      activity: 0,
-    }
-    for (const it of items) c[it.type] = (c[it.type] ?? 0) + 1
-    return c
-  }, [items])
-
-  const filtered = tab === 'all' ? items : items.filter((i) => i.type === tab)
-
-  const versionTimeline = useMemo(
-    () => items.filter((i) => i.type === 'version').slice(0, 20),
-    [items]
-  )
+  const announcementPage = data?.success ? data.data : undefined
+  const loadFailed = isError || data?.success === false
+  const items = useMemo(() => {
+    const pageItems = announcementPage?.items ?? []
+    return [...pageItems].sort((left, right) => {
+      if (left.pinned !== right.pinned) return left.pinned ? -1 : 1
+      return right.publish_time - left.publish_time
+    })
+  }, [announcementPage?.items])
+  const total = announcementPage?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const tabs: { value: TabValue; label: string }[] = [
     { value: 'all', label: t('All') },
@@ -56,102 +64,122 @@ export function AnnouncementCenter() {
       <SectionPageLayout.Title>{t('Announcements')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='mx-auto w-full max-w-5xl'>
-          <div className='flex flex-wrap gap-2'>
+          <div className='flex flex-wrap gap-2' aria-label={t('Category')}>
             {tabs.map((tb) => (
               <Button
                 key={tb.value}
                 size='sm'
                 variant={tab === tb.value ? 'default' : 'outline'}
-                onClick={() => setTab(tb.value)}
+                aria-pressed={tab === tb.value}
+                onClick={() => {
+                  setTab(tb.value)
+                  setPage(1)
+                }}
               >
                 {tb.label}
-                <span className='ml-1 text-xs opacity-70'>
-                  {counts[tb.value] ?? 0}
-                </span>
               </Button>
             ))}
           </div>
 
-          <div className='mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3'>
-            <div className='flex flex-col gap-4 lg:col-span-2'>
-              {isLoading &&
-                ['s1', 's2', 's3'].map((k) => (
-                  <Skeleton key={k} className='h-40 w-full rounded-xl' />
-                ))}
+          <div className='mt-4 flex flex-col gap-4'>
+            {isLoading &&
+              ['s1', 's2', 's3'].map((key) => (
+                <Skeleton key={key} className='h-36 w-full rounded-xl' />
+              ))}
 
-              {!isLoading && filtered.length === 0 && (
-                <Empty className='min-h-64 border'>
-                  <EmptyHeader>
-                    <EmptyTitle>{t('No announcements yet')}</EmptyTitle>
-                  </EmptyHeader>
-                </Empty>
-              )}
+            {!isLoading && loadFailed && (
+              <Empty className='min-h-64 border'>
+                <EmptyHeader>
+                  <EmptyTitle>
+                    {data?.message || t(ANNOUNCEMENT_ERROR.LOAD_FAILED)}
+                  </EmptyTitle>
+                </EmptyHeader>
+                <Button variant='outline' onClick={() => void refetch()}>
+                  {t('Retry')}
+                </Button>
+              </Empty>
+            )}
 
-              {!isLoading &&
-                filtered.map((ann) => (
-                  <Card key={ann.id} className='p-5'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      {ann.pinned && (
-                        <StatusBadge
-                          label={t('Pinned')}
-                          variant='danger'
-                          copyable={false}
-                        />
-                      )}
+            {!isLoading && !loadFailed && items.length === 0 && (
+              <Empty className='min-h-64 border'>
+                <EmptyHeader>
+                  <EmptyTitle>{t('No announcements yet')}</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
+
+            {!loadFailed &&
+              items.map((announcement) => (
+                <Card key={announcement.id} className='gap-3 p-5'>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    {announcement.pinned && (
                       <StatusBadge
-                        label={t(ANNOUNCEMENT_TYPE_LABEL_KEYS[ann.type])}
-                        variant={ANNOUNCEMENT_TYPE_VARIANTS[ann.type]}
+                        label={t('Pinned')}
+                        variant='danger'
                         copyable={false}
                       />
-                      {ann.version && (
-                        <StatusBadge
-                          label={`v${ann.version}`}
-                          variant='info'
-                          copyable={false}
-                        />
-                      )}
-                      <span className='text-muted-foreground ml-auto text-sm'>
-                        {formatTimestampToDate(ann.publish_time)}
-                      </span>
-                    </div>
-                    <h3 className='mt-3 text-lg font-semibold'>{ann.title}</h3>
-                    {ann.content && (
-                      <div className='text-foreground/90 mt-2 text-sm'>
-                        <Markdown>{ann.content}</Markdown>
-                      </div>
                     )}
-                  </Card>
-                ))}
-            </div>
-
-            <div className='lg:col-span-1'>
-              <Card className='p-5'>
-                <h3 className='text-base font-semibold'>
-                  {t('Version Timeline')}
-                </h3>
-                <div className='mt-4 flex flex-col gap-4'>
-                  {versionTimeline.length === 0 && (
-                    <span className='text-muted-foreground text-sm'>
-                      {t('No records')}
+                    <StatusBadge
+                      label={t(ANNOUNCEMENT_TYPE_LABEL_KEYS[announcement.type])}
+                      variant={ANNOUNCEMENT_TYPE_VARIANTS[announcement.type]}
+                      copyable={false}
+                    />
+                    {announcement.version && (
+                      <StatusBadge
+                        label={`v${announcement.version}`}
+                        variant='info'
+                        copyable={false}
+                      />
+                    )}
+                    <span className='text-muted-foreground ml-auto text-sm'>
+                      {formatTimestampToDate(announcement.publish_time)}
                     </span>
-                  )}
-                  {versionTimeline.map((v) => (
-                    <div
-                      key={v.id}
-                      className='border-border/60 border-l-2 pl-3'
+                  </div>
+                  <h3 className='text-lg font-semibold'>
+                    <Link
+                      to='/announcements/$id'
+                      params={{ id: String(announcement.id) }}
+                      className='hover:text-primary break-words transition-colors'
                     >
-                      <div className='text-muted-foreground text-xs'>
-                        {formatTimestampToDate(v.publish_time)}
-                      </div>
-                      <div className='text-sm font-medium'>
-                        {v.version ? `v${v.version} · ` : ''}
-                        {v.title}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
+                      {announcement.title}
+                    </Link>
+                  </h3>
+                  {announcement.content && (
+                    <p className='text-muted-foreground line-clamp-2 text-sm'>
+                      {getAnnouncementSummary(announcement.content)}
+                    </p>
+                  )}
+                </Card>
+              ))}
+
+            {!loadFailed && totalPages > 1 && (
+              <nav
+                className='flex items-center justify-center gap-3 pt-1'
+                aria-label={t('Pagination')}
+              >
+                <Button
+                  size='icon'
+                  variant='outline'
+                  aria-label={t('Previous')}
+                  disabled={page === 1 || isFetching}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  <ChevronLeft aria-hidden />
+                </Button>
+                <span className='text-muted-foreground min-w-24 text-center text-sm'>
+                  {t('Page {{page}} of {{pages}}', { page, pages: totalPages })}
+                </span>
+                <Button
+                  size='icon'
+                  variant='outline'
+                  aria-label={t('Next')}
+                  disabled={page >= totalPages || isFetching}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  <ChevronRight aria-hidden />
+                </Button>
+              </nav>
+            )}
           </div>
         </div>
       </SectionPageLayout.Content>

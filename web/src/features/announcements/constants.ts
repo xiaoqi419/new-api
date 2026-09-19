@@ -11,6 +11,7 @@ export const ANNOUNCEMENT_LEVELS = [
   'success',
   'warning',
   'error',
+  'modal',
 ] as const
 
 export const ANNOUNCEMENT_TYPE_LABEL_KEYS: Record<AnnouncementType, string> = {
@@ -19,12 +20,14 @@ export const ANNOUNCEMENT_TYPE_LABEL_KEYS: Record<AnnouncementType, string> = {
   activity: 'Activity',
 }
 
-export const ANNOUNCEMENT_LEVEL_LABEL_KEYS: Record<AnnouncementLevel, string> = {
-  default: 'Default',
-  success: 'Success',
-  warning: 'Warning',
-  error: 'Error',
-}
+export const ANNOUNCEMENT_LEVEL_LABEL_KEYS: Record<AnnouncementLevel, string> =
+  {
+    default: 'Default',
+    success: 'Success',
+    warning: 'Warning',
+    error: 'Error',
+    modal: 'Centered announcement',
+  }
 
 export const ANNOUNCEMENT_LEVEL_VARIANTS: Record<
   AnnouncementLevel,
@@ -34,6 +37,7 @@ export const ANNOUNCEMENT_LEVEL_VARIANTS: Record<
   success: 'success',
   warning: 'warning',
   error: 'danger',
+  modal: 'neutral',
 }
 
 export const ANNOUNCEMENT_TYPE_VARIANTS: Record<
