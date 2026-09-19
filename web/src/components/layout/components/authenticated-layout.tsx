@@ -16,11 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ModalAnnouncementDialog } from '@/components/notification-popover'
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { SearchProvider } from '@/context/search-provider'
 import { LegalConsentGate } from '@/features/legal/legal-consent-gate'
+import { useModalAnnouncements } from '@/hooks/use-modal-announcements'
 import { usePromoBanner } from '@/hooks/use-promo-banner'
 import { getCookie } from '@/lib/cookies'
 import { PROMO_BANNER_HEIGHT } from '@/lib/promo-banner'
@@ -36,6 +38,7 @@ type AuthenticatedLayoutProps = {
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const { visible: promoVisible } = usePromoBanner()
+  const modalAnnouncements = useModalAnnouncements()
 
   return (
     <SearchProvider>
@@ -52,6 +55,14 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
       >
         <SkipToMain />
         <LegalConsentGate />
+        <ModalAnnouncementDialog
+          open={modalAnnouncements.open}
+          announcement={modalAnnouncements.activeAnnouncement}
+          queuePosition={modalAnnouncements.queuePosition}
+          queueSize={modalAnnouncements.queueSize}
+          onCancel={modalAnnouncements.dismissActive}
+          onAcknowledge={modalAnnouncements.acknowledgeActive}
+        />
         <AppHeader />
         <div className='flex min-h-0 w-full flex-1'>
           <AppSidebar />

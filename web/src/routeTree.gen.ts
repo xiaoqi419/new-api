@@ -43,6 +43,7 @@ import { Route as AuthenticatedAgentApplyIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedAgentConsoleIndexRouteImport } from './routes/_authenticated/agent-console/index'
 import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents/index'
 import { Route as AuthenticatedAnnouncementsIndexRouteImport } from './routes/_authenticated/announcements/index'
+import { Route as AuthenticatedAnnouncementsIdRouteImport } from './routes/_authenticated/announcements/$id'
 import { Route as AuthenticatedAnnouncementsAdminRouteImport } from './routes/_authenticated/announcements/admin'
 import { Route as AuthenticatedAssetLibraryIndexRouteImport } from './routes/_authenticated/asset-library/index'
 import { Route as AuthenticatedCanvasIndexRouteImport } from './routes/_authenticated/canvas/index'
@@ -274,6 +275,12 @@ const AuthenticatedAnnouncementsIndexRoute =
   AuthenticatedAnnouncementsIndexRouteImport.update({
     id: '/announcements/',
     path: '/announcements/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnnouncementsIdRoute =
+  AuthenticatedAnnouncementsIdRouteImport.update({
+    id: '/announcements/$id',
+    path: '/announcements/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnnouncementsAdminRoute =
@@ -643,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -733,6 +741,7 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -827,6 +836,7 @@ export interface FileRoutesById {
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/_authenticated/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/_authenticated/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/_authenticated/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -920,6 +930,7 @@ export interface FileRouteTypes {
     | '/setup/'
     | '/user/reset'
     | '/account/$section'
+    | '/announcements/$id'
     | '/announcements/admin'
     | '/channel-monitor/detail'
     | '/chat/$chatId'
@@ -1010,6 +1021,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/user/reset'
     | '/account/$section'
+    | '/announcements/$id'
     | '/announcements/admin'
     | '/channel-monitor/detail'
     | '/chat/$chatId'
@@ -1103,6 +1115,7 @@ export interface FileRouteTypes {
     | '/setup/'
     | '/(auth)/user/reset'
     | '/_authenticated/account/$section'
+    | '/_authenticated/announcements/$id'
     | '/_authenticated/announcements/admin'
     | '/_authenticated/channel-monitor/detail'
     | '/_authenticated/chat/$chatId'
@@ -1427,6 +1440,13 @@ declare module '@tanstack/react-router' {
       path: '/announcements'
       fullPath: '/announcements/'
       preLoaderRoute: typeof AuthenticatedAnnouncementsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/announcements/$id': {
+      id: '/_authenticated/announcements/$id'
+      path: '/announcements/$id'
+      fullPath: '/announcements/$id'
+      preLoaderRoute: typeof AuthenticatedAnnouncementsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/announcements/admin': {
@@ -1918,6 +1938,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemSettingsRouteRoute: typeof AuthenticatedSystemSettingsRouteRouteWithChildren
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
   AuthenticatedAccountSectionRoute: typeof AuthenticatedAccountSectionRoute
+  AuthenticatedAnnouncementsIdRoute: typeof AuthenticatedAnnouncementsIdRoute
   AuthenticatedAnnouncementsAdminRoute: typeof AuthenticatedAnnouncementsAdminRoute
   AuthenticatedChannelMonitorDetailRoute: typeof AuthenticatedChannelMonitorDetailRoute
   AuthenticatedChatChatIdRoute: typeof AuthenticatedChatChatIdRoute
@@ -1971,6 +1992,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSystemSettingsRouteRouteWithChildren,
   AuthenticatedChat2linkRoute: AuthenticatedChat2linkRoute,
   AuthenticatedAccountSectionRoute: AuthenticatedAccountSectionRoute,
+  AuthenticatedAnnouncementsIdRoute: AuthenticatedAnnouncementsIdRoute,
   AuthenticatedAnnouncementsAdminRoute: AuthenticatedAnnouncementsAdminRoute,
   AuthenticatedChannelMonitorDetailRoute:
     AuthenticatedChannelMonitorDetailRoute,

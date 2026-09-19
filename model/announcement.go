@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"gorm.io/gorm"
 )
 
 // 公告分类
@@ -26,6 +27,7 @@ const (
 	AnnouncementLevelSuccess = "success"
 	AnnouncementLevelWarning = "warning"
 	AnnouncementLevelError   = "error"
+	AnnouncementLevelModal   = "modal"
 )
 
 var announcementValidLevels = map[string]bool{
@@ -33,6 +35,7 @@ var announcementValidLevels = map[string]bool{
 	AnnouncementLevelSuccess: true,
 	AnnouncementLevelWarning: true,
 	AnnouncementLevelError:   true,
+	AnnouncementLevelModal:   true,
 }
 
 // Announcement 后台可编辑的公告 / 更新公告，替代旧的 console_setting.announcements 静态方案。
@@ -125,12 +128,32 @@ func GetAnnouncementById(id int) (*Announcement, error) {
 	return a, nil
 }
 
-// GetPublishedAnnouncements 公开查询已发布公告，按置顶 + 发布时间倒序。limit<=0 表示不限制。
-func GetPublishedAnnouncements(annType string, limit int) ([]*Announcement, error) {
-	query := DB.Model(&Announcement{}).Where("published = ?", true)
+// GetPublishedAnnouncementById returns an announcement only when it is public.
+func GetPublishedAnnouncementById(id int) (*Announcement, error) {
+	if id <= 0 {
+		return nil, errors.New("公告不存在")
+	}
+	a := &Announcement{}
+	if err := publishedAnnouncementsQuery("", "").Where("id = ?", id).First(a).Error; err != nil {
+		return nil, errors.New("公告不存在")
+	}
+	return a, nil
+}
+
+func publishedAnnouncementsQuery(annType string, level string) *gorm.DB {
+	query := DB.Model(&Announcement{}).Where("published = ? AND publish_time <= ?", true, common.GetTimestamp())
 	if annType != "" {
 		query = query.Where("type = ?", annType)
 	}
+	if level != "" {
+		query = query.Where("level = ?", level)
+	}
+	return query
+}
+
+// GetPublishedAnnouncements 公开查询已发布公告，按置顶 + 发布时间倒序。limit<=0 表示不限制。
+func GetPublishedAnnouncements(annType string, level string, limit int) ([]*Announcement, error) {
+	query := publishedAnnouncementsQuery(annType, level)
 	query = query.Order("pinned desc, publish_time desc, id desc")
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -138,6 +161,21 @@ func GetPublishedAnnouncements(annType string, limit int) ([]*Announcement, erro
 	var list []*Announcement
 	err := query.Find(&list).Error
 	return list, err
+}
+
+// GetPublishedAnnouncementsPage 公开分页查询已发布公告。
+func GetPublishedAnnouncementsPage(annType string, level string, pageInfo *common.PageInfo) ([]*Announcement, int64, error) {
+	query := publishedAnnouncementsQuery(annType, level)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []*Announcement
+	err := query.Order("pinned desc, publish_time desc, id desc").
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&list).Error
+	return list, total, err
 }
 
 // GetAllAnnouncements 管理端分页查询（含草稿）。

@@ -35,6 +35,22 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'feature',
         items: [
+          '公告支持居中弹窗：取消后下次进入仍会提醒，点击已阅后不再自动弹出；右上角公告改为摘要列表，可进入独立详情页回看，公告中心支持分类和分页。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: ['修复尚未到发布时间的公告可提前被用户查看的问题。'],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-18',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
           '渠道新增默认关闭的「思考等级转模型后缀」开关：将 Chat 或 Responses 的标准思考等级追加到上游模型名，仍按原始主模型计费；可与请求体透传同时启用。',
         ],
       },

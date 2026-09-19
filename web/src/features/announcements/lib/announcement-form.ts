@@ -12,7 +12,7 @@ export function getAnnouncementFormSchema(t: TFunction) {
       .max(255, t('Title is too long')),
     content: z.string(),
     type: z.enum(['version', 'system', 'activity']),
-    level: z.enum(['default', 'success', 'warning', 'error']),
+    level: z.enum(['default', 'success', 'warning', 'error', 'modal']),
     version: z.string(),
     pinned: z.boolean(),
     published: z.boolean(),

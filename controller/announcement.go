@@ -9,14 +9,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetAnnouncements 公开：查询已发布公告列表（?type= 分类过滤，?limit= 数量上限）。
+// GetAnnouncements 公开：查询已发布公告列表（?type= 分类过滤，?level= 级别过滤，?limit= 数量上限）。
 func GetAnnouncements(c *gin.Context) {
 	annType := c.Query("type")
+	if annType == "" {
+		annType = c.Query("category")
+	}
+	level := c.Query("level")
+	if _, paged := c.GetQuery("p"); paged {
+		pageInfo := common.GetPageQuery(c)
+		list, total, err := model.GetPublishedAnnouncementsPage(annType, level, pageInfo)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		pageInfo.SetTotal(int(total))
+		pageInfo.SetItems(list)
+		common.ApiSuccess(c, pageInfo)
+		return
+	}
 	limit := 200
 	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 && v <= 500 {
 		limit = v
 	}
-	list, err := model.GetPublishedAnnouncements(annType, limit)
+	list, err := model.GetPublishedAnnouncements(annType, level, limit)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -31,13 +47,9 @@ func GetAnnouncement(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
-	ann, err := model.GetAnnouncementById(id)
+	ann, err := model.GetPublishedAnnouncementById(id)
 	if err != nil {
 		common.ApiError(c, err)
-		return
-	}
-	if !ann.Published {
-		common.ApiErrorMsg(c, "公告不存在")
 		return
 	}
 	common.ApiSuccess(c, ann)

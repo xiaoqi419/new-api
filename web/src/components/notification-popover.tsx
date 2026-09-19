@@ -16,14 +16,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link } from '@tanstack/react-router'
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 
-import { Bell, Megaphone } from '@/components/icons'
+import { Bell, Megaphone, X } from '@/components/icons'
 import { RichContent } from '@/components/rich-content'
-import { StatusBadge } from '@/components/status-badge'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Empty,
   EmptyDescription,
@@ -41,13 +48,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  ANNOUNCEMENT_TYPE_LABEL_KEYS,
-  ANNOUNCEMENT_TYPE_VARIANTS,
-} from '@/features/announcements/constants'
+import { getAnnouncementSummary } from '@/features/announcements/lib/announcement-summary'
 import type { Announcement } from '@/features/announcements/types'
 import type { NotificationTab } from '@/hooks/use-notifications'
-import { getAnnouncementColorClass } from '@/lib/colors'
 import { formatDateTimeObject } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
@@ -63,16 +66,20 @@ interface NotificationPopoverProps {
   className?: string
 }
 
-/**
- * Get relative time string from a date
- */
+interface ModalAnnouncementDialogProps {
+  open: boolean
+  announcement?: Announcement
+  queuePosition: number
+  queueSize: number
+  onCancel: () => void
+  onAcknowledge: () => void
+}
+
 function getRelativeTime(publishDate: string | Date, t: TFunction): string {
   if (!publishDate) return ''
 
   const now = new Date()
   const pubDate = new Date(publishDate)
-
-  // If invalid date, return original string
   if (Number.isNaN(pubDate.getTime())) {
     return typeof publishDate === 'string' ? publishDate : ''
   }
@@ -86,10 +93,7 @@ function getRelativeTime(publishDate: string | Date, t: TFunction): string {
   const diffMonths = Math.floor(diffDays / 30)
   const diffYears = Math.floor(diffDays / 365)
 
-  // If future time, show specific date
   if (diffMs < 0) return formatDateTimeObject(pubDate)
-
-  // Return relative time based on difference
   if (diffSeconds < 60) return t('Just now')
   if (diffMinutes < 60) {
     return diffMinutes === 1
@@ -117,35 +121,10 @@ function getRelativeTime(publishDate: string | Date, t: TFunction): string {
       : t('{{count}} months ago', { count: diffMonths })
   }
   if (diffYears < 2) return t('1 year ago')
-
-  // Over 2 years, show specific date
   return formatDateTimeObject(pubDate)
 }
 
-/**
- * Announcement status dot indicator. Driven by level, not type: the shared
- * color map speaks in severity (default/success/warning/error), while an
- * announcement's type says where it belongs (release notes / notice / activity).
- */
-function AnnouncementDot({ level }: { level?: string }) {
-  return (
-    <span
-      className={cn(
-        'mt-1.5 inline-block size-2 shrink-0 rounded-full',
-        getAnnouncementColorClass(level)
-      )}
-    />
-  )
-}
-
-/**
- * Empty state component
- */
-function EmptyState({
-  icon,
-  title,
-  description,
-}: {
+function EmptyState(props: {
   icon: React.ReactNode
   title: string
   description?: string
@@ -153,89 +132,70 @@ function EmptyState({
   return (
     <Empty className='min-h-48 border-0 p-4'>
       <EmptyHeader>
-        <EmptyMedia variant='icon'>{icon}</EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
-        {description ? (
-          <EmptyDescription>{description}</EmptyDescription>
+        <EmptyMedia variant='icon'>{props.icon}</EmptyMedia>
+        <EmptyTitle>{props.title}</EmptyTitle>
+        {props.description ? (
+          <EmptyDescription>{props.description}</EmptyDescription>
         ) : null}
       </EmptyHeader>
     </Empty>
   )
 }
 
-/**
- * Announcements tab content
- */
-function AnnouncementsContent({
-  announcements,
-  loading,
-  t,
-}: {
-  announcements: Announcement[]
+function CompactAnnouncementList(props: {
+  items: Announcement[]
   loading: boolean
+  emptyTitle: string
+  onNavigate: () => void
   t: TFunction
 }) {
-  if (loading) {
+  if (props.loading) {
     return (
       <EmptyState
         icon={<Megaphone />}
-        title={t('Loading...')}
-        description={t('Latest platform updates and notices')}
+        title={props.t('Loading...')}
+        description={props.t('Latest platform updates and notices')}
       />
     )
   }
 
-  if (announcements.length === 0) {
-    return (
-      <EmptyState icon={<Megaphone />} title={t('No system announcements')} />
-    )
+  if (props.items.length === 0) {
+    return <EmptyState icon={<Megaphone />} title={props.emptyTitle} />
   }
 
   return (
     <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
       <div className='flex flex-col'>
-        {announcements.map((item, idx) => {
+        {props.items.map((item, index) => {
           const publishDate = item.publish_time
             ? new Date(item.publish_time * 1000)
             : null
 
           return (
             <div key={item.id}>
-              <div className='py-3'>
-                <div className='flex items-start gap-3'>
-                  <AnnouncementDot level={item.level} />
-                  <div className='flex min-w-0 flex-1 flex-col gap-2'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <span className='text-sm font-medium'>{item.title}</span>
-                      <StatusBadge
-                        label={t(ANNOUNCEMENT_TYPE_LABEL_KEYS[item.type])}
-                        variant={ANNOUNCEMENT_TYPE_VARIANTS[item.type]}
-                        copyable={false}
-                      />
-                      {item.pinned ? (
-                        <StatusBadge
-                          label={t('Pinned')}
-                          variant='warning'
-                          copyable={false}
-                        />
-                      ) : null}
-                    </div>
-
-                    {item.content ? (
-                      <div className='text-sm'>
-                        <RichContent breaks content={item.content} />
-                      </div>
-                    ) : null}
-
-                    {publishDate ? (
-                      <div className='text-muted-foreground text-xs'>
-                        {`${getRelativeTime(publishDate, t)} • ${formatDateTimeObject(publishDate)}`}
-                      </div>
-                    ) : null}
-                  </div>
+              <Link
+                to='/announcements/$id'
+                params={{ id: String(item.id) }}
+                className='hover:bg-muted focus-visible:bg-muted block rounded-md px-2 py-3 transition-colors outline-none'
+                onClick={props.onNavigate}
+              >
+                <div className='flex min-w-0 flex-col gap-1.5'>
+                  <span className='truncate text-sm font-medium'>
+                    {item.title}
+                  </span>
+                  {item.content ? (
+                    <span className='text-muted-foreground line-clamp-2 text-xs leading-relaxed'>
+                      {getAnnouncementSummary(item.content)}
+                    </span>
+                  ) : null}
+                  {publishDate ? (
+                    <span className='text-muted-foreground text-xs'>
+                      {`${getRelativeTime(publishDate, props.t)} • ${formatDateTimeObject(publishDate)}`}
+                    </span>
+                  ) : null}
                 </div>
-              </div>
-              {idx < announcements.length - 1 ? <Separator /> : null}
+              </Link>
+              {index < props.items.length - 1 ? <Separator /> : null}
             </div>
           )
         })}
@@ -245,94 +205,27 @@ function AnnouncementsContent({
 }
 
 /**
- * Version timeline tab content
+ * Notification popover listing compact, plain-text announcement summaries.
  */
-function TimelineContent({
-  versions,
-  loading,
-  t,
-}: {
-  versions: Announcement[]
-  loading: boolean
-  t: TFunction
-}) {
-  if (loading) {
-    return (
-      <EmptyState
-        icon={<Bell />}
-        title={t('Loading...')}
-        description={t('Latest platform updates and notices')}
-      />
-    )
-  }
-
-  if (versions.length === 0) {
-    return <EmptyState icon={<Bell />} title={t('No records')} />
-  }
-
-  return (
-    <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
-      <div className='flex flex-col gap-3'>
-        {versions.map((item) => (
-          <div key={item.id} className='flex items-start gap-3'>
-            <AnnouncementDot level={item.level} />
-            <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-              <div className='flex flex-wrap items-center gap-2'>
-                <span className='font-mono text-sm font-medium'>
-                  {item.version}
-                </span>
-                <span className='text-muted-foreground truncate text-xs'>
-                  {item.title}
-                </span>
-              </div>
-              {item.publish_time ? (
-                <span className='text-muted-foreground text-xs'>
-                  {formatDateTimeObject(new Date(item.publish_time * 1000))}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
-  )
-}
-
-/**
- * Notification popover listing published announcements plus a version timeline
- */
-export function NotificationPopover({
-  open,
-  onOpenChange,
-  unreadCount,
-  activeTab,
-  onTabChange,
-  announcements,
-  versions,
-  loading,
-  className,
-}: NotificationPopoverProps) {
+export function NotificationPopover(props: NotificationPopoverProps) {
   const { t } = useTranslation()
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={props.open} onOpenChange={props.onOpenChange}>
       <PopoverTrigger
         render={
           <Button
             variant='ghost'
             size='icon'
-            className={cn('relative size-9', className)}
+            className={cn('relative size-9', props.className)}
             aria-label={t('Notifications')}
           />
         }
       >
         <Bell className='size-[1.2rem]' />
-        {unreadCount > 0 ? (
-          <Badge
-            variant='destructive'
-            className='absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px] font-semibold tabular-nums'
-          >
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </Badge>
+        {props.unreadCount > 0 ? (
+          <span className='bg-destructive text-destructive-foreground absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums'>
+            {props.unreadCount > 99 ? '99+' : props.unreadCount}
+          </span>
         ) : null}
       </PopoverTrigger>
 
@@ -349,8 +242,8 @@ export function NotificationPopover({
         </PopoverHeader>
 
         <Tabs
-          value={activeTab}
-          onValueChange={onTabChange as (value: string) => void}
+          value={props.activeTab}
+          onValueChange={props.onTabChange as (value: string) => void}
         >
           <TabsList className='grid w-full grid-cols-2'>
             <TabsTrigger value='announcements' className='gap-1.5'>
@@ -364,24 +257,86 @@ export function NotificationPopover({
           </TabsList>
 
           <TabsContent value='announcements' className='mt-2'>
-            <AnnouncementsContent
-              announcements={announcements}
-              loading={loading}
+            <CompactAnnouncementList
+              items={props.announcements}
+              loading={props.loading}
+              emptyTitle={t('No system announcements')}
+              onNavigate={() => props.onOpenChange(false)}
               t={t}
             />
           </TabsContent>
 
           <TabsContent value='timeline' className='mt-2'>
-            <TimelineContent versions={versions} loading={loading} t={t} />
+            <CompactAnnouncementList
+              items={props.versions}
+              loading={props.loading}
+              emptyTitle={t('No records')}
+              onNavigate={() => props.onOpenChange(false)}
+              t={t}
+            />
           </TabsContent>
         </Tabs>
-
-        <div className='flex justify-end'>
-          <Button size='sm' onClick={() => onOpenChange(false)}>
-            {t('Close')}
-          </Button>
-        </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * A single centered surface for the current modal announcement in the queue.
+ * Closing through any Dialog primitive path has the same session-only effect
+ * as Cancel; persistence happens only through the explicit acknowledgement.
+ */
+export function ModalAnnouncementDialog(props: ModalAnnouncementDialogProps) {
+  const { t } = useTranslation()
+
+  return (
+    <Dialog
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        className='flex max-h-[calc(100svh-2rem)] w-[min(60rem,calc(100vw-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl'
+      >
+        <DialogHeader className='relative shrink-0 border-b px-4 py-4 pr-12 sm:px-6 sm:py-5'>
+          <DialogTitle className='text-lg leading-6 break-words sm:text-xl'>
+            {props.announcement?.title}
+          </DialogTitle>
+          {props.queueSize > 1 ? (
+            <span className='text-muted-foreground mt-1 text-xs tabular-nums'>
+              {props.queuePosition} / {props.queueSize}
+            </span>
+          ) : null}
+          <DialogClose
+            render={
+              <Button
+                aria-label={t('Close')}
+                className='absolute top-3 right-3'
+                size='icon-sm'
+                variant='ghost'
+              />
+            }
+          >
+            <X aria-hidden='true' />
+            <span className='sr-only'>{t('Close')}</span>
+          </DialogClose>
+        </DialogHeader>
+
+        <div className='min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6'>
+          {props.announcement?.content ? (
+            <RichContent breaks content={props.announcement.content} />
+          ) : null}
+        </div>
+
+        <DialogFooter className='mx-0 mb-0 shrink-0 flex-col border-t px-4 py-3 sm:flex-row sm:px-6'>
+          <Button variant='outline' onClick={props.onCancel}>
+            {t('Cancel')}
+          </Button>
+          <Button onClick={props.onAcknowledge}>{t('Mark as read')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
