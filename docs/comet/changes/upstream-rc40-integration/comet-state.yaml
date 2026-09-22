@@ -1,0 +1,179 @@
+schema: comet.native.v4
+name: upstream-rc40-integration
+language: zh-CN
+phase: build
+status: active
+state_version: 2
+brief: brief.md
+spec_changes:
+  - capability: upstream-compatibility
+    operation: modify
+    source: specs/upstream-compatibility/spec.md
+workspace:
+  isolation: worktree
+  change_branch: codex/upstream-rc40-integration
+  target_branch: main
+  finish: null
+loop:
+  stage: building
+  goal_cycle: 1
+  iteration: 1
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: submit-builder-candidate
+acceptance:
+  - id: A1
+    source: brief.md
+    text: "A1: 固定源与目标可追溯，提交台账全部有处置、原因和证据，无 pending 项；不把 squash 历史差异误报为缺失功能。"
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: "A2: Chat/Responses/Claude/Gemini 转换覆盖工具图片、推理分段、流式 usage、模型参数及异常边界，定向测试通过。"
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: "A3: 官方 WS 协议修复与现有 CPA 连接池/预热/会话复用共存，HTTP/SSE 和双向 WS 均不回退；没有实测不得声称更快。"
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: "A4: 表达式、图片缓存、断流估算、预扣与结算保持不负扣、不重复收费、正确退款；已有模型价格与分组倍率不被静默覆盖。"
+    result: pending
+    reason: null
+  - id: A5
+    source: brief.md
+    text: "A5: 任务插件管理、OpenAI 图片 API、多个上游插件绑定、视频/图片用量、2xx
+      提交及源码限制可用；旧渠道、价格、历史任务有兼容或已验收的转换路径。"
+    result: pending
+    reason: null
+  - id: A6
+    source: brief.md
+    text: "A6: 新增渠道及 GLM/Gemini/Kimi/Ollama 参数修复有协议测试；自定义思考等级转后缀和模型修饰符保持兼容。"
+    result: pending
+    reason: null
+  - id: A7
+    source: brief.md
+    text: "A7: 账号验证、Passkey、审计和数据库兼容更新不破坏双站登录、现有绑定和二开权限。"
+    result: pending
+    reason: null
+  - id: A8
+    source: brief.md
+    text: "A8: 请求策略、模型元数据、分组排序、Key
+      地址、日志费用/模型提示及移动端改进完成；语言包完整；不引入官方新增模型映射预览/工作台，现有映射编辑和运行契约保持。"
+    result: pending
+    reason: null
+  - id: A9
+    source: brief.md
+    text: "A9: 无限画布、公告中心/已阅、H5/缓存率/用量、支付/GMPay/订阅/代理及路由池均有保留清单与回归证据，无意外文件删除。"
+    result: pending
+    reason: null
+  - id: A10
+    source: brief.md
+    text: "A10: Schema 差异和旧数据转换有具体清单、隔离演练、备份/回滚或前向恢复步骤；生产执行前单独确认实际方案。"
+    result: pending
+    reason: null
+  - id: A11
+    source: brief.md
+    text: "A11: root Go、独立 GOWORK=off relaykit、前端类型/lint/build/test/i18n及独立只读
+      Verify通过；失败和未运行检查如实记录。"
+    result: pending
+    reason: null
+  - id: A12
+    source: brief.md
+    text: "A12: 发布仅采用 required CI 通过后 PR 合入 origin/main 的精确
+      SHA；双站同版，应用更新与数据迁移分开记录，公开版本与镜像可核对。"
+    result: pending
+    reason: null
+  - id: A13
+    source: specs/upstream-compatibility/spec.md
+    text: 从 fork 2d054b38054f7fef1a46c6dbbd61e0cdf8c1997e 同步 QuantumNous/new-api
+      固定提交
+      9310231b3c27fea933e939b46cf26e0ce67192e3（rc.40及后续模型日志标签修复）。origin/main
+      是唯一生产来源。共同祖先仅用于三方比较，不能以提交是否存在判断功能缺失。
+    result: pending
+    reason: null
+  - id: A14
+    source: specs/upstream-compatibility/spec.md
+    text: 上游协议转换、推理参数、usage、WS、任务插件、图片视频
+      API、表达式计费、预扣、请求策略、渠道配置、安全认证、审计及管理界面功能均进入逐项核对范围。台账全部条目须标记已有等价实现、已集成、被后续提交替代或刻意差异，并提供理由与证据。不能因冲突难处理而静默省略。
+    result: pending
+    reason: null
+  - id: A15
+    source: specs/upstream-compatibility/spec.md
+    text: Chat/Responses/Claude/Gemini
+      中的工具调用、图片、思考内容、流结束和错误语义完整保留。供应商适配能力跟随官方，不凭名字臆造 grok-4.7 行为或价格。
+    result: pending
+    reason: null
+  - id: A16
+    source: specs/upstream-compatibility/spec.md
+    text: CPA 连接池、预热、连续会话及客户端 WS 和 HTTP/SSE 入口继续可用。上游通用 WS 能力与现有实现按调用链集成，不能覆盖现有连接复用。
+    result: pending
+    reason: null
+  - id: A17
+    source: specs/upstream-compatibility/spec.md
+    text: 新计费功能保留已配置的模型单价、分组倍率与余额。预扣和结算分别验证上界、失败与退款，日志记录异常夹紧；单次扣费安全边界不能因钱包上限变化而被削弱。
+    result: pending
+    reason: null
+  - id: A18
+    source: specs/upstream-compatibility/spec.md
+    text: 官方任务插件体系纳入代码和隔离演练范围，现有图片/视频渠道、模型别名、价格与历史任务必须有可测试的兼容或转换路径。任何实际生产转换先提供差异报告及备份恢复步骤。
+    result: pending
+    reason: null
+  - id: A19
+    source: specs/upstream-compatibility/spec.md
+    text: 新请求策略、模型元数据、Key 地址、日志与移动端行为与二开管理界面共同保留。新增策略不得悄悄改变既有路由和支付配置。
+    result: pending
+    reason: null
+  - id: A20
+    source: specs/upstream-compatibility/spec.md
+    text: Passkey、账号绑定、敏感操作验证和审计按官方契约增强，同时兼容当前双站和二开权限；新增表/列/约束具备跨数据库方案。
+    result: pending
+    reason: null
+  - id: A21
+    source: specs/upstream-compatibility/spec.md
+    text: 无限画布、公告中心、已阅状态、H5统计、日志思考等级/缓存率/用量、支付/GMPay/订阅/代理/路由池和保护性品牌归属必须保持。
+    result: pending
+    reason: null
+  - id: A22
+    source: specs/upstream-compatibility/spec.md
+    text: 不引入官方新增模型映射预览/工作台、上游模型变更预览应用流程。保留当前模型映射配置与运行时重定向，相关共享数据结构兼容更新仍在范围。台账将被排除的
+      UI 提交标记为用户要求的刻意差异。
+    result: pending
+    reason: null
+  - id: A23
+    source: specs/upstream-compatibility/spec.md
+    text: 使用单 active Native change、单实现分支/worktree，按依赖分批提交；先处理 shared relay/DTO，再处理
+      billing/plugin，再接 UI 与最终回归。已有 squash 同步先比对，避免重复。引入必要 schema
+      支持不等于授权执行生产数据库迁移：须先出具具体清单、隔离验证、备份和恢复方案，再取得生产执行确认。
+    result: pending
+    reason: null
+  - id: A24
+    source: specs/upstream-compatibility/spec.md
+    text: 每项功能有回归证据，独立
+      Verifier核对正式验收清单。root、relaykit独立构建和前端检查通过后，经PR、CI合入origin/main，再按精确SHA构建。双站部署版本一致；应用与数据操作分别核验。关键兼容问题未解决前不发布。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history: []
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-09-22T02:19:31.257Z
