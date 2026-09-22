@@ -1,12 +1,12 @@
 ---
-generated_from_state_version: 12
+generated_from_state_version: 14
 ---
 
 # Verification
 
 ## Current result
 
-- Result: **Passed, user confirmation required**
+- Result: **Passed**
 - Assurance: **skill-coordinated**
 - Goal cycle: 3
 - Iteration: 1
@@ -62,7 +62,7 @@ generated_from_state_version: 12
 
 ## Blockers
 
-- **user**: The generic Skill bridge cannot prove an independent Verifier execution; user confirmation is required before Archive. — next: `await-user`
+_None._
 
 ## Risks and skipped work
 
