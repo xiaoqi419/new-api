@@ -53,8 +53,9 @@ import {
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import type { ClickCaptchaSolution } from '@/features/auth/types'
 import { useCountdown } from '@/hooks/use-countdown'
+import { handleServerError } from '@/lib/handle-server-error'
+import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
-
 export function ForgotPasswordForm({
   className,
   ...props
@@ -99,7 +100,9 @@ export function ForgotPasswordForm({
         startCountdown()
         toast.success(t('Reset email sent, please check your inbox'))
       } else {
-        toast.error(res?.message || t('Failed to send reset email'))
+        handleServerError(
+          createServerError(res, t('Failed to send reset email'))
+        )
       }
     } catch {
       // Errors are handled by global interceptor

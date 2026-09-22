@@ -43,6 +43,7 @@ func selectChannelFailoverPool(param *RetryParam) (*model.Channel, bool, error) 
 			return nil, true, fmt.Errorf("channel failover pool %s has an invalid channel type", poolID)
 		}
 		channel, err := model.GetRandomSatisfiedChannelFiltered(param.TokenGroup, param.ModelName, 0, param.RequestPath, model.ChannelSelectionFilter{
+			Filters:            GetChannelConstraints(param.Ctx).Filters,
 			AllowedChannelIDs:  allowedIDs,
 			ExcludedChannelIDs: channelFailoverPoolExcludedChannels(param.Ctx),
 			ChannelType:        typeValue,
@@ -69,6 +70,7 @@ func selectChannelFailoverPool(param *RetryParam) (*model.Channel, bool, error) 
 		return nil, false, nil
 	}
 	channel, err := model.GetRandomSatisfiedChannelFiltered(param.TokenGroup, param.ModelName, 0, param.RequestPath, model.ChannelSelectionFilter{
+		Filters:              GetChannelConstraints(param.Ctx).Filters,
 		AllowedChannelIDs:    allowedIDs,
 		ExpectedChannelTypes: expectedTypes,
 	})

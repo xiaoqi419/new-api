@@ -1,3 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useCallback } from 'react'
+
+import { DEFAULT_SYSTEM_NAME, DEFAULT_LOGO } from '@/lib/constants'
+import { applyFaviconToDom } from '@/lib/dom-utils'
+import { statusQueryOptions } from '@/lib/status-query'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,20 +22,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useCallback } from 'react'
-
-import { statusQueryOptions } from '@/lib/api'
-import { DEFAULT_SYSTEM_NAME, DEFAULT_LOGO } from '@/lib/constants'
-import { applyFaviconToDom } from '@/lib/dom-utils'
 import {
-  useSystemConfigStore,
   type CurrencyConfig,
   type CurrencyDisplayType,
   type SystemConfig,
   DEFAULT_CURRENCY_CONFIG,
+  useSystemConfigStore,
 } from '@/stores/system-config-store'
-
 interface UseSystemConfigOptions {
   /** Automatically fetch config from backend (use only in root component) */
   autoLoad?: boolean
@@ -144,12 +143,14 @@ export function useSystemConfig(options: UseSystemConfigOptions = {}) {
     setLoading,
   } = useSystemConfigStore()
 
-  // Load config from backend
+  // Load config from backend via the shared `/api/status` cache.
+  // `ensureStatus` writes the mapped config into this store itself, so there is
+  // no second request and no second mapping path here.
   const loadConfig = useCallback(async () => {
     try {
       setLoading(true)
       const data = await queryClient.fetchQuery(statusQueryOptions)
-      setConfig(mapStatusDataToConfig(data))
+      setConfig(mapStatusDataToConfig(data ?? undefined))
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to load system config:', error)

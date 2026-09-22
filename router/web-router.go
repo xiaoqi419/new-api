@@ -29,37 +29,41 @@ type ThemeAssets struct {
 // on a separate path to leave /canvas to the main SPA router.
 const canvasBasePath = "/canvas-app"
 
-func SetWebRouter(router *gin.Engine, assets ThemeAssets) {
+func SetWebRouter(router *gin.Engine, assets ThemeAssets, pluginDispatcher gin.HandlerFunc) {
 	defaultFS := common.EmbedFolder(assets.DefaultBuildFS, "web/dist")
 	classicFS := common.EmbedFolder(assets.ClassicBuildFS, "web/classic/dist")
 	themeFS := common.NewThemeAwareFS(defaultFS, classicFS)
 	canvasFS := common.EmbedFolderAt(assets.CanvasBuildFS, "web/canvas/dist", canvasBasePath)
 
-	router.Use(gzip.Gzip(gzip.DefaultCompression))
-	router.Use(middleware.GlobalWebRateLimit())
-	router.Use(middleware.Cache())
-	router.Use(middleware.MainlandWebAccess())
-	router.Use(static.Serve(canvasBasePath, canvasFS))
-	router.Use(static.Serve("/", themeFS))
-	router.NoRoute(func(c *gin.Context) {
-		c.Set(middleware.RouteTagKey, "web")
-		if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/assets") {
-			controller.RelayNotFound(c)
-			return
-		}
-		if middleware.BlockMainlandWebAccess(c) {
-			return
-		}
-		c.Header("Cache-Control", "no-cache")
-		// 画布是独立的单页应用，深链要回落到它自己的 index.html，不受主站主题影响。
-		if c.Request.URL.Path == canvasBasePath || strings.HasPrefix(c.Request.URL.Path, canvasBasePath+"/") {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.CanvasIndexPage)
-			return
-		}
-		if common.GetTheme() == "classic" {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.ClassicIndexPage)
-		} else {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.DefaultIndexPage)
-		}
-	})
+	router.NoRoute(pluginDispatcher,
+		legacyTaskRouteDispatcher(),
+		middleware.RouteTag("web"),
+		gzip.Gzip(gzip.DefaultCompression),
+		middleware.AccessTokenAudit(),
+		middleware.GlobalWebRateLimit(),
+		middleware.Cache(),
+		middleware.MainlandWebAccess(),
+		static.Serve(canvasBasePath, canvasFS),
+		static.Serve("/", themeFS),
+		func(c *gin.Context) {
+			c.Set(middleware.RouteTagKey, "web")
+			if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/assets") {
+				controller.RelayNotFound(c)
+				return
+			}
+			if middleware.BlockMainlandWebAccess(c) {
+				return
+			}
+			c.Header("Cache-Control", "no-cache")
+			// 画布是独立的单页应用，深链要回落到它自己的 index.html，不受主站主题影响。
+			if c.Request.URL.Path == canvasBasePath || strings.HasPrefix(c.Request.URL.Path, canvasBasePath+"/") {
+				c.Data(http.StatusOK, "text/html; charset=utf-8", assets.CanvasIndexPage)
+				return
+			}
+			if common.GetTheme() == "classic" {
+				c.Data(http.StatusOK, "text/html; charset=utf-8", assets.ClassicIndexPage)
+			} else {
+				c.Data(http.StatusOK, "text/html; charset=utf-8", assets.DefaultIndexPage)
+			}
+		})
 }

@@ -27,7 +27,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, test, vi } from 'vitest'
 
-import { statusQueryOptions } from '../api'
+import { statusQueryOptions } from '../status-query'
 
 function EmptyComponent() {
   return null

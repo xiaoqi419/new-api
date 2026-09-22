@@ -23,6 +23,7 @@ import { PromoBanner } from '@/components/promo-banner'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { CommunityMenu } from '@/features/community'
+import { SystemUpdateAction } from '@/features/system-update/system-update-action'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
@@ -151,6 +152,7 @@ export function AppHeader({
               loading={notifications.loading}
             />
           )}
+          <SystemUpdateAction compact />
           <LanguageSwitcher />
           {showThemeSwitch && <ThemeSwitch />}
           {showProfileDropdown && <ProfileDropdown />}

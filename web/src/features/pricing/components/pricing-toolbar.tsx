@@ -1,11 +1,3 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import {
-  sideDrawerContentClassName,
-  sideDrawerFormClassName,
-  sideDrawerHeaderClassName,
-} from '@/components/drawer-layout'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -24,6 +16,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
+  sideDrawerContentClassName,
+  sideDrawerFormClassName,
+  sideDrawerHeaderClassName,
+} from '@/components/drawer-layout'
 import {
   ArrowUpDown,
   Check,
@@ -37,6 +38,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -122,7 +124,9 @@ function SegmentedControl(props: {
           <button
             key={option.value}
             type='button'
-            onClick={() => props.onChange(option.value)}
+            onClick={() => {
+              if (option.value !== props.value) props.onChange(option.value)
+            }}
             aria-pressed={isActive}
             aria-label={option.tooltip}
             className={cn(
@@ -158,18 +162,8 @@ function SegmentedControl(props: {
 export function PricingToolbar(props: PricingToolbarProps) {
   const { t } = useTranslation()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const filterTriggerRef = useRef<HTMLButtonElement>(null)
   const sortLabels = getSortLabels(t)
-
-  const handleTokenUnitChange = useCallback(
-    (value: string) => props.onTokenUnitChange(value as TokenUnit),
-    [props]
-  )
-
-  const handleViewModeChange = useCallback(
-    (value: string) => props.onViewModeChange(value as ViewMode),
-    [props]
-  )
-
   const handleRechargePriceChange = useCallback(
     (value: string) => props.onRechargePriceChange(value === 'recharge'),
     [props]
@@ -183,6 +177,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
             type='button'
             variant='outline'
             size='sm'
+            ref={filterTriggerRef}
             onClick={() => setMobileFiltersOpen(true)}
             className='h-10 gap-1.5 rounded-full border-[#e2e2de] px-3 text-xs xl:hidden dark:border-white/15'
             aria-expanded={mobileFiltersOpen}
@@ -227,12 +222,12 @@ export function PricingToolbar(props: PricingToolbarProps) {
                 { value: 'K', label: '/1K' },
               ]}
               value={props.tokenUnit}
-              onChange={handleTokenUnitChange}
+              onChange={(value) => props.onTokenUnitChange(value as TokenUnit)}
               ariaLabel={t('Token unit')}
             />
           </div>
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               render={
                 <Button
@@ -247,21 +242,23 @@ export function PricingToolbar(props: PricingToolbarProps) {
               <span>{sortLabels[props.sortBy as SortOption] || t('Sort')}</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end' className='w-44'>
-              {Object.entries(sortLabels).map(([value, label]) => (
-                <DropdownMenuItem
-                  key={value}
-                  onClick={() => props.onSortChange(value)}
-                  className='gap-2'
-                >
-                  <Check
-                    className={cn(
-                      'size-4 shrink-0',
-                      props.sortBy === value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {label}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuGroup>
+                {Object.entries(sortLabels).map(([value, label]) => (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() => props.onSortChange(value)}
+                    className='gap-2'
+                  >
+                    <Check
+                      className={cn(
+                        'size-4 shrink-0',
+                        props.sortBy === value ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -283,9 +280,9 @@ export function PricingToolbar(props: PricingToolbarProps) {
                 tooltip: t('Group view'),
               },
             ]}
-            value={props.viewMode}
-            onChange={handleViewModeChange}
             ariaLabel={t('View mode')}
+            value={props.viewMode}
+            onChange={(value) => props.onViewModeChange(value as ViewMode)}
           />
         </div>
       </div>
@@ -293,7 +290,8 @@ export function PricingToolbar(props: PricingToolbarProps) {
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent
           id='pricing-mobile-filters'
-          side='right'
+          finalFocus={filterTriggerRef}
+          side='left'
           className={sideDrawerContentClassName('sm:max-w-md')}
         >
           <SheetHeader className={sideDrawerHeaderClassName()}>

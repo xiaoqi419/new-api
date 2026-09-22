@@ -38,6 +38,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { handleServerError } from '@/lib/handle-server-error'
 
 import { fetchUpstreamModels, updateChannel } from '../../api'
 import {
@@ -124,13 +125,13 @@ export function FetchModelsDialog({
 
   const removedModels = useMemo(() => {
     const kw = searchKeyword.toLowerCase().trim()
-    return normalizeModelNameList(selectedModels).filter((model) => {
+    return normalizeModelNameList(existingModels).filter((model) => {
       if (fetchedModelSet.has(model)) return false
       if (redirectSourceKeysSet.has(model)) return false
       if (!kw) return true
       return model.toLowerCase().includes(kw)
     })
-  }, [fetchedModelSet, redirectSourceKeysSet, searchKeyword, selectedModels])
+  }, [fetchedModelSet, redirectSourceKeysSet, searchKeyword, existingModels])
 
   useEffect(() => {
     if (open && (activeChannel || customFetcher)) {
@@ -157,14 +158,12 @@ export function FetchModelsDialog({
           setSelectedModels(existingModels)
           toast.success(t('Fetched {{count}} models', { count: list.length }))
         } else {
-          toast.error(response.message || t('Failed to fetch models'))
+          handleServerError(response, t('Failed to fetch models'))
           setFetchedModels([])
         }
       }
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : t('Failed to fetch models')
-      )
+      handleServerError(error, t('Failed to fetch models'))
       setFetchedModels([])
     } finally {
       setIsFetching(false)
@@ -193,12 +192,10 @@ export function FetchModelsDialog({
         queryClient.invalidateQueries({ queryKey: channelsQueryKeys.lists() })
         onOpenChange(false)
       } else {
-        toast.error(response.message || t('Failed to update models'))
+        handleServerError(response, t('Failed to update models'))
       }
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : t('Failed to update models')
-      )
+      handleServerError(error, t('Failed to update models'))
     } finally {
       setIsSaving(false)
     }
@@ -288,27 +285,34 @@ export function FetchModelsDialog({
 
     return (
       <Collapsible key={categoryName} defaultOpen>
-        <CollapsibleTrigger className='hover:bg-muted/50 flex w-full items-center justify-between rounded-lg border p-3'>
-          <div className='flex items-center gap-2'>
-            <ChevronDown className='h-4 w-4' />
-            <span className='font-medium'>
-              {categoryName} ({categoryModels.length})
-            </span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <span className='text-muted-foreground text-sm'>
-              {categoryModels.filter((m) => selectedModels.includes(m)).length}{' '}
-              / {categoryModels.length} selected
-            </span>
-            <Checkbox
-              checked={allSelected}
-              onCheckedChange={(checked) =>
-                toggleCategory(categoryModels, !!checked)
-              }
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </CollapsibleTrigger>
+        <div className='flex items-center gap-2 rounded-lg border px-3'>
+          <Checkbox
+            aria-label={t('Select all models in {{category}}', {
+              category: categoryName,
+            })}
+            checked={allSelected}
+            onCheckedChange={(checked) =>
+              toggleCategory(categoryModels, !!checked)
+            }
+          />
+          <CollapsibleTrigger className='hover:bg-muted/50 flex min-w-0 flex-1 items-center justify-between rounded-lg p-3'>
+            <div className='flex items-center gap-2'>
+              <ChevronDown className='h-4 w-4' />
+              <span className='font-medium'>
+                {categoryName} ({categoryModels.length})
+              </span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <span className='text-muted-foreground text-sm'>
+                {
+                  categoryModels.filter((m) => selectedModels.includes(m))
+                    .length
+                }{' '}
+                / {categoryModels.length} selected
+              </span>
+            </div>
+          </CollapsibleTrigger>
+        </div>
         <CollapsibleContent className='px-4 py-2'>
           <div className='grid grid-cols-2 gap-2'>
             {categoryModels.map((model) => (

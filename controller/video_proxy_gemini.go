@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -10,7 +11,46 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay"
+	relaychannel "github.com/QuantumNous/new-api/relay/channel"
+	"github.com/gin-gonic/gin"
 )
+
+// Legacy tasks predate plugin content descriptors but retain provider-specific
+// credentials and snapshots. Both content endpoints use the same safe proxy.
+func proxyLegacyVideo(c *gin.Context, task *model.Task) error {
+	channel, err := model.CacheGetChannel(task.ChannelId)
+	if err != nil || channel == nil {
+		return &taskMediaProxyError{status: http.StatusServiceUnavailable, code: "artifact_plugin_unavailable", message: "Artifact channel is unavailable", err: err}
+	}
+	descriptor := &relaychannel.TaskContentRequest{URL: task.GetResultURL(), Method: c.Request.Method, Credentialless: true}
+	switch channel.Type {
+	case constant.ChannelTypeGemini:
+		if task.PrivateData.Key == "" {
+			return &taskMediaProxyError{status: http.StatusBadGateway, code: "artifact_upstream_auth_failed", message: "API key not stored for task"}
+		}
+		descriptor.URL, err = getGeminiVideoURL(channel, task, task.PrivateData.Key)
+		descriptor.Credentialless = false
+		descriptor.Headers = map[string]string{"x-goog-api-key": task.PrivateData.Key}
+	case constant.ChannelTypeVertexAi:
+		descriptor.URL, err = getVertexVideoURL(channel, task)
+	case constant.ChannelTypeOpenAI, constant.ChannelTypeSora:
+		baseURL := strings.TrimRight(channel.GetBaseURL(), "/")
+		if baseURL == "" {
+			baseURL = "https://api.openai.com"
+		}
+		descriptor.URL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+		key := task.PrivateData.Key
+		if key == "" {
+			key = channel.Key
+		}
+		descriptor.Credentialless = false
+		descriptor.Headers = map[string]string{"Authorization": "Bearer " + key}
+	}
+	if err != nil {
+		return &taskMediaProxyError{status: http.StatusBadGateway, code: "artifact_upstream_error", message: "Failed to resolve video content", err: err}
+	}
+	return proxyTaskMedia(c, task, descriptor)
+}
 
 func getGeminiVideoURL(channel *model.Channel, task *model.Task, apiKey string) (string, error) {
 	if channel == nil || task == nil {
@@ -36,10 +76,7 @@ func getGeminiVideoURL(channel *model.Channel, task *model.Task, apiKey string) 
 	}
 
 	proxy := channel.GetSetting().Proxy
-	resp, err := adaptor.FetchTask(baseURL, apiKey, map[string]any{
-		"task_id": task.GetUpstreamTaskID(),
-		"action":  task.Action,
-	}, proxy)
+	resp, err := adaptor.FetchTask(baseURL, apiKey, task, proxy)
 	if err != nil {
 		return "", fmt.Errorf("fetch task failed: %w", err)
 	}
@@ -50,7 +87,7 @@ func getGeminiVideoURL(channel *model.Channel, task *model.Task, apiKey string) 
 		return "", fmt.Errorf("read task response failed: %w", err)
 	}
 
-	taskInfo, parseErr := adaptor.ParseTaskResult(body)
+	taskInfo, parseErr := adaptor.ParseTaskResult(task, resp, body)
 	if parseErr == nil && taskInfo != nil && taskInfo.RemoteUrl != "" {
 		return ensureAPIKey(taskInfo.RemoteUrl, apiKey), nil
 	}
@@ -171,10 +208,7 @@ func getVertexVideoURL(channel *model.Channel, task *model.Task) (string, error)
 		return "", fmt.Errorf("vertex key not available for task")
 	}
 
-	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
-		"task_id": task.GetUpstreamTaskID(),
-		"action":  task.Action,
-	}, channel.GetSetting().Proxy)
+	resp, err := adaptor.FetchTask(baseURL, key, task, channel.GetSetting().Proxy)
 	if err != nil {
 		return "", fmt.Errorf("fetch task failed: %w", err)
 	}
@@ -185,7 +219,7 @@ func getVertexVideoURL(channel *model.Channel, task *model.Task) (string, error)
 		return "", fmt.Errorf("read task response failed: %w", err)
 	}
 
-	taskInfo, parseErr := adaptor.ParseTaskResult(body)
+	taskInfo, parseErr := adaptor.ParseTaskResult(task, resp, body)
 	if parseErr == nil && taskInfo != nil && strings.TrimSpace(taskInfo.Url) != "" {
 		return taskInfo.Url, nil
 	}

@@ -2,6 +2,7 @@ package setting
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -41,12 +42,7 @@ type AutoGroupRoute struct {
 var autoGroupRoutes = make([]AutoGroupRoute, 0)
 
 func ContainsAutoGroup(group string) bool {
-	for _, autoGroup := range autoGroups {
-		if autoGroup == group {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(autoGroups, group)
 }
 
 func UpdateAutoGroupsByJsonString(jsonString string) error {

@@ -44,7 +44,7 @@ const model: PricingModel = {
 }
 
 describe('ModelCard', () => {
-  test('opens the selected model while preserving the fixed desktop card geometry', () => {
+  test('opens the selected model while preserving the rounded card and supporting expandable pricing details', () => {
     const onClick = vi.fn()
     render(<ModelCard model={model} onClick={onClick} />)
 
@@ -52,7 +52,7 @@ describe('ModelCard', () => {
     expect(onClick).toHaveBeenCalledOnce()
 
     const card = document.querySelector('[data-pricing-model-card]')
-    expect(card).toHaveClass('rounded-[16px]', 'xl:h-[142px]')
+    expect(card).toHaveClass('rounded-[16px]', 'min-h-[154px]')
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
     expect(copyToClipboard).toHaveBeenCalledWith(model.model_name)

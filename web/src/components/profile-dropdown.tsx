@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useNavigate } from '@tanstack/react-router'
+import { ShieldCheck } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -55,6 +56,7 @@ export function ProfileDropdown() {
     [avatarName]
   )
 
+  const isSecurityVisible = useIsSidebarModuleVisible('/security')
   return (
     <>
       <DropdownMenu modal={false}>
@@ -113,6 +115,13 @@ export function ProfileDropdown() {
             <User className='size-4' />
             {t('Profile')}
           </DropdownMenuItem>
+
+          {isSecurityVisible && (
+            <DropdownMenuItem onClick={() => navigate({ to: '/security' })}>
+              <ShieldCheck className='size-4' />
+              {t('Security & Access')}
+            </DropdownMenuItem>
+          )}
 
           {isWalletVisible && (
             <DropdownMenuItem

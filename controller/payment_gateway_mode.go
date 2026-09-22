@@ -79,7 +79,7 @@ func paymentGatewayModeApplyAudit(c *gin.Context, audit service.PaymentGatewayMo
 		c.ClientIP(),
 		paymentGatewayModeApplyAuditAction,
 		params,
-		auditOperatorInfo(c),
+		map[string]any{"admin_id": c.GetInt("id"), "admin_username": c.GetString("username"), "admin_role": c.GetInt("role"), "auth_method": auditAuthMethod(c)},
 		map[string]interface{}{
 			"method":  c.Request.Method,
 			"route":   c.FullPath(),

@@ -30,6 +30,24 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-22',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 rc.40：新增任务插件管理、渠道插件绑定、请求策略、模型元数据与分组管理，支持插件计费表达式和图片视频任务产物查看。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '更新账号安全验证、Passkey 多域名、审计日志和 API 地址复制；保留公告中心、无限画布、原有媒体分级价格、支付代理功能与模型映射编辑方式。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-09-18',
     changes: [
       {

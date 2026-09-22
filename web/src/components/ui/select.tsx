@@ -16,7 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-'use client'
+import { usePortalContainer } from '@/components/ui/portal-container'
+
+;('use client')
 
 import { Select as SelectPrimitive } from '@base-ui/react/select'
 import * as React from 'react'
@@ -95,6 +97,7 @@ function SelectContent({
     'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'
   >) {
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const container = usePortalContainer()
 
   const content = (
     <SelectPrimitive.Positioner
@@ -125,7 +128,11 @@ function SelectContent({
     return content
   }
 
-  return <SelectPrimitive.Portal>{content}</SelectPrimitive.Portal>
+  return (
+    <SelectPrimitive.Portal container={container}>
+      {content}
+    </SelectPrimitive.Portal>
+  )
 }
 
 function SelectLabel({

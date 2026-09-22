@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils'
 import { useOAuthLogin } from '../hooks/use-oauth-login'
 import type { SystemStatus } from '../types'
 import { authSecondaryButtonClassName } from './auth-card'
-import { TelegramLoginDialog } from './telegram-login-dialog'
 
 type OAuthProvidersProps = {
   status: SystemStatus | null
@@ -78,10 +77,6 @@ export function OAuthProviders({
     handleLinuxDOLogin,
     handleTelegramLogin,
     handleCustomOAuthLogin,
-    isTelegramDialogOpen,
-    isTelegramPending,
-    handleTelegramAuthorization,
-    setIsTelegramDialogOpen,
     isClickCaptchaEnabled,
     isCaptchaDialogOpen,
     setIsCaptchaDialogOpen,
@@ -214,14 +209,6 @@ export function OAuthProviders({
           onSolved={handleCaptchaSolved}
         />
       )}
-
-      <TelegramLoginDialog
-        open={isTelegramDialogOpen}
-        botName={status?.telegram_bot_name ?? ''}
-        pending={isTelegramPending}
-        onOpenChange={setIsTelegramDialogOpen}
-        onAuthorization={handleTelegramAuthorization}
-      />
     </>
   )
 }

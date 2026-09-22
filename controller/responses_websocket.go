@@ -86,13 +86,20 @@ func ResponsesWebSocket(c *gin.Context, relayHandler http.Handler) {
 		if frame.err != nil {
 			return
 		}
+		identity, identityErr := parseResponsesWSIdentity(frame.payload)
 		payload, model, err := normalizeResponsesWSCreate(frame.payload, sessionModel)
+		if identityErr != nil {
+			err = identityErr
+		}
 		if err != nil {
-			_ = conn.Close(websocket.StatusPolicyViolation, err.Error())
-			return
+			errorPayload, _ := common.Marshal(gin.H{"type": "error", "status": http.StatusBadRequest, "error": gin.H{"type": "invalid_request_error", "message": err.Error()}})
+			if writeErr := writeResponsesWSMessage(ctx, conn, identity.correlate(errorPayload)); writeErr != nil {
+				return
+			}
+			continue
 		}
 		sessionModel = model
-		turnErr, next := runResponsesWSTurn(ctx, conn, relayHandler, baseHeaders, remoteAddr, host, payload, frames)
+		turnErr, next := runResponsesWSTurn(ctx, conn, relayHandler, baseHeaders, remoteAddr, host, payload, frames, identity)
 		pending = next
 		if turnErr != nil {
 			if ctx.Err() != nil {
@@ -107,6 +114,70 @@ func ResponsesWebSocket(c *gin.Context, relayHandler http.Handler) {
 type responsesWSFrame struct {
 	payload []byte
 	err     error
+}
+
+// WebSocket correlation fields belong to the envelope, not the HTTP relay body.
+type responsesWSIdentity struct {
+	eventID  string
+	streamID string
+}
+
+func parseResponsesWSIdentity(payload []byte) (responsesWSIdentity, error) {
+	var envelope struct {
+		EventID  string          `json:"event_id"`
+		StreamID json.RawMessage `json:"stream_id"`
+		Response json.RawMessage `json:"response"`
+	}
+	err := common.Unmarshal(payload, &envelope)
+	identity := responsesWSIdentity{eventID: envelope.EventID}
+	if err != nil {
+		return identity, fmt.Errorf("invalid JSON payload")
+	}
+	if len(envelope.StreamID) == 0 && len(envelope.Response) > 0 {
+		var wrapped struct {
+			StreamID json.RawMessage `json:"stream_id"`
+		}
+		if common.Unmarshal(envelope.Response, &wrapped) == nil {
+			envelope.StreamID = wrapped.StreamID
+		}
+	}
+	if len(envelope.StreamID) == 0 {
+		return identity, nil
+	}
+	var streamID string
+	if common.Unmarshal(envelope.StreamID, &streamID) != nil || len(streamID) < 1 || len(streamID) > 256 {
+		return identity, fmt.Errorf("stream_id must contain 1-256 ASCII letters, digits, underscores, hyphens, or periods")
+	}
+	for _, char := range streamID {
+		if !(char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9' || char == '_' || char == '-' || char == '.') {
+			return identity, fmt.Errorf("stream_id must contain only ASCII letters, digits, underscores, hyphens, or periods")
+		}
+	}
+	identity.streamID = streamID
+	return identity, nil
+}
+
+func (identity responsesWSIdentity) correlate(payload []byte) []byte {
+	if identity.streamID == "" && identity.eventID == "" {
+		return payload
+	}
+	var event map[string]json.RawMessage
+	if common.Unmarshal(payload, &event) != nil || event == nil {
+		return payload
+	}
+	if identity.streamID != "" {
+		event["stream_id"], _ = common.Marshal(identity.streamID)
+	}
+	var eventType string
+	_ = common.Unmarshal(event["type"], &eventType)
+	if identity.eventID != "" && (eventType == "error" || eventType == "response.error") {
+		event["event_id"], _ = common.Marshal(identity.eventID)
+	}
+	encoded, err := common.Marshal(event)
+	if err != nil {
+		return payload
+	}
+	return encoded
 }
 
 func readResponsesWSFrames(ctx context.Context, conn *websocket.Conn, frames chan<- responsesWSFrame) {
@@ -155,6 +226,15 @@ func normalizeResponsesWSCreate(payload []byte, inheritedModel string) ([]byte, 
 	if body == nil || common.Unmarshal(body["type"], &messageType) != nil || messageType != "response.create" {
 		return nil, "", fmt.Errorf("first message must be response.create")
 	}
+	if wrapped, exists := body["response"]; exists {
+		generate := body["generate"]
+		if err := common.Unmarshal(wrapped, &body); err != nil || body == nil {
+			return nil, "", fmt.Errorf("response must be an object")
+		}
+		if len(generate) > 0 {
+			body["generate"] = generate
+		}
+	}
 	modelRaw, hasModel := body["model"]
 	model := ""
 	if hasModel {
@@ -173,16 +253,19 @@ func normalizeResponsesWSCreate(payload []byte, inheritedModel string) ([]byte, 
 		body["input"] = json.RawMessage(`[]`)
 	}
 	delete(body, "type")
+	delete(body, "event_id")
+	delete(body, "stream_id")
 	body["stream"] = json.RawMessage(`true`)
 	normalized, err := common.Marshal(body)
 	return normalized, model, err
 }
 
-func runResponsesWSTurn(parent context.Context, conn *websocket.Conn, relayHandler http.Handler, baseHeaders http.Header, remoteAddr, host string, payload []byte, frames <-chan responsesWSFrame) (error, *responsesWSFrame) {
+func runResponsesWSTurn(parent context.Context, conn *websocket.Conn, relayHandler http.Handler, baseHeaders http.Header, remoteAddr, host string, payload []byte, frames <-chan responsesWSFrame, identity responsesWSIdentity) (error, *responsesWSFrame) {
 	turnCtx, cancel := context.WithCancel(parent)
 	defer cancel()
 	req := httptestRequestWithContext(turnCtx, payload, baseHeaders, remoteAddr, host)
 	writer := newResponsesWSWriter(turnCtx, conn)
+	writer.identity = identity
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -197,7 +280,7 @@ func runResponsesWSTurn(parent context.Context, conn *websocket.Conn, relayHandl
 			turnErr := writer.writeErr
 			if turnErr == nil && !writer.terminal {
 				payload := []byte(`{"type":"error","error":{"type":"stream_incomplete","code":"stream_incomplete","message":"Upstream response stream ended before a terminal event."}}`)
-				if err := writeResponsesWSMessage(writer.ctx, writer.conn, payload); err != nil {
+				if err := writeResponsesWSMessage(writer.ctx, writer.conn, identity.correlate(payload)); err != nil {
 					writer.writeErr = err
 					turnErr = err
 				} else {
@@ -221,22 +304,39 @@ func runResponsesWSTurn(parent context.Context, conn *websocket.Conn, relayHandl
 				return frame.err, nil
 			}
 			if isResponsesWSCancel(frame.payload) {
+				controlIdentity, err := parseResponsesWSIdentity(frame.payload)
+				if err != nil || (controlIdentity.streamID != "" && controlIdentity.streamID != identity.streamID) {
+					errorPayload := []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"response.cancel does not identify the active stream"}}`)
+					writer.mu.Lock()
+					writeErr := writeResponsesWSMessage(parent, conn, controlIdentity.correlate(errorPayload))
+					writer.mu.Unlock()
+					if writeErr != nil {
+						return writeErr, nil
+					}
+					continue
+				}
 				cancel()
 				<-done
-				_ = writeResponsesWSMessage(parent, conn, []byte(`{"type":"response.cancelled"}`))
+				_ = writeResponsesWSMessage(parent, conn, identity.correlate([]byte(`{"type":"response.cancelled"}`)))
 				return nil, nil
 			}
-			if _, _, err := normalizeResponsesWSCreate(frame.payload, "active-turn"); err == nil {
-				if pending != nil {
-					cancel()
-					<-done
-					return fmt.Errorf("only one response.create may be queued"), nil
-				}
+			frameIdentity, frameErr := parseResponsesWSIdentity(frame.payload)
+			if frameErr == nil {
+				_, _, frameErr = normalizeResponsesWSCreate(frame.payload, "active-turn")
+			}
+			if frameErr == nil && pending != nil {
+				frameErr = fmt.Errorf("only one response.create may be queued")
+			}
+			if frameErr == nil {
 				pending = &frame
-			} else {
-				cancel()
-				<-done
-				return fmt.Errorf("unsupported message while response is active"), nil
+				continue
+			}
+			errorPayload, _ := common.Marshal(gin.H{"type": "error", "status": http.StatusBadRequest, "error": gin.H{"type": "invalid_request_error", "message": frameErr.Error()}})
+			writer.mu.Lock()
+			writeErr := writeResponsesWSMessage(parent, conn, frameIdentity.correlate(errorPayload))
+			writer.mu.Unlock()
+			if writeErr != nil {
+				return writeErr, nil
 			}
 		}
 	}
@@ -269,6 +369,7 @@ type responsesWSWriter struct {
 	writeErr error
 	terminal bool
 	notify   <-chan bool
+	identity responsesWSIdentity
 }
 
 func newResponsesWSWriter(ctx context.Context, conn *websocket.Conn) *responsesWSWriter {
@@ -312,7 +413,7 @@ func (w *responsesWSWriter) Write(p []byte) (int, error) {
 			if data == "" || data == "[DONE]" {
 				continue
 			}
-			if err := writeResponsesWSMessage(w.ctx, w.conn, []byte(data)); err != nil {
+			if err := writeResponsesWSMessage(w.ctx, w.conn, w.identity.correlate([]byte(data))); err != nil {
 				w.writeErr = err
 				return 0, err
 			}
@@ -338,7 +439,7 @@ func (w *responsesWSWriter) Write(p []byte) (int, error) {
 				}
 			}
 		}
-		if err := writeResponsesWSMessage(w.ctx, w.conn, append([]byte(nil), p...)); err != nil {
+		if err := writeResponsesWSMessage(w.ctx, w.conn, w.identity.correlate(p)); err != nil {
 			w.writeErr = err
 			return 0, err
 		}

@@ -259,7 +259,10 @@ export function GroupView(props: GroupViewProps) {
 
         return {
           group,
-          description: props.usableGroup[group],
+          description:
+            typeof props.usableGroup[group] === 'string'
+              ? props.usableGroup[group]
+              : props.usableGroup[group]?.desc,
           ratio: props.groupRatio[group] ?? 1,
           modelCount: segments.reduce((sum, s) => sum + s.models.length, 0),
           segments,

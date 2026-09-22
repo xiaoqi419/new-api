@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Window } from 'happy-dom'
 // @ts-ignore -- Vitest is provided by the repository verification harness.
 import { afterAll, beforeEach, describe, test, vi } from 'vitest'
@@ -165,7 +166,17 @@ async function renderNode(node: React.ReactNode) {
   const root = createRoot(container)
 
   await act(async () => {
-    root.render(createElement(I18nextProvider, { i18n }, node))
+    root.render(
+      createElement(
+        QueryClientProvider,
+        {
+          client: new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+          }),
+        },
+        createElement(I18nextProvider, { i18n }, node)
+      )
+    )
   })
 
   return { container, root }

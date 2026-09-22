@@ -25,13 +25,11 @@ export interface LoadingSkeletonProps {
 }
 
 export function LoadingSkeleton(props: LoadingSkeletonProps) {
-  const viewMode = props.viewMode ?? VIEW_MODES.CARD
-
   return (
     <div className='min-h-full'>
-      {viewMode === VIEW_MODES.TABLE && <TableContentSkeleton />}
-      {viewMode === VIEW_MODES.CARD && <CardContentSkeleton />}
-      {viewMode === VIEW_MODES.GROUP && <GroupContentSkeleton />}
+      {props.viewMode === VIEW_MODES.TABLE && <TableContentSkeleton />}
+      {props.viewMode === VIEW_MODES.CARD && <CardContentSkeleton />}
+      {props.viewMode === VIEW_MODES.GROUP && <GroupContentSkeleton />}
     </div>
   )
 }

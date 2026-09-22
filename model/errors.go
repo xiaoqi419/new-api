@@ -14,7 +14,6 @@ var (
 	ErrEmailAlreadyTaken    = errors.New("email already taken")
 	ErrEmailNotFound        = errors.New("email not found")
 	ErrEmailAmbiguous       = errors.New("email matches multiple users")
-	ErrCannotDeleteRootUser = errors.New("cannot delete root user")
 )
 
 // Token auth errors

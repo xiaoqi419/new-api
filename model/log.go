@@ -194,8 +194,9 @@ func RecordLog(userId int, logType int, content string) {
 	}
 }
 
-// RecordLogWithAdminInfo 记录操作日志，并将管理员相关信息存入 Other.admin_info，
-func RecordLogWithAdminInfo(userId int, logType int, content string, adminInfo map[string]interface{}) {
+// RecordLogWithAdminInfo stores operator metadata under other.admin_info and
+// an optional, user-visible operation descriptor under other.op for localization.
+func RecordLogWithAdminInfo(userId int, logType int, content string, adminInfo *AuditAdminInfo, operation *AuditOperation, request ...*gin.Context) {
 	if logType == LogTypeConsume && !common.LogConsumeEnabled {
 		return
 	}
@@ -207,99 +208,87 @@ func RecordLogWithAdminInfo(userId int, logType int, content string, adminInfo m
 		Type:      logType,
 		Content:   content,
 	}
-	if len(adminInfo) > 0 {
-		other := NewLogOther()
-		other.MergeAdmin(adminInfo)
-		log.Other = other.JSONString()
+	if logType == LogTypeManage {
+		var c *gin.Context
+		if len(request) > 0 {
+			c = request[0]
+		}
+		actorRole := 0
+		if c != nil {
+			actorRole = c.GetInt("role")
+		}
+		RecordAuditLog(c, AuditLog{UserId: userId, Username: username, ActorRole: actorRole, Category: AuditCategoryOperation, Content: content, Other: AuditOther{AdminInfo: adminInfo, Op: operation}, Success: true})
+		return
+	}
+	if len(request) > 0 && request[0] != nil {
+		log.RequestId = request[0].GetString(common.RequestIdKey)
+	}
+	if adminInfo != nil || operation != nil {
+		data, err := common.Marshal(AuditOther{AdminInfo: adminInfo, Op: operation})
+		if err != nil {
+			common.SysError("failed to encode log admin info: " + err.Error())
+			return
+		}
+		log.Other = string(data)
 	}
 	if err := createLog(log); err != nil {
 		common.SysLog("failed to record log: " + err.Error())
 	}
 }
 
-// buildOpField 构建语言无关的操作描述（写入 Other.op）。
-// 前端依据 action(稳定操作标识) + params(结构化参数) 在渲染期用 i18n 本地化展示，
-// 因此不在数据库中存储自然语言句子。
-func buildOpField(action string, params map[string]interface{}) map[string]interface{} {
-	op := map[string]interface{}{
-		"action": action,
-	}
-	if len(params) > 0 {
-		op["params"] = params
-	}
-	return op
-}
-
-// RecordLoginLog 记录用户登录成功的审计日志（type=LogTypeLogin）。
+// RecordLoginLog writes new login events to the independent audit table.
 // username 由调用方传入（登录流程已持有用户对象），避免额外的数据库查询。
-// content 为英文兜底文本（用于导出/经典前端）；action+params 供前端本地化渲染。
-// extra 可携带 login_method、user_agent 等附加信息（普通用户可见）。
-func RecordLoginLog(userId int, username string, content string, ip string, action string, params map[string]interface{}, extra map[string]interface{}) {
-	other := NewLogOther()
-	other.MergePublic(extra)
-	other.SetPublic("op", buildOpField(action, params))
-	log := &Log{
-		UserId:    userId,
-		Username:  username,
-		CreatedAt: common.GetTimestamp(),
-		Type:      LogTypeLogin,
-		Content:   content,
-		Ip:        ip,
-		Other:     other.JSONString(),
+// content 为英文兜底文本（用于导出）；action+params 供前端本地化渲染。
+// other 包含 login_method、user_agent 等结构化信息。
+func RecordLoginLog(userId, actorRole int, username string, content string, ip string, action string, params map[string]any, other AuditOther, request ...*gin.Context) {
+	other.Op = &AuditOperation{Action: action, Params: params}
+	var c *gin.Context
+	if len(request) > 0 {
+		c = request[0]
 	}
-	if err := createLog(log); err != nil {
-		common.SysLog("failed to record login log: " + err.Error())
-	}
+	RecordAuditLog(c, AuditLog{UserId: userId, Username: username, ActorRole: actorRole, Category: AuditCategoryLogin, Action: action, Content: content, Ip: ip, Other: other, Success: true})
 }
 
-// RecordOperationAuditLogWithError records a management/high-risk audit log
-// and returns the database error to callers that must not acknowledge an
-// operation before its audit trail is durable.
-func RecordOperationAuditLogWithError(logUserId int, content string, ip string, action string, params map[string]interface{}, adminInfo map[string]interface{}, auditInfo map[string]interface{}) error {
-	username, _ := GetUsernameById(logUserId, false)
-	other := NewLogOther()
-	other.SetPublic("op", buildOpField(action, params))
-	other.MergeAdmin(adminInfo)
-	other.MergeAudit(auditInfo)
-	log := &Log{
-		UserId:    logUserId,
-		Username:  username,
-		CreatedAt: common.GetTimestamp(),
-		Type:      LogTypeManage,
-		Content:   content,
-		Ip:        ip,
-		Other:     other.JSONString(),
-	}
-	return createLog(log)
-}
-
-// RecordOperationAuditLog records a management/high-risk audit log
-// (type=LogTypeManage).  Existing callers intentionally retain the historical
-// fire-and-log behavior; callers that need ordering guarantees should use
-// RecordOperationAuditLogWithError.
+// RecordOperationAuditLog writes new operation/security events to the audit table.
 // logUserId 为日志归属者，管理审计日志应归属实际操作者；目标资源/用户放入
-// action params。username 内部按 logUserId 查询。content 为英文兜底文本（导出/经典前端用）。
+// action params。username 内部按 logUserId 查询。content 为英文兜底文本（供导出使用）。
 // action+params 写入 Other.op，供前端本地化渲染（普通用户可见，不含敏感信息）。
 // adminInfo 存放操作者身份（写入 Other.admin_info，普通用户查询时剥离）；
 // auditInfo 存放路由/方法/结果等中间件兜底信息（写入 Other.audit_info，普通用户查询时剥离）。
-func RecordOperationAuditLog(logUserId int, content string, ip string, action string, params map[string]interface{}, adminInfo map[string]interface{}, auditInfo map[string]interface{}) {
-	if err := RecordOperationAuditLogWithError(logUserId, content, ip, action, params, adminInfo, auditInfo); err != nil {
-		common.SysLog("failed to record operation audit log: " + err.Error())
+func RecordOperationAuditLog(logUserId, actorRole int, content string, ip string, action string, params map[string]any, adminInfo *AuditAdminInfo, auditInfo *AuditRequestInfo, request ...*gin.Context) {
+	username, _ := GetUsernameById(logUserId, false)
+	other := AuditOther{
+		Op:        &AuditOperation{Action: action, Params: params},
+		AdminInfo: adminInfo,
+		AuditInfo: auditInfo,
 	}
+	var c *gin.Context
+	if len(request) > 0 {
+		c = request[0]
+	}
+	category := AuditCategoryOperation
+	if adminInfo == nil {
+		category = AuditCategorySecurity
+	}
+	status, success := 200, true
+	if auditInfo != nil {
+		status = auditInfo.Status
+		success = auditInfo.Success
+	}
+	RecordAuditLog(c, AuditLog{UserId: logUserId, Username: username, ActorRole: actorRole, Category: category, Action: action, Content: content, Ip: ip, Status: status, Success: success, Other: other})
 }
 
 func RecordTopupLog(userId int, content string, callerIp string, paymentMethod string, callbackPaymentMethod string) {
 	username, _ := GetUsernameById(userId, false)
-	adminInfo := map[string]interface{}{
+	other := NewLogOther()
+	other.MergeAdmin(map[string]any{
 		"server_ip":               common.GetIp(),
 		"node_name":               common.NodeName,
 		"caller_ip":               callerIp,
 		"payment_method":          paymentMethod,
 		"callback_payment_method": callbackPaymentMethod,
 		"version":                 common.Version,
-	}
-	other := NewLogOther()
-	other.MergeAdmin(adminInfo)
+	})
 	log := &Log{
 		UserId:    userId,
 		Username:  username,
@@ -1107,4 +1096,53 @@ func GetErrorTrend(start, end, bucketSeconds int64) ([]ErrorTrendPoint, error) {
 		Order("bucket asc").
 		Scan(&points).Error
 	return points, err
+}
+
+// RecordOperationAuditLogWithError keeps synchronous audit durability for fork
+// operations while storing new events in the independent audit table.
+func RecordOperationAuditLogWithError(logUserId int, content, ip, action string, params, adminInfo, auditInfo map[string]any) error {
+	raw, err := common.Marshal(map[string]any{"admin_info": adminInfo, "audit_info": auditInfo})
+	if err != nil {
+		return err
+	}
+	var other AuditOther
+	if err := common.Unmarshal(raw, &other); err != nil {
+		return err
+	}
+	other.Op = &AuditOperation{Action: action, Params: params}
+	actorRole := 0
+	if other.AdminInfo != nil {
+		actorRole = other.AdminInfo.AdminRole
+	}
+	category := AuditCategoryOperation
+	if other.AdminInfo == nil {
+		category = AuditCategorySecurity
+	}
+	status, success := 200, true
+	if other.AuditInfo != nil {
+		status, success = other.AuditInfo.Status, other.AuditInfo.Success
+	}
+	return RecordAuditLogWithError(nil, AuditLog{UserId: logUserId, ActorRole: actorRole, Category: category, Action: action, Content: content, Ip: ip, Status: status, Success: success, Other: other})
+}
+
+func RecordLegacyOperationAuditLog(logUserId int, content, ip, action string, params, adminInfo, auditInfo map[string]any) {
+	if err := RecordOperationAuditLogWithError(logUserId, content, ip, action, params, adminInfo, auditInfo); err != nil {
+		common.SysError(err.Error())
+	}
+}
+
+func RecordLegacyLoginLog(userId int, username, content, ip, action string, params, extra map[string]any) {
+	raw, err := common.Marshal(extra)
+	if err != nil {
+		common.SysError(err.Error())
+		return
+	}
+	var other AuditOther
+	if err := common.Unmarshal(raw, &other); err != nil {
+		common.SysError(err.Error())
+		return
+	}
+	// A legacy caller did not capture the actor role. Preserve that uncertainty;
+	// looking up a later role could incorrectly expose an earlier privileged event.
+	RecordLoginLog(userId, 0, username, content, ip, action, params, other)
 }

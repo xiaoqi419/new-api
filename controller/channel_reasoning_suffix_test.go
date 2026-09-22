@@ -133,7 +133,8 @@ func TestReasoningSuffixKeepsBaseBillingAndTieredSettlement(t *testing.T) {
 		usage.PromptTokensDetails.CachedTokens = 500
 		quota, result := settleTestQuota(info, price, usage)
 		if tiered {
-			assert.Equal(t, 1030, price.QuotaToPreConsume)
+			// Output is settled from actual usage; reservation covers the input estimate.
+			assert.Equal(t, 1000, price.QuotaToPreConsume)
 			assert.Equal(t, 580, quota)
 			require.NotNil(t, result)
 			assert.Equal(t, "base", result.MatchedTier)

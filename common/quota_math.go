@@ -37,7 +37,7 @@ const (
 )
 
 // QuotaClamp describes a single saturation event: a quota conversion whose
-// input fell outside the representable int32 range (or was NaN) and was
+// input fell outside its supported range (or was NaN) and was
 // therefore clamped. It is surfaced to billing callers so the event can be
 // recorded on the related consume/task log for admin auditing.
 type QuotaClamp struct {
@@ -59,11 +59,11 @@ func (c *QuotaClamp) Error() string {
 // AuditMap renders the clamp as the marker stored under a log's
 // admin_info.quota_saturation. Centralized here so every billing path (consume
 // logs, task billing logs, task compensation logs) records the same shape.
-func (c *QuotaClamp) AuditMap() map[string]interface{} {
+func (c *QuotaClamp) AuditMap() map[string]any {
 	if c == nil {
 		return nil
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"op":       c.Op,
 		"kind":     c.Kind,
 		"original": c.Original,
@@ -71,9 +71,9 @@ func (c *QuotaClamp) AuditMap() map[string]interface{} {
 	}
 }
 
-// saturateQuota converts an already-rounded quota value to int, clamping to
-// the int32 range. Whenever clamping (what would otherwise be an integer
-// wraparound) or a NaN fallback is triggered it logs a warning, because in
+// saturateQuota converts an already-rounded single-request quota to int.
+// Whenever clamping (what would otherwise be an integer wraparound) or a NaN
+// fallback is triggered it logs a warning, because in
 // normal operation a single request never approaches these bounds — hitting
 // them signals a bug or an abusive request. `op` names the caller. When a
 // clamp occurs it returns a non-nil *QuotaClamp so callers can additionally

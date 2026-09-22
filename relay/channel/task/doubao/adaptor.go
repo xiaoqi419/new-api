@@ -144,12 +144,7 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInf
 	if err != nil {
 		return nil
 	}
-	resolution, _ := req.Metadata["resolution"].(string)
-	ratio, ok := ratio_setting.GetVideoPriceRatio(info.OriginModelName, ratio_setting.VideoRequestShape{
-		Resolution: resolution,
-		HasVideo:   hasVideoInMetadata(req.Metadata),
-		HasAudio:   generatesAudioInMetadata(req.Metadata),
-	})
+	ratio, ok := VideoPriceRatio(info.OriginModelName, req.Metadata)
 	if !ok || ratio == 1.0 {
 		return nil
 	}
@@ -439,4 +434,12 @@ func generatesAudioInMetadata(metadata map[string]interface{}) bool {
 	default:
 		return false
 	}
+}
+
+// VideoPriceRatio preserves configured Seedance tiers for legacy and plugin requests.
+func VideoPriceRatio(model string, metadata map[string]any) (float64, bool) {
+	resolution, _ := metadata["resolution"].(string)
+	return ratio_setting.GetVideoPriceRatio(model, ratio_setting.VideoRequestShape{
+		Resolution: resolution, HasVideo: hasVideoInMetadata(metadata), HasAudio: generatesAudioInMetadata(metadata),
+	})
 }

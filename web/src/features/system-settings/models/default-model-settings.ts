@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import type { ModelSettings } from '../types'
 
 export const defaultModelSettings: ModelSettings = {
+  'billing_setting.plugin_billing_expr': '{}',
   'global.pass_through_request_enabled': false,
   'global.thinking_model_blacklist': '[]',
   'global.chat_completions_to_responses_policy': '{}',

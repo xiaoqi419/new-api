@@ -52,9 +52,7 @@ func TestResponsesWebSocketRejectsNonCreateFirstFrame(t *testing.T) {
 	t.Cleanup(func() { _ = conn.CloseNow() })
 	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"session.update"}`)))
 
-	_, _, err = conn.Read(context.Background())
-	require.Error(t, err)
-	assert.Equal(t, websocket.StatusPolicyViolation, websocket.CloseStatus(err))
+	require.Equal(t, "error", readResponsesWebSocketEventType(t, conn))
 }
 
 func TestResponsesWebSocketBridgesCompletedTurns(t *testing.T) {
@@ -202,8 +200,15 @@ func TestResponsesWebSocketCancelsActiveTurn(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.CloseNow() })
 
-	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
-	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"response.cancel"}`)))
+	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello","stream_id":"active"}`)))
+	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"response.cancel","stream_id":"different","event_id":"wrong-control"}`)))
+	require.Equal(t, "error", readResponsesWebSocketEventType(t, conn))
+	select {
+	case <-cancelled:
+		t.Fatal("a control event for another stream must not cancel the active turn")
+	default:
+	}
+	require.NoError(t, conn.Write(context.Background(), websocket.MessageText, []byte(`{"type":"response.cancel","stream_id":"active"}`)))
 	require.Equal(t, "response.cancelled", readResponsesWebSocketEventType(t, conn))
 
 	select {
@@ -225,4 +230,46 @@ func readResponsesWebSocketEventType(t *testing.T, conn *websocket.Conn) string 
 	}
 	require.NoError(t, common.Unmarshal(payload, &event))
 	return event.Type
+}
+
+func TestResponsesWebSocketCorrelatesHTTPErrorAndRecoversAfterInvalidStream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var calls atomic.Int32
+	relay := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		var body map[string]any
+		require.NoError(t, common.DecodeJson(r.Body, &body))
+		assert.NotContains(t, body, "stream_id")
+		assert.NotContains(t, body, "event_id")
+		assert.Equal(t, "gpt-test", body["model"])
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"message":"bad turn","type":"invalid_request_error"}}`))
+	})
+	engine := gin.New()
+	engine.GET("/v1/responses", func(c *gin.Context) { ResponsesWebSocket(c, relay) })
+	server := httptest.NewServer(engine)
+	t.Cleanup(server.Close)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http")+"/v1/responses", nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.CloseNow() })
+	for _, tc := range []struct{ payload, eventID, streamID string }{
+		{`{"type":"response.create","event_id":"invalid","stream_id":null,"model":"gpt-test"}`, "invalid", ""},
+		{`{"type":"response.create","event_id":"turn-two","stream_id":"stream.two","response":{"model":"gpt-test","stream_id":"nested"}}`, "turn-two", "stream.two"},
+	} {
+		require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte(tc.payload)))
+		_, payload, err := conn.Read(ctx)
+		require.NoError(t, err)
+		var event struct {
+			Type     string `json:"type"`
+			EventID  string `json:"event_id"`
+			StreamID string `json:"stream_id"`
+		}
+		require.NoError(t, common.Unmarshal(payload, &event))
+		assert.Equal(t, "error", event.Type)
+		assert.Equal(t, tc.eventID, event.EventID)
+		assert.Equal(t, tc.streamID, event.StreamID)
+	}
+	assert.EqualValues(t, 1, calls.Load())
 }

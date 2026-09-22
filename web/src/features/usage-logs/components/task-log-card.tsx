@@ -45,6 +45,7 @@ import {
 } from './dialogs/audio-preview-dialog'
 import { TaskDetailsDialog } from './dialogs/task-details-dialog'
 import { VideoPreviewDialog } from './dialogs/video-preview-dialog'
+import { TaskArtifactsCell } from './task-artifacts'
 import { TaskImagePreview } from './task-image-preview'
 
 function toRecord(data: unknown): Record<string, unknown> | null {
@@ -134,6 +135,13 @@ function ResultAction({
     )
   }
 
+  if (
+    log.result_discarded ||
+    (isSuccess && !isImageResult && !isVideoTask && log.platform !== 'suno')
+  ) {
+    return <TaskArtifactsCell log={log} />
+  }
+
   if (isSunoSuccess) {
     return (
       <Button
@@ -172,9 +180,11 @@ function ResultAction({
 export function TaskLogCard({
   log,
   isAdmin,
+  isRoot = false,
 }: {
   log: TaskLog
   isAdmin: boolean
+  isRoot?: boolean
 }) {
   const { t } = useTranslation()
   const { copyToClipboard } = useCopyToClipboard()
@@ -320,6 +330,8 @@ export function TaskLogCard({
       </div>
 
       <TaskDetailsDialog
+        isAdmin={isAdmin}
+        isRoot={isRoot}
         log={log}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}

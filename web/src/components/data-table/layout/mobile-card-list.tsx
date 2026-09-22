@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import type { Row, Table } from '@tanstack/react-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
@@ -39,6 +21,25 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Database } from '@/components/icons'
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Empty,
   EmptyDescription,
@@ -54,6 +55,7 @@ import { CardRowContent } from './card-row-content'
 
 interface MobileCardListProps<TData> {
   table: Table<TData>
+  enableRowSelection?: boolean
   isLoading?: boolean
   emptyTitle?: string
   emptyDescription?: string
@@ -116,6 +118,7 @@ function FallbackListSkeleton() {
 export function MobileCardList<TData>(props: MobileCardListProps<TData>) {
   const {
     table,
+    enableRowSelection = false,
     isLoading = false,
     emptyTitle,
     emptyDescription,
@@ -158,6 +161,18 @@ export function MobileCardList<TData>(props: MobileCardListProps<TData>) {
 
   return (
     <div className='divide-y overflow-hidden rounded-lg border'>
+      {enableRowSelection && (
+        <label className='flex items-center gap-2 px-3 py-2 text-xs'>
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(Boolean(value))
+            }
+          />
+          {t('Select all')}
+        </label>
+      )}
       {rows.map((row) => {
         const key = getRowKey ? getRowKey(row) : row.id
         return (
@@ -168,7 +183,23 @@ export function MobileCardList<TData>(props: MobileCardListProps<TData>) {
               getRowClassName?.(row)
             )}
           >
-            <CardRowContent row={row} compact={hasCompactMeta} />
+            <div className='flex min-w-0 items-start gap-2'>
+              {enableRowSelection && (
+                <Checkbox
+                  className='mt-0.5'
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(value) =>
+                    row.toggleSelected(Boolean(value))
+                  }
+                  aria-label={t('Select row {{number}}', {
+                    number: row.index + 1,
+                  })}
+                />
+              )}
+              <div className='min-w-0 flex-1'>
+                <CardRowContent row={row} compact={hasCompactMeta} />
+              </div>
+            </div>
           </div>
         )
       })}

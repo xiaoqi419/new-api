@@ -19,6 +19,7 @@
   "Credit each": "Credit each",
   "Deadline": "Deadline",
   "Delete Package": "Delete Package",
+  "Doubao": "Doubao",
   "each gets": "each gets",
   "Each gets": "Each gets",
   "Edit Package": "Edit Package",
@@ -114,6 +115,7 @@
   "Refund pending": "Refund pending",
   "Refunded": "Refunded",
   "Reset to safe default": "Reset to safe default",
+  "Responses WebSocket": "Responses WebSocket",
   "Reward Tiers": "Reward Tiers",
   "Scan the QR code with WeChat to pay. Your balance updates automatically after payment.": "Scan the QR code with WeChat to pay. Your balance updates automatically after payment.",
   "Scan to pay with WeChat": "Scan to pay with WeChat",
@@ -122,6 +124,7 @@
   "Select the wallet you want to use for this payment.": "Select the wallet you want to use for this payment.",
   "Send the exact amount to the address shown.": "Send the exact amount to the address shown.",
   "Send the exact amount to the TRON address shown.": "Send the exact amount to the TRON address shown.",
+  "SGLang": "SGLang",
   "Start a group and invite friends to top up together for a better deal": "Start a group and invite friends to top up together for a better deal",
   "Start a new group buy above": "Start a new group buy above",
   "Start Group Buy": "Start Group Buy",
@@ -138,8 +141,10 @@
   "View Group": "View Group",
   "Void Order": "Void Order",
   "Void this in-progress group buy and refund all paid members?": "Void this in-progress group buy and refund all paid members?",
+  "WebSocket": "WebSocket",
   "WeChat payment QR code": "WeChat payment QR code",
   "When {{count}} people join, each gets": "When {{count}} people join, each gets",
   "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.": "When the member count reaches a tier, every member is credited at that tier; settlement uses the highest tier reached before expiry.",
-  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends"
+  "You have joined. Share the link to invite friends": "You have joined. Share the link to invite friends",
+  "Zhipu GLM": "Zhipu GLM"
 }

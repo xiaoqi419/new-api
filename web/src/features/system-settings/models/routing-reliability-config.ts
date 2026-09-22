@@ -1,5 +1,3 @@
-import * as z from 'zod'
-
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -18,6 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+
+import * as z from 'zod'
+
 import { parseHttpStatusCodeRules } from '@/lib/http-status-code-rules'
 
 const numericString = z.string().refine((value) => {

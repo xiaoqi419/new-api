@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -59,14 +60,14 @@ func resetBatchUpdateTestState(t *testing.T) {
 	t.Helper()
 	oldBatchEnabled := common.BatchUpdateEnabled
 	common.BatchUpdateEnabled = false
-	for i := 0; i < BatchUpdateTypeCount; i++ {
+	for i := range BatchUpdateTypeCount {
 		batchUpdateLocks[i].Lock()
 		batchUpdateStores[i] = make(map[int]int)
 		batchUpdateLocks[i].Unlock()
 	}
 	t.Cleanup(func() {
 		common.BatchUpdateEnabled = oldBatchEnabled
-		for i := 0; i < BatchUpdateTypeCount; i++ {
+		for i := range BatchUpdateTypeCount {
 			batchUpdateLocks[i].Lock()
 			batchUpdateStores[i] = make(map[int]int)
 			batchUpdateLocks[i].Unlock()
@@ -170,25 +171,46 @@ func TestBatchUpdateAccumulatorSaturatesOverflow(t *testing.T) {
 	batchUpdateLocks[BatchUpdateTypeUserQuota].Unlock()
 }
 
-func TestReserveFallsBackToDatabaseWhenRedisIsUnavailable(t *testing.T) {
-	truncateTables(t)
-	resetBatchUpdateTestState(t)
-	server := useUserCacheMiniRedis(t)
-
-	user := createReserveTestUser(t, 20)
-	require.NoError(t, populateUserCache(user))
-	server.Close()
-
-	// Redis 故障时降级为数据库条件更新：服务保持可用且不会超扣。
-	reserved, err := TryReserveUserQuota(user.Id, 5)
-	require.NoError(t, err)
-	assert.True(t, reserved)
-	assert.Equal(t, 15, getUserQuotaFromDB(t, user.Id))
-
-	reserved, err = TryReserveUserQuota(user.Id, 16)
-	require.NoError(t, err)
-	assert.False(t, reserved)
-	assert.Equal(t, 15, getUserQuotaFromDB(t, user.Id))
+func TestReserveFailsClosedDuringRedisFaultAndRecovery(t *testing.T) {
+	for _, batch := range []bool{false, true} {
+		t.Run(fmt.Sprintf("batch=%t", batch), func(t *testing.T) {
+			truncateTables(t)
+			resetBatchUpdateTestState(t)
+			server := useUserCacheMiniRedis(t)
+			common.BatchUpdateEnabled = batch
+			user := createReserveTestUser(t, 20)
+			token := createReserveTestToken(t, 20)
+			ok, err := TryReserveUserQuota(user.Id, 8)
+			require.NoError(t, err)
+			require.True(t, ok)
+			ok, err = TryReserveTokenQuota(token.Id, token.Key, 8, false)
+			require.NoError(t, err)
+			require.True(t, ok)
+			beforeUser := getUserQuotaFromDB(t, user.Id)
+			beforeToken := getTokenFromDB(t, token.Id)
+			server.SetError("ERR reservation unavailable")
+			ok, err = TryReserveUserQuota(user.Id, 15)
+			require.ErrorIs(t, err, ErrQuotaReservationUnavailable)
+			assert.False(t, ok)
+			ok, err = TryReserveTokenQuota(token.Id, token.Key, 15, false)
+			require.ErrorIs(t, err, ErrQuotaReservationUnavailable)
+			assert.False(t, ok)
+			assert.Equal(t, beforeUser, getUserQuotaFromDB(t, user.Id))
+			assert.Equal(t, beforeToken.RemainQuota, getTokenFromDB(t, token.Id).RemainQuota)
+			server.SetError("")
+			ok, err = TryReserveUserQuota(user.Id, 13)
+			require.NoError(t, err)
+			assert.False(t, ok, "recovered cache retains the first reservation")
+			ok, err = TryReserveTokenQuota(token.Id, token.Key, 13, false)
+			require.NoError(t, err)
+			assert.False(t, ok)
+			batchUpdate()
+			assert.Equal(t, 12, getUserQuotaFromDB(t, user.Id))
+			saved := getTokenFromDB(t, token.Id)
+			assert.Equal(t, 12, saved.RemainQuota)
+			assert.Equal(t, 8, saved.UsedQuota)
+		})
+	}
 }
 
 func TestSynchronousReserveCompensatesCacheWhenPersistenceFails(t *testing.T) {

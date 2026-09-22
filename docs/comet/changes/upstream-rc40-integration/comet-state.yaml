@@ -1,9 +1,9 @@
 schema: comet.native.v4
 name: upstream-rc40-integration
 language: zh-CN
-phase: build
+phase: verify
 status: active
-state_version: 2
+state_version: 4
 brief: brief.md
 spec_changes:
   - capability: upstream-compatibility
@@ -15,16 +15,16 @@ workspace:
   target_branch: main
   finish: null
 loop:
-  stage: building
+  stage: verify-ready
   goal_cycle: 1
   iteration: 1
-  attempt: 0
+  attempt: 1
   retry_epoch: 0
   failed_iteration_count: 0
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: submit-builder-candidate
+  next_action: await-verifier-result
 acceptance:
   - id: A1
     source: brief.md
@@ -159,7 +159,111 @@ acceptance:
       Verifier核对正式验收清单。root、relaykit独立构建和前端检查通过后，经PR、CI合入origin/main，再按精确SHA构建。双站部署版本一致；应用与数据操作分别核验。关键兼容问题未解决前不发布。
     result: pending
     reason: null
-builder_handoff: null
+builder_handoff:
+  candidate_id: 7ca42a52-6683-43a1-9b3f-4cb38630563a
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:015d80c4-2554-4406-a135-472e89c7ab5c
+  iteration: 1
+  summary:
+    text: Integrated fixed upstream9310231b3 into fork2d054b380 with all features
+      except user-excluded mapping preview/workbench. Preserved fork CPA
+      pools/suffix/image-video tiers/legacy
+      tasks/payments/agents/announcements/canvas/H5; fixed merge-found
+      cumulative reservation refunds, Redis unavailable failclosed, frozen old
+      task billing and tier versioned save. 205-row inventory fully
+      dispositioned with documented differences. Schema clone and DB rehearsal
+      completed; production migration NOT authorized or executed.
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+    - A8
+    - A9
+    - A10
+    - A11
+    - A12
+    - A13
+    - A14
+    - A15
+    - A16
+    - A17
+    - A18
+    - A19
+    - A20
+    - A21
+    - A22
+    - A23
+    - A24
+  checks:
+    - name:
+        text: root Go test and vet
+        truncated: false
+      result: passed
+      note:
+        text: go test ./... -count=1 -timeout15m, go vet ./...; final frozen ratio
+          targeted service tests passed after full run
+        truncated: false
+    - name:
+        text: relaykit independent
+        truncated: false
+      result: passed
+      note:
+        text: GOWORK=off go build ./... and go test ./... in relaykit
+        truncated: false
+    - name:
+        text: frontend full tests
+        truncated: false
+      result: passed
+      note:
+        text: 253 files/2441 tests; additional WS save/reopen five channel
+          types2files23tests passed
+        truncated: false
+    - name:
+        text: frontend typecheck/build/lint
+        truncated: false
+      result: passed
+      note:
+        text: Latest typecheck production build and lint zero errors; Classic and Canvas
+          production builds passed
+        truncated: false
+    - name:
+        text: database rehearsals
+        truncated: false
+      result: passed
+      note:
+        text: Postgres16/MySQL8 empty initialization twice; both production schema-only
+          clones initialized twice without existing column changes; synthetic
+          wallet and tier settings retained
+        truncated: false
+    - name:
+        text: browser regression
+        truncated: false
+      result: passed
+      note:
+        text: 14 original announcement desktop/mobile interactions against production
+          build; new admin routes mocked APIs smoke; model/pricing drawer
+          browser follow-up reviewed separately
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: Production SQL migration and deployment not executed; requires separate
+        authorization for concrete plan (three added tables/two fields).
+      truncated: false
+    - text: MySQL5.7/Postgres9.6/ClickHouse not exercised, only supported primary
+        deployments PostgreSQL16 and MySQL8 rehearsed.
+      truncated: false
+    - text: No paid upstream calls; actual production-like browser checks use
+        synthetic APIs.
+      truncated: false
+    - text: Native generic bridge may require explicit acceptance before archive.
+      truncated: false
+  known_limits_truncated: false
+  submitted_at: 2026-09-22T03:52:50.827Z
 blockers: []
 verification: null
 history: []

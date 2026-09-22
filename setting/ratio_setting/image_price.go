@@ -79,7 +79,7 @@ func UpdateImagePriceByJSONString(jsonStr string) error {
 		return err
 	}
 	for name, cfg := range parsed.ReadAll() {
-		if err := validateImagePriceConfig(name, cfg); err != nil {
+		if err := ValidateImagePriceConfig(name, cfg); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func normalizeImageQuality(quality string) string {
 	return strings.ToLower(strings.TrimSpace(quality))
 }
 
-func validateImagePriceConfig(modelName string, cfg ImagePriceConfig) error {
+func ValidateImagePriceConfig(modelName string, cfg ImagePriceConfig) error {
 	if len(cfg.Tiers) == 0 {
 		return nil
 	}
@@ -252,4 +252,14 @@ func validateImagePriceConfig(modelName string, cfg ImagePriceConfig) error {
 		seen[key] = true
 	}
 	return nil
+}
+
+// GetDefaultImagePriceCopy returns a detached default configuration for transactional pricing drafts.
+func GetDefaultImagePriceCopy() map[string]ImagePriceConfig {
+	result := make(map[string]ImagePriceConfig, len(defaultImagePrice))
+	for name, cfg := range defaultImagePrice {
+		cfg.Tiers = append([]ImagePriceTier(nil), cfg.Tiers...)
+		result[name] = cfg
+	}
+	return result
 }

@@ -84,7 +84,7 @@ func UpdateVideoPriceByJSONString(jsonStr string) error {
 		return err
 	}
 	for name, cfg := range parsed.ReadAll() {
-		if err := validateVideoPriceConfig(name, cfg); err != nil {
+		if err := ValidateVideoPriceConfig(name, cfg); err != nil {
 			return err
 		}
 	}
@@ -180,7 +180,7 @@ func normalizeVideoResolution(resolution string) string {
 	return strings.ToLower(strings.TrimSpace(resolution))
 }
 
-func validateVideoPriceConfig(modelName string, cfg VideoPriceConfig) error {
+func ValidateVideoPriceConfig(modelName string, cfg VideoPriceConfig) error {
 	if len(cfg.Tiers) == 0 {
 		return nil
 	}
@@ -203,4 +203,14 @@ func validateVideoPriceConfig(modelName string, cfg VideoPriceConfig) error {
 		seen[key] = true
 	}
 	return nil
+}
+
+// GetDefaultVideoPriceCopy returns a detached default configuration for transactional pricing drafts.
+func GetDefaultVideoPriceCopy() map[string]VideoPriceConfig {
+	result := make(map[string]VideoPriceConfig, len(defaultVideoPrice))
+	for name, cfg := range defaultVideoPrice {
+		cfg.Tiers = append([]VideoPriceTier(nil), cfg.Tiers...)
+		result[name] = cfg
+	}
+	return result
 }
