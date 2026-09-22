@@ -79,12 +79,8 @@ func SetRelayRouter(router *gin.Engine) {
 		wsResponsesRouter.Use(middleware.RouteTag("relay"))
 		wsResponsesRouter.Use(middleware.SystemPerformanceCheck())
 		wsResponsesRouter.Use(middleware.TokenAuth())
-		wsResponsesRouter.GET("/responses", func(c *gin.Context) {
-			controller.ResponsesWebSocket(c, router)
-		})
-		wsResponsesRouter.GET("/openai/responses", func(c *gin.Context) {
-			controller.ResponsesWebSocket(c, router)
-		})
+		wsResponsesRouter.GET("/responses", controller.ResponsesWebSocket)
+		wsResponsesRouter.GET("/openai/responses", controller.ResponsesWebSocket)
 
 		// WebSocket 路由（统一到 Relay）
 		wsRouter := relayV1Router.Group("")

@@ -42,7 +42,6 @@ const ADVANCED_SETTINGS_FIELDS = new Set<FieldPath<ChannelFormValues>>([
   'responses_websocket_enabled',
   'proxy',
   'http_protocol',
-  'upstream_transport',
   'http2_connection_shards',
   'system_prompt',
   'system_prompt_override',

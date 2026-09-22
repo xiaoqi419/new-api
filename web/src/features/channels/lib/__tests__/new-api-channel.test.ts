@@ -104,20 +104,33 @@ describe('New API channel', () => {
     expect(result.success).toBe(true)
   })
 
-  test('serializes websocket upstream transport and omits the HTTP default', () => {
-    const httpSettings = JSON.parse(
-      buildSettingJSON({ ...CHANNEL_FORM_DEFAULT_VALUES })
-    )
-    expect(httpSettings.upstream_transport).toBeUndefined()
-
-    const websocketSettings = JSON.parse(
-      buildSettingJSON({
-        ...CHANNEL_FORM_DEFAULT_VALUES,
-        upstream_transport: 'websocket',
+  test.each([undefined, false, true])(
+    'ignores legacy transport without changing the official WebSocket setting %s',
+    (enabled) => {
+      const channel = channelSchema.parse({
+        id: 1,
+        name: 'Legacy channel',
+        type: 1,
+        key: '',
+        status: 1,
+        created_time: 0,
+        test_time: 0,
+        response_time: 0,
+        balance_updated_time: 0,
+        setting: JSON.stringify({
+          upstream_transport: 'websocket',
+          responses_websocket_enabled: enabled,
+          reasoning_effort_to_model_suffix: true,
+        }),
       })
-    )
-    expect(websocketSettings.upstream_transport).toBe('websocket')
-  })
+      const form = transformChannelToFormDefaults(channel)
+      expect(form).not.toHaveProperty('upstream_transport')
+      const settings = JSON.parse(buildSettingJSON(form))
+      expect(settings).not.toHaveProperty('upstream_transport')
+      expect(settings.responses_websocket_enabled).toBe(enabled === true)
+      expect(settings.reasoning_effort_to_model_suffix).toBe(true)
+    }
+  )
 })
 
 describe.each([

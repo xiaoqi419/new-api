@@ -345,17 +345,3 @@ func TestSGLangRequestExtensionsRoundTrip(t *testing.T) {
 		})
 	}
 }
-
-func TestResponsesWarmupGenerateRoundTrip(t *testing.T) {
-	for _, raw := range []string{`{"model":"gpt-5"}`, `{"model":"gpt-5","generate":false}`, `{"model":"gpt-5","generate":true}`} {
-		t.Run(raw, func(t *testing.T) {
-			var req OpenAIResponsesRequest
-			require.NoError(t, kitutil.Unmarshal([]byte(raw), &req))
-			encoded, err := kitutil.Marshal(req)
-			require.NoError(t, err)
-			want, got := gjson.Get(raw, "generate"), gjson.GetBytes(encoded, "generate")
-			assert.Equal(t, want.Exists(), got.Exists())
-			assert.Equal(t, want.Bool(), got.Bool())
-		})
-	}
-}

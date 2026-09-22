@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	openai "github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
@@ -46,15 +45,6 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 			types.ErrOptionWithSkipRetry(),
 		)
 	}
-	if responsesReq.Generate != nil && !*responsesReq.Generate &&
-		!strings.EqualFold(strings.TrimSpace(info.ChannelSetting.UpstreamTransport), dto.UpstreamTransportWebsocket) {
-		return types.NewErrorWithStatusCode(
-			fmt.Errorf("generate:false requires a Responses websocket upstream"),
-			types.ErrorCodeInvalidRequest,
-			http.StatusBadRequest,
-			types.ErrOptionWithSkipRetry(),
-		)
-	}
 
 	adaptor, requestBody, closer, apiErr := PrepareResponsesRequest(c, info, responsesReq)
 	if apiErr != nil {
@@ -69,9 +59,6 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	var httpResp *http.Response
 	resp, err := adaptor.DoRequest(c, info, requestBodyWithSuffix)
 	if err != nil {
-		if openai.IsCPAResponsesWebsocketRequestSent(err) {
-			return types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError, types.ErrOptionWithSkipRetry())
-		}
 		return types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)
 	}
 

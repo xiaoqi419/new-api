@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
@@ -27,15 +28,6 @@ func TestChannelValidateSettingsRejectsInvalidHTTPTransport(t *testing.T) {
 		{
 			name:    "auto with shards is valid",
 			setting: dto.ChannelSettings{HTTPProtocol: "auto", HTTP2ConnectionShards: 4},
-		},
-		{
-			name:    "websocket upstream transport is valid",
-			setting: dto.ChannelSettings{UpstreamTransport: "websocket"},
-		},
-		{
-			name:    "unknown upstream transport is rejected",
-			setting: dto.ChannelSettings{UpstreamTransport: "grpc"},
-			wantErr: "invalid upstream_transport",
 		},
 		{
 			name:    "http1 with shards greater than one rejected",
@@ -201,6 +193,26 @@ func TestInferencePresetSettingsAndDatabaseRoundTrip(t *testing.T) {
 					}
 				})
 			}
+		})
+	}
+}
+
+func TestRetiredCPASettingDoesNotEnableOfficialWebSocket(t *testing.T) {
+	for _, raw := range []string{
+		`{"upstream_transport":"websocket","reasoning_effort_to_model_suffix":true}`,
+		`{"upstream_transport":"grpc","responses_websocket_enabled":false}`,
+		`{"upstream_transport":"websocket","responses_websocket_enabled":true}`,
+	} {
+		t.Run(raw, func(t *testing.T) {
+			var settings dto.ChannelSettings
+			require.NoError(t, common.UnmarshalJsonStr(raw, &settings))
+			ch := &Channel{Setting: &raw}
+			require.NoError(t, ch.ValidateSettings())
+			expected := strings.Contains(raw, `"responses_websocket_enabled":true`)
+			assert.Equal(t, expected, settings.ResponsesWebSocketEnabled)
+			ch.SetSetting(settings)
+			assert.NotContains(t, *ch.Setting, "upstream_transport")
+			assert.Equal(t, expected, ch.GetSetting().ResponsesWebSocketEnabled)
 		})
 	}
 }

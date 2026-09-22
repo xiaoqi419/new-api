@@ -442,17 +442,6 @@ func TestBuildResponsesWSCreateEventIsFlat(t *testing.T) {
 	}
 }
 
-func TestResponsesRequestPreservesCPAWarmupAndOmitsStreamCorrelation(t *testing.T) {
-	var req dto.OpenAIResponsesRequest
-	require.NoError(t, common.Unmarshal([]byte(`{"model":"gpt-5.3-codex-spark","input":"hi","generate":false,"stream_id":"planner"}`), &req))
-	got, err := common.Marshal(req)
-	require.NoError(t, err)
-	var data map[string]any
-	require.NoError(t, common.Unmarshal(got, &data))
-	assert.NotContains(t, data, "stream_id")
-	assert.Equal(t, false, data["generate"])
-}
-
 func TestBuildResponsesWSErrorPayloadIncludesStatus(t *testing.T) {
 	payload, err := buildResponsesWSErrorPayload("evt_err", "", types.NewErrorWithStatusCode(
 		errors.New("model is required"),
@@ -679,4 +668,24 @@ func TestResponsesWSErrorAttribution(t *testing.T) {
 			assert.Equal(t, tc.controlError, controlError)
 		})
 	}
+}
+
+func TestResponsesWSPayloadAppliesReasoningSuffixWithoutChangingBillingModel(t *testing.T) {
+	create, _, err := normalizeResponsesWSTestMessage([]byte(`{"type":"response.create","generate":false,"model":"gpt-5.1","input":"hi","reasoning":{"effort":"high","summary":"auto"},"vendor":{"limit":9007199254740993}}`))
+	require.NoError(t, err)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(string(create.Body)))
+	c.Request.Header.Set("Content-Type", "application/json")
+	common.SetContextKey(c, constant.ContextKeyOriginalModel, create.Request.Model)
+	common.SetContextKey(c, constant.ContextKeyChannelType, constant.ChannelTypeOpenAI)
+	common.SetContextKey(c, constant.ContextKeyChannelSetting, dto.ChannelSettings{PassThroughBodyEnabled: true, ReasoningEffortToModelSuffix: true})
+	info := relaycommon.GenRelayInfoResponses(c, &create.Request)
+	payload, apiErr := buildResponsesWSCreatePayload(c, info, create.Request, create.Generate, create.StreamID)
+	require.Nil(t, apiErr)
+	assert.JSONEq(t, `{"type":"response.create","generate":false,"model":"gpt-5.1-high","input":"hi","reasoning":{"summary":"auto"},"vendor":{"limit":9007199254740993}}`, string(payload))
+	assert.Contains(t, string(payload), "9007199254740993")
+	assert.Equal(t, "gpt-5.1", info.GetBillingModelName())
+	storage, err := common.GetBodyStorage(c)
+	require.NoError(t, err)
+	require.NoError(t, storage.Close())
 }

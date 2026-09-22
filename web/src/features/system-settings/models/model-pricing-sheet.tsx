@@ -1011,14 +1011,23 @@ export const ModelPricingEditorPanel = forwardRef<
                     onValueChange={handleModeChange}
                     className='gap-4'
                   >
-                    <TabsList className='grid w-full grid-cols-3'>
-                      <TabsTrigger value='tiered_expr'>
+                    <TabsList className='grid w-full grid-cols-3 items-stretch group-data-horizontal/tabs:h-auto'>
+                      <TabsTrigger
+                        value='tiered_expr'
+                        className='h-auto min-h-11 min-w-0 wrap-anywhere whitespace-normal'
+                      >
                         {t('Expression')}
                       </TabsTrigger>
-                      <TabsTrigger value='per-token'>
+                      <TabsTrigger
+                        value='per-token'
+                        className='h-auto min-h-11 min-w-0 wrap-anywhere whitespace-normal'
+                      >
                         {t('Per-token (deprecated)')}
                       </TabsTrigger>
-                      <TabsTrigger value='per-request'>
+                      <TabsTrigger
+                        value='per-request'
+                        className='h-auto min-h-11 min-w-0 wrap-anywhere whitespace-normal'
+                      >
                         {t('Per-request (deprecated)')}
                       </TabsTrigger>
                     </TabsList>

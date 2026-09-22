@@ -602,7 +602,11 @@ func buildResponsesWSCreatePayload(c *gin.Context, info *relaycommon.RelayInfo, 
 		return nil, apiErr
 	}
 	defer closer.Close()
-	jsonData, err := io.ReadAll(body)
+	wireBody, err := relaycommon.ReasoningEffortModelSuffixBody(info, body)
+	if err != nil {
+		return nil, helper.NewReasoningModelAPIError(err)
+	}
+	jsonData, err := io.ReadAll(wireBody)
 	if err != nil {
 		return nil, types.NewError(err, types.ErrorCodeReadRequestBodyFailed, types.ErrOptionWithSkipRetry())
 	}
