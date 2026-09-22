@@ -1,3 +1,28 @@
+import type { ColumnDef } from '@tanstack/react-table'
+/* eslint-disable react-refresh/only-export-components */
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { Music, Video } from '@/components/icons'
+import { StatusBadge } from '@/components/status-badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
+import { formatTimestampToDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
+
+import { TASK_STATUS } from '../../constants'
+import { resolveTaskPreviewMode } from '../../lib/task-artifacts'
+import {
+  getTaskImageResults,
+  isImageTask,
+  isVideoTask,
+} from '../../lib/task-media'
+import type { TaskLog } from '../../types'
+import {
+  AudioPreviewDialog,
+  type AudioClip,
+} from '../dialogs/audio-preview-dialog'
+import { FailReasonDialog } from '../dialogs/fail-reason-dialog'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,31 +41,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { ColumnDef } from '@tanstack/react-table'
-/* eslint-disable react-refresh/only-export-components */
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
-import { Music, Video } from '@/components/icons'
-import { StatusBadge } from '@/components/status-badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
-import { formatTimestampToDate } from '@/lib/format'
-import { cn } from '@/lib/utils'
-
-import { TASK_STATUS } from '../../constants'
-import {
-  getTaskImageResults,
-  isImageTask,
-  isVideoTask,
-} from '../../lib/task-media'
-import type { TaskLog } from '../../types'
-import {
-  AudioPreviewDialog,
-  type AudioClip,
-} from '../dialogs/audio-preview-dialog'
-import { FailReasonDialog } from '../dialogs/fail-reason-dialog'
+import { TaskDetailsDialog } from '../dialogs/task-details-dialog'
 import { VideoPreviewDialog } from '../dialogs/video-preview-dialog'
+import { TaskArtifactsCell } from '../task-artifacts'
 import { TaskImagePreview } from '../task-image-preview'
 import { useUsageLogsContext } from '../usage-logs-provider'
 import {
@@ -124,7 +127,10 @@ function VideoPreviewCell({ log }: { log: TaskLog }) {
   )
 }
 
-export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
+export function useTaskLogsColumns(
+  isAdmin: boolean,
+  isRoot = false
+): ColumnDef<TaskLog>[] {
   const { t } = useTranslation()
   const columns: ColumnDef<TaskLog>[] = [
     {
@@ -274,6 +280,13 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
         const failReason = row.getValue('fail_reason') as string
         const status = log.status
         const [dialogOpen, setDialogOpen] = useState(false)
+        const previewMode = resolveTaskPreviewMode(log)
+        if (
+          previewMode === 'discarded' ||
+          (previewMode === 'plugin' && !isImageTask(log) && !isVideoTask(log))
+        ) {
+          return <TaskArtifactsCell log={log} />
+        }
 
         if (status === TASK_STATUS.SUCCESS && isImageTask(log)) {
           return <TaskImagePreview images={getTaskImageResults(log)} />
@@ -330,5 +343,30 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
     }
   )
 
+  columns.push({
+    id: 'task_details',
+    header: t('Task Details'),
+    cell: function TaskDetailsCell({ row }) {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button
+            type='button'
+            className='text-xs underline'
+            onClick={() => setOpen(true)}
+          >
+            {t('View details')}
+          </button>
+          <TaskDetailsDialog
+            log={row.original}
+            isAdmin={isAdmin}
+            isRoot={isRoot}
+            open={open}
+            onOpenChange={setOpen}
+          />
+        </>
+      )
+    },
+  })
   return columns
 }

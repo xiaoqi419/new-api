@@ -7,8 +7,7 @@ import (
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/dto"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -73,7 +72,7 @@ func GetChannelFiltered(group string, model string, retry int, requestPath strin
 	if err != nil {
 		return nil, err
 	}
-	abilities, err = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
+	abilities, err = filterAbilitiesByConstraintsWithError(abilities, model, append(append([]dto.ChannelFilter(nil), filter.Filters...), dto.ChannelFilter{Kind: dto.FilterRequestPath, RequestPath: requestPath}))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,11 @@ func GetChannelFiltered(group string, model string, retry int, requestPath strin
 // requestPath and model; all other channel types always pass. When requestPath is
 // empty, filtering is skipped.
 func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath string, model string) ([]Ability, error) {
-	if requestPath == "" || len(abilities) == 0 {
+	return filterAbilitiesByConstraintsWithError(abilities, model, []dto.ChannelFilter{{Kind: dto.FilterRequestPath, RequestPath: requestPath}})
+}
+
+func filterAbilitiesByConstraintsWithError(abilities []Ability, modelName string, filters []dto.ChannelFilter) ([]Ability, error) {
+	if len(abilities) == 0 {
 		return abilities, nil
 	}
 
@@ -135,25 +138,28 @@ func filterAbilitiesByRequestPathAndModel(abilities []Ability, requestPath strin
 		return nil, err
 	}
 
-	advancedConfigs := make(map[int]*dto.AdvancedCustomConfig)
+	channelsByID := make(map[int]*Channel, len(channels))
 	for _, channel := range channels {
-		if channel.Type == constant.ChannelTypeAdvancedCustom {
-			advancedConfigs[channel.Id] = channel.GetOtherSettings().AdvancedCustom
-		}
+		channelsByID[channel.Id] = channel
 	}
 
 	filtered := make([]Ability, 0, len(abilities))
 	for _, ability := range abilities {
-		config, isAdvancedCustom := advancedConfigs[ability.ChannelId]
-		if !isAdvancedCustom {
-			filtered = append(filtered, ability)
-			continue
-		}
-		if config != nil && config.SupportsPathForModel(requestPath, model) {
+		channel := channelsByID[ability.ChannelId]
+		if ok, _ := ChannelSatisfiesFilters(channel, modelName, filters); ok {
 			filtered = append(filtered, ability)
 		}
 	}
 	return filtered, nil
+}
+
+func identityFilterRequiresKey(filters []dto.ChannelFilter) bool {
+	for _, filter := range filters {
+		if filter.Kind == dto.FilterTaskPluginIdentity && filter.TaskPluginKey != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (channel *Channel) AddAbilities(tx *gorm.DB) error {
@@ -229,7 +235,7 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 	}
 
 	// Then add new abilities
-	models_ := strings.Split(channel.Models, ",")
+	models_ := channel.GetModels()
 	groups_ := strings.Split(channel.Group, ",")
 	abilitySet := make(map[string]struct{})
 	abilities := make([]Ability, 0, len(models_))
@@ -351,4 +357,12 @@ func FixAbility() (int, int, error) {
 	}
 	InitChannelCache()
 	return successCount, failCount, nil
+}
+
+func GetChannelWithFilters(group, model string, retry int, filters []dto.ChannelFilter) (*Channel, error) {
+	return GetChannelFiltered(group, model, retry, "", ChannelSelectionFilter{Filters: filters})
+}
+func filterAbilitiesByConstraints(abilities []Ability, modelName string, filters []dto.ChannelFilter) []Ability {
+	filtered, _ := filterAbilitiesByConstraintsWithError(abilities, modelName, filters)
+	return filtered
 }

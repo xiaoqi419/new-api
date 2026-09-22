@@ -3,6 +3,7 @@ package convmeta
 import (
 	"testing"
 
+	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ func TestValuesTypedNilMetaIsSafe(t *testing.T) {
 	assert.Zero(t, meta.GetChannelType())
 	assert.False(t, meta.GetIsStream())
 	assert.Empty(t, meta.GetReasoningEffort())
+	assert.Nil(t, ReasoningStateOf(meta))
 	assert.Zero(t, meta.GetEstimatePromptTokens())
 	assert.Zero(t, meta.GetSendResponseCount())
 
@@ -35,4 +37,15 @@ func TestValuesTypedNilMetaIsSafe(t *testing.T) {
 	require.NotNil(t, OptionsOf(meta))
 	assert.Empty(t, UpstreamModelName(meta))
 	assert.Zero(t, ChannelTypeOf(meta))
+}
+
+// A host implementing only the original Meta contract can omit reasoning state.
+type legacyMeta struct{ Meta }
+
+func TestReasoningStateOfOptionalHostExtension(t *testing.T) {
+	state := &dto.ReasoningConversionState{Effort: "high"}
+	values := &Values{ReasoningConversion: state}
+	assert.Same(t, state, ReasoningStateOf(values))
+	assert.Nil(t, ReasoningStateOf(legacyMeta{Meta: values}))
+	assert.Nil(t, ReasoningStateOf(nil))
 }

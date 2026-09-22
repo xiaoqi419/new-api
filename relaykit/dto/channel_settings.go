@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -25,19 +26,23 @@ type ChannelSettings struct {
 	FallbackUpstream *ChannelFallbackUpstream `json:"fallback_upstream,omitempty"`
 	// 火山引擎私域素材库：管理类接口必须用 AK/SK 做 V4 签名（不能用 Ark API Key）。
 	// 与视频生成共用同一个 DoubaoVideo 渠道，仅管理员可见可配。
-	VolcAssetAK     string `json:"volc_asset_ak,omitempty"`     // AccessKeyId
-	VolcAssetSK     string `json:"volc_asset_sk,omitempty"`     // SecretAccessKey
-	VolcProjectName string `json:"volc_project_name,omitempty"` // 火山项目名，默认 default
+	VolcAssetAK               string `json:"volc_asset_ak,omitempty"`     // AccessKeyId
+	VolcAssetSK               string `json:"volc_asset_sk,omitempty"`     // SecretAccessKey
+	VolcProjectName           string `json:"volc_project_name,omitempty"` // 火山项目名，默认 default
+	TaskPluginKey             string `json:"task_plugin_key,omitempty"`
+	ResponsesWebSocketEnabled bool   `json:"responses_websocket_enabled,omitempty"`
+	// TaskExtendPluginKeys lists the task plugins a New API channel (type 60)
+	// is extended with. The upstream gateway may host many plugins, so the
+	// channel serves every listed plugin's models while the request still pins
+	// the executing plugin. TaskPluginKey remains the single type-61 binding
+	// and stays valid on a New API channel as well.
+	TaskExtendPluginKeys []string `json:"task_extend_plugin_keys,omitempty"`
 	// HTTPProtocol controls outbound HTTP version negotiation for this channel.
 	// Accepted values: "", "auto" (default), "http1".
 	HTTPProtocol string `json:"http_protocol,omitempty"`
 	// HTTP2ConnectionShards spreads HTTP/2 traffic across N independent transports
 	// (1-8). Zero/unset means 1. Ignored when HTTPProtocol is "http1".
 	HTTP2ConnectionShards int `json:"http2_connection_shards,omitempty"`
-	// UpstreamTransport selects the channel transport for streaming Responses.
-	// Empty and "http" preserve the default HTTP behavior; "websocket" enables
-	// the CPA Responses WebSocket bridge.
-	UpstreamTransport string `json:"upstream_transport,omitempty"`
 }
 
 // ChannelFallbackUpstream 渠道级兜底转发配置。
@@ -48,27 +53,36 @@ type ChannelFallbackUpstream struct {
 	Models  string `json:"models,omitempty"` // 兜底可用模型列表（逗号分隔，仅记录参考）
 }
 
+// BindsTaskPlugin reports whether the channel is bound to the task plugin,
+// either through the single binding or the New API extension list.
+func (s ChannelSettings) BindsTaskPlugin(key string) bool {
+	if key == "" {
+		return false
+	}
+	return s.TaskPluginKey == key || slices.Contains(s.TaskExtendPluginKeys, key)
+}
+
+// TaskPluginBindings returns the sorted, de-duplicated set of task plugins the
+// channel binds through either field, so callers can compare bindings as a set.
+func (s ChannelSettings) TaskPluginBindings() []string {
+	bindings := make([]string, 0, len(s.TaskExtendPluginKeys)+1)
+	if s.TaskPluginKey != "" {
+		bindings = append(bindings, s.TaskPluginKey)
+	}
+	for _, key := range s.TaskExtendPluginKeys {
+		if key != "" && !slices.Contains(bindings, key) {
+			bindings = append(bindings, key)
+		}
+	}
+	slices.Sort(bindings)
+	return bindings
+}
+
 const (
 	HTTPProtocolAuto         = "auto"
 	HTTPProtocolHTTP1        = "http1"
 	MaxHTTP2ConnectionShards = 8
 )
-
-const UpstreamTransportWebsocket = "websocket"
-
-// ValidateUpstreamTransport validates the optional channel transport selector.
-func (s *ChannelSettings) ValidateUpstreamTransport() error {
-	if s == nil {
-		return nil
-	}
-	transport := strings.ToLower(strings.TrimSpace(s.UpstreamTransport))
-	switch transport {
-	case "", "http", UpstreamTransportWebsocket:
-		return nil
-	default:
-		return fmt.Errorf("invalid upstream_transport: %s", s.UpstreamTransport)
-	}
-}
 
 // ValidateHTTPTransport validates save-time HTTP transport channel settings.
 func (s *ChannelSettings) ValidateHTTPTransport() error {
@@ -124,6 +138,10 @@ type ChannelOtherSettings struct {
 	UpstreamModelUpdateLastRemovedModels  []string              `json:"upstream_model_update_last_removed_models,omitempty"`  // 上次检测到的可删除模型
 	UpstreamModelUpdateIgnoredModels      []string              `json:"upstream_model_update_ignored_models,omitempty"`       // 手动忽略的模型
 	AdvancedCustom                        *AdvancedCustomConfig `json:"advanced_custom,omitempty"`
+	// OllamaOpenAIChat routes Ollama chat completions to the OpenAI-compatible
+	// /v1/chat/completions endpoint. When unset, chat completions keep using
+	// the native /api/chat protocol.
+	OllamaOpenAIChat bool `json:"ollama_openai_chat,omitempty"`
 	// ToolLossPolicy is a channel-level opt-in for request-phase conversion
 	// rejection. Empty follows the default allow policy. Accepted values:
 	// "", "allow", "safe", "strict".
@@ -152,6 +170,7 @@ func (s *ChannelOtherSettings) ValidateToolLossPolicy() error {
 }
 
 const (
+	AdvancedCustomConverterSGLangRerank                = "jina_rerank_to_sglang"
 	advancedCustomConverterNone                        = "none"
 	advancedCustomConverterClaudeMessagesToOpenAIChat  = "anthropic_messages_to_openai_chat_completions"
 	advancedCustomConverterOpenAIChatToClaudeMessages  = "openai_chat_completions_to_anthropic_messages"
@@ -173,11 +192,22 @@ type AdvancedCustomConfig struct {
 }
 
 type AdvancedCustomRoute struct {
-	IncomingPath string                   `json:"incoming_path,omitempty"`
-	UpstreamPath string                   `json:"upstream_path,omitempty"`
-	Converter    string                   `json:"converter,omitempty"`
-	Models       []string                 `json:"models,omitempty"`
-	Auth         *AdvancedCustomRouteAuth `json:"auth,omitempty"`
+	IncomingPath           string                   `json:"incoming_path,omitempty"`
+	UpstreamPath           string                   `json:"upstream_path,omitempty"`
+	Converter              string                   `json:"converter,omitempty"`
+	Models                 []string                 `json:"models,omitempty"`
+	Auth                   *AdvancedCustomRouteAuth `json:"auth,omitempty"`
+	PassThroughBodyEnabled bool                     `json:"pass_through_body_enabled,omitempty"`
+}
+
+// SupportsPassThroughBody reports whether the route converter leaves the request body untouched.
+func (r AdvancedCustomRoute) SupportsPassThroughBody() bool {
+	switch strings.TrimSpace(r.Converter) {
+	case "", advancedCustomConverterNone, AdvancedCustomConverterSGLangRerank:
+		return true
+	default:
+		return false
+	}
 }
 
 type AdvancedCustomRouteAuth struct {
@@ -208,6 +238,14 @@ const (
 	// AdvancedCustomBalancePath identifies the optional balance lookup route used by channel management.
 	AdvancedCustomBalancePath = "/v1/dashboard/billing/credit_grants"
 )
+
+// IsNative reports whether the route forwards requests without protocol
+// conversion. Validate normalizes an empty converter to none, but callers may
+// see configurations that were never saved.
+func (r AdvancedCustomRoute) IsNative() bool {
+	converter := strings.TrimSpace(r.Converter)
+	return converter == "" || converter == advancedCustomConverterNone
+}
 
 // MatchPath returns the first route whose IncomingPath matches requestPath.
 // Matching mirrors the relay adaptor: exact match, {model} placeholder, and
@@ -411,6 +449,7 @@ func matchAdvancedCustomIncomingPathTemplate(configuredPath string, requestPath 
 func IsAdvancedCustomConverterAllowed(converter string) bool {
 	switch converter {
 	case advancedCustomConverterNone,
+		AdvancedCustomConverterSGLangRerank,
 		advancedCustomConverterClaudeMessagesToOpenAIChat,
 		advancedCustomConverterOpenAIChatToClaudeMessages,
 		advancedCustomConverterOpenAIChatToOpenAIResponses,
@@ -476,6 +515,9 @@ func (c *AdvancedCustomConfig) Validate() error {
 			if strings.Contains(upstreamPath, advancedCustomModelPlaceholder) {
 				return fmt.Errorf("advanced_custom.advanced_routes[%d].upstream_path must not contain %s for %s", i, advancedCustomModelPlaceholder, managementRouteName)
 			}
+			if route.PassThroughBodyEnabled {
+				return fmt.Errorf("advanced_custom.advanced_routes[%d].pass_through_body_enabled must be false for %s", i, managementRouteName)
+			}
 		}
 		if err := validateAdvancedCustomRouteModels(i, route.IncomingPath, route.Models, paths); err != nil {
 			return err
@@ -493,6 +535,9 @@ func (c *AdvancedCustomConfig) Validate() error {
 		}
 		if err := validateAdvancedCustomConverterPath(i, route.IncomingPath, route.Converter); err != nil {
 			return err
+		}
+		if route.PassThroughBodyEnabled && !route.SupportsPassThroughBody() {
+			return fmt.Errorf("advanced_custom.advanced_routes[%d].pass_through_body_enabled requires converter none: %s", i, route.Converter)
 		}
 		if err := validateAdvancedCustomRouteAuth(i, route.Auth); err != nil {
 			return err
@@ -594,6 +639,9 @@ func validateAdvancedCustomUpstreamTarget(index int, upstreamPath string) error 
 }
 
 func validateAdvancedCustomConverterPath(index int, incomingPath string, converter string) error {
+	if converter == AdvancedCustomConverterSGLangRerank && (incomingPath == "/v1/rerank" || incomingPath == "/rerank") {
+		return nil
+	}
 	if incomingPath == advancedCustomEndpointPathOpenAIAlphaSearch {
 		if converter == advancedCustomConverterNone {
 			return nil

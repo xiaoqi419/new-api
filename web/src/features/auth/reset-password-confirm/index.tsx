@@ -1,3 +1,16 @@
+import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { CheckIcon, CopyIcon } from '@/components/icons'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useCountdown } from '@/hooks/use-countdown'
+import { api } from '@/lib/api'
+import { copyToClipboard } from '@/lib/copy-to-clipboard'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,19 +29,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { CheckIcon, CopyIcon } from '@/components/icons'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useCountdown } from '@/hooks/use-countdown'
-import { api } from '@/lib/api'
-import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import { handleServerError } from '@/lib/handle-server-error'
+import { AuthOperationError } from '@/lib/secure-verification'
+import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 import { AuthCapsuleCanvas } from '../components/auth-capsule-canvas'
@@ -89,9 +92,11 @@ export function ResetPasswordConfirm({
         } else {
           toast.success(t('Password reset: {{password}}', { password }))
         }
+      } else {
+        handleServerError(createServerError(res.data, t('Request failed')))
       }
-    } catch {
-      // Errors handled by global interceptor
+    } catch (error) {
+      handleServerError(AuthOperationError.from(error))
     } finally {
       setLoading(false)
     }

@@ -23,6 +23,8 @@ import { useMemo, useSyncExternalStore } from 'react'
 import { cn } from '@/lib/utils'
 
 interface MarkdownProps {
+  /** Resolve relative document links against their source, never the dashboard URL. */
+  baseUrl?: string
   breaks?: boolean
   children: string
   className?: string
@@ -754,7 +756,7 @@ const markdownParser = new Marked({
 
 markdownParser.use(...markdownExtensions)
 
-function addExternalLinkAttributes(html: string): string {
+function addExternalLinkAttributes(html: string, baseUrl?: string): string {
   if (typeof window === 'undefined') {
     return html
   }
@@ -763,6 +765,18 @@ function addExternalLinkAttributes(html: string): string {
   template.innerHTML = html
 
   template.content.querySelectorAll('a[href]').forEach((link) => {
+    if (baseUrl) {
+      try {
+        const url = new URL(link.getAttribute('href') ?? '', baseUrl)
+        if (['http:', 'https:', 'mailto:'].includes(url.protocol)) {
+          link.setAttribute('href', url.href)
+        } else {
+          link.removeAttribute('href')
+        }
+      } catch {
+        link.removeAttribute('href')
+      }
+    }
     link.setAttribute('target', '_blank')
     link.setAttribute('rel', 'noopener noreferrer')
   })
@@ -770,14 +784,18 @@ function addExternalLinkAttributes(html: string): string {
   return template.innerHTML
 }
 
-function renderMarkdown(markdown: string, breaks = false): string {
+function renderMarkdown(
+  markdown: string,
+  breaks = false,
+  baseUrl?: string
+): string {
   const parsedHtml = markdownParser.parse(markdown, {
     ...markdownOptions,
     breaks,
   })
   const html = DOMPurify.sanitize(parsedHtml, sanitizeOptions)
 
-  return addExternalLinkAttributes(html)
+  return addExternalLinkAttributes(html, baseUrl)
 }
 
 export function Markdown(props: MarkdownProps) {
@@ -787,12 +805,12 @@ export function Markdown(props: MarkdownProps) {
     isKatexLoaded
   )
   const html = useMemo(
-    () => renderMarkdown(props.children, props.breaks),
+    () => renderMarkdown(props.children, props.breaks, props.baseUrl),
     // `katexLoaded` is not read inside, but it flips when the formula renderer
     // finishes loading, which is what re-runs the parse and turns the raw LaTeX
     // placeholder into typeset math.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.breaks, props.children, katexLoaded]
+    [props.breaks, props.children, props.baseUrl, katexLoaded]
   )
 
   return (

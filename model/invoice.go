@@ -22,10 +22,10 @@ type InvoiceRequest struct {
 	Id            int    `json:"id"`
 	UserId        int    `json:"user_id" gorm:"index"`
 	Username      string `json:"username" gorm:"type:varchar(64)"`
-	Amount        string `json:"amount" gorm:"type:varchar(64)"`  // 申请开票金额（由所选订单金额合计得出）
+	Amount        string `json:"amount" gorm:"type:varchar(64)"`     // 申请开票金额（由所选订单金额合计得出）
 	OrderIds      string `json:"order_ids" gorm:"type:varchar(500)"` // 关联的已支付充值订单 id，逗号分隔
-	TitleType     int    `json:"title_type" gorm:"default:1"`     // 1 个人 2 企业
-	Title         string `json:"title" gorm:"type:varchar(255)"` // 发票抬头
+	TitleType     int    `json:"title_type" gorm:"default:1"`        // 1 个人 2 企业
+	Title         string `json:"title" gorm:"type:varchar(255)"`     // 发票抬头
 	TaxNumber     string `json:"tax_number" gorm:"type:varchar(64)"`
 	Email         string `json:"email" gorm:"type:varchar(255)"`
 	Remark        string `json:"remark" gorm:"type:varchar(500)"`

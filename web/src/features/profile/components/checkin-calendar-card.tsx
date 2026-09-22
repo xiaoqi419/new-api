@@ -46,11 +46,11 @@ import { useClickCaptcha } from '@/features/auth/hooks/use-click-captcha'
 import type { CaptchaQuery } from '@/features/auth/types'
 import { formatQuotaWithCurrency } from '@/lib/currency'
 import dayjs from '@/lib/dayjs'
+import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 import { getCheckinStatus, performCheckin } from '../api'
 import type { CheckinRecord } from '../types'
-
 interface CheckinCalendarCardProps {
   checkinEnabled: boolean
   turnstileEnabled: boolean
@@ -100,7 +100,7 @@ export function CheckinCalendarCard({
       if (res.success && res.data) {
         return res.data
       }
-      throw new Error(res.message || t('Failed to fetch checkin status'))
+      throw createServerError(res, t('Failed to fetch checkin status'))
     },
     enabled: checkinEnabled,
     staleTime: 30000,

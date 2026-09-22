@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, type LinkProps } from '@tanstack/react-router'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -39,7 +40,6 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { PerformanceHealthPanel } from './performance-health-panel'
 import { SummaryCards } from './summary-cards'
-
 /* The four destinations an operator actually reaches for from the console
  * home. Labels reuse translation keys the sidebar already ships. */
 const QUICK_ACTIONS: {
@@ -58,46 +58,82 @@ export function OverviewDashboard() {
   const user = useAuthStore((state) => state.auth.user)
   const isAdmin = Boolean(user?.role && user.role >= ROLE.ADMIN)
 
+  const guideId = useId()
+  const [guidePreference, setGuidePreference] = useState<boolean | null>(() => {
+    try {
+      const stored = window.localStorage.getItem(
+        `dashboard_setup_guide_${user?.id ?? 'guest'}`
+      )
+      return stored === null ? null : stored === 'expanded'
+    } catch {
+      return null
+    }
+  })
+  const guideExpanded = guidePreference ?? (user?.request_count ?? 0) === 0
+  const toggleGuide = () => {
+    const next = !guideExpanded
+    setGuidePreference(next)
+    try {
+      window.localStorage.setItem(
+        `dashboard_setup_guide_${user?.id ?? 'guest'}`,
+        next ? 'expanded' : 'collapsed'
+      )
+    } catch {
+      /* Optional local preference. */
+    }
+  }
   return (
     <div className='flex flex-col gap-4'>
-      <CardStaggerContainer>
-        <CardStaggerItem className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
-          <div className='flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5'>
-            <div className='flex min-w-0 items-center gap-3'>
-              <IconBadge size='lg'>
-                <Rocket />
-              </IconBadge>
-              <div className='min-w-0'>
-                <h3 className='text-sm font-semibold'>
-                  {t('Get started in the workbench')}
-                </h3>
-                <p className='text-muted-foreground text-xs'>
-                  {t('Set up your API integration step by step.')}
-                </p>
+      <div className='flex justify-end'>
+        <Button
+          variant='ghost'
+          onClick={toggleGuide}
+          aria-expanded={guideExpanded}
+          aria-controls={guideId}
+        >
+          {t(guideExpanded ? 'Hide setup guide' : 'Show setup guide')}
+        </Button>
+      </div>
+      <div id={guideId} hidden={!guideExpanded}>
+        <CardStaggerContainer>
+          <CardStaggerItem className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
+            <div className='flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5'>
+              <div className='flex min-w-0 items-center gap-3'>
+                <IconBadge size='lg'>
+                  <Rocket />
+                </IconBadge>
+                <div className='min-w-0'>
+                  <h3 className='text-sm font-semibold'>
+                    {t('Get started in the workbench')}
+                  </h3>
+                  <p className='text-muted-foreground text-xs'>
+                    {t('Set up your API integration step by step.')}
+                  </p>
+                </div>
               </div>
-            </div>
-            <Button render={<Link to='/workbench' />}>
-              <Rocket data-icon='inline-start' />
-              {t('Open workbench')}
-              <ArrowRight data-icon='inline-end' />
-            </Button>
-          </div>
-
-          <div className='grid grid-cols-2 gap-2 border-t p-3 sm:grid-cols-4 sm:gap-3 sm:p-4'>
-            {QUICK_ACTIONS.map(({ to, labelKey, Icon }) => (
-              <Button
-                key={to}
-                variant='outline'
-                className='[&_svg]:text-primary justify-start'
-                render={<Link to={to} />}
-              >
-                <Icon data-icon='inline-start' />
-                {t(labelKey)}
+              <Button render={<Link to='/workbench' />}>
+                <Rocket data-icon='inline-start' />
+                {t('Open workbench')}
+                <ArrowRight data-icon='inline-end' />
               </Button>
-            ))}
-          </div>
-        </CardStaggerItem>
-      </CardStaggerContainer>
+            </div>
+
+            <div className='grid grid-cols-2 gap-2 border-t p-3 sm:grid-cols-4 sm:gap-3 sm:p-4'>
+              {QUICK_ACTIONS.map(({ to, labelKey, Icon }) => (
+                <Button
+                  key={to}
+                  variant='outline'
+                  className='[&_svg]:text-primary justify-start'
+                  render={<Link to={to} />}
+                >
+                  <Icon data-icon='inline-start' />
+                  {t(labelKey)}
+                </Button>
+              ))}
+            </div>
+          </CardStaggerItem>
+        </CardStaggerContainer>
+      </div>
 
       <SummaryCards />
 

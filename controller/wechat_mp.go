@@ -344,7 +344,7 @@ func wechatMpFinishLogin(c *gin.Context, user *model.User, token string) {
 		wechatMpCheckCode(code, true)
 	}
 	wechatMpDropPollToken(token)
-	setupLogin(user, c)
+	setupLogin(user, nil, c)
 }
 
 // WeChatMpLoginCheck 轮询登录状态。openid 已绑定账号则直接登录；未绑定时返回

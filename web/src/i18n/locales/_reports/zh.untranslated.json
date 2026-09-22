@@ -1,5 +1,9 @@
 {
   "AppSecret": "AppSecret",
   "Claude / OpenAI / Gemini": "Claude / OpenAI / Gemini",
-  "OpenAI · Claude · Gemini": "OpenAI · Claude · Gemini"
+  "Doubao": "Doubao",
+  "OpenAI · Claude · Gemini": "OpenAI · Claude · Gemini",
+  "Responses WebSocket": "Responses WebSocket",
+  "SGLang": "SGLang",
+  "WebSocket": "WebSocket"
 }

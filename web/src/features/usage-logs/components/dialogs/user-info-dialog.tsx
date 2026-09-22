@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { formatQuota, formatCompactNumber } from '@/lib/format'
+import { handleServerError } from '@/lib/handle-server-error'
 
 import { getUserInfo, getUserStat } from '../../api'
 import type { UserErrorStatRow, UserInfo, UserStat } from '../../types'
@@ -101,12 +102,10 @@ export function UserInfoDialog({
         if (result.success) {
           setUserInfo(result.data || null)
         } else {
-          toast.error(result.message || t('Failed to fetch user information'))
+          handleServerError(result, t('Failed to fetch user information'))
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to fetch user info:', error)
-        toast.error(t('Failed to fetch user information'))
+        handleServerError(error, t('Failed to fetch user information'))
       } finally {
         setIsLoading(false)
       }

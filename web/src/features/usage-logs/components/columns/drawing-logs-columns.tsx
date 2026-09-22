@@ -17,12 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ImageIcon, WandSparkles } from '@/components/icons'
 import { StatusBadge } from '@/components/status-badge'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import type { DrawingLog } from '../../types'
 import { ImageDialog } from '../dialogs/image-dialog'
@@ -77,190 +78,197 @@ export function useDrawingLogsColumns(
   isAdmin: boolean
 ): ColumnDef<DrawingLog>[] {
   const { t } = useTranslation()
+  const currency = useSystemConfigStore((state) => state.config.currency)
 
-  const statusLabel = (status: string): string => {
-    const s = status.toLowerCase()
-    if (s === 'success') return t('Success')
-    if (s === 'failed' || s === 'failure') return t('Failed')
-    return status || '-'
-  }
+  return useMemo(() => {
+    const statusLabel = (status: string): string => {
+      const s = status.toLowerCase()
+      if (s === 'success') return t('Success')
+      if (s === 'failed' || s === 'failure') return t('Failed')
+      return status || '-'
+    }
 
-  const typeLabel = (logMode: string): string => {
-    if (LOG_MODE_LABELS[logMode]) return t(LOG_MODE_LABELS[logMode])
-    if (logMode.startsWith('mj_')) return logMode.slice(3)
-    return logMode || '-'
-  }
+    const typeLabel = (logMode: string): string => {
+      if (LOG_MODE_LABELS[logMode]) return t(LOG_MODE_LABELS[logMode])
+      if (logMode.startsWith('mj_')) return logMode.slice(3)
+      return logMode || '-'
+    }
 
-  const columns: ColumnDef<DrawingLog>[] = [
-    {
-      accessorKey: 'created_at',
-      header: t('Time'),
+    const columns: ColumnDef<DrawingLog>[] = [
+      {
+        accessorKey: 'created_at',
+        header: t('Time'),
+        cell: ({ row }) => {
+          const log = row.original
+          return (
+            <div className='flex min-w-0 flex-col gap-0.5'>
+              <span className='truncate font-mono text-xs tabular-nums'>
+                {formatTimestampToDate(log.created_at, 'seconds')}
+              </span>
+              <StatusBadge
+                label={statusLabel(log.status)}
+                variant={statusVariant(log.status)}
+                size='sm'
+                copyable={false}
+              />
+            </div>
+          )
+        },
+        size: 180,
+      },
+    ]
+
+    if (isAdmin) {
+      columns.push(
+        createChannelColumn<DrawingLog>({ headerLabel: t('Channel') })
+      )
+      columns.push({
+        accessorKey: 'username',
+        header: t('User'),
+        cell: ({ row }) => {
+          const username = row.original.username
+          if (!username) {
+            return <span className='text-muted-foreground text-xs'>-</span>
+          }
+          return <span className='truncate text-xs'>{username}</span>
+        },
+      })
+    }
+
+    columns.push({
+      accessorKey: 'source',
+      header: t('Source'),
       cell: ({ row }) => {
-        const log = row.original
+        const source = row.original.source
+        const isMj = source === 'mj'
         return (
-          <div className='flex min-w-0 flex-col gap-0.5'>
-            <span className='truncate font-mono text-xs tabular-nums'>
-              {formatTimestampToDate(log.created_at, 'seconds')}
-            </span>
-            <StatusBadge
-              label={statusLabel(log.status)}
-              variant={statusVariant(log.status)}
-              size='sm'
-              copyable={false}
-            />
-          </div>
+          <StatusBadge
+            label={isMj ? 'Midjourney' : t('Image')}
+            variant={isMj ? 'info' : 'neutral'}
+            icon={isMj ? WandSparkles : ImageIcon}
+            size='sm'
+            copyable={false}
+            className='-ml-1.5'
+          />
         )
       },
-      size: 180,
-    },
-  ]
+    })
 
-  if (isAdmin) {
-    columns.push(createChannelColumn<DrawingLog>({ headerLabel: t('Channel') }))
     columns.push({
-      accessorKey: 'username',
-      header: t('User'),
+      accessorKey: 'model_name',
+      header: t('Model'),
       cell: ({ row }) => {
-        const username = row.original.username
-        if (!username) {
+        const model = row.original.model_name
+        if (!model) {
           return <span className='text-muted-foreground text-xs'>-</span>
         }
-        return <span className='truncate text-xs'>{username}</span>
+        return (
+          <StatusBadge
+            label={model}
+            copyText={model}
+            variant='neutral'
+            size='sm'
+            className='border-border/60 bg-muted/30 !text-foreground max-w-[180px] truncate rounded-md border px-1.5 py-0.5 font-mono'
+          />
+        )
+      },
+      meta: { mobileTitle: true },
+    })
+
+    columns.push({
+      accessorKey: 'log_mode',
+      header: t('Type'),
+      cell: ({ row }) => (
+        <span className='text-xs'>{typeLabel(row.original.log_mode)}</span>
+      ),
+    })
+
+    columns.push({
+      accessorKey: 'quota',
+      header: t('Quota'),
+      cell: ({ row }) => (
+        <span className='font-mono text-xs tabular-nums'>
+          {formatLogQuota(row.original.quota)}
+        </span>
+      ),
+    })
+
+    columns.push({
+      accessorKey: 'result_urls',
+      header: t('Image'),
+      cell: function ImageCell({ row }) {
+        const log = row.original
+        const keys = parseResultKeys(log.result_urls)
+        const [dialogOpen, setDialogOpen] = useState(false)
+
+        if (keys.length === 0) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+        const src = toImageSrc(keys[0])
+
+        return (
+          <>
+            <button
+              type='button'
+              className='group block'
+              onClick={() => setDialogOpen(true)}
+              title={t('Click to view image')}
+            >
+              <img
+                src={src}
+                alt={t('Image')}
+                loading='lazy'
+                className='border-border/60 h-10 w-10 rounded-md border object-cover transition group-hover:opacity-80'
+              />
+            </button>
+            <ImageDialog
+              imageUrl={src}
+              taskId={log.source_id}
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+            />
+          </>
+        )
       },
     })
-  }
 
-  columns.push({
-    accessorKey: 'source',
-    header: t('Source'),
-    cell: ({ row }) => {
-      const source = row.original.source
-      const isMj = source === 'mj'
-      return (
-        <StatusBadge
-          label={isMj ? 'Midjourney' : t('Image')}
-          variant={isMj ? 'info' : 'neutral'}
-          icon={isMj ? WandSparkles : ImageIcon}
-          size='sm'
-          copyable={false}
-          className='-ml-1.5'
-        />
-      )
-    },
-  })
+    columns.push({
+      accessorKey: 'prompt',
+      header: t('Prompt'),
+      cell: function PromptCell({ row }) {
+        const prompt = row.original.prompt
+        const [dialogOpen, setDialogOpen] = useState(false)
 
-  columns.push({
-    accessorKey: 'model_name',
-    header: t('Model'),
-    cell: ({ row }) => {
-      const model = row.original.model_name
-      if (!model) {
-        return <span className='text-muted-foreground text-xs'>-</span>
-      }
-      return (
-        <StatusBadge
-          label={model}
-          copyText={model}
-          variant='neutral'
-          size='sm'
-          className='border-border/60 bg-muted/30 !text-foreground max-w-[180px] truncate rounded-md border px-1.5 py-0.5 font-mono'
-        />
-      )
-    },
-    meta: { mobileTitle: true },
-  })
+        if (!prompt) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
 
-  columns.push({
-    accessorKey: 'log_mode',
-    header: t('Type'),
-    cell: ({ row }) => (
-      <span className='text-xs'>{typeLabel(row.original.log_mode)}</span>
-    ),
-  })
-
-  columns.push({
-    accessorKey: 'quota',
-    header: t('Quota'),
-    cell: ({ row }) => (
-      <span className='font-mono text-xs tabular-nums'>
-        {formatLogQuota(row.original.quota)}
-      </span>
-    ),
-  })
-
-  columns.push({
-    accessorKey: 'result_urls',
-    header: t('Image'),
-    cell: function ImageCell({ row }) {
-      const log = row.original
-      const keys = parseResultKeys(log.result_urls)
-      const [dialogOpen, setDialogOpen] = useState(false)
-
-      if (keys.length === 0) {
-        return <span className='text-muted-foreground text-xs'>-</span>
-      }
-      const src = toImageSrc(keys[0])
-
-      return (
-        <>
-          <button
-            type='button'
-            className='group block'
-            onClick={() => setDialogOpen(true)}
-            title={t('Click to view image')}
-          >
-            <img
-              src={src}
-              alt={t('Image')}
-              loading='lazy'
-              className='border-border/60 h-10 w-10 rounded-md border object-cover transition group-hover:opacity-80'
+        return (
+          <>
+            <button
+              type='button'
+              className='group flex max-w-[220px] items-center text-left text-xs'
+              onClick={() => setDialogOpen(true)}
+              title={t('Click to view full prompt')}
+            >
+              <span className='text-muted-foreground truncate leading-snug group-hover:underline'>
+                {prompt}
+              </span>
+            </button>
+            <PromptDialog
+              prompt={prompt}
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
             />
-          </button>
-          <ImageDialog
-            imageUrl={src}
-            taskId={log.source_id}
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-          />
-        </>
-      )
-    },
-  })
+          </>
+        )
+      },
+      size: 200,
+      maxSize: 220,
+    })
 
-  columns.push({
-    accessorKey: 'prompt',
-    header: t('Prompt'),
-    cell: function PromptCell({ row }) {
-      const prompt = row.original.prompt
-      const [dialogOpen, setDialogOpen] = useState(false)
-
-      if (!prompt) {
-        return <span className='text-muted-foreground text-xs'>-</span>
-      }
-
-      return (
-        <>
-          <button
-            type='button'
-            className='group flex max-w-[220px] items-center text-left text-xs'
-            onClick={() => setDialogOpen(true)}
-            title={t('Click to view full prompt')}
-          >
-            <span className='text-muted-foreground truncate leading-snug group-hover:underline'>
-              {prompt}
-            </span>
-          </button>
-          <PromptDialog
-            prompt={prompt}
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-          />
-        </>
-      )
-    },
-    size: 200,
-    maxSize: 220,
-  })
-
-  return columns
+    return columns
+    // formatLogQuota reads the live currency store outside this closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, currency, isAdmin])
 }

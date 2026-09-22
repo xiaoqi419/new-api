@@ -39,6 +39,14 @@ export const modelFormSchema = z.object({
   name_rule: z.number().min(0).max(3).default(0),
   status: z.boolean().default(true),
   sync_official: z.boolean().default(true),
+  context_length: z.string().default(''),
+  max_output_tokens: z.string().default(''),
+  knowledge_cutoff: z.string().default(''),
+  release_date: z.string().default(''),
+  parameter_count: z.string().default(''),
+  input_modalities: z.array(z.string()).default([]),
+  output_modalities: z.array(z.string()).default([]),
+  capabilities: z.array(z.string()).default([]),
   enable_groups: z.array(z.string()).default([]),
   quota_types: z.array(z.number()).default([]),
 })
@@ -81,6 +89,16 @@ export function transformModelToFormDefaults(model: Model): ModelFormValues {
     name_rule: model.name_rule || 0,
     status: model.status === 1,
     sync_official: model.sync_official === 1,
+    context_length: model.context_length ? String(model.context_length) : '',
+    max_output_tokens: model.max_output_tokens
+      ? String(model.max_output_tokens)
+      : '',
+    knowledge_cutoff: model.knowledge_cutoff || '',
+    release_date: model.release_date || '',
+    parameter_count: model.parameter_count || '',
+    input_modalities: parseTagsFromUtils(model.input_modalities),
+    output_modalities: parseTagsFromUtils(model.output_modalities),
+    capabilities: parseTagsFromUtils(model.capabilities),
     enable_groups: model.enable_groups || [],
     quota_types: model.quota_types || [],
   }
@@ -92,6 +110,8 @@ export function transformModelToFormDefaults(model: Model): ModelFormValues {
 export function transformFormDataToModelPayload(
   formData: ModelFormValues
 ): Partial<Model> {
+  const contextLength = Number.parseInt(formData.context_length, 10)
+  const maxOutputTokens = Number.parseInt(formData.max_output_tokens, 10)
   return {
     id: formData.id,
     model_name: formData.model_name,
@@ -103,6 +123,18 @@ export function transformFormDataToModelPayload(
     name_rule: formData.name_rule,
     status: formData.status ? 1 : 0,
     sync_official: formData.sync_official ? 1 : 0,
+    context_length:
+      Number.isFinite(contextLength) && contextLength > 0 ? contextLength : 0,
+    max_output_tokens:
+      Number.isFinite(maxOutputTokens) && maxOutputTokens > 0
+        ? maxOutputTokens
+        : 0,
+    knowledge_cutoff: formData.knowledge_cutoff,
+    release_date: formData.release_date,
+    parameter_count: formData.parameter_count,
+    input_modalities: formatTagsArray(formData.input_modalities),
+    output_modalities: formatTagsArray(formData.output_modalities),
+    capabilities: formatTagsArray(formData.capabilities),
     enable_groups: formData.enable_groups,
     quota_types: formData.quota_types,
   }

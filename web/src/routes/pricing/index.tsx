@@ -1,3 +1,7 @@
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import z from 'zod'
+
+import { Pricing } from '@/features/pricing'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,13 +20,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import z from 'zod'
-
-import { Pricing } from '@/features/pricing'
 import { getFreshModuleAccess } from '@/lib/nav-modules'
 import { useAuthStore } from '@/stores/auth-store'
-
 const pricingSearchSchema = z.object({
   search: z.string().optional(),
   sort: z.string().optional(),

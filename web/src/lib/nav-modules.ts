@@ -1,3 +1,5 @@
+import type { QueryClient } from '@tanstack/react-query'
+
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,9 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { QueryClient } from '@tanstack/react-query'
-
-import { statusQueryOptions } from '@/lib/api'
+import { readCachedStatus, statusQueryOptions } from '@/lib/status-query'
 
 export type ModuleAccess = { enabled: boolean; requireAuth: boolean }
 
@@ -157,26 +157,12 @@ export function parseHeaderNavModulesFromStatus(
   return parseHeaderNavModules(status?.HeaderNavModules)
 }
 
-function getCachedStatus(): Record<string, unknown> | null {
-  try {
-    if (typeof window === 'undefined') return null
-    const raw = window.localStorage.getItem('status')
-    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null
-  } catch {
-    return null
-  }
-}
-
-function cacheStatus(status: Record<string, unknown> | null): void {
-  try {
-    if (typeof window !== 'undefined' && status) {
-      window.localStorage.setItem('status', JSON.stringify(status))
-    }
-  } catch {
-    /* empty */
-  }
-}
-
+/**
+ * Resolve one module's access flags from an already-loaded status payload.
+ *
+ * Falls back to the module's default when status is missing or does not carry
+ * a `HeaderNavModules` entry for it.
+ */
 export function getModuleAccessFromStatus(
   status: Record<string, unknown> | null,
   module: HeaderNavModule
@@ -184,8 +170,15 @@ export function getModuleAccessFromStatus(
   return parseHeaderNavModulesFromStatus(status)[module] ?? DEFAULTS[module]
 }
 
+/**
+ * Read module access synchronously from the persisted status snapshot.
+ *
+ * For render paths that cannot await, such as deciding whether to show a nav
+ * item. Never issues a request; use {@link getModuleAccessForGuard} when the
+ * caller can await.
+ */
 export function getModuleAccess(module: HeaderNavModule): ModuleAccess {
-  return getModuleAccessFromStatus(getCachedStatus(), module)
+  return getModuleAccessFromStatus(readCachedStatus(), module)
 }
 
 export async function getFreshModuleAccess(
@@ -200,18 +193,23 @@ export async function getFreshModuleAccess(
       ...statusQueryOptions,
       staleTime: 0,
     })) as Record<string, unknown> | null
-    cacheStatus(status)
     return getModuleAccessFromStatus(status, module)
   } catch {
     return { enabled: false, requireAuth: true }
   }
 }
 
+/**
+ * Whether an admin sidebar entry is enabled by `SidebarModulesAdmin`.
+ *
+ * Fails open: an absent, blank, or unparsable configuration keeps every module
+ * visible, so a status read that has not landed yet cannot blank the sidebar.
+ */
 export function isSidebarModuleEnabled(
   section: string,
   module: string
 ): boolean {
-  const status = getCachedStatus()
+  const status = readCachedStatus()
   if (!status) return true
 
   const raw = status.SidebarModulesAdmin
@@ -229,5 +227,17 @@ export function isSidebarModuleEnabled(
     return true
   } catch {
     return true
+  }
+}
+
+export async function getModuleAccessForGuard(
+  queryClient: QueryClient,
+  module: HeaderNavModule
+): Promise<ModuleAccess> {
+  try {
+    const status = await queryClient.fetchQuery(statusQueryOptions)
+    return getModuleAccessFromStatus(status, module)
+  } catch {
+    return { enabled: false, requireAuth: true }
   }
 }

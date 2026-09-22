@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import {
   Box,
+  Route,
   CreditCard,
   Layout,
   Settings,
@@ -66,6 +67,7 @@ describe('system settings sidebar navigation', () => {
       Shield,
       CreditCard,
       Box,
+      Route,
       ShieldAlert,
       Layout,
       Wrench,

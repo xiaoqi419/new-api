@@ -18,15 +18,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Shield, Key, Trash2 } from '@/components/icons'
+import { Shield, Trash2 } from '@/components/icons'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
+import { AccessTokenCard } from '@/features/security/components/access-token-card'
 import { useDialogs } from '@/hooks/use-dialog'
 
 import type { UserProfile } from '../types'
-import { AccessTokenDialog } from './dialogs/access-token-dialog'
 import { ChangePasswordDialog } from './dialogs/change-password-dialog'
 import { DeleteAccountDialog } from './dialogs/delete-account-dialog'
 
@@ -72,13 +72,6 @@ export function ProfileSecurityCard({
       title: t('Change Password'),
       description: t('Update your password to keep your account secure'),
       action: () => dialogs.open('password'),
-      variant: 'default' as const,
-    },
-    {
-      icon: Key,
-      title: t('Access Token'),
-      description: t('Generate and manage your API access token'),
-      action: () => dialogs.open('token'),
       variant: 'default' as const,
     },
     {
@@ -132,12 +125,7 @@ export function ProfileSecurityCard({
         username={profile.username}
       />
 
-      <AccessTokenDialog
-        open={dialogs.isOpen('token')}
-        onOpenChange={(open) =>
-          open ? dialogs.open('token') : dialogs.close('token')
-        }
-      />
+      <AccessTokenCard />
 
       <DeleteAccountDialog
         open={dialogs.isOpen('delete')}

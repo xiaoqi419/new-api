@@ -41,6 +41,7 @@ import {
   ADMIN_PERMISSION_RESOURCES,
   hasPermission,
 } from '@/lib/admin-permissions'
+import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
@@ -137,19 +138,17 @@ export function MultiKeyManageDialog({
         setManualDisabledCount(response.data.manual_disabled_count || 0)
         setAutoDisabledCount(response.data.auto_disabled_count || 0)
       } else {
-        toast.error(response.message || t('Failed to load key status'))
+        handleServerError(response, t('Failed to load key status'))
       }
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : t('Failed to load key status')
-      )
+      handleServerError(error, t('Failed to load key status'))
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleStatusFilterChange = (value: string) => {
-    const newFilter = value === 'all' ? null : parseInt(value)
+    const newFilter = value === 'all' ? null : Number.parseInt(value)
     setStatusFilter(newFilter)
     setCurrentPage(1)
     loadKeyStatus(1, pageSize, newFilter)
@@ -204,12 +203,10 @@ export function MultiKeyManageDialog({
           loadKeyStatus(currentPage, pageSize)
         }
       } else {
-        toast.error(response?.message || t('Operation failed'))
+        handleServerError(response, t('Operation failed'))
       }
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : t('Operation failed')
-      )
+      handleServerError(error, t('Operation failed'))
     } finally {
       setIsPerformingAction(false)
       setConfirmAction(null)
@@ -268,7 +265,7 @@ export function MultiKeyManageDialog({
         description={t(
           'Manage multi-key status and configuration for this channel'
         )}
-        contentClassName='flex max-h-[90vh] max-w-5xl flex-col'
+        contentClassName='flex max-h-[min(90dvh,var(--dialog-available-height))] max-w-5xl flex-col'
         titleClassName='flex items-center gap-2'
         contentHeight='min(72vh, 720px)'
         bodyClassName='space-y-4'

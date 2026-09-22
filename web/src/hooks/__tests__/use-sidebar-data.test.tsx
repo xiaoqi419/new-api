@@ -1,6 +1,8 @@
 import { Window } from 'happy-dom'
 import { createInstance } from 'i18next'
 import {
+  ShieldCheck,
+  PlugZap,
   BadgeCheck,
   Box,
   Building2,
@@ -217,6 +219,13 @@ describe('root sidebar navigation data', () => {
         icon: FileText,
       },
       {
+        title: 'Audit Logs',
+        url: '/usage-logs/audit',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: FileText,
+      },
+      {
         title: 'Channel Monitor',
         url: '/channel-monitor',
         activeUrls: ['/channel-monitor/detail'],
@@ -272,6 +281,13 @@ describe('root sidebar navigation data', () => {
         icon: User,
       },
       {
+        title: 'Security & Access',
+        url: '/security',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: ShieldCheck,
+      },
+      {
         title: 'Identity Verification',
         url: '/account/identity-verification',
         activeUrls: undefined,
@@ -304,6 +320,7 @@ describe('root sidebar navigation data', () => {
         ['Announcement Management', '/announcements/admin', Megaphone],
         ['Changelog', '/changelog', History],
         ['System Info', '/system-info', ServerCog],
+        ['Task Plugins', '/task-plugins', PlugZap],
         ['System Settings', '/system-settings/site', Settings],
       ]
     )
@@ -316,6 +333,7 @@ describe('root sidebar navigation data', () => {
       undefined,
       undefined,
       ['/tickets/admin-detail'],
+      undefined,
       undefined,
       undefined,
       undefined,

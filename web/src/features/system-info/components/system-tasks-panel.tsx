@@ -1,3 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+
+import { ErrorState } from '@/components/error-state'
+import { ListChecks, RefreshCw } from '@/components/icons'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,13 +23,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-
-import { ErrorState } from '@/components/error-state'
-import { ListChecks, RefreshCw } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -40,9 +40,10 @@ import type {
 } from '@/features/system-settings/types'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatTimestampRelative, formatTimestampToDate } from '@/lib/format'
+import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-const TASK_LIMIT = 20
+import { SystemTaskHistory } from './system-task-history'
 const ACTIVE_POLL_INTERVAL_MS = 8000
 
 const STATUS_VARIANT: Record<SystemTaskStatus, 'secondary' | 'destructive'> = {
@@ -85,10 +86,6 @@ const TYPE_LABEL: Record<string, string> = {
 
 const TYPE_DISPLAY_ID: Record<string, string> = {
   midjourney_poll: 'drawing_task_poll',
-}
-
-function isActiveStatus(status: SystemTaskStatus) {
-  return status === 'pending' || status === 'running'
 }
 
 function getProgress(task: SystemTask): number | null {
@@ -204,28 +201,24 @@ function SystemTasksTable(props: SystemTasksTableProps) {
 export function SystemTasksPanel() {
   const { t } = useTranslation()
   const tasksQuery = useQuery({
-    queryKey: ['system-info', 'system-tasks'],
+    queryKey: ['system-info', 'system-tasks', 'active'],
     queryFn: async () => {
-      const res = await listSystemTasks(TASK_LIMIT)
+      const res = await listSystemTasks(100, { scope: 'active' })
       if (!res.success || !Array.isArray(res.data)) {
-        throw new Error(res.message || t('We could not load system tasks.'))
+        throw createServerError(res, t('We could not load system tasks.'))
       }
       return res.data
     },
     staleTime: 30 * 1000,
     retry: false,
     refetchInterval: (query) =>
-      query.state.data?.some((task) => isActiveStatus(task.status))
-        ? ACTIVE_POLL_INTERVAL_MS
-        : false,
+      query.state.data?.length ? ACTIVE_POLL_INTERVAL_MS : false,
   })
 
-  const tasks = tasksQuery.data ?? []
+  const activeTasks = tasksQuery.data ?? []
   const loading = tasksQuery.isLoading
-  const refreshing = tasksQuery.isFetching && !tasksQuery.isLoading
-  const hasActiveTasks = tasks.some((task) => isActiveStatus(task.status))
-  const activeTasks = tasks.filter((task) => isActiveStatus(task.status))
-  const historyTasks = tasks.filter((task) => !isActiveStatus(task.status))
+  const refreshing = tasksQuery.isFetching && !loading
+  const hasActiveTasks = activeTasks.length > 0
 
   return (
     <section className='bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1'>
@@ -303,7 +296,7 @@ export function SystemTasksPanel() {
             className='min-h-[260px]'
           />
         )}
-        {!loading && !tasksQuery.isError && tasks.length === 0 && (
+        {!loading && !tasksQuery.isError && activeTasks.length === 0 && (
           <div className='px-4 py-10 text-center sm:px-5'>
             <div className='bg-muted mx-auto mb-3 flex size-10 items-center justify-center rounded-lg'>
               <ListChecks
@@ -312,11 +305,11 @@ export function SystemTasksPanel() {
               />
             </div>
             <p className='text-muted-foreground text-sm'>
-              {t('No system tasks yet.')}
+              {t('No active system tasks.')}
             </p>
           </div>
         )}
-        {!loading && !tasksQuery.isError && tasks.length > 0 && (
+        {!loading && !tasksQuery.isError && activeTasks.length > 0 && (
           <div className='space-y-4 p-4 sm:p-5'>
             <div>
               <div className='mb-2 flex items-center justify-between gap-3'>
@@ -336,27 +329,11 @@ export function SystemTasksPanel() {
                 </div>
               )}
             </div>
-
-            <div>
-              <div className='mb-2 flex items-center justify-between gap-3'>
-                <div>
-                  <h4 className='text-sm font-medium'>{t('Task History')}</h4>
-                  <p className='text-muted-foreground mt-0.5 text-xs'>
-                    {t('Recently completed or failed system task runs.')}
-                  </p>
-                </div>
-                <Badge variant='outline'>{historyTasks.length}</Badge>
-              </div>
-              {historyTasks.length > 0 ? (
-                <SystemTasksTable tasks={historyTasks} />
-              ) : (
-                <div className='text-muted-foreground rounded-md border border-dashed px-4 py-6 text-center text-sm'>
-                  {t('No historical system tasks.')}
-                </div>
-              )}
-            </div>
           </div>
         )}
+      </div>
+      <div className='p-4 pt-0 sm:p-5 sm:pt-0'>
+        <SystemTaskHistory activeRefreshAt={tasksQuery.dataUpdatedAt} />
       </div>
     </section>
   )

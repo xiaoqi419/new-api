@@ -26,7 +26,8 @@ type MockButtonProps = ComponentProps<'button'> & { render?: ReactNode }
 
 const mocks = vi.hoisted(() => ({ refetch: vi.fn() }))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: () => ({
     data: undefined,
     isError: true,

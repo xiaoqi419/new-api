@@ -25,6 +25,7 @@ import {
   MODALITY_FILTERS,
 } from '../constants'
 import type { Modality, PricingModel } from '../types'
+import { hasTaskUsageSchema } from './dynamic-price'
 
 // ----------------------------------------------------------------------------
 // Filter Utilities
@@ -82,11 +83,17 @@ export function filterByQuotaType(
   quotaType: string
 ): PricingModel[] {
   if (quotaType === QUOTA_TYPES.ALL) return models
+  // Task-usage models form their own bucket, disjoint from token/request.
+  if (quotaType === QUOTA_TYPES.TASK) {
+    return models.filter((m) => hasTaskUsageSchema(m))
+  }
   const targetType =
     quotaType === QUOTA_TYPES.TOKEN
       ? QUOTA_TYPE_VALUES.TOKEN
       : QUOTA_TYPE_VALUES.REQUEST
-  return models.filter((m) => m.quota_type === targetType)
+  return models.filter(
+    (m) => m.quota_type === targetType && !hasTaskUsageSchema(m)
+  )
 }
 
 /**

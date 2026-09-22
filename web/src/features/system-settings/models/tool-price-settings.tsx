@@ -1,8 +1,3 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-
-import { StaticDataTable } from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -21,6 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { StaticDataTable } from '@/components/data-table'
 import { Code2, Copy, Eye, Plus, Trash2 } from '@/components/icons'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -330,7 +331,7 @@ export const ToolPriceSettings = memo(function ToolPriceSettings({
                     <Input
                       type='number'
                       min={0}
-                      step={0.5}
+                      step={0.0001}
                       value={row.price}
                       aria-invalid={isInvalid}
                       aria-label={`${t('Price ($/1K calls)')}: ${row.key || t('Tool identifier')}`}

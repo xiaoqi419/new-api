@@ -30,7 +30,8 @@ const mocks = vi.hoisted(() => ({
   modalAnnouncementKey: vi.fn(() => 'modal:site:42:10:1800000000'),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: () => ({
     data: {
       success: true,

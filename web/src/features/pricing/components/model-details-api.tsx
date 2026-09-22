@@ -1,15 +1,3 @@
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { BundledLanguage } from 'shiki/bundle/web'
-
-import {
-  CodeBlock,
-  CodeBlockCopyButton,
-} from '@/components/ai-elements/code-block'
-import {
-  StaticDataTable,
-  staticDataTableClassNames as tableStyles,
-} from '@/components/data-table'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -28,6 +16,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { BundledLanguage } from 'shiki/bundle/web'
+
+import {
+  CodeBlock,
+  CodeBlockCopyButton,
+} from '@/components/ai-elements/code-block'
+import {
+  StaticDataTable,
+  staticDataTableClassNames as tableStyles,
+} from '@/components/data-table'
 import {
   ChevronRight,
   Gauge,

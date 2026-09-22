@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -117,7 +118,15 @@ describe('UserBindingDialog built-in bindings', () => {
       return { data: { success: true, message: 'success' } }
     }
 
-    render(<UserBindingDialog open userId={7} onOpenChange={() => undefined} />)
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <UserBindingDialog open userId={7} onOpenChange={() => undefined} />
+      </QueryClientProvider>
+    )
 
     const expectedBindings = [
       ['Email', 'email'],

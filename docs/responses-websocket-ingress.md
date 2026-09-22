@@ -1,17 +1,21 @@
 # Responses WebSocket ingress
 
-The client connects using a WebSocket upgrade to `/v1/responses` (alias `/v1/openai/responses`) with its new-api `Authorization: Bearer ...` token. For a fully WebSocket upstream chain, configure the selected OpenAI-compatible channel with `upstream_transport: websocket` and a CPA base URL.
+## Transport selection
 
-Each JSON `response.create` message runs through the normal Responses request pipeline, including token validation, model permissions, concurrency limits, channel selection and usage settlement. A revoked token is checked again on subsequent turns. Each turn receives an independent consume log and request ID. The public HTTP POST endpoint remains supported.
+Clients upgrade GET `/v1/responses` (compatible alias `/v1/openai/responses`) using their new-api token. Supported OpenAI, OpenAI-compatible, Advanced Custom, Sub2API and New API channels require `responses_websocket_enabled=true`. Advanced Custom additionally requires an eligible converter-free Responses route. Unsupported/disabled channels do not silently enable WS.
 
-The first turn supplies `model`; subsequent turns may omit it to reuse the connection's last model. Use `previous_response_id` and incremental `input` items for continuation, including `function_call_output` with the upstream call ID. Server-generated connection identity isolates upstream pooling between client connections. Do not assume response IDs remain usable after reconnect or after upstream pool expiry.
+POST HTTP/SSE requests remain HTTP to the upstream. The retired `upstream_transport` option no longer selects an HTTP-to-WS bridge and does not enable the official flag. Existing JSON records remain readable; ordinary saves may omit the obsolete key. No channel, credential or CPA container is deleted by this code update.
 
-SSE events emitted by the existing relay are sent to the client as JSON WebSocket messages, without SSE framing. `response.cancel` cancels the active internal request. Client disconnect also cancels the request. One subsequent create can be queued; connections and events have bounded lifetime/size.
+## Request and session behavior
 
-`generate:false` is retained for upstream warmup. It requires a channel with WebSocket upstream enabled and will not fall back to HTTP on a failed handshake. Warmup suppresses generated output but is not necessarily free: the isolated CPA test reported 316 input tokens and zero output tokens, and new-api settled the reported input usage. The returned response ID successfully supported a same-socket continuation. Actual usage depends on the upstream provider.
+The implementation follows fixed upstream `9310231b3` in `controller/responses_websocket.go` and `relay/responses_websocket.go`. Each response.create is authenticated, model-rate-limited and concurrency-limited; token revocation and account changes are checked on later turns. The public router resolves the trusted client address once, then the per-turn runner uses that fixed address.
 
-## Validation
+Session-local upstream reuse and previous_response_id rules follow the official relay. No CPA-specific cross-request pool, route-alias probing, automatic warmup or SSE bridging remains. Official raw WS envelope handling retains generate control independently of the HTTP DTO. A request explicitly using generate:false is not a promise of free use: charging follows the actual reported usage and supported protocol rules.
 
-The isolated full application test completed four generated turns on one authenticated client WebSocket: initial response, previous-response continuation, a function call, and function-call output. Invalid models and token revocation returned error events. Successful quotas 314 + 332 + 360 + 350 equalled the user balance decrement 1356; the disconnected request recorded zero quota and client_gone.
+stream_id and event_id associate protocol events/errors. Cancellation, disconnect, terminal usage and errors are handled by one request worker so refunds do not race socket readers. Existing routing and quota safeguards, including the channel's explicit reasoning-to-model-suffix transform, remain enforced.
 
-This feature does not guarantee lower model generation latency. Measure time to first text separately from the first metadata/event frame. Production gateways must forward WebSocket Upgrade for GET `/v1/responses`; the isolated test connects directly to the application port and does not verify external gateway configuration.
+## Validation and limits
+
+Deterministic tests cover enabled/disabled channels, multi-turn continuation, token revocation, tenant identity, concurrency acquisition/release, event correlation, cancellation, billing, old setting isolation and POST SSE remaining HTTP. No paid upstream request is needed for these tests. Deployment still needs WebSocket Upgrade forwarding on the public gateway. No unmeasured latency improvement is claimed.
+
+The prior CPA live experiment was historical evidence for the removed implementation, not validation of this replacement. Use the current change's verification report for release status.

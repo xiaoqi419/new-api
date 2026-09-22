@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Bell, Loader2, Mail, Server, Webhook } from '@/components/icons'
+import { PasswordInput } from '@/components/password-input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { getCurrencyLabel } from '@/lib/currency'
+import { getEditableQuotaStep } from '@/lib/format'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -20,15 +29,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Bell, Loader2, Mail, Server, Webhook } from '@/components/icons'
-import { PasswordInput } from '@/components/password-input'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { getCurrencyLabel } from '@/lib/currency'
-import { getEditableQuotaStep } from '@/lib/format'
+import { handleServerError } from '@/lib/handle-server-error'
 import {
   convertDisplayedQuotaBetweenSnapshots,
   quotaThresholdValueForSave,
@@ -42,24 +43,13 @@ import {
   NOTIFICATION_METHODS,
 } from '../../constants'
 import { parseUserSettings } from '../../lib'
-import type { UserProfile, UserSettings, NotifyType } from '../../types'
+import type { UserSettings, UserProfile, NotifyType } from '../../types'
 
 const NOTIFICATION_ICONS: Record<NotifyType, typeof Mail> = {
   email: Mail,
   webhook: Webhook,
   bark: Bell,
   gotify: Server,
-}
-
-const NOTIFICATION_VALUES = new Set<NotifyType>(
-  NOTIFICATION_METHODS.map((method) => method.value)
-)
-
-function normalizeNotifyType(value: unknown): NotifyType {
-  return typeof value === 'string' &&
-    NOTIFICATION_VALUES.has(value as NotifyType)
-    ? (value as NotifyType)
-    : 'email'
 }
 
 // ============================================================================
@@ -69,6 +59,13 @@ function normalizeNotifyType(value: unknown): NotifyType {
 interface NotificationTabProps {
   profile: UserProfile | null
   onUpdate: () => void
+}
+
+function normalizeNotifyType(value: unknown): NotifyType {
+  return typeof value === 'string' &&
+    ['email', 'webhook', 'bark', 'gotify'].includes(value)
+    ? (value as NotifyType)
+    : 'email'
 }
 
 export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
@@ -97,7 +94,10 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
 
   // Update form field helper
   const updateField = useCallback(
-    <K extends keyof UserSettings>(field: K, value: UserSettings[K]) => {
+    <K extends keyof typeof settings>(
+      field: K,
+      value: (typeof settings)[K]
+    ) => {
       setSettings((prev) => ({ ...prev, [field]: value }))
     },
     []
@@ -163,6 +163,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
       const currentThreshold = settings.quota_warning_threshold ?? null
       const response = await updateUserSettings({
         ...settings,
+        record_ip_log: undefined,
         quota_warning_threshold: quotaThresholdValueForSave(
           currentThreshold,
           quotaThresholdBaselineRef.current.displayed,
@@ -174,7 +175,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
         toast.success(t('Settings updated successfully'))
         onUpdate()
       } else {
-        toast.error(response.message || t('Failed to update settings'))
+        handleServerError(response, t('Failed to update settings'))
       }
     } catch {
       toast.error(t('Failed to update settings'))
@@ -183,7 +184,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
     }
   }
 
-  const notifyType = normalizeNotifyType(settings.notify_type)
+  const notifyType = settings.notify_type ?? 'email'
 
   return (
     <div className='space-y-4 sm:space-y-6'>
@@ -435,22 +436,6 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
             onCheckedChange={(checked) =>
               updateField('accept_unset_model_ratio_model', checked)
             }
-          />
-        </div>
-
-        {/* Record IP Log */}
-        <div className='flex items-start justify-between gap-3 rounded-lg border p-3 sm:items-center sm:p-4'>
-          <div className='space-y-0.5'>
-            <Label htmlFor='recordIp'>{t('Record IP Address')}</Label>
-            <p className='text-muted-foreground text-xs sm:text-sm'>
-              {t('Log IP address for usage and error logs')}
-            </p>
-          </div>
-          <Switch
-            id='recordIp'
-            className='shrink-0'
-            checked={settings.record_ip_log}
-            onCheckedChange={(checked) => updateField('record_ip_log', checked)}
           />
         </div>
       </div>

@@ -17,27 +17,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
 
 import type { SystemStatus } from '@/features/auth/types'
-import { statusQueryOptions } from '@/lib/api'
-import { useSystemConfigStore } from '@/stores/system-config-store'
+import { readCachedStatus, statusQueryOptions } from '@/lib/status-query'
 
-import { mapStatusDataToConfig } from './use-system-config'
-
-// Get initial cache from localStorage
+/** Seed value from the persisted snapshot, so the first render is not empty. */
 function getInitialStatus(): SystemStatus | undefined {
-  try {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('status')
-      return saved ? (JSON.parse(saved) as SystemStatus) : undefined
-    }
-  } catch {
-    /* empty */
-  }
-  return undefined
+  return (readCachedStatus() as SystemStatus | null) ?? undefined
 }
 
+/**
+ * Subscribe to the shared `/api/status` query.
+ *
+ * Every caller reads the same cache entry, so mounting this hook in several
+ * components costs one request. See `statusQueryOptions` for cache lifetimes.
+ */
 export function useStatus() {
   const { data, isLoading, error } = useQuery({
     ...statusQueryOptions,
@@ -45,28 +39,8 @@ export function useStatus() {
     placeholderData: getInitialStatus(),
   })
 
-  // Kept out of `queryFn` so the mirror still happens when the payload was
-  // fetched by another consumer of the shared `status` cache entry.
-  useEffect(() => {
-    if (!data) return
-    try {
-      const { setConfig } = useSystemConfigStore.getState()
-      setConfig(mapStatusDataToConfig(data))
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn('[useStatus] Failed to sync status to system config', err)
-      }
-    }
-    try {
-      window.localStorage.setItem('status', JSON.stringify(data))
-    } catch {
-      /* empty */
-    }
-  }, [data])
-
   return {
-    status: (data as SystemStatus | null | undefined) ?? null,
+    status: (data as SystemStatus | null) ?? null,
     loading: isLoading,
     error,
   }

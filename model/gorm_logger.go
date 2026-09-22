@@ -52,7 +52,7 @@ type sanitizedLogWriter struct {
 	delegate *log.Logger
 }
 
-func (s *sanitizedLogWriter) Printf(format string, args ...interface{}) {
+func (s *sanitizedLogWriter) Printf(format string, args ...any) {
 	if !common.DebugEnabled {
 		for i, arg := range args {
 			if err, ok := arg.(error); ok {
@@ -77,7 +77,7 @@ func sanitizeDBError(err error) error {
 		// duplicate_prepared_statement. Both indicate session prepared statements
 		// are incompatible with the configured transaction pool.
 		if pgErr.Code == "08P01" || pgErr.Code == "42P05" {
-			return fmt.Errorf("postgres error SQLSTATE %s: prepared statement conflict with a transaction-pooling proxy (PgBouncer/Neon/Supabase); disable prepared statements for clients sharing this database or enable PgBouncer prepared-statement support", pgErr.Code)
+			return fmt.Errorf("postgres error SQLSTATE %s: prepared statement conflict with a transaction-pooling proxy (PgBouncer/Neon/Supabase); other clients sharing this database must disable prepared statements, or upgrade PgBouncer to >=1.21 with max_prepared_statements enabled", pgErr.Code)
 		}
 		return fmt.Errorf("postgres error SQLSTATE %s", pgErr.Code)
 	}

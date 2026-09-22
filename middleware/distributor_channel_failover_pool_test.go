@@ -9,7 +9,9 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
@@ -133,7 +135,7 @@ func TestDistributeSpecificChannelBypassesChannelFailoverPool(t *testing.T) {
 	var managedPool bool
 	router.Use(func(c *gin.Context) {
 		common.SetContextKey(c, constant.ContextKeyUsingGroup, group)
-		common.SetContextKey(c, constant.ContextKeyTokenSpecificChannelId, fmt.Sprintf("%d", specific.Id))
+		service.GetChannelConstraints(c).AddPin(dto.ChannelPin{ChannelId: specific.Id, Source: dto.PinSourceToken, Rank: dto.PinRankToken, RetryMode: dto.PinRetrySingleAttempt})
 		c.Next()
 	})
 	router.Use(Distribute())

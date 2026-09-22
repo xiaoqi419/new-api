@@ -78,7 +78,9 @@ function createTaskLog(overrides: Partial<TaskLog> = {}): TaskLog {
 
 function DesktopDetailsCell({ log }: { log: TaskLog }) {
   const columns = useTaskLogsColumns(false)
-  const details = columns.at(-1)
+  const details = columns.find(
+    (column) => 'accessorKey' in column && column.accessorKey === 'fail_reason'
+  )
   const Cell = details?.cell as ComponentType<{
     row: {
       original: TaskLog

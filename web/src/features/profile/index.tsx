@@ -1,3 +1,7 @@
+import {
+  CardStaggerContainer,
+  CardStaggerItem,
+} from '@/components/page-transition'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,22 +20,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  CardStaggerContainer,
-  CardStaggerItem,
-} from '@/components/page-transition'
 import { useStatus } from '@/hooks/use-status'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { CheckinCalendarCard } from './components/checkin-calendar-card'
 import { LanguagePreferencesCard } from './components/language-preferences-card'
-import { LoginSessionsCard } from './components/login-sessions-card'
-import { PasskeyCard } from './components/passkey-card'
 import { ProfileHeader } from './components/profile-header'
-import { ProfileSecurityCard } from './components/profile-security-card'
 import { ProfileSettingsCard } from './components/profile-settings-card'
 import { SidebarModulesCard } from './components/sidebar-modules-card'
-import { TwoFACard } from './components/two-fa-card'
 import { useProfile } from './hooks'
 
 export function Profile() {
@@ -64,8 +60,6 @@ export function Profile() {
               profile={profile}
               onProfileUpdate={refreshProfile}
             />
-            <ProfileSecurityCard profile={profile} loading={loading} />
-            <LoginSessionsCard />
           </div>
 
           <div className='space-y-4 sm:space-y-6 xl:sticky xl:top-6'>
@@ -77,8 +71,6 @@ export function Profile() {
               />
             )}
             {canConfigureSidebar && <SidebarModulesCard />}
-            <PasskeyCard loading={loading} />
-            <TwoFACard loading={loading} />
           </div>
         </div>
       </CardStaggerItem>

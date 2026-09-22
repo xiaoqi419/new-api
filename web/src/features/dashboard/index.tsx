@@ -314,6 +314,10 @@ export function Dashboard() {
     ) : null
   const sectionActions = modelActions ?? flowActions
 
+  if (activeSection === 'overview') {
+    return <OverviewDashboard />
+  }
+
   return (
     <SectionPageLayout>
       <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
@@ -341,7 +345,6 @@ export function Dashboard() {
               )}
             </div>
           )}
-          {activeSection === 'overview' && <OverviewDashboard />}
           {activeSection === 'models' && (
             <>
               <FadeIn>

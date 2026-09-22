@@ -5,6 +5,7 @@ import (
 
 	kitutil "github.com/QuantumNous/new-api/relaykit/relayconvert/kitutil"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,4 +69,34 @@ func TestImageRequestOmitsAbsentSequentialImageParams(t *testing.T) {
 	require.NotContains(t, upstream, "sequential_image_generation_options")
 	require.NotContains(t, upstream, "optimize_prompt_options")
 	require.NotContains(t, upstream, "tools")
+}
+
+func TestImageCountBoundsAndProviderPrecedence(t *testing.T) {
+	zero, two, three, huge := uint(0), uint(2), uint(3), ^uint(0)
+	for _, tt := range []struct {
+		name            string
+		count, provider *uint
+		useProvider     bool
+		want            int
+		wantError       bool
+	}{
+		{name: "absent defaults to one", want: 1},
+		{name: "top level zero defaults to one", count: &zero, want: 1},
+		{name: "top level wins without provider mode", count: &two, provider: &three, want: 2},
+		{name: "provider count wins", count: &two, provider: &three, useProvider: true, want: 3},
+		{name: "provider zero rejected", provider: &zero, useProvider: true, wantError: true},
+		{name: "wrapped negative top level rejected", count: &huge, wantError: true},
+		{name: "wrapped negative provider rejected even when inactive", provider: &huge, wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &ImageRequest{N: tt.count, BillingParameters: &ImageBillingParameters{N: tt.provider}}
+			got, err := req.ImageCount(tt.useProvider)
+			if tt.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

@@ -35,23 +35,26 @@ func TestResponsesWebSocketRouteAuthenticatesBeforeUpgrade(t *testing.T) {
 	SetRelayRouter(engine)
 	server := httptest.NewServer(engine)
 	t.Cleanup(server.Close)
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/responses"
+	for _, path := range []string{"/v1/responses", "/v1/openai/responses"} {
+		wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + path
 
-	_, response, err := websocket.Dial(context.Background(), wsURL, nil)
-	require.Error(t, err)
-	require.NotNil(t, response)
-	assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
+		_, response, err := websocket.Dial(context.Background(), wsURL, nil)
+		require.Error(t, err)
+		require.NotNil(t, response)
+		assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
 
-	header := http.Header{"Authorization": []string{"Bearer responseswstestkey"}}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	conn, response, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header})
-	require.NoError(t, err)
-	if response != nil {
-		assert.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
+		header := http.Header{"Authorization": []string{"Bearer responseswstestkey"}}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		conn, response, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header})
+		require.NoError(t, err)
+		if response != nil {
+			assert.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
+		}
+
+		_ = conn.Close(websocket.StatusNormalClosure, "test complete")
 	}
 
-	_ = conn.Close(websocket.StatusNormalClosure, "test complete")
 }
 
 func TestListModelsSupportsOpenAIAndGeminiAuthentication(t *testing.T) {

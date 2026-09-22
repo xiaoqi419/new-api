@@ -1,28 +1,63 @@
 package common
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
-// defaultTrustedProxies 仅默认信任本机回环地址。
-// Gin 默认信任所有来源，会让任意客户端通过伪造 X-Forwarded-For 冒充来源 IP，
-// 从而绕过按 ClientIP 计数的限流与污染审计日志。默认收敛为仅信任回环，
-// 真实反向代理地址需通过 TRUSTED_PROXIES 显式配置。
-var defaultTrustedProxies = []string{"127.0.0.1", "::1"}
+var defaultTrustedProxyCIDRs = []string{"127.0.0.1", "::1"}
+var defaultTrustedProxies = defaultTrustedProxyCIDRs
 
-// GetTrustedProxies 解析 TRUSTED_PROXIES 环境变量，返回传给 gin.SetTrustedProxies 的列表。
-// 返回值语义与 gin 一致：nil 表示信任所有代理。
-//   - 未配置：仅信任回环地址。
-//   - "*"：信任所有代理（还原 gin 默认，风险自负）。
-//   - 逗号分隔的 IP / CIDR 列表：信任这些来源。
+// ResolveTrustedProxies parses TRUSTED_PROXIES without applying it to an
+// engine. The returned slice can be reused by the outer and plugin engines.
+func ResolveTrustedProxies(raw string) (trustedProxies []string, usedDefaults bool, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return append([]string(nil), defaultTrustedProxyCIDRs...), true, nil
+	}
+	if raw == "*" {
+		return []string{"0.0.0.0/0", "::/0"}, false, nil
+	}
+	if strings.EqualFold(raw, "none") {
+		return nil, false, nil
+	}
+
+	parts := strings.Split(raw, ",")
+	trustedProxies = make([]string, 0, len(parts))
+	for _, part := range parts {
+		trustedProxy := strings.TrimSpace(part)
+		if trustedProxy == "" {
+			continue
+		}
+		if strings.EqualFold(trustedProxy, "none") {
+			return nil, false, errors.New("TRUSTED_PROXIES=none must be used alone")
+		}
+		trustedProxies = append(trustedProxies, trustedProxy)
+	}
+	if len(trustedProxies) == 0 {
+		return nil, false, errors.New("TRUSTED_PROXIES does not contain an IP address or CIDR")
+	}
+	return trustedProxies, false, nil
+}
+
+func ConfigureTrustedProxies(engine *gin.Engine, trustedProxies []string) error {
+	if err := engine.SetTrustedProxies(trustedProxies); err != nil {
+		return fmt.Errorf("invalid TRUSTED_PROXIES: %w", err)
+	}
+	return nil
+}
+
 func GetTrustedProxies() []string {
 	raw := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES"))
 	if raw == "" {
 		return defaultTrustedProxies
 	}
 	if raw == "*" {
-		return nil
+		return []string{"0.0.0.0/0", "::/0"}
 	}
 
 	proxies := make([]string, 0)
