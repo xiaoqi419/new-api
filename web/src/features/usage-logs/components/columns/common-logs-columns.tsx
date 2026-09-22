@@ -694,7 +694,6 @@ export function useCommonLogsColumns(
                 modelName={modelInfo.name}
                 displayName={displayName}
                 actualModel={modelInfo.actualModel}
-                responseModel={other?.response_model}
                 wrapText
               />
             </div>

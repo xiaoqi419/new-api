@@ -33,6 +33,18 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-22',
     changes: [
       {
+        kind: 'fix',
+        items: [
+          '使用日志隐藏响应模型名称及不一致提醒，桌面列表、移动端和详情同步生效；保留请求模型与原有模型映射展示。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-22',
+    changes: [
+      {
         kind: 'feature',
         items: [
           'Responses WebSocket 统一使用官方通用协议，渠道只保留官方开关；旧桥接设置不再生效，普通 HTTP/SSE 请求保持原传输方式。',

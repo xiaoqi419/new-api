@@ -94,18 +94,21 @@ function rowValue(label: string): string | null {
   return screen.getByText(label).nextElementSibling?.textContent ?? null
 }
 
-test('shows the recorded request and response models in log details', () => {
+test('hides response diagnostics while retaining configured model mapping in log details', () => {
   const queryClient = renderDetails({
+    is_model_mapped: true,
+    upstream_model_name: 'mapped-model',
     response_model: {
       requested_model: 'requested-model',
       upstream_model: 'mapped-model',
       returned_model: 'unexpected-model',
     },
   })
-  expect(screen.getByText('Response model: unexpected-model')).toBeVisible()
-  expect(rowValue('Request Model')).toBe('requested-model')
-  expect(rowValue('Upstream Model')).toBe('mapped-model')
-  expect(screen.getByText('unexpected-model')).toBeVisible()
+  expect(screen.queryByText('Response Model')).not.toBeInTheDocument()
+  expect(screen.queryByText(/Response model:/)).not.toBeInTheDocument()
+  expect(screen.queryByText('unexpected-model')).not.toBeInTheDocument()
+  expect(rowValue('Request Model')).toBe('wan2.5-i2v-preview')
+  expect(rowValue('Actual Model')).toBe('mapped-model')
   queryClient.clear()
 })
 

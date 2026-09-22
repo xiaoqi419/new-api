@@ -97,13 +97,15 @@ function renderLogs(props: Parameters<typeof Fixture>[0] = {}) {
   )
 }
 
-it('shows model mismatch evidence when tapping the mobile model badge', async () => {
+it('hides response diagnostics in mobile model details while preserving mapping', async () => {
   const user = userEvent.setup()
   renderLogs({
     logs: [
       {
         ...log,
         other: JSON.stringify({
+          is_model_mapped: true,
+          upstream_model_name: 'mapped-model',
           response_model: {
             requested_model: longName,
             upstream_model: 'mapped-model',
@@ -115,15 +117,16 @@ it('shows model mismatch evidence when tapping the mobile model badge', async ()
   })
   await user.click(
     screen.getByRole('button', {
-      name: `Model: ${longName}, Response model: unexpected-model`,
+      name: `Model: ${longName}`,
     })
   )
   const dialog = await screen.findByRole('dialog', { name: 'Model' })
   expect(
-    within(dialog).getByText('Response model: unexpected-model')
-  ).toBeVisible()
+    within(dialog).queryByText('Response model: unexpected-model')
+  ).not.toBeInTheDocument()
   expect(within(dialog).getByText('mapped-model')).toBeVisible()
-  expect(within(dialog).getByText('unexpected-model')).toBeVisible()
+  expect(within(dialog).queryByText('unexpected-model')).not.toBeInTheDocument()
+  expect(screen.queryByText('Response Model')).not.toBeInTheDocument()
 })
 
 it('opens long channel text on tap and copies the complete value', async () => {

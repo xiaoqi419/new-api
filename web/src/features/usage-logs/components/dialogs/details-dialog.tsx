@@ -71,7 +71,6 @@ import {
   isTimingLogType,
 } from '../../lib/utils'
 import { USAGE_BILLING_PATH, type LogOtherData } from '../../types'
-import { ResponseModelDetails } from '../model-badge'
 import { PluginAuthorLink } from '../plugin-author-link'
 
 // Maps a channel-update changed-field token (as recorded by the backend audit)
@@ -1170,28 +1169,21 @@ export function DetailsDialog(props: DetailsDialogProps) {
           />
         )}
 
-        {other?.response_model && (
-          <DetailSection label={t('Response Model')}>
-            <ResponseModelDetails observation={other.response_model} />
+        {/* Configured model mapping remains visible. */}
+        {other?.is_model_mapped && other?.upstream_model_name && (
+          <DetailSection label={t('Model Mapping')}>
+            <DetailRow
+              label={t('Request Model')}
+              value={props.log.model_name}
+              mono
+            />
+            <DetailRow
+              label={t('Actual Model')}
+              value={other.upstream_model_name}
+              mono
+            />
           </DetailSection>
         )}
-        {/* Model mapping for logs without response observations */}
-        {!other?.response_model &&
-          other?.is_model_mapped &&
-          other?.upstream_model_name && (
-            <DetailSection label={t('Model Mapping')}>
-              <DetailRow
-                label={t('Request Model')}
-                value={props.log.model_name}
-                mono
-              />
-              <DetailRow
-                label={t('Actual Model')}
-                value={other.upstream_model_name}
-                mono
-              />
-            </DetailSection>
-          )}
 
         {/* Token breakdown (for consume/error types with token data) */}
         {isDisplayableType(props.log.type) && other && (

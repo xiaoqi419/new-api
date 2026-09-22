@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
@@ -32,15 +31,10 @@ import { getLobeIcon } from '@/lib/lobe-icon'
 import { resolveModelProvider } from '@/lib/model-provider'
 import { cn } from '@/lib/utils'
 
-import { isResponseModelMismatch } from '../lib/response-model'
-import type { LogOtherData } from '../types'
-import { DetailRow } from './dialogs/log-detail-layout'
-
 interface ModelBadgeProps {
   modelName: string
   displayName?: string
   actualModel?: string
-  responseModel?: LogOtherData['response_model']
   className?: string
   wrapText?: boolean
   onInspect?: () => void
@@ -94,25 +88,8 @@ function ModelBadgeContent(props: ModelBadgeProps & { copyable: boolean }) {
 
 export function ModelBadge(props: ModelBadgeProps) {
   const { t } = useTranslation()
-  const mismatch = isResponseModelMismatch(props.responseModel)
-  const responseModelLabel =
-    mismatch && props.responseModel
-      ? t('Response model: {{model}}', {
-          model: props.responseModel.returned_model,
-        })
-      : ''
-  const modelLabel = `${t('Model')}: ${props.modelName}${responseModelLabel ? `, ${responseModelLabel}` : ''}`
-  const hasDetails =
-    !!props.actualModel ||
-    !!(
-      props.responseModel &&
-      (mismatch ||
-        props.responseModel.returned_model !==
-          props.responseModel.requested_model ||
-        (props.responseModel.upstream_model &&
-          props.responseModel.upstream_model !==
-            props.responseModel.requested_model))
-    )
+  const modelLabel = `${t('Model')}: ${props.modelName}`
+  const hasDetails = !!props.actualModel
 
   if (!hasDetails) {
     if (props.onInspect) {
@@ -134,15 +111,7 @@ export function ModelBadge(props: ModelBadgeProps) {
   const content = (
     <>
       <ModelBadgeContent {...props} copyable={false} />
-      {mismatch && (
-        <StatusBadge
-          icon={AlertTriangle}
-          label={responseModelLabel}
-          variant='warning'
-          copyable={false}
-        />
-      )}
-      {!mismatch && props.actualModel && (
+      {props.actualModel && (
         <Route
           className='text-muted-foreground size-3 shrink-0'
           aria-hidden='true'
@@ -179,76 +148,25 @@ export function ModelBadge(props: ModelBadgeProps) {
         {content}
       </PopoverTrigger>
       <PopoverContent className='w-96 max-w-[calc(100vw-2rem)]'>
-        {props.responseModel ? (
-          <ResponseModelDetails observation={props.responseModel} />
-        ) : (
-          <div className='space-y-2'>
-            <div className='flex items-start justify-between gap-3'>
-              <span className='text-muted-foreground text-xs'>
-                {t('Request Model:')}
-              </span>
-              <span className='truncate font-mono text-xs font-medium'>
-                {props.modelName}
-              </span>
-            </div>
-            <div className='flex items-start justify-between gap-3'>
-              <span className='text-muted-foreground text-xs'>
-                {t('Actual Model:')}
-              </span>
-              <span className='truncate font-mono text-xs font-medium'>
-                {props.actualModel}
-              </span>
-            </div>
+        <div className='space-y-2'>
+          <div className='flex items-start justify-between gap-3'>
+            <span className='text-muted-foreground text-xs'>
+              {t('Request Model:')}
+            </span>
+            <span className='truncate font-mono text-xs font-medium'>
+              {props.modelName}
+            </span>
           </div>
-        )}
+          <div className='flex items-start justify-between gap-3'>
+            <span className='text-muted-foreground text-xs'>
+              {t('Actual Model:')}
+            </span>
+            <span className='truncate font-mono text-xs font-medium'>
+              {props.actualModel}
+            </span>
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
-  )
-}
-
-export function ResponseModelDetails(props: {
-  observation: NonNullable<LogOtherData['response_model']>
-}) {
-  const { t } = useTranslation()
-  const mismatch = isResponseModelMismatch(props.observation)
-
-  return (
-    <div className='min-w-0 space-y-2'>
-      {mismatch && (
-        <StatusBadge
-          icon={AlertTriangle}
-          label={t('Response model: {{model}}', {
-            model: props.observation.returned_model,
-          })}
-          variant='warning'
-          copyable={false}
-          className='h-auto whitespace-normal'
-        />
-      )}
-      <DetailRow
-        label={t('Request Model')}
-        value={props.observation.requested_model}
-        mono
-      />
-      <DetailRow
-        label={t('Upstream Model')}
-        value={
-          props.observation.upstream_model || props.observation.requested_model
-        }
-        mono
-      />
-      <DetailRow
-        label={t('Response Model')}
-        value={props.observation.returned_model}
-        mono
-      />
-      {mismatch && (
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'The upstream returned a model name different from both the requested and upstream models. Aliases or dated versions may also cause this; this warning alone does not prove model substitution.'
-          )}
-        </p>
-      )}
-    </div>
   )
 }
