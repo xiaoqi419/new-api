@@ -12,6 +12,7 @@ import {
   Gauge,
   Gift,
   History,
+  Images,
   Key,
   LayoutDashboard,
   LifeBuoy,
@@ -238,6 +239,13 @@ describe('root sidebar navigation data', () => {
         activeUrls: undefined,
         configUrls: undefined,
         icon: Megaphone,
+      },
+      {
+        title: 'Pelican gallery',
+        url: '/pelican',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: Images,
       },
     ])
     expect(linkContract(getGroup(data, 'billing'))).toEqual([

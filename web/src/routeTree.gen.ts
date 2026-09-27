@@ -67,6 +67,7 @@ import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLotteryAdminRouteImport } from './routes/_authenticated/lottery/admin'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
+import { Route as AuthenticatedPelicanIndexRouteImport } from './routes/_authenticated/pelican/index'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
 import { Route as AuthenticatedPlaygroundSectionRouteImport } from './routes/_authenticated/playground/$section'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
@@ -424,6 +425,12 @@ const AuthenticatedModelsSectionRoute =
     path: '/models/$section',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPelicanIndexRoute =
+  AuthenticatedPelicanIndexRouteImport.update({
+    id: '/pelican/',
+    path: '/pelican/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPlaygroundIndexRoute =
   AuthenticatedPlaygroundIndexRouteImport.update({
     id: '/playground/',
@@ -720,6 +727,7 @@ export interface FileRoutesByFullPath {
   '/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
+  '/pelican/': typeof AuthenticatedPelicanIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/rebate/': typeof AuthenticatedRebateIndexRoute
@@ -816,6 +824,7 @@ export interface FileRoutesByTo {
   '/image-generation': typeof AuthenticatedImageGenerationIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
+  '/pelican': typeof AuthenticatedPelicanIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/rebate': typeof AuthenticatedRebateIndexRoute
@@ -916,6 +925,7 @@ export interface FileRoutesById {
   '/_authenticated/image-generation/': typeof AuthenticatedImageGenerationIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
+  '/_authenticated/pelican/': typeof AuthenticatedPelicanIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/rebate/': typeof AuthenticatedRebateIndexRoute
@@ -1015,6 +1025,7 @@ export interface FileRouteTypes {
     | '/image-generation/'
     | '/keys/'
     | '/models/'
+    | '/pelican/'
     | '/playground/'
     | '/profile/'
     | '/rebate/'
@@ -1111,6 +1122,7 @@ export interface FileRouteTypes {
     | '/image-generation'
     | '/keys'
     | '/models'
+    | '/pelican'
     | '/playground'
     | '/profile'
     | '/rebate'
@@ -1210,6 +1222,7 @@ export interface FileRouteTypes {
     | '/_authenticated/image-generation/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
+    | '/_authenticated/pelican/'
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
     | '/_authenticated/rebate/'
@@ -1675,6 +1688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModelsSectionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pelican/': {
+      id: '/_authenticated/pelican/'
+      path: '/pelican'
+      fullPath: '/pelican/'
+      preLoaderRoute: typeof AuthenticatedPelicanIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/playground/': {
       id: '/_authenticated/playground/'
       path: '/playground'
@@ -2079,6 +2099,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImageGenerationIndexRoute: typeof AuthenticatedImageGenerationIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
+  AuthenticatedPelicanIndexRoute: typeof AuthenticatedPelicanIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRebateIndexRoute: typeof AuthenticatedRebateIndexRoute
@@ -2139,6 +2160,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedImageGenerationIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
+  AuthenticatedPelicanIndexRoute: AuthenticatedPelicanIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRebateIndexRoute: AuthenticatedRebateIndexRoute,

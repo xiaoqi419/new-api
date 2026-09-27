@@ -42,6 +42,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/tls/check", controller.CheckTLSDomain)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
+		apiRouter.GET("/pelican/runs", middleware.DisableCache(), controller.GetPelicanRuns)
+		apiRouter.GET("/pelican/runs/:id/preview", middleware.DisableCache(), controller.GetPelicanPreview)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
