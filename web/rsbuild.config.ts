@@ -23,9 +23,22 @@ export default defineConfig(({ envMode }) => {
   // server 当成前端路由返回 HTML,画布和站内生图页都会静默失败。
   const devProxy = Object.fromEntries(
     (['/api', '/mj', '/pg', '/canvas-app', '/v1', '/v1beta'] as const).map(
-      (key) => [key, { target: serverUrl, changeOrigin: true }]
+      (key) => [
+        key,
+        {
+          target: serverUrl,
+          changeOrigin: true,
+          // The API only accepts its own host or the public H5 sites. The dev
+          // server is a different origin, so forward the backend origin instead
+          // of the browser's page origin.
+          headers: { origin: serverUrl },
+        },
+      ]
     )
-  ) as Record<string, { target: string; changeOrigin: boolean }>
+  ) as Record<
+    string,
+    { target: string; changeOrigin: boolean; headers: { origin: string } }
+  >
 
   return {
     plugins: [pluginReact(), pluginTailwindcss({ optimize: false })],

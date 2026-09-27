@@ -35,6 +35,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'feature',
         items: [
+          '常规侧栏新增鹈鹕画廊，可查看实时画面、空画框，并放大动画。',
           'Responses WebSocket 统一使用官方通用协议，渠道只保留官方开关；旧桥接设置不再生效，普通 HTTP/SSE 请求保持原传输方式。',
           '同步官方 rc.40：新增任务插件管理、渠道插件绑定、请求策略、模型元数据与分组管理，支持插件计费表达式和图片视频任务产物查看。',
         ],
