@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useLocation } from '@tanstack/react-router'
-import { useMemo, useCallback, useRef, useState } from 'react'
+import { useMemo, useCallback, useRef, useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -48,6 +48,7 @@ import {
   resolveChatUrl,
   type ChatPreset,
 } from '@/features/chat/lib/chat-links'
+import { useSidebarRefresh } from '@/hooks/use-sidebar-refresh'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { normalizeHref } from '../lib/url-utils'
@@ -68,7 +69,7 @@ function ChatMenuItem({
   active: boolean
   loading: boolean
   onOpen: (preset: ChatPreset) => void | Promise<void>
-  onNavigate: () => void
+  onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void
   preload?: false
 }) {
   if (preset.type === 'web') {
@@ -123,15 +124,23 @@ function DropdownPresetItem({
   preset,
   loading,
   onOpen,
+  onNavigate,
 }: {
   preset: ChatPreset
   loading: boolean
   onOpen: (preset: ChatPreset) => void | Promise<void>
+  onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void
 }) {
   if (preset.type === 'web') {
     return (
       <DropdownMenuItem
-        render={<Link to='/chat/$chatId' params={{ chatId: preset.id }} />}
+        render={
+          <Link
+            to='/chat/$chatId'
+            params={{ chatId: preset.id }}
+            onClick={onNavigate}
+          />
+        }
       >
         {preset.name}
       </DropdownMenuItem>
@@ -163,8 +172,17 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
   const { chatPresets, serverAddress } = useChatPresets()
   const { state, isMobile, setOpenMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
+  const refreshCurrentLink = useSidebarRefresh()
   const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null)
   const loadingPresetIdRef = useRef<string | null>(null)
+
+  const handleNavigate = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      setOpenMobile(false)
+      refreshCurrentLink(event)
+    },
+    [refreshCurrentLink, setOpenMobile]
+  )
 
   const visiblePresets = useMemo(
     () => chatPresets.filter((preset) => preset.type !== 'fluent'),
@@ -248,6 +266,7 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
                 preset={preset}
                 loading={loadingPresetId === preset.id}
                 onOpen={handleOpenExternal}
+                onNavigate={handleNavigate}
               />
             ))}
           </DropdownMenuContent>
@@ -280,7 +299,7 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
               active={normalizedHref === `/chat/${preset.id}`}
               loading={loadingPresetId === preset.id}
               onOpen={handleOpenExternal}
-              onNavigate={() => setOpenMobile(false)}
+              onNavigate={handleNavigate}
               preload={isMobile ? false : undefined}
             />
           ))}
