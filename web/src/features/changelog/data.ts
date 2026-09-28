@@ -30,6 +30,18 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-28',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '侧边栏再次点击当前菜单即可刷新页面，并保留当前筛选条件和地址。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-09-22',
     changes: [
       {

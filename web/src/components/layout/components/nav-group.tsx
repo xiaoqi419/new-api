@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useLocation } from '@tanstack/react-router'
-import { type ReactNode, useState, useEffect } from 'react'
+import { type MouseEvent, type ReactNode, useState, useEffect } from 'react'
 
 import { ChevronRight } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +46,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useSidebarRefresh } from '@/hooks/use-sidebar-refresh'
 
 import { checkIsActive } from '../lib/url-utils'
 import type {
@@ -63,6 +64,7 @@ import { ChatPresetsItem } from './chat-presets-item'
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
+  const refreshCurrentLink = useSidebarRefresh()
 
   return (
     <SidebarGroup className='px-2 py-1'>
@@ -81,7 +83,12 @@ export function NavGroup({ title, items }: NavGroupProps) {
           // If no sub-items, render regular link
           if (!item.items) {
             return (
-              <SidebarMenuLink key={key} item={item as NavLink} href={href} />
+              <SidebarMenuLink
+                key={key}
+                item={item as NavLink}
+                href={href}
+                refreshCurrentLink={refreshCurrentLink}
+              />
             )
           }
 
@@ -92,6 +99,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
                 key={key}
                 item={item as NavCollapsible}
                 href={href}
+                refreshCurrentLink={refreshCurrentLink}
               />
             )
           }
@@ -102,6 +110,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
               key={key}
               item={item as NavCollapsible}
               href={href}
+              refreshCurrentLink={refreshCurrentLink}
             />
           )
         })}
@@ -127,7 +136,15 @@ const NAV_ICON_CLASS = 'text-primary shrink-0'
 /**
  * Sidebar menu link item
  */
-function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
+function SidebarMenuLink({
+  item,
+  href,
+  refreshCurrentLink,
+}: {
+  item: NavLink
+  href: string
+  refreshCurrentLink: (event: MouseEvent<HTMLAnchorElement>) => void
+}) {
   const { isMobile, setOpenMobile } = useSidebar()
   return (
     <SidebarMenuItem>
@@ -138,7 +155,10 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
           <Link
             to={item.url}
             preload={isMobile ? false : undefined}
-            onClick={() => setOpenMobile(false)}
+            onClick={(event) => {
+              setOpenMobile(false)
+              refreshCurrentLink(event)
+            }}
           />
         }
       >
@@ -156,9 +176,11 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
 function SidebarMenuCollapsible({
   item,
   href,
+  refreshCurrentLink,
 }: {
   item: NavCollapsible
   href: string
+  refreshCurrentLink: (event: MouseEvent<HTMLAnchorElement>) => void
 }) {
   const { isMobile, setOpenMobile } = useSidebar()
   // 检查当前路径是否匹配子菜单项
@@ -200,7 +222,10 @@ function SidebarMenuCollapsible({
                   <Link
                     to={subItem.url}
                     preload={isMobile ? false : undefined}
-                    onClick={() => setOpenMobile(false)}
+                    onClick={(event) => {
+                      setOpenMobile(false)
+                      refreshCurrentLink(event)
+                    }}
                   />
                 }
               >
@@ -222,9 +247,11 @@ function SidebarMenuCollapsible({
 function SidebarMenuCollapsedDropdown({
   item,
   href,
+  refreshCurrentLink,
 }: {
   item: NavCollapsible
   href: string
+  refreshCurrentLink: (event: MouseEvent<HTMLAnchorElement>) => void
 }) {
   return (
     <SidebarMenuItem>
@@ -256,6 +283,7 @@ function SidebarMenuCollapsedDropdown({
                   <Link
                     to={sub.url}
                     className={`${checkIsActive(href, sub) ? 'bg-secondary' : ''}`}
+                    onClick={refreshCurrentLink}
                   />
                 }
               >
