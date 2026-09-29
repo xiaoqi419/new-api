@@ -143,7 +143,7 @@ export function ProbeDialog(props: {
       }}
       title={dialogTitle}
       description={dialogDescription}
-      contentClassName='sm:max-w-4xl'
+      contentClassName='sm:max-w-6xl'
       contentHeight='auto'
       bodyClassName='space-y-4 max-h-[82vh] overflow-y-auto pr-1'
     >

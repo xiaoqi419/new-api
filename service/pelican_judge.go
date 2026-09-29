@@ -26,7 +26,7 @@ var (
 	pelicanVehicles       = []string{"自行车", "热气球", "滑板", "摩托车"}
 	pelicanScenes         = []string{"湖边", "沙漠", "彩虹下", "海边", "雪山", "城市夜景"}
 	pelicanTrailingNumber = regexp.MustCompile(`\d+`)
-	pelicanNamespaceURL   = regexp.MustCompile(`(?i)\sxmlns(?::[a-z0-9]+)?\s*=\s*["']http://www\.w3\.org/(?:2000/svg|1999/xlink)["']`)
+	pelicanNamespaceURL   = regexp.MustCompile(`(?i)https?://www\.w3\.org/(?:2000/svg|1999/xlink)/?([^A-Za-z0-9/._~:?&=%+-]|$)`)
 )
 
 func pelicanLocation() *time.Location {
@@ -147,29 +147,75 @@ func NormalizePelicanDrawingPrompt(raw string) (string, error) {
 	return raw, nil
 }
 
-// JudgeLogicAnswer uses the last number in the reply. A pass means that number is the configured answer.
+// JudgeLogicAnswer prefers the last number inside the last \boxed{}.
+// A number after that box is another scenario, not the declared answer.
+// Without a boxed answer, only the last number in the reply counts.
 func JudgeLogicAnswer(reply string) (answer string, pass bool) {
 	return judgeLogicAnswer(reply, PelicanExpectedAnswer())
 }
 
 func judgeLogicAnswer(reply, expected string) (answer string, pass bool) {
-	matches := pelicanTrailingNumber.FindAllStringIndex(reply, -1)
-	if len(matches) == 0 {
-		return "", false
+	answer = pelicanBoxedAnswer(reply)
+	if answer == "" {
+		matches := pelicanTrailingNumber.FindAllString(reply, -1)
+		if len(matches) == 0 {
+			return "", false
+		}
+		answer = matches[len(matches)-1]
 	}
-	last := matches[len(matches)-1]
-	answer = reply[last[0]:last[1]]
 	return answer, answer == expected
+}
+
+func pelicanBoxedAnswer(reply string) string {
+	const marker = `\boxed`
+	last := ""
+	for {
+		index := strings.Index(reply, marker)
+		if index < 0 {
+			return last
+		}
+		reply = reply[index+len(marker):]
+		reply = strings.TrimLeft(reply, " \t\r\n")
+		if !strings.HasPrefix(reply, "{") {
+			continue
+		}
+		reply = reply[1:]
+		depth := 1
+		end := -1
+		for i := 0; i < len(reply); i++ {
+			switch reply[i] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+				if depth == 0 {
+					end = i
+				}
+			}
+			if end >= 0 {
+				break
+			}
+		}
+		if end < 0 {
+			return last
+		}
+		nums := pelicanTrailingNumber.FindAllString(reply[:end], -1)
+		if len(nums) > 0 {
+			last = nums[len(nums)-1]
+		}
+		reply = reply[end+1:]
+	}
 }
 
 // ExtractDrawingHTML keeps one inline drawing. SVG with a viewBox, or a canvas, is a pass.
 // Inline scripts stay so the sandbox can animate and take clicks. Remote URLs are rejected.
+// W3C SVG and XLink namespace URLs are not remote assets, even inside script strings.
 func ExtractDrawingHTML(reply string) (string, bool) {
 	text := stripCodeFence(strings.TrimSpace(reply))
 	if text == "" || strings.Contains(strings.ToLower(text), "javascript:") {
 		return "", false
 	}
-	withoutNamespace := pelicanNamespaceURL.ReplaceAllString(text, "")
+	withoutNamespace := pelicanNamespaceURL.ReplaceAllString(text, "$1")
 	lower := strings.ToLower(withoutNamespace)
 	if strings.Contains(lower, "http://") || strings.Contains(lower, "https://") {
 		return "", false
