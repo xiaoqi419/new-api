@@ -190,8 +190,9 @@ func ListEnabledAbilityGroups() ([]string, error) {
 	return names, nil
 }
 
-// FindPelicanToken returns one enabled token whose effective group is group.
-// A token with an empty group uses its user's group.
+// FindPelicanToken returns one enabled token owned by a root user whose
+// effective group is group. A token with an empty group uses its user's group.
+// Tokens owned by any other role are ignored.
 func FindPelicanToken(group string, now int64) (*Token, error) {
 	if strings.TrimSpace(group) == "" {
 		return nil, nil
@@ -201,6 +202,7 @@ func FindPelicanToken(group string, now int64) (*Token, error) {
 	userGroup := "users." + commonGroupCol
 	err := DB.Model(&Token{}).
 		Joins("join users on users.id = tokens.user_id").
+		Where("users.role = ?", common.RoleRootUser).
 		Where("tokens.status = ?", common.TokenStatusEnabled).
 		Where("tokens.expired_time = -1 OR tokens.expired_time >= ?", now).
 		Where("tokens.unlimited_quota = ? OR tokens.remain_quota > 0", true).
