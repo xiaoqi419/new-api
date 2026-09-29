@@ -68,10 +68,12 @@ import { Route as AuthenticatedLotteryAdminRouteImport } from './routes/_authent
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedPelicanIndexRouteImport } from './routes/_authenticated/pelican/index'
+import { Route as AuthenticatedPelicanSettingsRouteImport } from './routes/_authenticated/pelican/settings'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
 import { Route as AuthenticatedPlaygroundSectionRouteImport } from './routes/_authenticated/playground/$section'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRebateIndexRouteImport } from './routes/_authenticated/rebate/index'
+import { Route as AuthenticatedRechargeBonusIndexRouteImport } from './routes/_authenticated/recharge-bonus/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
@@ -431,6 +433,12 @@ const AuthenticatedPelicanIndexRoute =
     path: '/pelican/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPelicanSettingsRoute =
+  AuthenticatedPelicanSettingsRouteImport.update({
+    id: '/pelican/settings',
+    path: '/pelican/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPlaygroundIndexRoute =
   AuthenticatedPlaygroundIndexRouteImport.update({
     id: '/playground/',
@@ -453,6 +461,12 @@ const AuthenticatedRebateIndexRoute =
   AuthenticatedRebateIndexRouteImport.update({
     id: '/rebate/',
     path: '/rebate/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRechargeBonusIndexRoute =
+  AuthenticatedRechargeBonusIndexRouteImport.update({
+    id: '/recharge-bonus/',
+    path: '/recharge-bonus/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRedemptionCodesIndexRoute =
@@ -705,6 +719,7 @@ export interface FileRoutesByFullPath {
   '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/pelican/settings': typeof AuthenticatedPelicanSettingsRoute
   '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
@@ -731,6 +746,7 @@ export interface FileRoutesByFullPath {
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/rebate/': typeof AuthenticatedRebateIndexRoute
+  '/recharge-bonus/': typeof AuthenticatedRechargeBonusIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
@@ -802,6 +818,7 @@ export interface FileRoutesByTo {
   '/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/pelican/settings': typeof AuthenticatedPelicanSettingsRoute
   '/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
@@ -828,6 +845,7 @@ export interface FileRoutesByTo {
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/rebate': typeof AuthenticatedRebateIndexRoute
+  '/recharge-bonus': typeof AuthenticatedRechargeBonusIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
@@ -903,6 +921,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices/admin': typeof AuthenticatedInvoicesAdminRoute
   '/_authenticated/lottery/admin': typeof AuthenticatedLotteryAdminRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
+  '/_authenticated/pelican/settings': typeof AuthenticatedPelicanSettingsRoute
   '/_authenticated/playground/$section': typeof AuthenticatedPlaygroundSectionRoute
   '/_authenticated/tickets/admin': typeof AuthenticatedTicketsAdminRoute
   '/_authenticated/tickets/admin-detail': typeof AuthenticatedTicketsAdminDetailRoute
@@ -929,6 +948,7 @@ export interface FileRoutesById {
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/rebate/': typeof AuthenticatedRebateIndexRoute
+  '/_authenticated/recharge-bonus/': typeof AuthenticatedRechargeBonusIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
@@ -1003,6 +1023,7 @@ export interface FileRouteTypes {
     | '/invoices/admin'
     | '/lottery/admin'
     | '/models/$section'
+    | '/pelican/settings'
     | '/playground/$section'
     | '/tickets/admin'
     | '/tickets/admin-detail'
@@ -1029,6 +1050,7 @@ export interface FileRouteTypes {
     | '/playground/'
     | '/profile/'
     | '/rebate/'
+    | '/recharge-bonus/'
     | '/redemption-codes/'
     | '/security/'
     | '/subscriptions/'
@@ -1100,6 +1122,7 @@ export interface FileRouteTypes {
     | '/invoices/admin'
     | '/lottery/admin'
     | '/models/$section'
+    | '/pelican/settings'
     | '/playground/$section'
     | '/tickets/admin'
     | '/tickets/admin-detail'
@@ -1126,6 +1149,7 @@ export interface FileRouteTypes {
     | '/playground'
     | '/profile'
     | '/rebate'
+    | '/recharge-bonus'
     | '/redemption-codes'
     | '/security'
     | '/subscriptions'
@@ -1200,6 +1224,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/admin'
     | '/_authenticated/lottery/admin'
     | '/_authenticated/models/$section'
+    | '/_authenticated/pelican/settings'
     | '/_authenticated/playground/$section'
     | '/_authenticated/tickets/admin'
     | '/_authenticated/tickets/admin-detail'
@@ -1226,6 +1251,7 @@ export interface FileRouteTypes {
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
     | '/_authenticated/rebate/'
+    | '/_authenticated/recharge-bonus/'
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/security/'
     | '/_authenticated/subscriptions/'
@@ -1695,6 +1721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPelicanIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pelican/settings': {
+      id: '/_authenticated/pelican/settings'
+      path: '/pelican/settings'
+      fullPath: '/pelican/settings'
+      preLoaderRoute: typeof AuthenticatedPelicanSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/playground/': {
       id: '/_authenticated/playground/'
       path: '/playground'
@@ -1721,6 +1754,13 @@ declare module '@tanstack/react-router' {
       path: '/rebate'
       fullPath: '/rebate/'
       preLoaderRoute: typeof AuthenticatedRebateIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/recharge-bonus/': {
+      id: '/_authenticated/recharge-bonus/'
+      path: '/recharge-bonus'
+      fullPath: '/recharge-bonus/'
+      preLoaderRoute: typeof AuthenticatedRechargeBonusIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/redemption-codes/': {
@@ -2077,6 +2117,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInvoicesAdminRoute: typeof AuthenticatedInvoicesAdminRoute
   AuthenticatedLotteryAdminRoute: typeof AuthenticatedLotteryAdminRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
+  AuthenticatedPelicanSettingsRoute: typeof AuthenticatedPelicanSettingsRoute
   AuthenticatedPlaygroundSectionRoute: typeof AuthenticatedPlaygroundSectionRoute
   AuthenticatedTicketsAdminRoute: typeof AuthenticatedTicketsAdminRoute
   AuthenticatedTicketsAdminDetailRoute: typeof AuthenticatedTicketsAdminDetailRoute
@@ -2103,6 +2144,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRebateIndexRoute: typeof AuthenticatedRebateIndexRoute
+  AuthenticatedRechargeBonusIndexRoute: typeof AuthenticatedRechargeBonusIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
@@ -2137,6 +2179,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInvoicesAdminRoute: AuthenticatedInvoicesAdminRoute,
   AuthenticatedLotteryAdminRoute: AuthenticatedLotteryAdminRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
+  AuthenticatedPelicanSettingsRoute: AuthenticatedPelicanSettingsRoute,
   AuthenticatedPlaygroundSectionRoute: AuthenticatedPlaygroundSectionRoute,
   AuthenticatedTicketsAdminRoute: AuthenticatedTicketsAdminRoute,
   AuthenticatedTicketsAdminDetailRoute: AuthenticatedTicketsAdminDetailRoute,
@@ -2164,6 +2207,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRebateIndexRoute: AuthenticatedRebateIndexRoute,
+  AuthenticatedRechargeBonusIndexRoute: AuthenticatedRechargeBonusIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,

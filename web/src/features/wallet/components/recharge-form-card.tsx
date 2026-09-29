@@ -91,6 +91,12 @@ interface RechargeFormCardProps {
   enableWaffoPancakeTopup?: boolean
 }
 
+function formatBonusYuan(value: number) {
+  if (!Number.isFinite(value)) return '0'
+  if (Number.isInteger(value)) return String(value)
+  return value.toFixed(2)
+}
+
 export function RechargeFormCard({
   topupInfo,
   presetAmounts,
@@ -228,6 +234,21 @@ export function RechargeFormCard({
         <div className='space-y-4 sm:space-y-6'>
           {configurableTopupAvailable && (
             <>
+              {topupInfo?.topup_bonus?.tiers?.length ? (
+                <div className='bg-muted/40 space-y-2 rounded-lg border p-3'>
+                  <p className='text-sm font-medium'>{t('Recharge bonus tiers')}</p>
+                  <ul className='space-y-1 text-sm'>
+                    {topupInfo.topup_bonus.tiers.map((tier) => (
+                      <li key={tier.pay}>
+                        {t('Recharge {{pay}} CNY, get {{gift}} CNY extra', {
+                          pay: formatBonusYuan(tier.pay),
+                          gift: formatBonusYuan(tier.gift),
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {presetAmounts.length > 0 && (
                 <div className='space-y-2.5 sm:space-y-3'>
                   <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>

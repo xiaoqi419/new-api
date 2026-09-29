@@ -183,6 +183,7 @@ func main() {
 
 	// 模型健康探测：定时对各分组 chat 模型发起最小请求，点亮模型广场健康条与渠道监控可用率。
 	controller.StartHealthProbe()
+	service.StartPelicanMonitor()
 
 	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
 		common.BatchUpdateEnabled = true

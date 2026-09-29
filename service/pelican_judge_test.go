@@ -1,0 +1,162 @@
+package service
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPelicanSlotStartAlignsToShanghaiHalfHour(t *testing.T) {
+	loc := time.FixedZone("CST", 8*3600)
+	now := time.Date(2026, 9, 28, 17, 34, 15, 0, loc)
+	got := time.Unix(PelicanSlotStart(now), 0).In(loc)
+	assert.Equal(t, 17, got.Hour())
+	assert.Equal(t, 30, got.Minute())
+	assert.Equal(t, 0, got.Second())
+}
+
+func TestPelicanWindowSlots(t *testing.T) {
+	loc := time.FixedZone("CST", 8*3600)
+	now := time.Date(2026, 9, 28, 18, 10, 0, 0, loc)
+	day := PelicanWindowSlots("24h", now)
+	require.Len(t, day, 48)
+	assert.Equal(t, PelicanSlotStart(now), day[len(day)-1])
+	assert.Equal(t, int64(30*60), day[1]-day[0])
+
+	three := PelicanWindowSlots("3d", now)
+	require.Len(t, three, 144)
+	assert.Equal(t, day[len(day)-1], three[len(three)-1])
+}
+
+func TestJudgeLogicAnswer(t *testing.T) {
+	answer, pass := JudgeLogicAnswer("前面写了答案是29颗，但允许按形状选择时，最少是21颗。")
+	assert.True(t, pass)
+	assert.Equal(t, "21", answer)
+
+	answer, pass = JudgeLogicAnswer("最少取出 21 个，后面又写了 12 个。")
+	assert.False(t, pass)
+	assert.Equal(t, "12", answer)
+
+	answer, pass = JudgeLogicAnswer("所以最少取出20个。")
+	assert.False(t, pass)
+	assert.Equal(t, "20", answer)
+
+	answer, pass = JudgeLogicAnswer("前面写了最少取出 20 个，但最终答案是 21")
+	assert.True(t, pass)
+	assert.Equal(t, "21", answer)
+
+	answer, pass = JudgeLogicAnswer("我不会这道题")
+	assert.False(t, pass)
+	assert.Empty(t, answer)
+}
+
+func TestExtractDrawingHTML(t *testing.T) {
+	html, ok := ExtractDrawingHTML("```html\n<!doctype html><html><body><svg viewBox=\"0 0 10 10\"></svg></body></html>\n```")
+	require.True(t, ok)
+	assert.Contains(t, html, "<svg")
+
+	fragment, ok := ExtractDrawingHTML(`<svg viewBox="0 0 4 4"><circle r="1"/></svg>`)
+	require.True(t, ok)
+	assert.Contains(t, fragment, "<html>")
+
+	scripted, ok := ExtractDrawingHTML(`<svg viewBox="0 0 4 4"></svg><script>document.body.addEventListener("click", function () {})</script>`)
+	require.True(t, ok)
+	assert.Contains(t, scripted, "<script>")
+
+	canvas, ok := ExtractDrawingHTML("<canvas id=\"c\"></canvas><script>const c = document.querySelector(\"canvas\")</script>")
+	require.True(t, ok)
+	assert.Contains(t, canvas, "<canvas")
+	assert.Contains(t, canvas, "<html>")
+
+	_, ok = ExtractDrawingHTML(`<canvas></canvas><img src="https://example.com/a.png">`)
+	assert.False(t, ok)
+
+	_, ok = ExtractDrawingHTML(`<svg></svg>`)
+	assert.False(t, ok)
+
+	_, ok = ExtractDrawingHTML(`<svg viewBox="0 0 4 4"><image href="https://example.com/a.png"/></svg>`)
+	assert.False(t, ok)
+
+	named, ok := ExtractDrawingHTML(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><style>@keyframes spin { to { transform: rotate(360deg) } }</style></svg>`)
+	require.True(t, ok)
+	assert.Contains(t, named, "xmlns")
+	assert.Contains(t, named, "@keyframes")
+}
+
+func TestPelicanDrawingThemeIsStable(t *testing.T) {
+	subject, vehicle, scene := PelicanDrawingTheme("codex", 1_700_000_000)
+	againSubject, againVehicle, againScene := PelicanDrawingTheme("codex", 1_700_000_000)
+	assert.Equal(t, subject, againSubject)
+	assert.Equal(t, vehicle, againVehicle)
+	assert.Equal(t, scene, againScene)
+	assert.Contains(t, []string{"奥巴马", "孙悟空", "奥特曼", "鹈鹕", "北极熊"}, subject)
+	assert.Contains(t, []string{"自行车", "热气球", "滑板", "摩托车"}, vehicle)
+	assert.Contains(t, PelicanDrawingPrompt(subject, vehicle, scene), subject)
+
+	seenSubjects := map[string]struct{}{}
+	seenVehicles := map[string]struct{}{}
+	for slot := int64(0); slot < 20; slot++ {
+		picked, ride, _ := PelicanDrawingTheme("codex", slot)
+		seenSubjects[picked] = struct{}{}
+		seenVehicles[ride] = struct{}{}
+	}
+	assert.Len(t, seenSubjects, 5)
+	assert.Len(t, seenVehicles, 4)
+}
+
+func TestNormalizePelicanPrompts(t *testing.T) {
+	prompt, err := NormalizePelicanLogicPrompt("  7 candies  ")
+	require.NoError(t, err)
+	assert.Equal(t, "7 candies", prompt)
+
+	_, err = NormalizePelicanLogicPrompt(strings.Repeat("a", pelicanPromptLimit+1))
+	require.Error(t, err)
+
+	answer, err := NormalizePelicanLogicAnswer(" 21 ")
+	require.NoError(t, err)
+	assert.Equal(t, "21", answer)
+	_, err = NormalizePelicanLogicAnswer("021")
+	require.Error(t, err)
+	_, err = NormalizePelicanLogicAnswer("21a")
+	require.Error(t, err)
+
+	_, err = NormalizePelicanDrawingPrompt("draw a cat")
+	require.Error(t, err)
+	drawing, err := NormalizePelicanDrawingPrompt(" {{subject}} on {{vehicle}} at {{scene}} ")
+	require.NoError(t, err)
+	assert.Equal(t, "{{subject}} on {{vehicle}} at {{scene}}", drawing)
+}
+
+func TestJudgeLogicAnswerUsesConfiguredNumber(t *testing.T) {
+	answer, pass := judgeLogicAnswer("最终答案是 7", "7")
+	assert.True(t, pass)
+	assert.Equal(t, "7", answer)
+
+	answer, pass = judgeLogicAnswer("最终答案是 7", "21")
+	assert.False(t, pass)
+	assert.Equal(t, "7", answer)
+}
+
+func TestPelicanDrawingPromptFillsCustomTemplate(t *testing.T) {
+	common.OptionMapRWMutex.Lock()
+	previous := common.OptionMap
+	common.OptionMap = map[string]string{
+		"PelicanDrawingPrompt": "{{subject}}骑{{vehicle}}在{{scene}}",
+		"PelicanLogicPrompt":   "custom question",
+		"PelicanLogicAnswer":   "7",
+	}
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		common.OptionMap = previous
+		common.OptionMapRWMutex.Unlock()
+	})
+
+	assert.Equal(t, "孙悟空骑自行车在海边", PelicanDrawingPrompt("孙悟空", "自行车", "海边"))
+	assert.Equal(t, "custom question", PelicanLogicPrompt())
+	assert.Equal(t, "7", PelicanExpectedAnswer())
+}

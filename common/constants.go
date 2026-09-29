@@ -154,6 +154,10 @@ var RebateRatio = 0.0
 
 // GroupBuyEnabled 控制拼团充值功能是否开启。
 var GroupBuyEnabled = false
+
+// PelicanMonitorEnabled is the admin switch for the degradation monitor.
+// An empty PelicanMonitorGroups list monitors every enabled group.
+var PelicanMonitorEnabled = false
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false

@@ -1,6 +1,7 @@
 import { Window } from 'happy-dom'
 import { createInstance } from 'i18next'
 import {
+  BadgePercent,
   ShieldCheck,
   PlugZap,
   BadgeCheck,
@@ -241,7 +242,7 @@ describe('root sidebar navigation data', () => {
         icon: Megaphone,
       },
       {
-        title: 'Pelican gallery',
+        title: 'Degradation monitor',
         url: '/pelican',
         activeUrls: undefined,
         configUrls: undefined,
@@ -329,6 +330,8 @@ describe('root sidebar navigation data', () => {
         ['Changelog', '/changelog', History],
         ['System Info', '/system-info', ServerCog],
         ['Task Plugins', '/task-plugins', PlugZap],
+        ['Degradation monitor settings', '/pelican/settings', Images],
+        ['Recharge bonus', '/recharge-bonus', BadgePercent],
         ['System Settings', '/system-settings/site', Settings],
       ]
     )
@@ -345,14 +348,18 @@ describe('root sidebar navigation data', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
+      undefined,
       ['/system-settings'],
     ])
     expect(adminLinks.every((item) => item.configUrls === undefined)).toBe(true)
     expect(
       adminLinks.find((item) => item.title === 'System Info')?.requiredRole
     ).toBe(ROLE.SUPER_ADMIN)
+    expect(
+      adminLinks.find((item) => item.title === 'Recharge bonus')?.requiredRole
+    ).toBe(ROLE.SUPER_ADMIN)
   })
-
   test('keeps the agent console group without exposing retired root entries', async () => {
     const data = await renderSidebarData(true)
 

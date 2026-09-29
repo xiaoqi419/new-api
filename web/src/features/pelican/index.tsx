@@ -20,101 +20,86 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Dialog } from '@/components/dialog'
-import { Images, Maximize2, RefreshCw, TriangleAlert } from '@/components/icons'
+import { EmptyState } from '@/components/empty-state'
+import {
+  Activity,
+  Clock,
+  RefreshCw,
+  Timer,
+  TriangleAlert,
+} from '@/components/icons'
 import { SectionPageLayout } from '@/components/layout'
-import { StatusBadge, type StatusVariant } from '@/components/status-badge'
 import {
   Alert,
   AlertAction,
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toIntlLocale } from '@/i18n/languages'
-import { formatNumber } from '@/lib/format'
+import { ROLE } from '@/lib/roles'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
-import { fetchPelicanRuns, type PelicanRun } from './api'
-import { PelicanPreview } from './preview'
+import { fetchPelicanMonitor, type PelicanWindow } from './api'
+import { formatClock, formatCountdown, formatPercent } from './format'
+import { MonitorGroupCard } from './group-card'
+import { ProbeDialog } from './probe-dialog'
 
-const DEFAULT_LIMIT = 30
-const MAX_EMPTY_SLOTS = 60
-const SHANGHAI_TIME_ZONE = 'Asia/Shanghai'
+const RANGES: PelicanWindow[] = ['24h', '3d']
 
-function pelicanStatus(status: string, labelFor: (key: string) => string) {
-  switch (status) {
-    case 'success':
-      return {
-        label: labelFor('Generation completed'),
-        variant: 'success' as StatusVariant,
-      }
-    case 'running':
-      return {
-        label: labelFor('Drawing in progress'),
-        variant: 'info' as StatusVariant,
-      }
-    case 'failed':
-      return {
-        label: labelFor('Generation failed'),
-        variant: 'danger' as StatusVariant,
-      }
-    case 'interrupted':
-      return {
-        label: labelFor('Generation interrupted'),
-        variant: 'warning' as StatusVariant,
-      }
-    default:
-      return { label: status, variant: 'neutral' as StatusVariant }
-  }
+const LEGEND_ITEMS = [
+  { status: 'pass', key: 'Passed', color: 'bg-emerald-500' },
+  { status: 'fail', key: 'Failed', color: 'bg-rose-500' },
+  { status: 'error', key: 'Request failed', color: 'bg-amber-400' },
+  { status: 'running', key: 'Checking', color: 'bg-blue-500 animate-pulse' },
+  { status: 'empty', key: 'No data', color: 'bg-neutral-300 dark:bg-neutral-700' },
+] as const
+
+function statusText(status: string, labelFor: (key: string) => string) {
+  if (status === 'pass') return labelFor('Passed')
+  if (status === 'fail') return labelFor('Failed')
+  if (status === 'error') return labelFor('Request failed')
+  if (status === 'running') return labelFor('Checking')
+  if (status === 'now') return labelFor('Now')
+  if (status === 'avg') return labelFor('avg')
+  if (status === 'reasoning') return labelFor('Reasoning')
+  return labelFor('No data')
 }
 
-function shanghaiClock(startedAt: number, locale?: string) {
-  const value = new Date(startedAt * 1000)
-  if (Number.isNaN(value.getTime())) {
-    return { time: '--:--:--', date: '-- --', iso: '' }
-  }
-  const time = new Intl.DateTimeFormat(locale, {
-    timeZone: SHANGHAI_TIME_ZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(value)
-  const parts = new Intl.DateTimeFormat(locale, {
-    timeZone: SHANGHAI_TIME_ZONE,
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(value)
-  const month = parts.find((part) => part.type === 'month')?.value ?? ''
-  const day = parts.find((part) => part.type === 'day')?.value ?? ''
-  return { time, date: `${month}-${day}`, iso: value.toISOString() }
-}
-
-function runTitle(run: PelicanRun, fallback: string) {
-  const title = run.title?.trim()
-  return title ? title : fallback
-}
-
-function placeholderCopy(run: PelicanRun, labelFor: (key: string) => string) {
-  if (run.status === 'running') return labelFor('Turning the prompt into a frame')
-  if (run.error?.trim()) return run.error
-  return labelFor('This round did not produce a complete frame')
+function healthText(health: string, labelFor: (key: string) => string) {
+  if (health === 'normal') return labelFor('At full strength')
+  if (health === 'degraded') return labelFor('Possibly degraded')
+  return labelFor('No data')
 }
 
 export function PelicanGallery() {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const [range, setRange] = useState<PelicanWindow>('24h')
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const { data, isPending, isError, isFetching, refetch } = useQuery({
-    queryKey: ['pelican-runs'],
-    queryFn: ({ signal }) => fetchPelicanRuns(signal),
-    refetchInterval: 15_000,
+  const [selectedTitle, setSelectedTitle] = useState('')
+
+  const isRoot = useAuthStore(
+    (state) => state.auth.user?.role === ROLE.SUPER_ADMIN
+  )
+
+  const query = useQuery({
+    queryKey: ['pelican-monitor', range],
+    queryFn: ({ signal }) => fetchPelicanMonitor(range, signal),
+    refetchInterval: 30_000,
     refetchIntervalInBackground: false,
     meta: { errorToast: false },
   })
+
+  const refetch = query.refetch
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const onVisibility = () => {
@@ -124,79 +109,92 @@ export function PelicanGallery() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [refetch])
 
-  const runs = (data?.runs ?? []).filter(
-    (run) => Number.isSafeInteger(run.id) && run.id > 0
-  )
-  const reportedLimit =
-    typeof data?.limit === 'number' &&
-    Number.isFinite(data.limit) &&
-    data.limit > 0
-      ? Math.floor(data.limit)
-      : DEFAULT_LIMIT
-  const emptyCount = data
-    ? Math.min(MAX_EMPTY_SLOTS, Math.max(0, reportedLimit - runs.length))
-    : 0
-  const selected = runs.find((run) => run.id === selectedId) ?? null
-  const fallbackTitle = t('Pelican riding a bicycle')
+  const data = query.data
+  const rangeLabel = range === '3d' ? t('Last 3 days') : t('Last 24 hours')
 
-  useEffect(() => {
-    if (selectedId == null || !data) return
-    if (!runs.some((run) => run.id === selectedId)) setSelectedId(null)
-  }, [data, runs, selectedId])
-
-  let alertTitle = t('Preview unavailable')
-  let alertDescription: string | null = null
-  if (runs.length > 0) {
-    alertTitle = t(
-      'The gallery could not refresh. Frames already shown are still available.'
-    )
-    alertDescription = t('Preview unavailable')
+  const openProbe = (id: number, title: string) => {
+    setSelectedTitle(title)
+    setSelectedId(id)
   }
 
-  const selectedTitle = selected ? runTitle(selected, fallbackTitle) : ''
-  const selectedClock = selected
-    ? shanghaiClock(selected.started_at, locale)
-    : null
+  const passRatePercent = Math.round((data?.logic_pass_rate ?? 0) * 100)
 
   return (
     <SectionPageLayout>
-      <SectionPageLayout.Title>{t('Pelican gallery')}</SectionPageLayout.Title>
+      <SectionPageLayout.Title>{t('Degradation monitor')}</SectionPageLayout.Title>
       <SectionPageLayout.Actions>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          disabled={isFetching}
-          aria-label={t('Refresh gallery')}
-          title={t('Refresh the gallery without starting a generation')}
-          onClick={() => void refetch()}
-        >
-          <RefreshCw className={isFetching ? 'animate-spin' : undefined} />
-          {t('Refresh')}
-        </Button>
-      </SectionPageLayout.Actions>
-      <SectionPageLayout.Content>
-        <div className='mx-auto flex w-full max-w-6xl flex-col gap-4'>
-          <div className='flex items-center justify-between gap-3'>
-            <h2 className='text-sm font-medium'>{t('Live gallery')}</h2>
-            <p className='text-muted-foreground text-sm tabular-nums'>
-              {runs.length} / {data ? reportedLimit : DEFAULT_LIMIT}
-            </p>
+        <div className='flex items-center gap-2'>
+          <div
+            className='flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5'
+            role='group'
+            aria-label={rangeLabel}
+          >
+            {RANGES.map((item) => {
+              const isActive = item === range
+              return (
+                <Button
+                  key={item}
+                  type='button'
+                  size='xs'
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'h-7 rounded-md px-3 text-xs font-medium transition-all',
+                    isActive
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  onClick={() => setRange(item)}
+                >
+                  {item}
+                </Button>
+              )
+            })}
           </div>
 
-          {isError ? (
+          <Button
+            type='button'
+            size='icon-sm'
+            variant='outline'
+            disabled={query.isFetching}
+            aria-label={t('Refresh monitor')}
+            onClick={() => void query.refetch()}
+            className='h-8 w-8'
+          >
+            <RefreshCw className={cn('size-3.5', query.isFetching && 'animate-spin')} />
+          </Button>
+        </div>
+      </SectionPageLayout.Actions>
+
+      <SectionPageLayout.Content>
+        <div className='mx-auto flex w-full max-w-6xl flex-col gap-4'>
+          {/* Subheader bar */}
+          <div className='flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground'>
+            <p className='text-sm text-muted-foreground'>
+              {t('Automated scheduled probes verifying model integrity and reasoning quality.')}
+            </p>
+            <div className='flex items-center gap-1.5 tabular-nums text-muted-foreground/80'>
+              <Clock className='size-3.5' />
+              <span>
+                {t('Updated at {{time}} · refreshes every 30 seconds', {
+                  time: data ? formatClock(data.updated_at, locale) : '--:--:--',
+                })}
+              </span>
+            </div>
+          </div>
+
+          {/* Error Alert */}
+          {query.isError ? (
             <Alert variant='destructive'>
               <TriangleAlert />
-              <AlertTitle>{alertTitle}</AlertTitle>
-              {alertDescription ? (
-                <AlertDescription>{alertDescription}</AlertDescription>
-              ) : null}
+              <AlertTitle>{t('The monitor could not refresh.')}</AlertTitle>
+              <AlertDescription>{t('No data')}</AlertDescription>
               <AlertAction>
                 <Button
                   type='button'
                   variant='outline'
                   size='xs'
-                  onClick={() => void refetch()}
+                  onClick={() => void query.refetch()}
                 >
                   {t('Reconnect')}
                 </Button>
@@ -204,157 +202,169 @@ export function PelicanGallery() {
             </Alert>
           ) : null}
 
-          {isPending && !data ? (
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'>
-              {['s1', 's2', 's3', 's4', 's5', 's6'].map((key) => (
-                <Skeleton key={key} className='aspect-[4/3] rounded-xl' />
-              ))}
+          {/* Pending Skeleton */}
+          {query.isPending && !data ? (
+            <div className='space-y-4'>
+              <Skeleton className='h-40 rounded-xl' />
+              <Skeleton className='h-64 rounded-xl' />
+              <Skeleton className='h-64 rounded-xl' />
             </div>
           ) : null}
 
-          {data ? (
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'>
-              {runs.map((run, index) => {
-                const title = runTitle(run, fallbackTitle)
-                const clock = shanghaiClock(run.started_at, locale)
-                const status = pelicanStatus(run.status, t)
-                const previewTitle = t('{{title}}, run {{id}}', {
-                  title,
-                  id: run.id,
-                })
-                const previewSrc = `/api/pelican/runs/${run.id}/preview`
-                return (
-                  <Card
-                    key={run.id}
-                    className='relative gap-0 overflow-hidden py-0'
-                  >
-                    {run.status === 'success' ? (
-                      <div className='relative'>
-                        <PelicanPreview src={previewSrc} title={previewTitle} />
-                        <Button
-                          type='button'
-                          variant='ghost'
-                          className='absolute inset-0 z-10 h-auto rounded-none p-0 hover:bg-transparent'
-                          aria-label={t(
-                            'View enlarged animation for {{title}} at {{date}} {{time}}',
-                            { title, date: clock.date, time: clock.time }
-                          )}
-                          onClick={() => setSelectedId(run.id)}
-                        >
-                          <Maximize2 className='absolute top-2 right-2' />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className='bg-muted flex aspect-[4/3] flex-col items-center justify-center gap-3 px-4 text-center'>
-                        <StatusBadge
-                          label={status.label}
-                          variant={status.variant}
-                          copyable={false}
-                        />
-                        <p className='text-muted-foreground text-sm'>
-                          {placeholderCopy(run, t)}
-                        </p>
-                        {run.status === 'running' ? (
-                          <span className='bg-primary/70 h-0.5 w-16' />
-                        ) : null}
-                      </div>
-                    )}
-                    {index === 0 ? (
-                      <StatusBadge
-                        label={t('Latest')}
-                        variant='info'
-                        copyable={false}
-                        className='pointer-events-none absolute top-2 left-2 z-20'
-                      />
-                    ) : null}
-                    <div className='flex flex-col gap-2 p-4'>
-                      <div className='flex items-center justify-between gap-2'>
-                        <time dateTime={clock.iso || undefined}>{clock.time}</time>
-                        <span className='text-muted-foreground'>{clock.date}</span>
-                      </div>
-                      {run.groups && run.groups.length > 0 ? (
-                        <div className='flex flex-wrap gap-1'>
-                          {run.groups.map((group) => (
-                            <Badge key={group.id} variant='secondary'>
-                              {group.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className='flex items-center justify-between gap-2'>
-                        <StatusBadge
-                          label={status.label}
-                          variant={status.variant}
-                          copyable={false}
-                        />
-                        <span className='min-w-0 truncate'>{title}</span>
-                      </div>
-                      {typeof run.total_tokens === 'number' &&
-                      Number.isFinite(run.total_tokens) ? (
-                        <p className='text-muted-foreground text-xs'>
-                          {t('{{count}} tokens', {
-                            count: formatNumber(run.total_tokens, locale),
-                          })}
-                        </p>
-                      ) : null}
-                    </div>
-                  </Card>
-                )
-              })}
-              {Array.from({ length: emptyCount }, (_, index) => (
-                <Card
-                  key={`empty-${index}`}
-                  className='gap-0 overflow-hidden py-0'
-                >
-                  <div className='bg-muted text-muted-foreground flex aspect-[4/3] flex-col items-center justify-center gap-3 px-4 text-center'>
-                    <span className='text-2xl font-medium tabular-nums'>
-                      {String(runs.length + index + 1).padStart(2, '0')}
-                    </span>
-                    <Images />
-                    <p className='text-sm'>{t('Waiting for the next frame')}</p>
+          {/* Turned off empty state for non-root users */}
+          {data && !data.enabled && !isRoot ? (
+            <EmptyState title={t('The monitor is turned off.')} bordered />
+          ) : null}
+
+          {/* Main Dashboard */}
+          {data && (data.enabled || isRoot) ? (
+            <>
+              {/* Overview Hero Card */}
+              <section className='grid gap-4 rounded-xl border border-border/70 bg-card p-5 shadow-xs lg:grid-cols-[minmax(0,1fr)_260px]'>
+                <div className='flex gap-4'>
+                  <div className='flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+                    <Activity className='size-5' />
                   </div>
-                  <p className='text-muted-foreground px-4 py-3 text-sm'>
-                    {t('New frames will appear here automatically')}
-                  </p>
-                </Card>
-              ))}
-            </div>
+                  <div className='flex flex-col gap-1.5'>
+                    <h2 className='text-base font-semibold tracking-tight text-foreground'>
+                      {t('Real-time Model Integrity & Full-Strength Assurance')}
+                    </h2>
+                    <p className='text-xs leading-relaxed text-muted-foreground'>
+                      {t(
+                        'Every 30 minutes, each monitored group receives a calibrated reasoning puzzle and a random drawing task aligned with Codex benchmarks. Degraded or compressed models fail the logic test. Click any block to inspect details.'
+                      )}
+                    </p>
+                    <div className='mt-2 flex flex-wrap items-center gap-3 text-xs'>
+                      <span className='inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400'>
+                        <span className='size-2 rounded-full bg-emerald-500' />
+                        {t('{{count}} at full strength', { count: data.summary.normal })}
+                      </span>
+                      <span className='inline-flex items-center gap-1.5 font-medium text-rose-600 dark:text-rose-400'>
+                        <span className='size-2 rounded-full bg-rose-500' />
+                        {t('{{count}} possibly degraded', { count: data.summary.degraded })}
+                      </span>
+                      <span className='inline-flex items-center gap-1.5 text-muted-foreground'>
+                        <span className='size-2 rounded-full bg-muted-foreground/40' />
+                        {t('{{count}} with no data', { count: data.summary.empty })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className='flex flex-col justify-between border-t pt-3 border-border/60 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5'>
+                  <div>
+                    <p className='text-xs font-medium text-muted-foreground'>
+                      {t('Reasoning pass rate · {{range}}', { range: rangeLabel })}
+                    </p>
+                    <p className='mt-1 text-3xl font-bold tracking-tight text-foreground tabular-nums'>
+                      {formatPercent(data.logic_pass_rate)}
+                    </p>
+                    <div className='mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted'>
+                      <div
+                        className='h-full rounded-full bg-primary transition-all duration-300'
+                        style={{ width: `${passRatePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className='mt-3 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums'>
+                    <Timer className='size-3.5 text-muted-foreground/80' />
+                    <span>
+                      {t('Next probe in {{time}}', {
+                        time: formatCountdown(data.next_slot_at, nowMs),
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Status Legend */}
+              <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground'>
+                <ul className='flex flex-wrap items-center gap-3.5'>
+                  {LEGEND_ITEMS.map((item) => (
+                    <li key={item.status} className='flex items-center gap-1.5'>
+                      <span className={cn('size-2.5 rounded-xs', item.color)} />
+                      <span>{t(item.key)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className='text-[11px] text-muted-foreground/80'>
+                  {t('Each block is one 30-minute check.')}
+                </p>
+              </div>
+
+              {/* Groups List */}
+              {data.groups.length === 0 ? (
+                <EmptyState
+                  title={t(
+                    'No monitored groups yet. A group appears here once it has an enabled channel.'
+                  )}
+                  bordered
+                />
+              ) : (
+                <div className='space-y-4'>
+                  {data.groups.map((group) => {
+                    const title =
+                      group.description && group.description !== group.name
+                        ? group.description
+                        : group.name
+                    return (
+                      <MonitorGroupCard
+                        key={group.name}
+                        group={group}
+                        locale={locale}
+                        nowSec={Math.floor(nowMs / 1000)}
+                        onOpen={(id) => openProbe(id, title)}
+                        labels={{
+                          health: (health) => healthText(health, t),
+                          status: (status) => statusText(status, t),
+                          logic: t('Logic test'),
+                          logicHint: t('The answer should be {{answer}}', {
+                            answer: data.logic_answer || '21',
+                          }),
+                          drawing: t('Drawing test'),
+                          drawingHint: t(
+                            'Random SVG or Canvas of Obama, Sun Wukong, Ultraman, a pelican, or a polar bear'
+                          ),
+                          correct: t('{{passed}}/{{total}} correct', {
+                            passed: group.logic.passed,
+                            total: group.logic.judged,
+                          }),
+                          drawn: t('{{passed}}/{{total}} drawn', {
+                            passed: group.drawing.passed,
+                            total: group.drawing.judged,
+                          }),
+                          waiting: t('Awaiting first scheduled check'),
+                          ago: (unix) => {
+                            const minutes = Math.max(
+                              0,
+                              Math.floor((Math.floor(nowMs / 1000) - unix) / 60)
+                            )
+                            if (minutes < 1) return t('Just now')
+                            return t('{{count}} minutes ago', { count: minutes })
+                          },
+                          block: (status) => statusText(status, t),
+                          noToken: t(
+                            'This group has no enabled token yet. Checks start automatically when a token for this group is enabled.'
+                          ),
+                          caption: t(
+                            'Select any drawing block on the left to replay its animation in the isolated sandbox.'
+                          ),
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </>
           ) : null}
         </div>
-        {selected && selectedClock ? (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setSelectedId(null)
-            }}
-            title={selectedTitle}
-            description={`${selectedClock.date} ${selectedClock.time}`}
-            contentClassName='sm:max-w-5xl'
-            contentHeight='auto'
-            bodyClassName='space-y-4'
-          >
-            <PelicanPreview
-              src={`/api/pelican/runs/${selected.id}/preview`}
-              title={t('{{title}}, run {{id}}', {
-                title: selectedTitle,
-                id: selected.id,
-              })}
-              interactive
-            />
-            <div className='flex flex-wrap items-center gap-2'>
-              <StatusBadge
-                label={pelicanStatus(selected.status, t).label}
-                variant={pelicanStatus(selected.status, t).variant}
-                copyable={false}
-              />
-              {(selected.groups ?? []).map((group) => (
-                <Badge key={group.id} variant='secondary'>
-                  {group.name}
-                </Badge>
-              ))}
-            </div>
-          </Dialog>
-        ) : null}
+
+        {/* Dialog for details */}
+        <ProbeDialog
+          id={selectedId}
+          title={selectedTitle}
+          onClose={() => setSelectedId(null)}
+        />
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )

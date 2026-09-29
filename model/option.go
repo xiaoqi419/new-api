@@ -647,6 +647,12 @@ func InitOptionMap() error {
 	common.OptionMap["RebateEnabled"] = strconv.FormatBool(common.RebateEnabled)
 	common.OptionMap["RebateRatio"] = strconv.FormatFloat(common.RebateRatio, 'f', -1, 64)
 	common.OptionMap["GroupBuyEnabled"] = strconv.FormatBool(common.GroupBuyEnabled)
+	common.OptionMap["PelicanMonitorEnabled"] = strconv.FormatBool(common.PelicanMonitorEnabled)
+	common.OptionMap["PelicanMonitorGroups"] = "[]"
+	common.OptionMap["PelicanLogicPrompt"] = ""
+	common.OptionMap["PelicanLogicAnswer"] = ""
+	common.OptionMap["PelicanDrawingPrompt"] = ""
+	common.OptionMap["TopUpBonusCampaign"] = "{\"enabled\":false,\"start\":0,\"end\":0,\"tiers\":[]}"
 	common.OptionMap["QuotaRemindThreshold"] = strconv.Itoa(common.QuotaRemindThreshold)
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
 	common.OptionMap["ModelRequestRateLimitCount"] = strconv.Itoa(setting.ModelRequestRateLimitCount)
@@ -1421,6 +1427,8 @@ func updateOptionMap(key string, value string) (err error) {
 			common.RebateEnabled = boolValue
 		case "GroupBuyEnabled":
 			common.GroupBuyEnabled = boolValue
+		case "PelicanMonitorEnabled":
+			common.PelicanMonitorEnabled = boolValue
 		case "DefaultCollapseSidebar":
 			common.DefaultCollapseSidebar = boolValue
 		case "MjNotifyEnabled":

@@ -280,6 +280,10 @@ export interface TopupInfo {
   wechatpay_min_topup?: number
   /** Whether redemption code usage is enabled */
   enable_redemption?: boolean
+  /** Active recharge-bonus tiers, present only while the campaign is open. */
+  topup_bonus?: {
+    tiers: Array<{ pay: number; gift: number }>
+  } | null
   /** Whether compliance confirmation has been completed */
   payment_compliance_confirmed?: boolean
   /** Current compliance terms version */
