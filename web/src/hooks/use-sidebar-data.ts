@@ -207,6 +207,11 @@ export function useSidebarData(): SidebarData {
             icon: Dices,
           },
           {
+            title: t('Recharge Lottery'),
+            url: '/activity-lottery',
+            icon: Trophy,
+          },
+          {
             title: t('Invitation'),
             url: '/account/invitation',
             configUrls: ['/account/profile'],
@@ -311,6 +316,11 @@ export function useSidebarData(): SidebarData {
             title: t('Lottery Management'),
             url: '/lottery/admin',
             icon: Dices,
+          },
+          {
+            title: t('Recharge Lottery Management'),
+            url: '/activity-lottery/admin',
+            icon: Trophy,
           },
           {
             title: t('Ticket Management'),

@@ -23,6 +23,48 @@ func RegisterScheduledSystemTasks() {
 	service.RegisterSystemTaskHandler(midjourneyPollHandler{})
 	service.RegisterSystemTaskHandler(asyncTaskPollHandler{})
 	service.RegisterSystemTaskHandler(quotaReminderHandler{})
+	service.RegisterSystemTaskHandler(activityLotteryDrawHandler{})
+}
+
+type activityLotteryDrawHandler struct{}
+
+func (activityLotteryDrawHandler) Type() string            { return model.SystemTaskTypeActivityLotteryDraw }
+func (activityLotteryDrawHandler) Interval() time.Duration { return 15 * time.Second }
+func (activityLotteryDrawHandler) NewPayload() any         { return nil }
+func (activityLotteryDrawHandler) Enabled() bool {
+	due, err := model.HasDueActivityLotteryCampaign(time.Now())
+	if err != nil {
+		common.SysError("activity lottery due check failed: " + err.Error())
+		return false
+	}
+	return due
+}
+
+func (activityLotteryDrawHandler) Run(ctx context.Context, task *model.SystemTask, runnerID string) {
+	now := time.Now()
+	ids, err := model.ListDueActivityLotteryCampaignIds(now, 10)
+	if err != nil {
+		finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusFailed, nil, err)
+		return
+	}
+	result := map[string]int{"drawn": 0, "expired": 0}
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusFailed, result, err)
+			return
+		}
+		campaign, err := model.DrawActivityLotteryCampaign(ctx, id, now)
+		if err != nil {
+			finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusFailed, result, err)
+			return
+		}
+		if campaign.Status == model.ActivityLotteryStatusDrawn {
+			result["drawn"]++
+		} else if campaign.Status == model.ActivityLotteryStatusExpired {
+			result["expired"]++
+		}
+	}
+	finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusSucceeded, result, nil)
 }
 
 type quotaReminderHandler struct{}

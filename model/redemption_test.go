@@ -148,6 +148,30 @@ func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	assert.Equal(t, 500, user.Quota)
 }
 
+func TestRedeemAssignedPrizeCodeOnlyCreditsItsWinner(t *testing.T) {
+	ownerID, key := setupRedeemFixture(t, 500)
+
+	var prizeCode Redemption
+	require.NoError(t, DB.Where("key = ?", key).First(&prizeCode).Error)
+	prizeCode.AssignedUserId = ownerID
+	require.NoError(t, DB.Save(&prizeCode).Error)
+
+	other := &User{Username: "redeem-other", Password: "password", Status: common.UserStatusEnabled, AffCode: "redeem-other-aff"}
+	require.NoError(t, DB.Create(other).Error)
+
+	_, err := Redeem(key, other.Id)
+	require.ErrorIs(t, err, ErrRedeemFailed)
+
+	var unchanged Redemption
+	require.NoError(t, DB.Where("key = ?", key).First(&unchanged).Error)
+	assert.Equal(t, common.RedemptionCodeStatusEnabled, unchanged.Status)
+	assert.Equal(t, 0, unchanged.UsedUserId)
+
+	quota, err := Redeem(key, ownerID)
+	require.NoError(t, err)
+	assert.Equal(t, 500, quota)
+}
+
 func TestRedeemRejectsWalletOverflow(t *testing.T) {
 	userId, key := setupRedeemFixture(t, 11)
 	require.NoError(t, DB.Model(&User{}).Where("id = ?", userId).Update("quota", common.MaxWalletQuota-10).Error)
