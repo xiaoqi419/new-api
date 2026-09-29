@@ -34,6 +34,8 @@ describe('DrawingFrame and DrawingStage', () => {
     expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts')
     expect(iframe?.getAttribute('sandbox')).not.toContain('allow-same-origin')
     expect(iframe?.className).toContain('pointer-events-none')
+    expect(iframe?.style.zoom).toContain('100cqw')
+    expect(iframe?.style.transform).toBe('')
 
     rerender(
       <DrawingFrame html='<svg viewBox="0 0 10 10"></svg>' title='Preview' interactive />

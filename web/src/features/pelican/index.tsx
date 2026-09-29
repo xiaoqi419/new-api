@@ -231,7 +231,7 @@ export function PelicanGallery() {
                     </h2>
                     <p className='text-xs leading-relaxed text-muted-foreground'>
                       {t(
-                        'Every 30 minutes, each monitored group receives a calibrated reasoning puzzle and a random drawing task aligned with Codex benchmarks. Degraded or compressed models fail the logic test. Click any block to inspect details.'
+                        'Every 10 minutes, each monitored group receives a calibrated reasoning puzzle and a random drawing task aligned with Codex benchmarks. Degraded or compressed models fail the logic test. Click any block to inspect details.'
                       )}
                     </p>
                     <div className='mt-2 flex flex-wrap items-center gap-3 text-xs'>
