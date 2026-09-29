@@ -22,9 +22,16 @@ func setupActivityLotteryTestDB(t *testing.T) *gorm.DB {
 	previousMainType, previousLogType := common.MainDatabaseType(), common.LogDatabaseType()
 	previousQuotaPerUnit := common.QuotaPerUnit
 	previousUSDRate := operation_setting.USDExchangeRate
+	general := operation_setting.GetGeneralSetting()
+	previousDisplayType := general.QuotaDisplayType
+	previousCustomSymbol := general.CustomCurrencySymbol
+	previousCustomRate := general.CustomCurrencyExchangeRate
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.QuotaPerUnit = 500_000
 	operation_setting.USDExchangeRate = 7.3
+	general.QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	general.CustomCurrencySymbol = "¤"
+	general.CustomCurrencyExchangeRate = 1
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
@@ -37,6 +44,9 @@ func setupActivityLotteryTestDB(t *testing.T) *gorm.DB {
 		common.SetDatabaseTypes(previousMainType, previousLogType)
 		common.QuotaPerUnit = previousQuotaPerUnit
 		operation_setting.USDExchangeRate = previousUSDRate
+		general.QuotaDisplayType = previousDisplayType
+		general.CustomCurrencySymbol = previousCustomSymbol
+		general.CustomCurrencyExchangeRate = previousCustomRate
 		if sqlDB, err := db.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
@@ -103,9 +113,89 @@ func TestActivityLotteryPublishFreezesBeijingDayAndYuanPrizeQuotas(t *testing.T)
 	assert.Equal(t, now.Unix(), published.PublishedAt)
 	assert.Equal(t, 7.3, published.USDExchangeRate)
 	assert.Equal(t, 500_000.0, published.QuotaPerUnit)
+	assert.Equal(t, operation_setting.QuotaDisplayTypeCNY, published.DisplayCurrency)
+	assert.Equal(t, "¥", published.DisplayCurrencySymbol)
+	assert.Equal(t, 7.3, published.DisplayCurrencyRate)
 	require.Len(t, published.Prizes, 2)
 	assert.Equal(t, 34_246_575, published.Prizes[0].Quota)
 	assert.Equal(t, 13_698_630, published.Prizes[1].Quota)
+}
+
+func TestActivityLotteryPublishUsesConfiguredUSDCurrency(t *testing.T) {
+	setupActivityLotteryTestDB(t)
+	general := operation_setting.GetGeneralSetting()
+	general.QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	shanghai := time.FixedZone("CST", 8*60*60)
+	now := time.Date(2026, time.October, 7, 15, 30, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title: "美元抽奖", DrawAt: drawAt.Unix(),
+		Prizes: []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 50_000}},
+	}, now)
+	require.NoError(t, err)
+	assert.Equal(t, operation_setting.QuotaDisplayTypeUSD, draft.DisplayCurrency)
+	assert.Equal(t, "$", draft.DisplayCurrencySymbol)
+	assert.Equal(t, float64(1), draft.DisplayCurrencyRate)
+
+	published, err := PublishActivityLotteryCampaign(draft.Id, now)
+	require.NoError(t, err)
+	assert.Equal(t, 250_000_000, published.Prizes[0].Quota)
+	assert.Equal(t, operation_setting.QuotaDisplayTypeUSD, published.DisplayCurrency)
+	assert.Equal(t, "$", published.DisplayCurrencySymbol)
+	assert.Equal(t, float64(1), published.DisplayCurrencyRate)
+}
+
+func TestActivityLotteryPublishUsesConfiguredCustomCurrencyAndTokens(t *testing.T) {
+	setupActivityLotteryTestDB(t)
+	general := operation_setting.GetGeneralSetting()
+	shanghai := time.FixedZone("CST", 8*60*60)
+	now := time.Date(2026, time.October, 7, 15, 30, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	general.QuotaDisplayType = operation_setting.QuotaDisplayTypeCustom
+	general.CustomCurrencySymbol = "€"
+	general.CustomCurrencyExchangeRate = 2.5
+	customDraft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title: "自定义币种抽奖", DrawAt: drawAt.Unix(),
+		Prizes: []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 50_000}},
+	}, now)
+	require.NoError(t, err)
+	custom, err := PublishActivityLotteryCampaign(customDraft.Id, now)
+	require.NoError(t, err)
+	assert.Equal(t, 100_000_000, custom.Prizes[0].Quota)
+	assert.Equal(t, "€", custom.DisplayCurrencySymbol)
+	assert.Equal(t, 2.5, custom.DisplayCurrencyRate)
+
+	_, err = CancelActivityLotteryCampaign(custom.Id, now.Add(time.Minute))
+	require.NoError(t, err)
+	general.QuotaDisplayType = operation_setting.QuotaDisplayTypeTokens
+	tokenDraft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title: "额度抽奖", DrawAt: drawAt.Add(time.Hour).Unix(),
+		Prizes: []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 1234}},
+	}, now)
+	require.NoError(t, err)
+	tokens, err := PublishActivityLotteryCampaign(tokenDraft.Id, now.Add(time.Minute))
+	require.NoError(t, err)
+	assert.Equal(t, 1234, tokens.Prizes[0].Quota)
+	assert.Equal(t, operation_setting.QuotaDisplayTypeTokens, tokens.DisplayCurrency)
+	assert.Empty(t, tokens.DisplayCurrencySymbol)
+}
+
+func TestActivityLotteryLegacyRowsRemainCNYWhenCurrencySnapshotIsEmpty(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	campaign := &ActivityLotteryCampaign{
+		Title: "历史活动", Status: ActivityLotteryStatusDrawn,
+		PublishedAt: 1, USDExchangeRate: 7.3,
+	}
+	require.NoError(t, db.Create(campaign).Error)
+
+	loaded, err := GetActivityLotteryCampaignById(campaign.Id)
+	require.NoError(t, err)
+	assert.Equal(t, operation_setting.QuotaDisplayTypeCNY, loaded.DisplayCurrency)
+	assert.Equal(t, "¥", loaded.DisplayCurrencySymbol)
+	assert.Equal(t, 7.3, loaded.DisplayCurrencyRate)
+	assert.Equal(t, "¥500.00", FormatActivityLotteryAmount(loaded, 50_000))
 }
 
 func TestActivityLotterySelectedStartIncludesEarlierTopupsUntilDraw(t *testing.T) {

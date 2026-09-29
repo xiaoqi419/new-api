@@ -35,7 +35,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
 
-import { formatActivityPrizeYuan } from '../lib/money'
+import {
+  activityLotteryCurrencyFromCampaign,
+  formatActivityPrizeAmount,
+} from '../lib/money'
 import { activityLotteryStatusLabel } from '../lib/status'
 import { formatShanghaiDrawTime, formatShanghaiStartDate } from '../lib/time'
 import type { ActivityLotteryView } from '../types'
@@ -81,6 +84,7 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const campaign = props.view.campaign
+  const currency = activityLotteryCurrencyFromCampaign(campaign)
   const topPrize = Math.max(
     0,
     ...campaign.prizes.map((prize) => prize.amount_cents)
@@ -166,7 +170,7 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
             <div className='bg-background/75 rounded-xl border p-4 backdrop-blur-sm'>
               <p className='text-muted-foreground text-xs'>{t('Top prize')}</p>
               <p className='mt-1 text-3xl font-semibold tabular-nums'>
-                {formatActivityPrizeYuan(topPrize, locale)}
+                {formatActivityPrizeAmount(topPrize, currency, locale)}
               </p>
             </div>
             <div className='bg-background/75 rounded-xl border p-4 backdrop-blur-sm'>
@@ -252,7 +256,7 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
                 {t('Total prize pool')}
               </p>
               <p className='mt-1 text-lg font-semibold tabular-nums'>
-                {formatActivityPrizeYuan(prizePool, locale)}
+                {formatActivityPrizeAmount(prizePool, currency, locale)}
               </p>
             </div>
           </CardContent>
@@ -275,7 +279,11 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
                   <Gift aria-hidden='true' className='text-warning size-4' />
                 </div>
                 <p className='text-2xl font-semibold tabular-nums'>
-                  {formatActivityPrizeYuan(prize.amount_cents, locale)}
+                  {formatActivityPrizeAmount(
+                    prize.amount_cents,
+                    currency,
+                    locale
+                  )}
                 </p>
                 <p className='text-muted-foreground text-xs'>
                   {t('Winners')}: {formatNumber(prize.count, locale)}
@@ -294,8 +302,9 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
           <CardContent className='space-y-3'>
             <p className='text-lg font-semibold'>
               {props.view.my_prize.name} ·{' '}
-              {formatActivityPrizeYuan(
+              {formatActivityPrizeAmount(
                 props.view.my_prize.amount_cents,
+                currency,
                 locale
               )}
             </p>
@@ -323,7 +332,11 @@ export function ActivityLotteryBoard(props: ActivityLotteryBoardProps) {
                   <span className='truncate'>{winner.masked_name}</span>
                   <span className='shrink-0 text-sm font-medium'>
                     {winner.name} ·{' '}
-                    {formatActivityPrizeYuan(winner.amount_cents, locale)}
+                    {formatActivityPrizeAmount(
+                      winner.amount_cents,
+                      currency,
+                      locale
+                    )}
                   </span>
                 </CardContent>
               </Card>

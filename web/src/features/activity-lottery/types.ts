@@ -46,6 +46,9 @@ export interface ActivityLotteryCampaign {
   participant_count: number
   usd_exchange_rate: number
   quota_per_unit: number
+  display_currency?: 'USD' | 'CNY' | 'TOKENS' | 'CUSTOM'
+  display_currency_symbol?: string
+  display_currency_rate?: number
   drawn_at: number
   created_at: number
   updated_at: number
@@ -86,6 +89,7 @@ export interface ActivityLotteryPage<T> {
 export interface ActivityLotteryPrizeInput {
   name: string
   count: number
+  /** Smallest unit of the campaign's captured display currency; raw quota in TOKENS mode. */
   amount_cents: number
 }
 

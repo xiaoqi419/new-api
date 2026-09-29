@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -56,6 +56,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import {
   activityLotteryQueryKeys,
@@ -68,7 +69,12 @@ import {
   toActivityLotteryDraftInput,
   type ActivityLotteryDraftFormValues,
 } from '../lib/draft-form'
-import { formatActivityPrizeYuan, parseActivityPrizeYuan } from '../lib/money'
+import {
+  activityLotteryCurrencyFromCampaign,
+  activityLotteryCurrencyFromConfig,
+  formatActivityPrizeAmount,
+  parseActivityPrizeAmount,
+} from '../lib/money'
 import type {
   ActivityLotteryCampaign,
   ActivityLotteryDraftInput,
@@ -83,24 +89,36 @@ type Props = {
 export function ActivityLotteryDraftDrawer(props: Props) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const configuredCurrency = useSystemConfigStore(
+    (state) => state.config.currency
+  )
+  const currency = useMemo(
+    () =>
+      props.campaign
+        ? activityLotteryCurrencyFromCampaign(props.campaign)
+        : activityLotteryCurrencyFromConfig(configuredCurrency),
+    [props.campaign, configuredCurrency]
+  )
   const queryClient = useQueryClient()
   const form = useForm<ActivityLotteryDraftFormValues>({
-    resolver: zodResolver(getActivityLotteryDraftSchema(t)),
-    defaultValues: getActivityLotteryDraftDefaults(props.campaign),
+    resolver: zodResolver(getActivityLotteryDraftSchema(t, currency)),
+    defaultValues: getActivityLotteryDraftDefaults(props.campaign, currency),
   })
   const prizeFields = useFieldArray({ control: form.control, name: 'prizes' })
   const prizes = useWatch({ control: form.control, name: 'prizes' }) ?? []
 
   useEffect(() => {
-    if (props.open) form.reset(getActivityLotteryDraftDefaults(props.campaign))
-  }, [props.open, props.campaign, form])
+    if (props.open) {
+      form.reset(getActivityLotteryDraftDefaults(props.campaign, currency))
+    }
+  }, [props.open, props.campaign, currency, form])
 
   const slots = prizes.reduce((sum, prize) => sum + Number(prize.count || 0), 0)
-  const poolCents = prizes.reduce(
+  const poolAmount = prizes.reduce(
     (sum, prize) =>
       sum +
       Number(prize.count || 0) *
-        (parseActivityPrizeYuan(prize.amountYuan) ?? 0),
+        (parseActivityPrizeAmount(prize.amountDisplay, currency) ?? 0),
     0
   )
 
@@ -137,7 +155,9 @@ export function ActivityLotteryDraftDrawer(props: Props) {
             className={sideDrawerFormClassName()}
             onSubmit={(event) => {
               void form.handleSubmit((values) =>
-                saveMutation.mutate(toActivityLotteryDraftInput(values))
+                saveMutation.mutate(
+                  toActivityLotteryDraftInput(values, currency)
+                )
               )(event)
             }}
           >
@@ -231,7 +251,8 @@ export function ActivityLotteryDraftDrawer(props: Props) {
               <SideDrawerSectionHeader
                 title={t('Prize tiers')}
                 description={t(
-                  'Amounts are CNY credit values. They convert to quota using the current rate when the activity is published.'
+                  'Amounts use the site currency ({{currency}}) and are converted to quota using the rate captured when published.',
+                  { currency: currency.label }
                 )}
               />
               {prizeFields.fields.map((item, index) => (
@@ -292,16 +313,22 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                     />
                     <FormField
                       control={form.control}
-                      name={`prizes.${index}.amountYuan`}
+                      name={`prizes.${index}.amountDisplay`}
                       render={({ field, fieldState }) => (
                         <FormItem>
-                          <FormLabel>{t('Amount per winner (CNY)')}</FormLabel>
+                          <FormLabel>
+                            {t('Amount per winner ({{currency}})', {
+                              currency: currency.label,
+                            })}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               aria-invalid={fieldState.invalid}
                               inputMode='decimal'
-                              placeholder='500.00'
+                              placeholder={
+                                currency.usesMinorUnits ? '500.00' : '500'
+                              }
                             />
                           </FormControl>
                           <FormMessage />
@@ -316,7 +343,11 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                 variant='outline'
                 disabled={prizeFields.fields.length >= 10}
                 onClick={() =>
-                  prizeFields.append({ name: '', count: '1', amountYuan: '' })
+                  prizeFields.append({
+                    name: '',
+                    count: '1',
+                    amountDisplay: '',
+                  })
                 }
               >
                 <Plus aria-hidden='true' className='size-4' />
@@ -370,7 +401,7 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                     {t('Total prize pool')}
                   </p>
                   <p className='text-xl font-semibold tabular-nums'>
-                    {formatActivityPrizeYuan(poolCents, locale)}
+                    {formatActivityPrizeAmount(poolAmount, currency, locale)}
                   </p>
                 </div>
               </Card>

@@ -209,7 +209,7 @@ func AdminExportActivityLotteryWinners(c *gin.Context) {
 		return
 	}
 	writer := csv.NewWriter(c.Writer)
-	if err := writer.Write([]string{"活动 ID", "获奖记录 ID", "用户 ID", "用户名", "显示名称", "奖项", "人民币金额（元）", "发放额度", "发放状态", "发放时间（北京时间）"}); err != nil {
+	if err := writer.Write([]string{"活动 ID", "获奖记录 ID", "用户 ID", "用户名", "显示名称", "奖项", fmt.Sprintf("奖项金额（%s）", model.ActivityLotteryDisplayCurrencyLabel(campaign)), "发放额度", "发放状态", "发放时间（北京时间）"}); err != nil {
 		return
 	}
 	beijingTime := time.FixedZone("CST", 8*60*60)
@@ -221,7 +221,7 @@ func AdminExportActivityLotteryWinners(c *gin.Context) {
 		if err := writer.Write([]string{
 			strconv.Itoa(winner.CampaignId), strconv.Itoa(winner.WinnerId), strconv.Itoa(winner.UserId),
 			activityLotteryCSVText(winner.Username), activityLotteryCSVText(winner.DisplayName), activityLotteryCSVText(winner.PrizeName),
-			fmt.Sprintf("%d.%02d", winner.AmountCents/100, winner.AmountCents%100),
+			model.FormatActivityLotteryAmount(campaign, winner.AmountCents),
 			strconv.Itoa(winner.Quota), winner.CreditStatus, grantedAt,
 		}); err != nil {
 			return

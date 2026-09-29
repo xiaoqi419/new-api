@@ -23,6 +23,7 @@ import {
   getActivityLotteryDraftSchema,
   toActivityLotteryDraftInput,
 } from '../draft-form'
+import { activityLotteryCurrencyFromConfig } from '../money'
 
 const publishedAt = Date.parse('2026-09-29T04:00:00Z') / 1000
 const validDraft = {
@@ -32,22 +33,31 @@ const validDraft = {
   drawAtLocal: '2026-10-08T00:00',
   minParticipants: '',
   prizes: [
-    { name: '一等奖', count: '1', amountYuan: '500' },
-    { name: '二等奖', count: '3', amountYuan: '200' },
-    { name: '三等奖', count: '5', amountYuan: '50' },
-    { name: '四等奖', count: '20', amountYuan: '10' },
+    { name: '一等奖', count: '1', amountDisplay: '500' },
+    { name: '二等奖', count: '3', amountDisplay: '200' },
+    { name: '三等奖', count: '5', amountDisplay: '50' },
+    { name: '四等奖', count: '20', amountDisplay: '10' },
   ],
 }
 
 test('a prior Beijing start date and midnight draw map to the exact qualification window and prize budget', () => {
+  const usd = activityLotteryCurrencyFromConfig({
+    displayInCurrency: true,
+    quotaDisplayType: 'USD',
+    quotaPerUnit: 500_000,
+    usdExchangeRate: 7.3,
+    customCurrencySymbol: '¤',
+    customCurrencyExchangeRate: 1,
+  })
   const parsed = getActivityLotteryDraftSchema(
     i18next.t,
+    usd,
     publishedAt
   ).safeParse(validDraft)
   expect(parsed.success).toBe(true)
   if (!parsed.success) return
 
-  expect(toActivityLotteryDraftInput(parsed.data)).toEqual({
+  expect(toActivityLotteryDraftInput(parsed.data, usd)).toEqual({
     title: '充值抽奖',
     description: '今日成功充值自动参与',
     qualification_start_at: Date.parse('2026-09-27T16:00:00Z') / 1000,
@@ -63,7 +73,11 @@ test('a prior Beijing start date and midnight draw map to the exact qualificatio
 })
 
 test('invalid start dates, past draw times, and too few participants are rejected', () => {
-  const schema = getActivityLotteryDraftSchema(i18next.t, publishedAt)
+  const schema = getActivityLotteryDraftSchema(
+    i18next.t,
+    undefined,
+    publishedAt
+  )
   expect(
     schema.safeParse({ ...validDraft, startDateLocal: '2026-02-30' }).success
   ).toBe(false)

@@ -21,7 +21,13 @@ import type {
   ActivityLotteryCampaign,
   ActivityLotteryDraftInput,
 } from '../types'
-import { parseActivityPrizeYuan } from './money'
+import {
+  activityLotteryCurrencyFromCampaign,
+  formatActivityPrizeLimit,
+  getCurrentActivityLotteryCurrency,
+  parseActivityPrizeAmount,
+  type ActivityLotteryCurrency,
+} from './money'
 import {
   formatShanghaiInputTime,
   formatShanghaiStartDate,
@@ -31,6 +37,7 @@ import {
 
 export function getActivityLotteryDraftSchema(
   t: TFunction,
+  currency: ActivityLotteryCurrency = getCurrentActivityLotteryCurrency(),
   nowSeconds = Math.floor(Date.now() / 1000)
 ) {
   const todayLocalDate = formatShanghaiInputTime(nowSeconds).slice(0, 10)
@@ -79,12 +86,13 @@ export function getActivityLotteryDraftSchema(
                   /^[1-9]\d{0,3}$/.test(value) && Number(value) <= 1000,
                 t('Enter 1 to 1000 winners')
               ),
-            amountYuan: z
-              .string()
-              .refine(
-                (value) => parseActivityPrizeYuan(value) !== null,
-                t('Enter an amount from ¥0.01 to ¥100,000')
-              ),
+            amountDisplay: z.string().refine(
+              (value) => parseActivityPrizeAmount(value, currency) !== null,
+              t('Enter an amount from {{minimum}} to {{maximum}}', {
+                minimum: formatActivityPrizeLimit(currency.minAmount, currency),
+                maximum: formatActivityPrizeLimit(currency.maxAmount, currency),
+              })
+            ),
           })
         )
         .min(1, t('Add at least one prize tier'))
@@ -113,11 +121,11 @@ export function getActivityLotteryDraftSchema(
         (total, prize) => total + Number(prize.count || 0),
         0
       )
-      const poolCents = values.prizes.reduce(
+      const poolAmount = values.prizes.reduce(
         (total, prize) =>
           total +
           Number(prize.count || 0) *
-            (parseActivityPrizeYuan(prize.amountYuan) ?? 0),
+            (parseActivityPrizeAmount(prize.amountDisplay, currency) ?? 0),
         0
       )
       if (slots > 1000) {
@@ -127,11 +135,13 @@ export function getActivityLotteryDraftSchema(
           message: t('Total prize slots cannot exceed 1000'),
         })
       }
-      if (poolCents > 100_000_000) {
+      if (poolAmount > 100_000_000) {
         context.addIssue({
           code: 'custom',
           path: ['prizes'],
-          message: t('Prize pool cannot exceed ¥1,000,000'),
+          message: t('Prize pool cannot exceed {{maximum}}', {
+            maximum: formatActivityPrizeLimit(100_000_000, currency),
+          }),
         })
       }
       if (values.minParticipants && Number(values.minParticipants) < slots) {
@@ -149,8 +159,12 @@ export type ActivityLotteryDraftFormValues = z.infer<
 >
 
 export function getActivityLotteryDraftDefaults(
-  campaign?: ActivityLotteryCampaign
+  campaign?: ActivityLotteryCampaign,
+  configuredCurrency = getCurrentActivityLotteryCurrency()
 ): ActivityLotteryDraftFormValues {
+  const currency = campaign
+    ? activityLotteryCurrencyFromCampaign(campaign)
+    : configuredCurrency
   if (!campaign) {
     return {
       title: '',
@@ -158,7 +172,7 @@ export function getActivityLotteryDraftDefaults(
       startDateLocal: formatShanghaiStartDate(Math.floor(Date.now() / 1000)),
       drawAtLocal: '',
       minParticipants: '',
-      prizes: [{ name: '', count: '1', amountYuan: '' }],
+      prizes: [{ name: '', count: '1', amountDisplay: '' }],
     }
   }
 
@@ -174,13 +188,16 @@ export function getActivityLotteryDraftDefaults(
     prizes: campaign.prizes.map((prize) => ({
       name: prize.name,
       count: String(prize.count),
-      amountYuan: (prize.amount_cents / 100).toFixed(2),
+      amountDisplay: currency.usesMinorUnits
+        ? (prize.amount_cents / 100).toFixed(2)
+        : String(prize.amount_cents),
     })),
   }
 }
 
 export function toActivityLotteryDraftInput(
-  values: ActivityLotteryDraftFormValues
+  values: ActivityLotteryDraftFormValues,
+  currency = getCurrentActivityLotteryCurrency()
 ): ActivityLotteryDraftInput {
   const drawAt = parseShanghaiInputTime(values.drawAtLocal)
   const qualificationStartAt = parseShanghaiStartDate(values.startDateLocal)
@@ -200,14 +217,17 @@ export function toActivityLotteryDraftInput(
       ? Number(values.minParticipants)
       : 0,
     prizes: values.prizes.map((prize) => {
-      const amountCents = parseActivityPrizeYuan(prize.amountYuan)
-      if (amountCents === null) {
+      const amountMinor = parseActivityPrizeAmount(
+        prize.amountDisplay,
+        currency
+      )
+      if (amountMinor === null) {
         throw new RangeError('Invalid activity lottery prize amount')
       }
       return {
         name: prize.name.trim(),
         count: Number(prize.count),
-        amount_cents: amountCents,
+        amount_cents: amountMinor,
       }
     }),
   }

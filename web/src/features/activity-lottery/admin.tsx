@@ -49,7 +49,10 @@ import {
   adminPublishActivityLotteryRound,
 } from './api'
 import { ActivityLotteryDraftDrawer } from './components/draft-drawer'
-import { formatActivityPrizeYuan } from './lib/money'
+import {
+  activityLotteryCurrencyFromCampaign,
+  formatActivityPrizeAmount,
+} from './lib/money'
 import { activityLotteryStatusLabel } from './lib/status'
 import { formatShanghaiDrawTime, formatShanghaiStartDate } from './lib/time'
 import type { ActivityLotteryCampaign } from './types'
@@ -131,11 +134,14 @@ export function ActivityLotteryAdmin() {
       'Each winner receives activity gift credit automatically. If too few accounts qualified, no prizes will be issued.'
     )
   }
-  const actionPoolCents =
+  const actionPoolAmount =
     action?.campaign.prizes.reduce(
       (sum, prize) => sum + prize.count * prize.amount_cents,
       0
     ) ?? 0
+  const actionCurrency = action
+    ? activityLotteryCurrencyFromCampaign(action.campaign)
+    : undefined
   const actionSlots =
     action?.campaign.prizes.reduce((sum, prize) => sum + prize.count, 0) ?? 0
 
@@ -193,6 +199,7 @@ export function ActivityLotteryAdmin() {
                 (sum, prize) => sum + prize.count * prize.amount_cents,
                 0
               )
+              const currency = activityLotteryCurrencyFromCampaign(campaign)
               const canDraw =
                 campaign.status === 'open' &&
                 Math.floor(Date.now() / 1000) >= campaign.draw_at
@@ -249,7 +256,7 @@ export function ActivityLotteryAdmin() {
                         {t('Total prize pool')}
                       </p>
                       <p className='font-medium'>
-                        {formatActivityPrizeYuan(poolCents, locale)}
+                        {formatActivityPrizeAmount(poolCents, currency, locale)}
                       </p>
                     </div>
                     <div>
@@ -365,7 +372,7 @@ export function ActivityLotteryAdmin() {
           desc={
             <div className='space-y-2'>
               <p>{confirmDescription}</p>
-              {action && (
+              {action && actionCurrency && (
                 <div className='bg-muted/40 space-y-1 rounded-lg p-3 text-sm'>
                   <p>
                     {t('Start date')}:{' '}
@@ -382,7 +389,11 @@ export function ActivityLotteryAdmin() {
                   </p>
                   <p className='font-medium'>
                     {t('Total prize pool')}:{' '}
-                    {formatActivityPrizeYuan(actionPoolCents, locale)}
+                    {formatActivityPrizeAmount(
+                      actionPoolAmount,
+                      actionCurrency,
+                      locale
+                    )}
                   </p>
                 </div>
               )}
