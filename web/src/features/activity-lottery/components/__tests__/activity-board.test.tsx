@@ -50,6 +50,9 @@ function viewFixture(
       participant_count: 0,
       usd_exchange_rate: 7.3,
       quota_per_unit: 500000,
+      display_currency: 'CNY',
+      display_currency_symbol: '¥',
+      display_currency_rate: 7.3,
       drawn_at: status === 'drawn' ? drawAt : 0,
       created_at: qualificationStart,
       updated_at: qualificationStart,
@@ -172,6 +175,20 @@ describe('activity lottery board', () => {
     expect(
       screen.queryByRole('button', { name: 'Go to wallet' })
     ).not.toBeInTheDocument()
+  })
+
+  test('published USD campaigns display dollar prizes', async () => {
+    const view = viewFixture('drawn')
+    view.campaign.display_currency = 'USD'
+    view.campaign.display_currency_symbol = '$'
+    view.campaign.display_currency_rate = 1
+    view.winners = [
+      { id: 1, masked_name: '中***者', name: '一等奖', amount_cents: 50_000 },
+    ]
+    renderBoard(view)
+
+    expect(await screen.findByText('一等奖 · $500')).toBeVisible()
+    expect(screen.queryByText('一等奖 · ¥500')).not.toBeInTheDocument()
   })
 
   test('a canceled published campaign clearly states that prizes will not be issued', async () => {

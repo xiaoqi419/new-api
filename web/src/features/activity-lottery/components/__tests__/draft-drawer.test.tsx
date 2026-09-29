@@ -43,6 +43,9 @@ const campaign: ActivityLotteryCampaign = {
   participant_count: 0,
   usd_exchange_rate: 0,
   quota_per_unit: 0,
+  display_currency: 'CNY',
+  display_currency_symbol: '¥',
+  display_currency_rate: 7.3,
   drawn_at: 0,
   created_at: 0,
   updated_at: 0,
@@ -94,7 +97,7 @@ beforeEach(() => {
   vi.mocked(adminUpdateActivityLotteryRound).mockResolvedValue(campaign)
 })
 
-test('editing a draft previews 29 winners and ¥1,550 before saving exact prize amounts', async () => {
+test('editing a legacy draft previews 29 winners and its CNY prize pool before saving exact prize amounts', async () => {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   })
@@ -130,4 +133,31 @@ test('editing a draft previews 29 winners and ¥1,550 before saving exact prize 
       ],
     })
   })
+})
+
+test('editing a USD draft labels and previews the prize pool in dollars', async () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ActivityLotteryDraftDrawer
+        open
+        onOpenChange={vi.fn()}
+        campaign={{
+          ...campaign,
+          display_currency: 'USD',
+          display_currency_symbol: '$',
+          display_currency_rate: 1,
+        }}
+      />
+    </QueryClientProvider>
+  )
+
+  const amountInputs = await screen.findAllByLabelText(
+    'Amount per winner (USD)'
+  )
+  expect(amountInputs).toHaveLength(4)
+  expect(amountInputs[0]).toBeVisible()
+  expect(screen.getByText('$1,550')).toBeVisible()
 })

@@ -5,7 +5,6 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -29,34 +27,39 @@ const (
 const ActivityLotteryGrantStatusGranted = "granted"
 
 type ActivityLotteryCampaign struct {
-	Id                   int                    `json:"id" gorm:"primaryKey"`
-	Title                string                 `json:"title" gorm:"type:varchar(128);not null"`
-	Description          string                 `json:"description" gorm:"type:text"`
-	Status               string                 `json:"status" gorm:"type:varchar(16);index;not null"`
-	ActiveKey            *string                `json:"-" gorm:"type:varchar(16);uniqueIndex:idx_activity_lottery_active_key"`
-	PublishedAt          int64                  `json:"published_at" gorm:"bigint"`
-	QualificationStartAt int64                  `json:"qualification_start_at" gorm:"bigint"`
-	QualificationEndAt   int64                  `json:"qualification_end_at" gorm:"bigint"`
-	DrawAt               int64                  `json:"draw_at" gorm:"bigint;index"`
-	MinParticipants      int                    `json:"min_participants"`
-	ParticipantCount     int64                  `json:"participant_count" gorm:"bigint"`
-	USDExchangeRate      float64                `json:"usd_exchange_rate"`
-	QuotaPerUnit         float64                `json:"quota_per_unit"`
-	DrawnAt              int64                  `json:"drawn_at" gorm:"bigint"`
-	LastError            string                 `json:"-" gorm:"type:text"`
-	CreatedAt            int64                  `json:"created_at" gorm:"bigint"`
-	UpdatedAt            int64                  `json:"updated_at" gorm:"bigint"`
-	Prizes               []ActivityLotteryPrize `json:"prizes" gorm:"foreignKey:CampaignId"`
+	Id                    int                    `json:"id" gorm:"primaryKey"`
+	Title                 string                 `json:"title" gorm:"type:varchar(128);not null"`
+	Description           string                 `json:"description" gorm:"type:text"`
+	Status                string                 `json:"status" gorm:"type:varchar(16);index;not null"`
+	ActiveKey             *string                `json:"-" gorm:"type:varchar(16);uniqueIndex:idx_activity_lottery_active_key"`
+	PublishedAt           int64                  `json:"published_at" gorm:"bigint"`
+	QualificationStartAt  int64                  `json:"qualification_start_at" gorm:"bigint"`
+	QualificationEndAt    int64                  `json:"qualification_end_at" gorm:"bigint"`
+	DrawAt                int64                  `json:"draw_at" gorm:"bigint;index"`
+	MinParticipants       int                    `json:"min_participants"`
+	ParticipantCount      int64                  `json:"participant_count" gorm:"bigint"`
+	USDExchangeRate       float64                `json:"usd_exchange_rate"`
+	QuotaPerUnit          float64                `json:"quota_per_unit"`
+	DisplayCurrency       string                 `json:"display_currency" gorm:"type:varchar(16)"`
+	DisplayCurrencySymbol string                 `json:"display_currency_symbol" gorm:"type:varchar(16)"`
+	DisplayCurrencyRate   float64                `json:"display_currency_rate"`
+	DrawnAt               int64                  `json:"drawn_at" gorm:"bigint"`
+	LastError             string                 `json:"-" gorm:"type:text"`
+	CreatedAt             int64                  `json:"created_at" gorm:"bigint"`
+	UpdatedAt             int64                  `json:"updated_at" gorm:"bigint"`
+	Prizes                []ActivityLotteryPrize `json:"prizes" gorm:"foreignKey:CampaignId"`
 }
 
 type ActivityLotteryPrize struct {
-	Id          int    `json:"id" gorm:"primaryKey"`
-	CampaignId  int    `json:"campaign_id" gorm:"uniqueIndex:idx_activity_lottery_prize_position,priority:1;index"`
-	Position    int    `json:"position" gorm:"uniqueIndex:idx_activity_lottery_prize_position,priority:2"`
-	Name        string `json:"name" gorm:"type:varchar(64);not null"`
-	Count       int    `json:"count"`
-	AmountCents int64  `json:"amount_cents" gorm:"bigint"`
-	Quota       int    `json:"quota" gorm:"bigint"`
+	Id         int    `json:"id" gorm:"primaryKey"`
+	CampaignId int    `json:"campaign_id" gorm:"uniqueIndex:idx_activity_lottery_prize_position,priority:1;index"`
+	Position   int    `json:"position" gorm:"uniqueIndex:idx_activity_lottery_prize_position,priority:2"`
+	Name       string `json:"name" gorm:"type:varchar(64);not null"`
+	Count      int    `json:"count"`
+	// AmountCents is the smallest two-decimal unit of the captured display
+	// currency; in TOKENS mode it stores raw quota units for API compatibility.
+	AmountCents int64 `json:"amount_cents" gorm:"bigint"`
+	Quota       int   `json:"quota" gorm:"bigint"`
 }
 
 type ActivityLotteryWinner struct {
@@ -74,9 +77,11 @@ type ActivityLotteryWinner struct {
 }
 
 type ActivityLotteryPrizeInput struct {
-	Name        string `json:"name"`
-	Count       int    `json:"count"`
-	AmountCents int64  `json:"amount_cents"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+	// AmountCents keeps the original API field name while following the
+	// display currency captured when the draft is created.
+	AmountCents int64 `json:"amount_cents"`
 }
 
 type ActivityLotteryDraftInput struct {
@@ -151,7 +156,7 @@ func validateActivityLotteryDraft(input *ActivityLotteryDraftInput, now time.Tim
 			return errors.New("prize tier name must be 1–64 characters")
 		}
 		if prize.Count < 1 || prize.Count > 1000 || prize.AmountCents < 1 || prize.AmountCents > 10_000_000 {
-			return errors.New("invalid prize tier count or CNY amount")
+			return errors.New("invalid prize tier count or amount")
 		}
 		totalSlots += prize.Count
 		poolCents += int64(prize.Count) * prize.AmountCents
@@ -177,6 +182,7 @@ func GetActivityLotteryCampaignById(id int) (*ActivityLotteryCampaign, error) {
 	if err != nil {
 		return nil, err
 	}
+	normalizeActivityLotteryCampaignCurrency(&campaign)
 	return &campaign, nil
 }
 
@@ -200,17 +206,24 @@ func CreateActivityLotteryDraft(input ActivityLotteryDraftInput, now time.Time) 
 	if err := validateActivityLotteryDraft(&input, now); err != nil {
 		return nil, err
 	}
-	campaign := &ActivityLotteryCampaign{
-		Title:                input.Title,
-		Description:          input.Description,
-		Status:               ActivityLotteryStatusDraft,
-		QualificationStartAt: input.QualificationStartAt,
-		DrawAt:               input.DrawAt,
-		MinParticipants:      input.MinParticipants,
-		CreatedAt:            now.Unix(),
-		UpdatedAt:            now.Unix(),
+	displayCurrency, err := currentActivityLotteryCurrency()
+	if err != nil {
+		return nil, err
 	}
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	campaign := &ActivityLotteryCampaign{
+		Title:                 input.Title,
+		Description:           input.Description,
+		Status:                ActivityLotteryStatusDraft,
+		QualificationStartAt:  input.QualificationStartAt,
+		DrawAt:                input.DrawAt,
+		MinParticipants:       input.MinParticipants,
+		DisplayCurrency:       displayCurrency.DisplayCurrency,
+		DisplayCurrencySymbol: displayCurrency.DisplayCurrencySymbol,
+		DisplayCurrencyRate:   displayCurrency.DisplayCurrencyRate,
+		CreatedAt:             now.Unix(),
+		UpdatedAt:             now.Unix(),
+	}
+	err = DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(campaign).Error; err != nil {
 			return err
 		}
@@ -229,7 +242,11 @@ func UpdateActivityLotteryDraft(id int, input ActivityLotteryDraftInput, now tim
 	if err := validateActivityLotteryDraft(&input, now); err != nil {
 		return nil, err
 	}
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	displayCurrency, err := currentActivityLotteryCurrency()
+	if err != nil {
+		return nil, err
+	}
+	err = DB.Transaction(func(tx *gorm.DB) error {
 		var campaign ActivityLotteryCampaign
 		if err := lockForUpdate(tx).Where("id = ?", id).First(&campaign).Error; err != nil {
 			return err
@@ -239,12 +256,15 @@ func UpdateActivityLotteryDraft(id int, input ActivityLotteryDraftInput, now tim
 		}
 		if err := tx.Model(&ActivityLotteryCampaign{}).Where("id = ?", id).
 			Updates(map[string]any{
-				"title":                  input.Title,
-				"description":            input.Description,
-				"qualification_start_at": input.QualificationStartAt,
-				"draw_at":                input.DrawAt,
-				"min_participants":       input.MinParticipants,
-				"updated_at":             now.Unix(),
+				"title":                   input.Title,
+				"description":             input.Description,
+				"qualification_start_at":  input.QualificationStartAt,
+				"draw_at":                 input.DrawAt,
+				"min_participants":        input.MinParticipants,
+				"display_currency":        displayCurrency.DisplayCurrency,
+				"display_currency_symbol": displayCurrency.DisplayCurrencySymbol,
+				"display_currency_rate":   displayCurrency.DisplayCurrencyRate,
+				"updated_at":              now.Unix(),
 			}).Error; err != nil {
 			return err
 		}
@@ -311,10 +331,9 @@ func PublishActivityLotteryCampaign(id int, now time.Time) (*ActivityLotteryCamp
 	if id <= 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
-	rate := operation_setting.USDExchangeRate
 	quotaPerUnit := common.QuotaPerUnit
-	if rate <= 0 || math.IsNaN(rate) || math.IsInf(rate, 0) || quotaPerUnit <= 0 || math.IsNaN(quotaPerUnit) || math.IsInf(quotaPerUnit, 0) {
-		return nil, errors.New("invalid CNY prize conversion settings")
+	if quotaPerUnit <= 0 {
+		return nil, errors.New("invalid activity lottery quota conversion settings")
 	}
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
@@ -349,12 +368,9 @@ func PublishActivityLotteryCampaign(id int, now time.Time) (*ActivityLotteryCamp
 		if len(prizes) == 0 {
 			return errors.New("activity lottery has no prize tiers")
 		}
+		displayCurrency := activityLotteryCurrencyForCampaign(&campaign)
 		for _, prize := range prizes {
-			quotaValue := decimal.NewFromInt(prize.AmountCents).
-				Mul(decimal.NewFromFloat(quotaPerUnit)).
-				Div(decimal.NewFromInt(100)).
-				Div(decimal.NewFromFloat(rate))
-			quota, err := common.WalletQuotaFromDecimalStrict(quotaValue)
+			quota, err := activityLotteryPrizeQuota(prize.AmountCents, displayCurrency, quotaPerUnit)
 			if err != nil || quota <= 0 {
 				return fmt.Errorf("invalid quota for prize %q", prize.Name)
 			}
@@ -366,14 +382,17 @@ func PublishActivityLotteryCampaign(id int, now time.Time) (*ActivityLotteryCamp
 		result := tx.Model(&ActivityLotteryCampaign{}).
 			Where("id = ? AND status = ?", id, ActivityLotteryStatusDraft).
 			Updates(map[string]any{
-				"status":                 ActivityLotteryStatusOpen,
-				"active_key":             &activeKey,
-				"published_at":           now.Unix(),
-				"qualification_start_at": campaign.QualificationStartAt,
-				"qualification_end_at":   campaign.DrawAt,
-				"usd_exchange_rate":      rate,
-				"quota_per_unit":         quotaPerUnit,
-				"updated_at":             now.Unix(),
+				"status":                  ActivityLotteryStatusOpen,
+				"active_key":              &activeKey,
+				"published_at":            now.Unix(),
+				"qualification_start_at":  campaign.QualificationStartAt,
+				"qualification_end_at":    campaign.DrawAt,
+				"usd_exchange_rate":       operation_setting.USDExchangeRate,
+				"quota_per_unit":          quotaPerUnit,
+				"display_currency":        displayCurrency.DisplayCurrency,
+				"display_currency_symbol": displayCurrency.DisplayCurrencySymbol,
+				"display_currency_rate":   displayCurrency.DisplayCurrencyRate,
+				"updated_at":              now.Unix(),
 			})
 		if result.Error != nil {
 			return result.Error

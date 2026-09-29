@@ -13,6 +13,7 @@ func GetCurrentPublishedActivityLotteryCampaign() (*ActivityLotteryCampaign, err
 	query := DB.Preload("Prizes", func(tx *gorm.DB) *gorm.DB { return tx.Order("position asc") })
 	err := query.Where("status = ?", ActivityLotteryStatusOpen).Order("published_at desc, id desc").First(&campaign).Error
 	if err == nil {
+		normalizeActivityLotteryCampaignCurrency(&campaign)
 		return &campaign, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -27,6 +28,7 @@ func GetCurrentPublishedActivityLotteryCampaign() (*ActivityLotteryCampaign, err
 	if err != nil {
 		return nil, err
 	}
+	normalizeActivityLotteryCampaignCurrency(&campaign)
 	return &campaign, nil
 }
 
@@ -58,6 +60,9 @@ func listActivityLotteryCampaigns(publishedOnly bool, startIdx int, num int) ([]
 	var campaigns []*ActivityLotteryCampaign
 	err := query.Preload("Prizes", func(tx *gorm.DB) *gorm.DB { return tx.Order("position asc") }).
 		Order(orderBy).Offset(startIdx).Limit(num).Find(&campaigns).Error
+	for _, campaign := range campaigns {
+		normalizeActivityLotteryCampaignCurrency(campaign)
+	}
 	return campaigns, total, err
 }
 

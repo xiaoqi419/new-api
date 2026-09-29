@@ -18,17 +18,51 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { expect, test } from 'vitest'
 
-import { formatActivityPrizeYuan, parseActivityPrizeYuan } from '../money'
+import {
+  activityLotteryCurrencyFromConfig,
+  formatActivityPrizeAmount,
+  parseActivityPrizeAmount,
+} from '../money'
 
-test('prize budget uses fixed yuan amounts independent of the site display currency', () => {
-  expect(formatActivityPrizeYuan(50_000, 'zh-CN')).toBe('¥500')
-  expect(formatActivityPrizeYuan(155_000, 'zh-CN')).toBe('¥1,550')
+test('prize amounts use the configured USD display currency', () => {
+  const currency = activityLotteryCurrencyFromConfig({
+    displayInCurrency: true,
+    quotaDisplayType: 'USD',
+    quotaPerUnit: 500_000,
+    usdExchangeRate: 7.3,
+    customCurrencySymbol: '¤',
+    customCurrencyExchangeRate: 1,
+  })
+  expect(formatActivityPrizeAmount(50_000, currency, 'zh-CN')).toBe('$500')
+  expect(formatActivityPrizeAmount(155_000, currency, 'zh-CN')).toBe('$1,550')
 })
 
-test('entered yuan amounts convert to exact cents without floating-point rounding', () => {
-  expect(parseActivityPrizeYuan('500')).toBe(50_000)
-  expect(parseActivityPrizeYuan('0.01')).toBe(1)
-  expect(parseActivityPrizeYuan('20.50')).toBe(2050)
-  expect(parseActivityPrizeYuan('20.001')).toBeNull()
-  expect(parseActivityPrizeYuan('100000.01')).toBeNull()
+test('entered currency amounts convert to exact minor units without floating-point rounding', () => {
+  const currency = activityLotteryCurrencyFromConfig({
+    displayInCurrency: true,
+    quotaDisplayType: 'CNY',
+    quotaPerUnit: 500_000,
+    usdExchangeRate: 7.3,
+    customCurrencySymbol: '¤',
+    customCurrencyExchangeRate: 1,
+  })
+  expect(parseActivityPrizeAmount('500', currency)).toBe(50_000)
+  expect(parseActivityPrizeAmount('0.01', currency)).toBe(1)
+  expect(parseActivityPrizeAmount('20.50', currency)).toBe(2050)
+  expect(parseActivityPrizeAmount('20.001', currency)).toBeNull()
+  expect(parseActivityPrizeAmount('100000.01', currency)).toBeNull()
+})
+
+test('token mode accepts raw quota units and does not add a currency symbol', () => {
+  const currency = activityLotteryCurrencyFromConfig({
+    displayInCurrency: false,
+    quotaDisplayType: 'TOKENS',
+    quotaPerUnit: 500_000,
+    usdExchangeRate: 7.3,
+    customCurrencySymbol: '¤',
+    customCurrencyExchangeRate: 1,
+  })
+  expect(parseActivityPrizeAmount('1234', currency)).toBe(1234)
+  expect(parseActivityPrizeAmount('12.34', currency)).toBeNull()
+  expect(formatActivityPrizeAmount(1234, currency, 'en-US')).toBe('1,234')
 })

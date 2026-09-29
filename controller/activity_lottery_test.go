@@ -26,9 +26,16 @@ func useActivityLotteryControllerDB(t *testing.T) *gorm.DB {
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	previousMainType, previousLogType := common.MainDatabaseType(), common.LogDatabaseType()
 	previousQuotaPerUnit, previousRate := common.QuotaPerUnit, operation_setting.USDExchangeRate
+	general := operation_setting.GetGeneralSetting()
+	previousDisplayType := general.QuotaDisplayType
+	previousCustomSymbol := general.CustomCurrencySymbol
+	previousCustomRate := general.CustomCurrencyExchangeRate
 	previousRedis := common.RedisEnabled
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.QuotaPerUnit, operation_setting.USDExchangeRate = 500_000, 7.3
+	general.QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	general.CustomCurrencySymbol = "¤"
+	general.CustomCurrencyExchangeRate = 1
 	common.RedisEnabled = false
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
@@ -39,6 +46,9 @@ func useActivityLotteryControllerDB(t *testing.T) *gorm.DB {
 		model.DB, model.LOG_DB = previousDB, previousLogDB
 		common.SetDatabaseTypes(previousMainType, previousLogType)
 		common.QuotaPerUnit, operation_setting.USDExchangeRate = previousQuotaPerUnit, previousRate
+		general.QuotaDisplayType = previousDisplayType
+		general.CustomCurrencySymbol = previousCustomSymbol
+		general.CustomCurrencyExchangeRate = previousCustomRate
 		common.RedisEnabled = previousRedis
 		if sqlDB, err := db.DB(); err == nil {
 			_ = sqlDB.Close()
@@ -174,6 +184,7 @@ func TestAdminExportActivityLotteryWinnersReturnsUtf8CSV(t *testing.T) {
 	assert.Equal(t, []byte{0xEF, 0xBB, 0xBF}, body[:3])
 	assert.Contains(t, string(body), "'=HYPERLINK")
 	assert.Contains(t, string(body), "一等奖")
+	assert.Contains(t, string(body), "奖项金额（CNY）")
 	assert.Contains(t, string(body), "5.00")
 	assert.Contains(t, string(body), "+08:00")
 }
