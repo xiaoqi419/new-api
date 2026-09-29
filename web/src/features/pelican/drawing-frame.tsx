@@ -20,11 +20,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { Maximize2, Palette } from '@/components/icons'
-import { cn } from '@/lib/utils'
 
 import { fetchPelicanProbe } from './api'
 import { playableDrawingHTML } from './drawing-html'
 import { formatDuration, formatSlotLabel } from './format'
+
+const previewStageWidth = 960
+const previewStageHeight = 720
 
 export function DrawingFrame(props: {
   html: string
@@ -32,17 +34,37 @@ export function DrawingFrame(props: {
   interactive?: boolean
 }) {
   const isInteractive = props.interactive ?? true
+  const frameClass = isInteractive
+    ? 'pointer-events-auto absolute inset-0 block h-full w-full border-0'
+    : 'pointer-events-none absolute top-0 left-0 origin-top-left border-0'
+  const frameStyle = isInteractive
+    ? undefined
+    : {
+        width: previewStageWidth,
+        height: previewStageHeight,
+        transform: `scale(min(calc(100cqw / ${previewStageWidth}px), calc(100cqh / ${previewStageHeight}px)))`,
+      }
+
   return (
-    <iframe
-      title={props.title}
-      sandbox='allow-scripts'
-      srcDoc={props.html}
-      tabIndex={isInteractive ? 0 : -1}
-      className={cn(
-        'absolute inset-0 block h-full w-full border-0',
-        isInteractive ? 'pointer-events-auto' : 'pointer-events-none'
-      )}
-    />
+    <div
+      className={
+        isInteractive
+          ? 'absolute inset-0'
+          : 'absolute inset-0 overflow-hidden'
+      }
+      style={isInteractive ? undefined : { containerType: 'size' }}
+    >
+      <iframe
+        title={props.title}
+        sandbox='allow-scripts'
+        srcDoc={props.html}
+        tabIndex={isInteractive ? 0 : -1}
+        width={isInteractive ? undefined : previewStageWidth}
+        height={isInteractive ? undefined : previewStageHeight}
+        style={frameStyle}
+        className={frameClass}
+      />
+    </div>
   )
 }
 

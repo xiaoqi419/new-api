@@ -83,8 +83,8 @@ function KindSection(props: {
       <div className='flex items-start justify-between gap-3'>
         <div className='flex min-w-0 items-center gap-2'>
           <span className='text-muted-foreground'>{props.icon}</span>
-          <span className='text-sm font-semibold'>{props.title}</span>
-          <span className='hidden truncate text-xs text-muted-foreground/80 sm:inline'>
+          <span className='shrink-0 whitespace-nowrap text-sm font-semibold'>{props.title}</span>
+          <span className='hidden min-w-0 flex-1 truncate text-xs text-muted-foreground/80 sm:inline'>
             {props.hint}
           </span>
         </div>
@@ -155,7 +155,7 @@ export function MonitorGroupCard(props: {
 
   return (
     <Card className='gap-0 overflow-hidden border-border/70 p-0 shadow-xs'>
-      <div className='grid items-start gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] lg:gap-6'>
+      <div className='grid items-start gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_440px] xl:grid-cols-[minmax(0,1fr)_520px] lg:gap-6'>
         {/* Left column: Group info + logic test + drawing test */}
         <div className='flex min-w-0 flex-col gap-4'>
           {/* Header row */}

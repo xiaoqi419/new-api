@@ -38,7 +38,8 @@ describe('DrawingFrame and DrawingStage', () => {
     rerender(
       <DrawingFrame html='<svg viewBox="0 0 10 10"></svg>' title='Preview' interactive />
     )
-    expect(iframe?.className).toContain('pointer-events-auto')
+    const interactiveFrame = container.querySelector('iframe')
+    expect(interactiveFrame?.className).toContain('pointer-events-auto')
   })
 
   it('renders clickable preview stage when drawing HTML is available and calls onOpen', async () => {

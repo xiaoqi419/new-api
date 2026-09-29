@@ -167,7 +167,7 @@ export function PelicanGallery() {
       </SectionPageLayout.Actions>
 
       <SectionPageLayout.Content>
-        <div className='mx-auto flex w-full max-w-6xl flex-col gap-4'>
+        <div className='mx-auto flex w-full max-w-[90rem] flex-col gap-4'>
           {/* Subheader bar */}
           <div className='flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground'>
             <p className='text-sm text-muted-foreground'>

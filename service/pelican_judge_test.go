@@ -52,6 +52,18 @@ func TestJudgeLogicAnswer(t *testing.T) {
 	answer, pass = JudgeLogicAnswer("我不会这道题")
 	assert.False(t, pass)
 	assert.Empty(t, answer)
+
+	answer, pass = JudgeLogicAnswer("综上，答案为：\n\\[\n\\boxed{21\\text{个}}\n\\]\n如果不允许按形状选择，则需要29个。")
+	assert.True(t, pass)
+	assert.Equal(t, "21", answer)
+
+	answer, pass = JudgeLogicAnswer("\\boxed{28+1=29}")
+	assert.False(t, pass)
+	assert.Equal(t, "29", answer)
+
+	answer, pass = JudgeLogicAnswer("先写 \\boxed{20}，最终 \\boxed{21}。后面的补充是 12。")
+	assert.True(t, pass)
+	assert.Equal(t, "21", answer)
 }
 
 func TestExtractDrawingHTML(t *testing.T) {
@@ -85,6 +97,25 @@ func TestExtractDrawingHTML(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, named, "xmlns")
 	assert.Contains(t, named, "@keyframes")
+
+	scriptNS, ok := ExtractDrawingHTML(`<!DOCTYPE html><html><body><svg id="art" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg"></svg><script>const NS = "http://www.w3.org/2000/svg"; document.createElementNS(NS, "circle");</script></body></html>`)
+	require.True(t, ok)
+	assert.Contains(t, scriptNS, "createElementNS")
+	assert.Contains(t, scriptNS, "http://www.w3.org/2000/svg")
+
+	httpsNS, ok := ExtractDrawingHTML(`<svg viewBox="0 0 4 4"></svg><script>document.createElementNS("https://www.w3.org/2000/svg", "g")</script>`)
+	require.True(t, ok)
+	assert.Contains(t, httpsNS, "https://www.w3.org/2000/svg")
+
+	xlink, ok := ExtractDrawingHTML(`<svg xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 4 4"></svg>`)
+	require.True(t, ok)
+	assert.Contains(t, xlink, "xmlns:xlink")
+
+	_, ok = ExtractDrawingHTML(`<svg viewBox="0 0 4 4" xmlns="http://www.w3.org/2000/svg"><image href="http://www.w3.org/2000/svg/logo.svg"/></svg>`)
+	assert.False(t, ok)
+
+	_, ok = ExtractDrawingHTML(`<svg viewBox="0 0 4 4"><a href="javascript:alert(1)"></a></svg>`)
+	assert.False(t, ok)
 }
 
 func TestPelicanDrawingThemeIsStable(t *testing.T) {

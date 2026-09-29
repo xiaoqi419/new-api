@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 const NAMESPACE_URL =
-  /\sxmlns(?::[a-z0-9]+)?\s*=\s*["']http:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink)["']/gi
+  /https?:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink)\/?([^A-Za-z0-9/._~:?&=%+-]|$)/gi
 
 function stripCodeFence(text: string) {
   const trimmed = text.trim()
@@ -35,7 +35,7 @@ export function playableDrawingHTML(stored: string, reply: string) {
   if (saved) return saved
   const text = stripCodeFence(reply)
   if (!text || text.toLowerCase().includes('javascript:')) return ''
-  const scan = text.replace(NAMESPACE_URL, '').toLowerCase()
+  const scan = text.replace(NAMESPACE_URL, '$1').toLowerCase()
   const hasCanvas = scan.includes('<canvas')
   const hasSVG = scan.includes('<svg') && scan.includes('viewbox')
   if (scan.includes('http://') || scan.includes('https://') || (!hasCanvas && !hasSVG)) {
