@@ -130,13 +130,25 @@ func TestPelicanDrawingThemeIsStable(t *testing.T) {
 
 	seenSubjects := map[string]struct{}{}
 	seenVehicles := map[string]struct{}{}
-	for slot := int64(0); slot < 20; slot++ {
-		picked, ride, _ := PelicanDrawingTheme("codex", slot)
+	seenScenes := map[string]struct{}{}
+	base := int64(1_700_000_000)
+	base -= base % int64(pelicanSlot.Seconds())
+	var previousSubject, previousVehicle, previousScene string
+	for i := int64(0); i < 60; i++ {
+		picked, ride, place := PelicanDrawingTheme("codex", base+i*int64(pelicanSlot.Seconds()))
+		if i > 0 {
+			assert.NotEqual(t, previousSubject, picked)
+			assert.NotEqual(t, previousVehicle, ride)
+			assert.NotEqual(t, previousScene, place)
+		}
+		previousSubject, previousVehicle, previousScene = picked, ride, place
 		seenSubjects[picked] = struct{}{}
 		seenVehicles[ride] = struct{}{}
+		seenScenes[place] = struct{}{}
 	}
 	assert.Len(t, seenSubjects, 5)
 	assert.Len(t, seenVehicles, 4)
+	assert.Len(t, seenScenes, 6)
 }
 
 func TestNormalizePelicanPrompts(t *testing.T) {
