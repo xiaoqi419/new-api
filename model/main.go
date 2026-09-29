@@ -390,6 +390,9 @@ func migrateDB() error {
 		&LotteryConsumeGrant{},
 		&LotteryTopupGrant{},
 		&LotteryTopupTotal{},
+		&ActivityLotteryCampaign{},
+		&ActivityLotteryPrize{},
+		&ActivityLotteryWinner{},
 		&Announcement{},
 		&Ticket{},
 		&TicketMessage{},
@@ -401,6 +404,14 @@ func migrateDB() error {
 	)
 	if err != nil {
 		return err
+	}
+	// Activity lottery winners are credited directly. Older previews created a
+	// unique index for the legacy redemption_id column; remove it so multiple
+	// directly credited winners can safely retain the legacy zero value.
+	if DB.Migrator().HasIndex(&ActivityLotteryWinner{}, "idx_activity_lottery_redemption") {
+		if err := DB.Migrator().DropIndex(&ActivityLotteryWinner{}, "idx_activity_lottery_redemption"); err != nil {
+			return err
+		}
 	}
 	if err := migrateUsersAgentUsernameIndex(); err != nil {
 		return err

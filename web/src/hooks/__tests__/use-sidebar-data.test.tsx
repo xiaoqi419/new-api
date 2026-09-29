@@ -26,6 +26,7 @@ import {
   Settings,
   Share2,
   TriangleAlert,
+  Trophy,
   User,
   Users,
   Wallet,
@@ -274,6 +275,13 @@ describe('root sidebar navigation data', () => {
         icon: Dices,
       },
       {
+        title: 'Recharge Lottery',
+        url: '/activity-lottery',
+        activeUrls: undefined,
+        configUrls: undefined,
+        icon: Trophy,
+      },
+      {
         title: 'Invitation',
         url: '/account/invitation',
         activeUrls: undefined,
@@ -325,6 +333,7 @@ describe('root sidebar navigation data', () => {
         ['Error Reports', '/error-reports', TriangleAlert],
         ['Invoice Management', '/invoices/admin', ReceiptText],
         ['Lottery Management', '/lottery/admin', Dices],
+        ['Recharge Lottery Management', '/activity-lottery/admin', Trophy],
         ['Ticket Management', '/tickets/admin', LifeBuoy],
         ['Announcement Management', '/announcements/admin', Megaphone],
         ['Changelog', '/changelog', History],
@@ -336,6 +345,7 @@ describe('root sidebar navigation data', () => {
       ]
     )
     expect(adminLinks.map((item) => item.activeUrls)).toEqual([
+      undefined,
       undefined,
       undefined,
       undefined,

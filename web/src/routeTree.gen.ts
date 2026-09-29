@@ -39,6 +39,9 @@ import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as AuthenticatedAccountSectionRouteImport } from './routes/_authenticated/account/$section'
+import { Route as AuthenticatedActivityLotteryIndexRouteImport } from './routes/_authenticated/activity-lottery/index'
+import { Route as AuthenticatedActivityLotteryIdRouteImport } from './routes/_authenticated/activity-lottery/$id'
+import { Route as AuthenticatedActivityLotteryAdminRouteImport } from './routes/_authenticated/activity-lottery/admin'
 import { Route as AuthenticatedAgentApplyIndexRouteImport } from './routes/_authenticated/agent-apply/index'
 import { Route as AuthenticatedAgentConsoleIndexRouteImport } from './routes/_authenticated/agent-console/index'
 import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents/index'
@@ -259,6 +262,24 @@ const AuthenticatedAccountSectionRoute =
   AuthenticatedAccountSectionRouteImport.update({
     id: '/account/$section',
     path: '/account/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedActivityLotteryIndexRoute =
+  AuthenticatedActivityLotteryIndexRouteImport.update({
+    id: '/activity-lottery/',
+    path: '/activity-lottery/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedActivityLotteryIdRoute =
+  AuthenticatedActivityLotteryIdRouteImport.update({
+    id: '/activity-lottery/$id',
+    path: '/activity-lottery/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedActivityLotteryAdminRoute =
+  AuthenticatedActivityLotteryAdminRouteImport.update({
+    id: '/activity-lottery/admin',
+    path: '/activity-lottery/admin',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAgentApplyIndexRoute =
@@ -706,6 +727,8 @@ export interface FileRoutesByFullPath {
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/activity-lottery/$id': typeof AuthenticatedActivityLotteryIdRoute
+  '/activity-lottery/admin': typeof AuthenticatedActivityLotteryAdminRoute
   '/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
@@ -727,6 +750,7 @@ export interface FileRoutesByFullPath {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
+  '/activity-lottery/': typeof AuthenticatedActivityLotteryIndexRoute
   '/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
   '/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
   '/agents/': typeof AuthenticatedAgentsIndexRoute
@@ -805,6 +829,8 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/activity-lottery/$id': typeof AuthenticatedActivityLotteryIdRoute
+  '/activity-lottery/admin': typeof AuthenticatedActivityLotteryAdminRoute
   '/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
@@ -826,6 +852,7 @@ export interface FileRoutesByTo {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/account': typeof AuthenticatedAccountIndexRoute
+  '/activity-lottery': typeof AuthenticatedActivityLotteryIndexRoute
   '/agent-apply': typeof AuthenticatedAgentApplyIndexRoute
   '/agent-console': typeof AuthenticatedAgentConsoleIndexRoute
   '/agents': typeof AuthenticatedAgentsIndexRoute
@@ -908,6 +935,8 @@ export interface FileRoutesById {
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/account/$section': typeof AuthenticatedAccountSectionRoute
+  '/_authenticated/activity-lottery/$id': typeof AuthenticatedActivityLotteryIdRoute
+  '/_authenticated/activity-lottery/admin': typeof AuthenticatedActivityLotteryAdminRoute
   '/_authenticated/announcements/$id': typeof AuthenticatedAnnouncementsIdRoute
   '/_authenticated/announcements/admin': typeof AuthenticatedAnnouncementsAdminRoute
   '/_authenticated/channel-monitor/detail': typeof AuthenticatedChannelMonitorDetailRoute
@@ -929,6 +958,7 @@ export interface FileRoutesById {
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/activity-lottery/': typeof AuthenticatedActivityLotteryIndexRoute
   '/_authenticated/agent-apply/': typeof AuthenticatedAgentApplyIndexRoute
   '/_authenticated/agent-console/': typeof AuthenticatedAgentConsoleIndexRoute
   '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
@@ -1010,6 +1040,8 @@ export interface FileRouteTypes {
     | '/setup/'
     | '/user/reset'
     | '/account/$section'
+    | '/activity-lottery/$id'
+    | '/activity-lottery/admin'
     | '/announcements/$id'
     | '/announcements/admin'
     | '/channel-monitor/detail'
@@ -1031,6 +1063,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/account/'
+    | '/activity-lottery/'
     | '/agent-apply/'
     | '/agent-console/'
     | '/agents/'
@@ -1109,6 +1142,8 @@ export interface FileRouteTypes {
     | '/setup'
     | '/user/reset'
     | '/account/$section'
+    | '/activity-lottery/$id'
+    | '/activity-lottery/admin'
     | '/announcements/$id'
     | '/announcements/admin'
     | '/channel-monitor/detail'
@@ -1130,6 +1165,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/account'
+    | '/activity-lottery'
     | '/agent-apply'
     | '/agent-console'
     | '/agents'
@@ -1211,6 +1247,8 @@ export interface FileRouteTypes {
     | '/setup/'
     | '/(auth)/user/reset'
     | '/_authenticated/account/$section'
+    | '/_authenticated/activity-lottery/$id'
+    | '/_authenticated/activity-lottery/admin'
     | '/_authenticated/announcements/$id'
     | '/_authenticated/announcements/admin'
     | '/_authenticated/channel-monitor/detail'
@@ -1232,6 +1270,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/usage-logs/audit'
     | '/_authenticated/account/'
+    | '/_authenticated/activity-lottery/'
     | '/_authenticated/agent-apply/'
     | '/_authenticated/agent-console/'
     | '/_authenticated/agents/'
@@ -1516,6 +1555,27 @@ declare module '@tanstack/react-router' {
       path: '/account/$section'
       fullPath: '/account/$section'
       preLoaderRoute: typeof AuthenticatedAccountSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/activity-lottery/': {
+      id: '/_authenticated/activity-lottery/'
+      path: '/activity-lottery'
+      fullPath: '/activity-lottery/'
+      preLoaderRoute: typeof AuthenticatedActivityLotteryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/activity-lottery/$id': {
+      id: '/_authenticated/activity-lottery/$id'
+      path: '/activity-lottery/$id'
+      fullPath: '/activity-lottery/$id'
+      preLoaderRoute: typeof AuthenticatedActivityLotteryIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/activity-lottery/admin': {
+      id: '/_authenticated/activity-lottery/admin'
+      path: '/activity-lottery/admin'
+      fullPath: '/activity-lottery/admin'
+      preLoaderRoute: typeof AuthenticatedActivityLotteryAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/agent-apply/': {
@@ -2104,6 +2164,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemSettingsRouteRoute: typeof AuthenticatedSystemSettingsRouteRouteWithChildren
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
   AuthenticatedAccountSectionRoute: typeof AuthenticatedAccountSectionRoute
+  AuthenticatedActivityLotteryIdRoute: typeof AuthenticatedActivityLotteryIdRoute
+  AuthenticatedActivityLotteryAdminRoute: typeof AuthenticatedActivityLotteryAdminRoute
   AuthenticatedAnnouncementsIdRoute: typeof AuthenticatedAnnouncementsIdRoute
   AuthenticatedAnnouncementsAdminRoute: typeof AuthenticatedAnnouncementsAdminRoute
   AuthenticatedChannelMonitorDetailRoute: typeof AuthenticatedChannelMonitorDetailRoute
@@ -2125,6 +2187,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedUsageLogsAuditRoute: typeof AuthenticatedUsageLogsAuditRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
+  AuthenticatedActivityLotteryIndexRoute: typeof AuthenticatedActivityLotteryIndexRoute
   AuthenticatedAgentApplyIndexRoute: typeof AuthenticatedAgentApplyIndexRoute
   AuthenticatedAgentConsoleIndexRoute: typeof AuthenticatedAgentConsoleIndexRoute
   AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
@@ -2164,6 +2227,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSystemSettingsRouteRouteWithChildren,
   AuthenticatedChat2linkRoute: AuthenticatedChat2linkRoute,
   AuthenticatedAccountSectionRoute: AuthenticatedAccountSectionRoute,
+  AuthenticatedActivityLotteryIdRoute: AuthenticatedActivityLotteryIdRoute,
+  AuthenticatedActivityLotteryAdminRoute:
+    AuthenticatedActivityLotteryAdminRoute,
   AuthenticatedAnnouncementsIdRoute: AuthenticatedAnnouncementsIdRoute,
   AuthenticatedAnnouncementsAdminRoute: AuthenticatedAnnouncementsAdminRoute,
   AuthenticatedChannelMonitorDetailRoute:
@@ -2187,6 +2253,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedUsageLogsAuditRoute: AuthenticatedUsageLogsAuditRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
+  AuthenticatedActivityLotteryIndexRoute:
+    AuthenticatedActivityLotteryIndexRoute,
   AuthenticatedAgentApplyIndexRoute: AuthenticatedAgentApplyIndexRoute,
   AuthenticatedAgentConsoleIndexRoute: AuthenticatedAgentConsoleIndexRoute,
   AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,

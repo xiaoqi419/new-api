@@ -423,6 +423,26 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		activityLotteryRoute := apiRouter.Group("/activity/lottery")
+		{
+			activityLotteryRoute.GET("/current", middleware.TryUserAuth(), controller.GetActivityLotteryCurrent)
+			activityLotteryRoute.GET("/rounds", controller.GetActivityLotteryRounds)
+			activityLotteryRoute.GET("/rounds/:id", middleware.TryUserAuth(), controller.GetActivityLotteryRound)
+
+			activityLotteryAdminRoute := activityLotteryRoute.Group("/admin")
+			activityLotteryAdminRoute.Use(middleware.AdminAuth())
+			{
+				activityLotteryAdminRoute.GET("/rounds", controller.AdminListActivityLotteryCampaigns)
+				activityLotteryAdminRoute.GET("/rounds/:id", controller.AdminGetActivityLotteryCampaign)
+				activityLotteryAdminRoute.POST("/rounds", controller.AdminCreateActivityLotteryCampaign)
+				activityLotteryAdminRoute.PUT("/rounds/:id", controller.AdminUpdateActivityLotteryCampaign)
+				activityLotteryAdminRoute.POST("/rounds/:id/publish", controller.AdminPublishActivityLotteryCampaign)
+				activityLotteryAdminRoute.POST("/rounds/:id/cancel", controller.AdminCancelActivityLotteryCampaign)
+				activityLotteryAdminRoute.POST("/rounds/:id/draw", controller.AdminDrawActivityLotteryCampaign)
+				activityLotteryAdminRoute.GET("/rounds/:id/winners/export", controller.AdminExportActivityLotteryWinners)
+			}
+		}
+
 		// 工单系统（用户提交/回复 + 管理端处理）
 		ticketRoute := apiRouter.Group("/ticket")
 		ticketRoute.Use(middleware.UserAuth())
