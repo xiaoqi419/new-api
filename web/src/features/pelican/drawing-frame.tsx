@@ -36,13 +36,13 @@ export function DrawingFrame(props: {
   const isInteractive = props.interactive ?? true
   const frameClass = isInteractive
     ? 'pointer-events-auto absolute inset-0 block h-full w-full border-0'
-    : 'pointer-events-none absolute top-0 left-0 origin-top-left border-0'
+    : 'pointer-events-none absolute top-0 left-0 border-0'
   const frameStyle = isInteractive
     ? undefined
     : {
         width: previewStageWidth,
         height: previewStageHeight,
-        transform: `scale(min(calc(100cqw / ${previewStageWidth}px), calc(100cqh / ${previewStageHeight}px)))`,
+        zoom: `min(calc(100cqw / ${previewStageWidth}px), calc(100cqh / ${previewStageHeight}px))`,
       }
 
   return (

@@ -10,26 +10,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPelicanSlotStartAlignsToShanghaiHalfHour(t *testing.T) {
+func TestPelicanSlotStartAlignsToShanghaiTenMinutes(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
-	now := time.Date(2026, 9, 28, 17, 34, 15, 0, loc)
+	now := time.Date(2026, 9, 28, 17, 24, 15, 0, loc)
 	got := time.Unix(PelicanSlotStart(now), 0).In(loc)
 	assert.Equal(t, 17, got.Hour())
-	assert.Equal(t, 30, got.Minute())
+	assert.Equal(t, 20, got.Minute())
 	assert.Equal(t, 0, got.Second())
+
+	same := time.Date(2026, 9, 28, 17, 29, 59, 0, loc)
+	next := time.Date(2026, 9, 28, 17, 30, 0, 0, loc)
+	assert.Equal(t, PelicanSlotStart(now), PelicanSlotStart(same))
+	assert.Equal(t, PelicanSlotStart(now)+int64(pelicanSlot.Seconds()), PelicanSlotStart(next))
+
+	utc := time.Date(2026, 9, 28, 9, 24, 15, 0, time.UTC)
+	assert.Equal(t, PelicanSlotStart(now), PelicanSlotStart(utc))
 }
 
 func TestPelicanWindowSlots(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
-	now := time.Date(2026, 9, 28, 18, 10, 0, 0, loc)
+	now := time.Date(2026, 9, 28, 18, 7, 0, 0, loc)
 	day := PelicanWindowSlots("24h", now)
-	require.Len(t, day, 48)
+	require.Len(t, day, 144)
 	assert.Equal(t, PelicanSlotStart(now), day[len(day)-1])
-	assert.Equal(t, int64(30*60), day[1]-day[0])
+	assert.Equal(t, int64(10*60), day[1]-day[0])
+	assert.Equal(t, PelicanSlotStart(now)-int64(143*10*60), day[0])
 
 	three := PelicanWindowSlots("3d", now)
-	require.Len(t, three, 144)
+	require.Len(t, three, 432)
 	assert.Equal(t, day[len(day)-1], three[len(three)-1])
+	assert.Equal(t, PelicanSlotStart(now)-int64(431*10*60), three[0])
 }
 
 func TestJudgeLogicAnswer(t *testing.T) {
@@ -64,6 +74,14 @@ func TestJudgeLogicAnswer(t *testing.T) {
 	answer, pass = JudgeLogicAnswer("先写 \\boxed{20}，最终 \\boxed{21}。后面的补充是 12。")
 	assert.True(t, pass)
 	assert.Equal(t, "21", answer)
+
+	answer, pass = JudgeLogicAnswer("\\[\n\\boxed{21\\text{颗：12颗五角星形＋9颗圆形}}\n\\]\n注意：如果**不允许利用手感选择形状，只能随机取出**，答案才是29颗。")
+	assert.True(t, pass)
+	assert.Equal(t, "21", answer)
+
+	answer, pass = JudgeLogicAnswer("\\boxed{28+1=29\\text{个}}")
+	assert.False(t, pass)
+	assert.Equal(t, "29", answer)
 }
 
 func TestExtractDrawingHTML(t *testing.T) {

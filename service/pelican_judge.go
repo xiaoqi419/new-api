@@ -12,7 +12,7 @@ import (
 
 const (
 	PelicanLogicAnswer = "21"
-	pelicanSlot        = 30 * time.Minute
+	pelicanSlot        = 10 * time.Minute
 	pelicanPromptLimit = 8000
 	pelicanAnswerLimit = 12
 )
@@ -37,20 +37,23 @@ func pelicanLocation() *time.Location {
 	return loc
 }
 
-// PelicanSlotStart is the Shanghai half-hour bucket that contains now.
+// PelicanSlotStart is the Shanghai ten-minute bucket that contains now.
 func PelicanSlotStart(now time.Time) int64 {
 	loc := pelicanLocation()
 	local := now.In(loc)
-	slot := time.Date(local.Year(), local.Month(), local.Day(), local.Hour(), local.Minute()-(local.Minute()%30), 0, 0, loc)
+	slotMinutes := int(pelicanSlot / time.Minute)
+	minute := local.Minute() - (local.Minute() % slotMinutes)
+	slot := time.Date(local.Year(), local.Month(), local.Day(), local.Hour(), minute, 0, 0, loc)
 	return slot.Unix()
 }
 
-// PelicanWindowSlots returns the half-hour starts covered by 24h or 3d, ending at the current slot.
+// PelicanWindowSlots returns the ten-minute starts covered by 24h or 3d, ending at the current slot.
 func PelicanWindowSlots(window string, now time.Time) []int64 {
-	count := 48
+	span := 24 * time.Hour
 	if window == "3d" {
-		count = 144
+		span = 72 * time.Hour
 	}
+	count := int(span / pelicanSlot)
 	current := PelicanSlotStart(now)
 	slots := make([]int64, count)
 	for i := 0; i < count; i++ {
@@ -152,9 +155,9 @@ func NormalizePelicanDrawingPrompt(raw string) (string, error) {
 	return raw, nil
 }
 
-// JudgeLogicAnswer prefers the last number inside the last \boxed{}.
-// A number after that box is another scenario, not the declared answer.
-// Without a boxed answer, only the last number in the reply counts.
+// JudgeLogicAnswer prefers the last \boxed{}.
+// A number written before \text is the declared count; digits inside that text are only the breakdown.
+// Without \text, the last number in the box is the answer. A number after the box is another scenario.
 func JudgeLogicAnswer(reply string) (answer string, pass bool) {
 	return judgeLogicAnswer(reply, PelicanExpectedAnswer())
 }
@@ -204,9 +207,22 @@ func pelicanBoxedAnswer(reply string) string {
 		if end < 0 {
 			return last
 		}
-		nums := pelicanTrailingNumber.FindAllString(reply[:end], -1)
-		if len(nums) > 0 {
-			last = nums[len(nums)-1]
+		body := reply[:end]
+		chosen := ""
+		if textAt := strings.Index(body, `\text`); textAt >= 0 {
+			before := pelicanTrailingNumber.FindAllString(body[:textAt], -1)
+			if len(before) > 0 {
+				chosen = before[len(before)-1]
+			}
+		}
+		if chosen == "" {
+			nums := pelicanTrailingNumber.FindAllString(body, -1)
+			if len(nums) > 0 {
+				chosen = nums[len(nums)-1]
+			}
+		}
+		if chosen != "" {
+			last = chosen
 		}
 		reply = reply[end+1:]
 	}
