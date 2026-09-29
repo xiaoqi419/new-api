@@ -26,6 +26,7 @@ type TopUp struct {
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
 	HeldQuota       int     `json:"held_quota" gorm:"type:bigint;default:0"` // held 状态时记录的待补发到账额度（代理钱包补足后补发）
+	BonusQuota      int     `json:"bonus_quota" gorm:"default:0"`
 }
 
 const (
@@ -243,12 +244,20 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
+		bonus, bonusErr := TopUpBonusQuota(topUp.Money, common.GetTimestamp())
+		if bonusErr != nil {
+			return bonusErr
+		}
+		topUp.BonusQuota = bonus
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := tx.Save(topUp).Error; err != nil {
 			return err
 		}
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
+		if err := creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil); err != nil {
+			return err
+		}
+		return creditUserQuotaTx(tx, topUp.UserId, bonus)
 	})
 	if err != nil {
 		if !errors.Is(err, ErrTopUpNotFound) && !errors.Is(err, ErrPaymentMethodMismatch) && !errors.Is(err, ErrTopUpStatusInvalid) {
@@ -259,13 +268,13 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 	if alreadyDone {
 		return true, nil
 	}
-	syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, "epay topup")
+	syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quotaToAdd, topUp.BonusQuota), "epay topup")
 	if current, readErr := GetUserQuota(topUp.UserId, true); readErr == nil {
 		ObserveQuotaReminderBalance(topUp.UserId, QuotaReminderBalanceWallet, 0, int64(current))
 	}
 
 	common.SysLog(fmt.Sprintf("易支付充值成功 trade_no=%s user_id=%d quota_to_add=%d money=%.2f", topUp.TradeNo, topUp.UserId, quotaToAdd, topUp.Money))
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentProviderEpay)
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money)+bonusLogSuffix(topUp.BonusQuota), callerIp, topUp.PaymentMethod, PaymentProviderEpay)
 	return false, nil
 }
 
@@ -327,12 +336,12 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		return nil // 代理钱包不足，已挂单，待代理补足后自动补发
 	}
 
-	syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, "stripe topup")
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(quotaToAdd), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
+	syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quotaToAdd, topUp.BonusQuota), "stripe topup")
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(quotaToAdd), topUp.Amount)+bonusLogSuffix(topUp.BonusQuota), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 	GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 	if OnTopUpSuccess != nil {
-		OnTopUpSuccess(topUp, quotaToAdd)
+		OnTopUpSuccess(topUp, quotaWithBonus(quotaToAdd, topUp.BonusQuota))
 	}
 
 	return nil
@@ -604,17 +613,17 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	if err != nil {
 		return err
 	}
-	if !credited {
-		return nil // 幂等命中或代理挂单，不重复发放
+	if !credited || completedTopUp == nil {
+		return nil // 幂等命中、代理挂单，或没有已入账订单，避免空指针
 	}
 
 	// 事务外记录日志，避免阻塞
-	syncCreditUserQuotaCache(userId, quotaToAdd, "manual topup")
-	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
+	syncCreditUserQuotaCache(userId, quotaWithBonus(quotaToAdd, completedTopUp.BonusQuota), "manual topup")
+	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney)+bonusLogSuffix(completedTopUp.BonusQuota), callerIp, paymentMethod, "admin")
 	CreateInviterRebate(userId, topUpId, tradeNo, quotaToAdd)
 	GrantTopupLotteryCards(userId, quotaToAdd)
 	if quotaToAdd > 0 && completedTopUp != nil && OnTopUpSuccess != nil {
-		OnTopUpSuccess(completedTopUp, quotaToAdd)
+		OnTopUpSuccess(completedTopUp, quotaWithBonus(quotaToAdd, completedTopUp.BonusQuota))
 	}
 	return nil
 }
@@ -682,13 +691,13 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	if !credited {
 		return nil // 代理钱包不足，已挂单，待代理补足后自动补发
 	}
-	syncCreditUserQuotaCache(topUp.UserId, quota, "creem topup")
+	syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quota, topUp.BonusQuota), "creem topup")
 
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money)+bonusLogSuffix(topUp.BonusQuota), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
 	CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quota)
 	GrantTopupLotteryCards(topUp.UserId, quota)
 	if OnTopUpSuccess != nil {
-		OnTopUpSuccess(topUp, quota)
+		OnTopUpSuccess(topUp, quotaWithBonus(quota, topUp.BonusQuota))
 	}
 
 	return nil
@@ -751,12 +760,12 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 		return errors.New("充值失败，请稍后重试")
 	}
 	if credited && quotaToAdd > 0 {
-		syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, "waffo topup")
-		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
+		syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quotaToAdd, topUp.BonusQuota), "waffo topup")
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money)+bonusLogSuffix(topUp.BonusQuota), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 		if OnTopUpSuccess != nil {
-			OnTopUpSuccess(topUp, quotaToAdd)
+			OnTopUpSuccess(topUp, quotaWithBonus(quotaToAdd, topUp.BonusQuota))
 		}
 	}
 
@@ -824,12 +833,12 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 	}
 
 	if credited && quotaToAdd > 0 {
-		syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, logSource+" topup")
-		RecordTopupLog(topUp.UserId, fmt.Sprintf("%s充值成功，充值额度: %v，支付金额: %.2f", logSource, logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, paymentMethod, logSource)
+		syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quotaToAdd, topUp.BonusQuota), logSource+" topup")
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("%s充值成功，充值额度: %v，支付金额: %.2f", logSource, logger.FormatQuota(quotaToAdd), topUp.Money)+bonusLogSuffix(topUp.BonusQuota), callerIp, paymentMethod, logSource)
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 		if OnTopUpSuccess != nil {
-			OnTopUpSuccess(topUp, quotaToAdd)
+			OnTopUpSuccess(topUp, quotaWithBonus(quotaToAdd, topUp.BonusQuota))
 		}
 	}
 
@@ -891,12 +900,12 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 		return errors.New("充值失败，请稍后重试")
 	}
 	if credited && quotaToAdd > 0 {
-		syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, "waffo pancake topup")
-		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
+		syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(quotaToAdd, topUp.BonusQuota), "waffo pancake topup")
+		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money)+bonusLogSuffix(topUp.BonusQuota))
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 		if OnTopUpSuccess != nil {
-			OnTopUpSuccess(topUp, quotaToAdd)
+			OnTopUpSuccess(topUp, quotaWithBonus(quotaToAdd, topUp.BonusQuota))
 		}
 	}
 

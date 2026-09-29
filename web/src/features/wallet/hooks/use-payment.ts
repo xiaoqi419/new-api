@@ -190,6 +190,14 @@ export function usePayment() {
           handleServerError(response, i18next.t('Payment request failed'))
           return false
         }
+        if (
+          response.data &&
+          'paid' in response.data &&
+          response.data.paid === true
+        ) {
+          toast.success(i18next.t('Payment successful'))
+          return true
+        }
 
         const opened = openWalletEpayCheckout(
           response.data,

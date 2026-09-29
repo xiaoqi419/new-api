@@ -30,6 +30,49 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-29',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '重构降智监测页面界面：优化分组卡片视觉布局与指标呈现，半小时监测格子支持高清晰度状态区分与平滑交互，详情弹窗支持交互沙箱与响应指标查看。',
+          '降智监测右侧改为沙箱播放绘图：点击绘图色块，即在右侧完整渲染该次结果，CSS 动画可以播放。',
+          '绘图沙箱允许页内脚本，画面可以持续动画并响应点击；脚本跑在隔离源里，碰不到本站登录态。',
+          '绘图主角改为奥巴马、孙悟空、奥特曼、鹈鹕、北极熊，交通工具改为自行车、热气球、滑板、摩托车，按分组随机。',
+          '绘图判定与对照站一致：返回可渲染的 SVG 或 Canvas 即通过，不按字数或画风自动判失败。',
+          '逻辑题改为只认回复末尾的数字，和帅 API 一样；正文先写出正确答案、注释里另写其他数字时不再误判。',
+          '降智监测设置可以勾选已启用渠道的分组，并为每个分组指定检测模型。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-28',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '根管理员可在管理员菜单配置充值活动：开关、起止时间，以及多档“充多少送多少”。活动开启时，充值成功自动获得符合的最高一档赠送；赠送不计入代理结算成本。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-09-28',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '鹈鹕画廊改为降智监测：上方是糖果逻辑题，下方自行渲染绘图，主角在孙悟空、鹈鹕、奥特曼、奥巴马中随机；左侧按 30 分钟色块显示是否通过，已启用令牌的分组会自动检测。',
+          '降智监测的开关、分组、逻辑题、正确答案和绘图提示词在管理员菜单里配置。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-09-28',
     changes: [
       {

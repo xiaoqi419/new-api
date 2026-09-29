@@ -686,7 +686,7 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 		writeGMPayNotifyResult(c, false)
 		return
 	}
-	credited, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, "", quotaToAdd)
+	credited, bonus, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, "", quotaToAdd)
 	if err != nil {
 		if !errors.Is(err, model.ErrTopUpNotFound) && !errors.Is(err, model.ErrPaymentMethodMismatch) && !errors.Is(err, model.ErrTopUpStatusInvalid) {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("GMPay 充值结算失败 trade_no=%s error=%q", topUp.TradeNo, err.Error()))
@@ -699,11 +699,11 @@ func settleGMPayNotify(c *gin.Context, expectedPID string, secret string, expect
 	}
 	if credited {
 		logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 充值回调结算 trade_no=%s user_id=%d status=settled %s", topUp.TradeNo, topUp.UserId, gmpayFeeAuditFields(feeQuote)))
-		model.RecordTopupLog(topUp.UserId, gmpayTopupLogContent(quotaToAdd, topUp.Money, feeQuote), c.ClientIP(), topUp.PaymentMethod, "gmpay")
+		model.RecordTopupLog(topUp.UserId, gmpayTopupLogContent(quotaToAdd, topUp.Money, feeQuote)+model.TopUpBonusLogSuffix(bonus), c.ClientIP(), topUp.PaymentMethod, "gmpay")
 		model.CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 		model.GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 		if model.OnTopUpSuccess != nil {
-			model.OnTopUpSuccess(topUp, quotaToAdd)
+			model.OnTopUpSuccess(topUp, model.QuotaWithTopUpBonus(quotaToAdd, bonus))
 		}
 	} else {
 		logger.LogInfo(c.Request.Context(), fmt.Sprintf("GMPay 充值回调幂等确认 trade_no=%s user_id=%d status=idempotent %s", topUp.TradeNo, topUp.UserId, gmpayFeeAuditFields(feeQuote)))

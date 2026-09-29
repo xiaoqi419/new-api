@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +34,13 @@ func GetTopUpInfo(c *gin.Context) {
 	payMethods := effectiveEpayPaymentMethods()
 	if !complianceConfirmed {
 		payMethods = []map[string]string{}
+	}
+	if topupDevInstantEnabled() {
+		payMethods = append(payMethods, map[string]string{
+			"name":  "测试支付",
+			"type":  topupDevInstantMethod,
+			"color": "#16a34a",
+		})
 	}
 	nativeCrypto := operation_setting.IsGMPayNativePaymentGatewayMode()
 	var cryptoAssets []service.GMPayPaymentAsset
@@ -157,7 +165,7 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 
 	data := gin.H{
-		"enable_online_topup":              isEpayTopUpEnabled(),
+		"enable_online_topup":              isEpayTopUpEnabled() || topupDevInstantEnabled(),
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
 		"enable_creem_topup":               isCreemTopUpEnabled(),
 		"enable_wechatpay_topup":           enableWechatPay,
@@ -188,6 +196,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"max_topup":               GetMaxTopup(int64(operation_setting.MinTopUp)),
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
+		"topup_bonus":             model.ActiveTopUpBonus(common.GetTimestamp()),
 	}
 	// Legacy EPay must not expose the Native asset capability. Native mode
 	// deliberately returns an empty array when EPUSDT is unavailable so the
@@ -553,6 +562,79 @@ func RequestEpay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": params, "url": uri})
 }
 
+const topupDevInstantMethod = "dev_instant"
+
+func topupDevInstantEnabled() bool {
+	value := strings.TrimSpace(os.Getenv("TOPUP_DEV_INSTANT"))
+	return value == "1" || strings.EqualFold(value, "true")
+}
+
+func settleDevInstantTopup(c *gin.Context, req EpayRequest) {
+	if !validateTopupRange(c, req.Amount, getMinTopup(0)) {
+		return
+	}
+	userID := c.GetInt("id")
+	if rejectInvalidTopUpQuota(c, userID, req.Amount) {
+		return
+	}
+	group, err := model.GetUserGroup(userID, true)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
+		return
+	}
+	payMoney := getPayMoney(req.Amount, group, 0)
+	if payMoney < 0.01 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
+		return
+	}
+	amount := req.Amount
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		amount = decimal.NewFromInt(amount).Div(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart()
+	}
+	quotaToAdd, quotaErr := topupQuotaFromAmount(amount)
+	if quotaErr != nil || quotaToAdd <= 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值额度过大"})
+		return
+	}
+	if ok, msg := precheckAgentWalletForUser(c, quotaToAdd); !ok {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": msg})
+		return
+	}
+	tradeNo := fmt.Sprintf("DEV%dNO%s%d", userID, common.GetRandomString(6), time.Now().Unix())
+	topUp := &model.TopUp{
+		UserId:          userID,
+		Amount:          amount,
+		Money:           payMoney,
+		TradeNo:         tradeNo,
+		PaymentMethod:   topupDevInstantMethod,
+		PaymentProvider: model.PaymentProviderEpay,
+		CreateTime:      time.Now().Unix(),
+		Status:          common.TopUpStatusPending,
+	}
+	if err = topUp.Insert(); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
+		return
+	}
+	credited, bonus, err := model.CompletePaidTopupByTradeNo(tradeNo, model.PaymentProviderEpay, "", quotaToAdd)
+	if err != nil {
+		common.SysError("dev instant topup failed: " + err.Error())
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值失败，请稍后重试"})
+		return
+	}
+	if !credited {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "代理钱包不足，订单已挂起"})
+		return
+	}
+	model.RecordTopupLog(userID, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), payMoney)+model.TopUpBonusLogSuffix(bonus), c.ClientIP(), topupDevInstantMethod, "dev_instant")
+	model.CreateInviterRebate(userID, topUp.Id, tradeNo, quotaToAdd)
+	model.GrantTopupLotteryCards(userID, quotaToAdd)
+	if model.OnTopUpSuccess != nil {
+		model.OnTopUpSuccess(topUp, model.QuotaWithTopUpBonus(quotaToAdd, bonus))
+	}
+	common.SysLog(fmt.Sprintf("TOPUP_DEV_INSTANT settled user_id=%d trade_no=%s quota=%d bonus=%d money=%.2f", userID, tradeNo, quotaToAdd, bonus, payMoney))
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"paid": true, "trade_no": tradeNo}})
+}
+
 // RequestEpayCheckout creates a wallet top-up order and returns an in-site
 // MAPI checkout instruction. The legacy RequestEpay /submit.php response is
 // intentionally retained for existing external clients.
@@ -560,6 +642,14 @@ func RequestEpayCheckout(c *gin.Context) {
 	var req EpayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	if req.PaymentMethod == topupDevInstantMethod {
+		if !topupDevInstantEnabled() {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
+			return
+		}
+		settleDevInstantTopup(c, req)
 		return
 	}
 
@@ -1047,7 +1137,7 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 			_, _ = c.Writer.Write([]byte("fail"))
 			return
 		}
-		credited, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, "", quotaToAdd)
+		credited, bonus, err := model.CompletePaidTopupByTradeNo(topUp.TradeNo, model.PaymentProviderEpay, "", quotaToAdd)
 		if err != nil {
 			switch {
 			case errors.Is(err, model.ErrTopUpNotFound):
@@ -1068,11 +1158,11 @@ func settleEpayNotify(c *gin.Context, client *epay.Client, expectedAgentId int) 
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 已处理或代理钱包不足，订单保持现状 provider=%s trade_no=%s payment_method=%s status=held_or_idempotent", model.PaymentProviderEpay, verifyInfo.ServiceTradeNo, verifyInfo.Type))
 		} else {
 			logger.LogInfo(c.Request.Context(), fmt.Sprintf("易支付 充值成功 provider=%s trade_no=%s user_id=%d payment_method=%s quota_to_add=%d status=settled", model.PaymentProviderEpay, topUp.TradeNo, topUp.UserId, topUp.PaymentMethod, quotaToAdd))
-			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "epay")
+			model.RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%f", logger.LogQuota(quotaToAdd), topUp.Money)+model.TopUpBonusLogSuffix(bonus), c.ClientIP(), topUp.PaymentMethod, "epay")
 			model.CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, quotaToAdd)
 			model.GrantTopupLotteryCards(topUp.UserId, quotaToAdd)
 			if model.OnTopUpSuccess != nil {
-				model.OnTopUpSuccess(topUp, quotaToAdd)
+				model.OnTopUpSuccess(topUp, model.QuotaWithTopUpBonus(quotaToAdd, bonus))
 			}
 		}
 	} else {

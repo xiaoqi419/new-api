@@ -519,6 +519,41 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "PelicanMonitorGroups":
+		normalized, normalizeErr := service.NormalizePelicanGroups(option.Value.(string))
+		if normalizeErr != nil {
+			common.ApiErrorMsg(c, normalizeErr.Error())
+			return
+		}
+		option.Value = normalized
+	case "PelicanLogicPrompt":
+		normalized, normalizeErr := service.NormalizePelicanLogicPrompt(option.Value.(string))
+		if normalizeErr != nil {
+			common.ApiErrorMsg(c, normalizeErr.Error())
+			return
+		}
+		option.Value = normalized
+	case "PelicanLogicAnswer":
+		normalized, normalizeErr := service.NormalizePelicanLogicAnswer(option.Value.(string))
+		if normalizeErr != nil {
+			common.ApiErrorMsg(c, normalizeErr.Error())
+			return
+		}
+		option.Value = normalized
+	case "PelicanDrawingPrompt":
+		normalized, normalizeErr := service.NormalizePelicanDrawingPrompt(option.Value.(string))
+		if normalizeErr != nil {
+			common.ApiErrorMsg(c, normalizeErr.Error())
+			return
+		}
+		option.Value = normalized
+	case model.TopUpBonusOptionKey:
+		normalized, normalizeErr := model.NormalizeTopUpBonusCampaign(option.Value.(string))
+		if normalizeErr != nil {
+			common.ApiErrorMsg(c, normalizeErr.Error())
+			return
+		}
+		option.Value = normalized
 	case billing_setting.BillingExprOptionKey:
 		expressions := make(map[string]string)
 		if err = common.UnmarshalJsonStr(option.Value.(string), &expressions); err != nil {

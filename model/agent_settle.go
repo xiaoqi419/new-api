@@ -95,11 +95,22 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 }
 
 // ApplyTerminalTopupTx 在给定事务内完成到账/挂单，并相应更新 topUp 状态（success/held）。
+// 活动赠送在首次离开 pending 时按实付金额冻结；只有真正到账时才把赠送额度加给用户。
 // 返回 credited；调用方仅在 credited=true 时执行充值成功钩子。
 func ApplyTerminalTopupTx(tx *gorm.DB, topUp *TopUp, user *User, quotaToAdd int) (credited bool, err error) {
+	bonus, bonusErr := TopUpBonusQuota(topUp.Money, common.GetTimestamp())
+	if bonusErr != nil {
+		return false, bonusErr
+	}
+	topUp.BonusQuota = bonus
 	credited, err = SettleTerminalUserTopupTx(tx, user.Id, user.AgentId, quotaToAdd, topUp.TradeNo)
 	if err != nil {
 		return false, err
+	}
+	if credited {
+		if err = creditUserQuotaTx(tx, user.Id, bonus); err != nil {
+			return false, err
+		}
 	}
 	topUp.CompleteTime = common.GetTimestamp()
 	if credited {
@@ -124,12 +135,12 @@ func CompletePaidTopupTx(tx *gorm.DB, topUp *TopUp, quotaToAdd int) (credited bo
 
 // CompletePaidTopupByTradeNo 自开事务完成一笔已支付订单的到账/挂单（供 epay 等在 controller
 // 内联入账的支付方式复用）。锁单 + 校验支付网关 + 幂等 + 代理结算，返回是否已到账。
-func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, paymentMethodOverride string, quotaToAdd int) (credited bool, err error) {
+func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, paymentMethodOverride string, quotaToAdd int) (credited bool, bonus int, err error) {
 	if tradeNo == "" {
-		return false, errors.New("未提供支付单号")
+		return false, 0, errors.New("未提供支付单号")
 	}
 	if quotaToAdd <= 0 {
-		return false, errors.New("无效的充值额度")
+		return false, 0, errors.New("无效的充值额度")
 	}
 	refCol := "`trade_no`"
 	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
@@ -156,15 +167,16 @@ func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, payment
 		userId = topUp.UserId
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
+		bonus = topUp.BonusQuota
 		return e
 	})
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 	if credited {
-		syncCreditUserQuotaCache(userId, quotaToAdd, "paid topup")
+		syncCreditUserQuotaCache(userId, quotaWithBonus(quotaToAdd, bonus), "paid topup")
 	}
-	return credited, nil
+	return credited, bonus, nil
 }
 
 // TryCompleteAgentPrepay 处理一笔代理「预充值」订单：到账目标为代理钱包(1:1)，而非用户额度。
@@ -317,6 +329,9 @@ func ResettleHeldTopups(agentId int) {
 			if !ok {
 				return errStopResettle // 钱包再次不足，终止本轮补发
 			}
+			if err = creditUserQuotaTx(tx, user.Id, locked.BonusQuota); err != nil {
+				return err
+			}
 			locked.Status = common.TopUpStatusSuccess
 			locked.CompleteTime = common.GetTimestamp()
 			locked.HeldQuota = 0
@@ -336,12 +351,12 @@ func ResettleHeldTopups(agentId int) {
 		if !resettled {
 			continue
 		}
-		syncCreditUserQuotaCache(topUp.UserId, creditedQuota, "agent held topup resettlement")
-		RecordTopupLog(topUp.UserId, fmt.Sprintf("代理补足额度后自动补发充值，到账额度: %v", logger.FormatQuota(creditedQuota)), "", topUp.PaymentMethod, "agent_resettle")
+		syncCreditUserQuotaCache(topUp.UserId, quotaWithBonus(creditedQuota, topUp.BonusQuota), "agent held topup resettlement")
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("代理补足额度后自动补发充值，到账额度: %v", logger.FormatQuota(creditedQuota))+bonusLogSuffix(topUp.BonusQuota), "", topUp.PaymentMethod, "agent_resettle")
 		CreateInviterRebate(topUp.UserId, topUp.Id, topUp.TradeNo, creditedQuota)
 		GrantTopupLotteryCards(topUp.UserId, creditedQuota)
 		if OnTopUpSuccess != nil {
-			OnTopUpSuccess(topUp, creditedQuota)
+			OnTopUpSuccess(topUp, quotaWithBonus(creditedQuota, topUp.BonusQuota))
 		}
 	}
 }

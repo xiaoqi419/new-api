@@ -24,6 +24,7 @@ import {
 } from '@/components/layout/lib/authenticated-entrypoint-visibility'
 import type { NavGroup, NavItem } from '@/components/layout/types'
 import { useStatus } from '@/hooks/use-status'
+import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 type SidebarSectionConfig = {
@@ -305,15 +306,23 @@ export function useSidebarConfig(navGroups: NavGroup[]): NavGroup[] {
     return parseUserSidebarConfig(auth?.user?.sidebar_modules)
   }, [auth?.user?.permissions?.sidebar_settings, auth?.user?.sidebar_modules])
 
+  const pelicanEnabled = status?.enable_pelican === true
+  const isRoot = auth?.user?.role === ROLE.SUPER_ADMIN
   const filteredNavGroups = useMemo(
     () =>
       filterHiddenAuthenticatedEntries(navGroups)
         .map((group) => ({
           ...group,
-          items: filterNavItems(group.items, adminConfig, userConfig),
+          items: filterNavItems(group.items, adminConfig, userConfig).filter(
+            (item) =>
+              pelicanEnabled ||
+              isRoot ||
+              !('url' in item) ||
+              item.url !== '/pelican'
+          ),
         }))
-        .filter((group) => group.items.length > 0), // Only show navigation groups with visible items
-    [navGroups, adminConfig, userConfig]
+        .filter((group) => group.items.length > 0),
+    [navGroups, adminConfig, userConfig, pelicanEnabled, isRoot]
   )
 
   return filteredNavGroups
@@ -329,6 +338,13 @@ export function useIsSidebarModuleVisible(url: string): boolean {
   const { auth } = useAuthStore()
 
   if (isAuthenticatedEntryHidden(url)) return false
+  if (
+    url === '/pelican' &&
+    status?.enable_pelican !== true &&
+    auth?.user?.role !== ROLE.SUPER_ADMIN
+  ) {
+    return false
+  }
 
   const adminConfig = parseSidebarConfig(
     status?.SidebarModulesAdmin as string | null | undefined

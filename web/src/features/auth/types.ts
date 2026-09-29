@@ -224,6 +224,7 @@ export interface SystemStatus {
   password_login_enabled?: boolean
   password_login_encryption_enabled?: boolean
   password_register_enabled?: boolean
+  enable_pelican?: boolean
   default_theme_preset?: string
   custom_oauth_providers?: CustomOAuthProviderInfo[]
   [key: string]: unknown

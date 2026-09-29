@@ -45,17 +45,24 @@ afterEach(() => {
   useAuthStore.getState().auth.reset()
 })
 
-function sidebarFor(admin?: object, user?: object, canConfigure = true) {
+function sidebarFor(
+  admin?: object,
+  user?: object,
+  canConfigure = true,
+  role = 1,
+  statusExtra: Record<string, unknown> = {}
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   client.setQueryData(['status'], {
     SidebarModulesAdmin: admin ? JSON.stringify(admin) : '',
+    ...statusExtra,
   })
   useAuthStore.getState().auth.setUser({
     id: 1,
     username: 'alice',
-    role: 1,
+    role,
     permissions: { sidebar_settings: canConfigure },
     sidebar_modules: user ? JSON.stringify(user) : '',
   })
@@ -187,5 +194,26 @@ describe('audit log sidebar entry', () => {
       .map((item) => item.title)
     expect(titles).not.toContain('Consumption Logs')
     expect(titles).toContain('Audit Logs')
+  })
+
+  it('hides the degradation monitor until it is enabled, except for root', () => {
+    const titlesFor = (
+      admin?: object,
+      user?: object,
+      canConfigure = true,
+      role = 1,
+      statusExtra: Record<string, unknown> = {}
+    ) =>
+      sidebarFor(admin, user, canConfigure, role, statusExtra).result.current
+        .flatMap((group) => group.items)
+        .map((item) => item.title)
+
+    expect(titlesFor()).not.toContain('Degradation monitor')
+    expect(titlesFor(undefined, undefined, true, 1, { enable_pelican: true })).toContain(
+      'Degradation monitor'
+    )
+    expect(titlesFor(undefined, undefined, true, 100)).toContain(
+      'Degradation monitor'
+    )
   })
 })

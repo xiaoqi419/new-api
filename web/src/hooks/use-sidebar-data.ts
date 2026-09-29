@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import {
+  BadgePercent,
   PlugZap,
   ShieldCheck,
   BadgeCheck,
@@ -164,7 +165,7 @@ export function useSidebarData(): SidebarData {
             icon: Megaphone,
           },
           {
-            title: t('Pelican gallery'),
+            title: t('Degradation monitor'),
             url: '/pelican',
             icon: Images,
           },
@@ -337,6 +338,18 @@ export function useSidebarData(): SidebarData {
             title: t('Task Plugins'),
             url: '/task-plugins',
             icon: PlugZap,
+            requiredRole: ROLE.SUPER_ADMIN,
+          },
+          {
+            title: t('Degradation monitor settings'),
+            url: '/pelican/settings',
+            icon: Images,
+            requiredRole: ROLE.SUPER_ADMIN,
+          },
+          {
+            title: t('Recharge bonus'),
+            url: '/recharge-bonus',
+            icon: BadgePercent,
             requiredRole: ROLE.SUPER_ADMIN,
           },
           {
