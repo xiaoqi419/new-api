@@ -82,16 +82,21 @@ func PelicanExpectedAnswer() string {
 }
 
 func PelicanDrawingTheme(group string, slot int64) (subject, vehicle, scene string) {
-	sum := slot
+	step := slot / int64(pelicanSlot.Seconds())
+	if step < 0 {
+		step = -step
+	}
+	mix := int64(0)
 	for _, r := range group {
-		sum += int64(r)
+		mix += int64(r)
 	}
-	if sum < 0 {
-		sum = -sum
+	if mix < 0 {
+		mix = -mix
 	}
-	subject = pelicanSubjects[int(sum%int64(len(pelicanSubjects)))]
-	vehicle = pelicanVehicles[int((sum/3)%int64(len(pelicanVehicles)))]
-	scene = pelicanScenes[int((sum/7)%int64(len(pelicanScenes)))]
+	pick := step + mix
+	subject = pelicanSubjects[int(pick%int64(len(pelicanSubjects)))]
+	vehicle = pelicanVehicles[int(pick%int64(len(pelicanVehicles)))]
+	scene = pelicanScenes[int(pick%int64(len(pelicanScenes)))]
 	return subject, vehicle, scene
 }
 
