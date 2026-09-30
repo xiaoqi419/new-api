@@ -32,6 +32,7 @@ const validDraft = {
   startDateLocal: '2026-09-28',
   drawAtLocal: '2026-10-08T00:00',
   minParticipants: '',
+  designatedUserId: '',
   prizes: [
     { name: '一等奖', count: '1', amountDisplay: '500' },
     { name: '二等奖', count: '3', amountDisplay: '200' },
@@ -63,6 +64,7 @@ test('a prior Beijing start date and midnight draw map to the exact qualificatio
     qualification_start_at: Date.parse('2026-09-27T16:00:00Z') / 1000,
     draw_at: Date.parse('2026-10-07T16:00:00Z') / 1000,
     min_participants: 0,
+    designated_user_id: 0,
     prizes: [
       { name: '一等奖', count: 1, amount_cents: 50_000 },
       { name: '二等奖', count: 3, amount_cents: 20_000 },
@@ -70,6 +72,57 @@ test('a prior Beijing start date and midnight draw map to the exact qualificatio
       { name: '四等奖', count: 20, amount_cents: 1_000 },
     ],
   })
+})
+
+test('a blank designated winner stays zero while a valid ID is carried through', () => {
+  const usd = activityLotteryCurrencyFromConfig({
+    displayInCurrency: true,
+    quotaDisplayType: 'USD',
+    quotaPerUnit: 500_000,
+    usdExchangeRate: 7.3,
+    customCurrencySymbol: '¤',
+    customCurrencyExchangeRate: 1,
+  })
+  const schema = getActivityLotteryDraftSchema(i18next.t, usd, publishedAt)
+
+  const blank = schema.safeParse(validDraft)
+  expect(blank.success).toBe(true)
+  if (blank.success) {
+    expect(
+      toActivityLotteryDraftInput(blank.data, usd).designated_user_id
+    ).toBe(0)
+  }
+
+  const assigned = schema.safeParse({
+    ...validDraft,
+    designatedUserId: '42',
+  })
+  expect(assigned.success).toBe(true)
+  if (assigned.success) {
+    expect(
+      toActivityLotteryDraftInput(assigned.data, usd).designated_user_id
+    ).toBe(42)
+  }
+})
+
+test('a non-numeric designated winner is rejected', () => {
+  const schema = getActivityLotteryDraftSchema(
+    i18next.t,
+    undefined,
+    publishedAt
+  )
+  expect(
+    schema.safeParse({ ...validDraft, designatedUserId: 'abc' }).success
+  ).toBe(false)
+  expect(
+    schema.safeParse({ ...validDraft, designatedUserId: '0' }).success
+  ).toBe(false)
+  expect(
+    schema.safeParse({ ...validDraft, designatedUserId: '-1' }).success
+  ).toBe(false)
+  expect(
+    schema.safeParse({ ...validDraft, designatedUserId: '  7  ' }).success
+  ).toBe(true)
 })
 
 test('invalid start dates, past draw times, and too few participants are rejected', () => {

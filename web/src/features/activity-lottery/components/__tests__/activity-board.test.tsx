@@ -47,6 +47,7 @@ function viewFixture(
       qualification_end_at: drawAt,
       draw_at: drawAt,
       min_participants: 29,
+    designated_user_id: 0,
       participant_count: 0,
       usd_exchange_rate: 7.3,
       quota_per_unit: 500000,

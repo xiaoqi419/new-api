@@ -27,16 +27,19 @@ const (
 const ActivityLotteryGrantStatusGranted = "granted"
 
 type ActivityLotteryCampaign struct {
-	Id                    int                    `json:"id" gorm:"primaryKey"`
-	Title                 string                 `json:"title" gorm:"type:varchar(128);not null"`
-	Description           string                 `json:"description" gorm:"type:text"`
-	Status                string                 `json:"status" gorm:"type:varchar(16);index;not null"`
-	ActiveKey             *string                `json:"-" gorm:"type:varchar(16);uniqueIndex:idx_activity_lottery_active_key"`
-	PublishedAt           int64                  `json:"published_at" gorm:"bigint"`
-	QualificationStartAt  int64                  `json:"qualification_start_at" gorm:"bigint"`
-	QualificationEndAt    int64                  `json:"qualification_end_at" gorm:"bigint"`
-	DrawAt                int64                  `json:"draw_at" gorm:"bigint;index"`
-	MinParticipants       int                    `json:"min_participants"`
+	Id                   int     `json:"id" gorm:"primaryKey"`
+	Title                string  `json:"title" gorm:"type:varchar(128);not null"`
+	Description          string  `json:"description" gorm:"type:text"`
+	Status               string  `json:"status" gorm:"type:varchar(16);index;not null"`
+	ActiveKey            *string `json:"-" gorm:"type:varchar(16);uniqueIndex:idx_activity_lottery_active_key"`
+	PublishedAt          int64   `json:"published_at" gorm:"bigint"`
+	QualificationStartAt int64   `json:"qualification_start_at" gorm:"bigint"`
+	QualificationEndAt   int64   `json:"qualification_end_at" gorm:"bigint"`
+	DrawAt               int64   `json:"draw_at" gorm:"bigint;index"`
+	MinParticipants      int     `json:"min_participants"`
+	// DesignatedUserId, when greater than zero, reserves one slot of the
+	// top prize tier for that account instead of drawing it randomly.
+	DesignatedUserId      int                    `json:"designated_user_id"`
 	ParticipantCount      int64                  `json:"participant_count" gorm:"bigint"`
 	USDExchangeRate       float64                `json:"usd_exchange_rate"`
 	QuotaPerUnit          float64                `json:"quota_per_unit"`
@@ -90,6 +93,7 @@ type ActivityLotteryDraftInput struct {
 	QualificationStartAt int64                       `json:"qualification_start_at"`
 	DrawAt               int64                       `json:"draw_at"`
 	MinParticipants      int                         `json:"min_participants"`
+	DesignatedUserId     int                         `json:"designated_user_id"`
 	Prizes               []ActivityLotteryPrizeInput `json:"prizes"`
 }
 
@@ -164,6 +168,21 @@ func validateActivityLotteryDraft(input *ActivityLotteryDraftInput, now time.Tim
 	if totalSlots > 1000 || poolCents > 100_000_000 {
 		return errors.New("activity lottery prize pool exceeds the allowed limit")
 	}
+	// A designated winner takes over one slot, so the tier it belongs to must
+	// offer at least one. Only a negative value is rejected outright; a
+	// designated account that disappears before the draw falls back to a
+	// normal random draw.
+	if input.DesignatedUserId < 0 {
+		return errors.New("activity lottery designated user id is invalid")
+	}
+	if input.DesignatedUserId > 0 {
+		if input.Prizes[0].Count < 1 {
+			return errors.New("the top prize tier must have at least one winner slot")
+		}
+		if _, err := GetUserById(input.DesignatedUserId, false); err != nil {
+			return errors.New("activity lottery designated user does not exist")
+		}
+	}
 	if input.MinParticipants == 0 {
 		input.MinParticipants = totalSlots
 	}
@@ -217,6 +236,7 @@ func CreateActivityLotteryDraft(input ActivityLotteryDraftInput, now time.Time) 
 		QualificationStartAt:  input.QualificationStartAt,
 		DrawAt:                input.DrawAt,
 		MinParticipants:       input.MinParticipants,
+		DesignatedUserId:      input.DesignatedUserId,
 		DisplayCurrency:       displayCurrency.DisplayCurrency,
 		DisplayCurrencySymbol: displayCurrency.DisplayCurrencySymbol,
 		DisplayCurrencyRate:   displayCurrency.DisplayCurrencyRate,
@@ -261,6 +281,7 @@ func UpdateActivityLotteryDraft(id int, input ActivityLotteryDraftInput, now tim
 				"qualification_start_at":  input.QualificationStartAt,
 				"draw_at":                 input.DrawAt,
 				"min_participants":        input.MinParticipants,
+				"designated_user_id":      input.DesignatedUserId,
 				"display_currency":        displayCurrency.DisplayCurrency,
 				"display_currency_symbol": displayCurrency.DisplayCurrencySymbol,
 				"display_currency_rate":   displayCurrency.DisplayCurrencyRate,
@@ -487,38 +508,64 @@ func DrawActivityLotteryCampaign(ctx context.Context, id int, now time.Time) (*A
 			return errors.New("activity lottery prize slots are invalid")
 		}
 
-		selected, participantCount, err := sampleActivityLotteryUsers(tx, &campaign, slots)
+		// A designated winner only replaces the first slot of the top prize
+		// tier. It is not required to have qualified through a top-up, and it
+		// counts towards both the participant total and the minimum that
+		// unblocks the round. If the account no longer exists the campaign
+		// silently falls back to a fully random draw.
+		designatedUserId := campaign.DesignatedUserId
+		if designatedUserId > 0 {
+			if _, err := GetUserById(designatedUserId, false); err != nil {
+				logger.LogWarn(ctx, fmt.Sprintf("activity lottery #%d designated user %d no longer exists; falling back to a random draw", id, designatedUserId))
+				designatedUserId = 0
+			}
+		}
+
+		selectedSlots := slots
+		if designatedUserId > 0 {
+			selectedSlots = slots - 1
+		}
+		selected, participantCount, err := sampleActivityLotteryUsers(tx, &campaign, selectedSlots)
 		if err != nil {
 			return err
 		}
+		if designatedUserId > 0 {
+			participantCount++
+		}
+
 		status := ActivityLotteryStatusDrawn
-		if participantCount < int64(campaign.MinParticipants) || len(selected) < slots {
+		if participantCount < int64(campaign.MinParticipants) || len(selected) < selectedSlots {
 			status = ActivityLotteryStatusExpired
 		} else {
-			position := 0
-			for _, prize := range prizes {
-				for range prize.Count {
-					userId := selected[position]
-					position++
-					if err := creditTopUpQuota(tx, userId, prize.Quota, nil); err != nil {
-						return err
+			if selectedSlots > 0 {
+				position := 0
+				// The designated account takes the first slot of the top prize
+				// tier, so that one slot is skipped while the sampled accounts
+				// fill everything else in tier order.
+				topTierReserved := designatedUserId > 0
+				for _, prize := range prizes {
+					count := prize.Count
+					if topTierReserved {
+						count--
+						topTierReserved = false
 					}
-					winner := &ActivityLotteryWinner{
-						CampaignId:   campaign.Id,
-						UserId:       userId,
-						PrizeId:      prize.Id,
-						PrizeName:    prize.Name,
-						AmountCents:  prize.AmountCents,
-						Quota:        prize.Quota,
-						CreditStatus: ActivityLotteryGrantStatusGranted,
-						GrantedAt:    now.Unix(),
-						CreatedAt:    now.Unix(),
+					for range count {
+						userId := selected[position]
+						position++
+						winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
+						if err != nil {
+							return err
+						}
+						grantedWinners = append(grantedWinners, *winner)
 					}
-					if err := tx.Create(winner).Error; err != nil {
-						return err
-					}
-					grantedWinners = append(grantedWinners, *winner)
 				}
+			}
+			if designatedUserId > 0 {
+				winner, err := grantActivityLotteryPrize(tx, &campaign, prizes[0], designatedUserId, now)
+				if err != nil {
+					return err
+				}
+				grantedWinners = append(grantedWinners, *winner)
 			}
 		}
 		updates := map[string]any{
@@ -549,6 +596,27 @@ func DrawActivityLotteryCampaign(ctx context.Context, id int, now time.Time) (*A
 		RecordTopupLog(winner.UserId, fmt.Sprintf("活动赠金到账：%s（活动 #%d，%s）", logger.LogQuota(winner.Quota), id, winner.PrizeName), "", "activity_bonus", "activity_lottery")
 	}
 	return GetActivityLotteryCampaignById(id)
+}
+
+func grantActivityLotteryPrize(tx *gorm.DB, campaign *ActivityLotteryCampaign, prize ActivityLotteryPrize, userId int, now time.Time) (*ActivityLotteryWinner, error) {
+	if err := creditTopUpQuota(tx, userId, prize.Quota, nil); err != nil {
+		return nil, err
+	}
+	winner := &ActivityLotteryWinner{
+		CampaignId:   campaign.Id,
+		UserId:       userId,
+		PrizeId:      prize.Id,
+		PrizeName:    prize.Name,
+		AmountCents:  prize.AmountCents,
+		Quota:        prize.Quota,
+		CreditStatus: ActivityLotteryGrantStatusGranted,
+		GrantedAt:    now.Unix(),
+		CreatedAt:    now.Unix(),
+	}
+	if err := tx.Create(winner).Error; err != nil {
+		return nil, err
+	}
+	return winner, nil
 }
 
 func activityLotteryEligibleTopups(tx *gorm.DB, campaign *ActivityLotteryCampaign) *gorm.DB {

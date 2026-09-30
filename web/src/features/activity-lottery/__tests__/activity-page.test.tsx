@@ -97,6 +97,7 @@ test('a completed round remains reachable from the activity history', async () =
     qualification_end_at: 1_780_086_400,
     draw_at: Date.parse('2026-10-07T16:00:00Z') / 1000,
     min_participants: 29,
+    designated_user_id: 0,
     participant_count: 42,
     usd_exchange_rate: 7.3,
     quota_per_unit: 500000,

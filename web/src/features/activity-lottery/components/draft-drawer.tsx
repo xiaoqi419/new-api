@@ -364,6 +364,29 @@ export function ActivityLotteryDraftDrawer(props: Props) {
               <SideDrawerSectionHeader title={t('Draw policy')} />
               <FormField
                 control={form.control}
+                name='designatedUserId'
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>{t('Designated winner user ID')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        aria-invalid={fieldState.invalid}
+                        inputMode='numeric'
+                        placeholder={t('Leave blank for a random draw')}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'If filled in, the top prize tier is granted directly to this account and the remaining slots are still drawn at random. Leave blank to keep the standard random draw.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name='minParticipants'
                 render={({ field, fieldState }) => (
                   <FormItem>

@@ -693,3 +693,318 @@ func TestActivityLotteryHistoryOrdersByPublicationRatherThanDraftCreation(t *tes
 	assert.Equal(t, olderDraft.Id, items[0].Id)
 	assert.Equal(t, newerDraft.Id, items[1].Id)
 }
+
+func TestActivityLotteryDesignatedUserReceivesTopPrizeWithoutQualifyingTopUp(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	// The designated account never tops up, so it must not appear in the
+	// qualified participant sample; it is granted the top tier regardless.
+	designated := &User{Username: "designated-winner", AffCode: "designated-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(designated).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "指定发奖",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  3,
+		DesignatedUserId: designated.Id,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000},
+			{Name: "二等奖", Count: 2, AmountCents: 20_000},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	require.Equal(t, designated.Id, draft.DesignatedUserId)
+
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	// Two qualified accounts fill the two remaining prize slots.
+	users := []User{
+		{Username: "designated-draw-1", AffCode: "designated-draw-aff-1", Status: common.UserStatusEnabled},
+		{Username: "designated-draw-2", AffCode: "designated-draw-aff-2", Status: common.UserStatusEnabled},
+	}
+	require.NoError(t, db.Create(&users).Error)
+	for i, user := range users {
+		require.NoError(t, db.Create(&TopUp{
+			UserId: user.Id, TradeNo: fmt.Sprintf("designated-draw-topup-%d", i+1),
+			Status: common.TopUpStatusSuccess, Amount: 1, Money: 5,
+			CompleteTime: campaign.QualificationStartAt + int64(i+1),
+		}).Error)
+	}
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 3)
+
+	var designatedWinner *ActivityLotteryWinner
+	for i := range winners {
+		if winners[i].UserId == designated.Id {
+			designatedWinner = &winners[i]
+		}
+	}
+	require.NotNil(t, designatedWinner, "designated winner received a prize")
+	assert.Equal(t, "一等奖", designatedWinner.PrizeName)
+
+	prizeCounts := map[string]int{}
+	winningUsers := map[int]bool{}
+	for _, winner := range winners {
+		assert.False(t, winningUsers[winner.UserId], "no account wins twice")
+		winningUsers[winner.UserId] = true
+		prizeCounts[winner.PrizeName]++
+	}
+	assert.Equal(t, map[string]int{"一等奖": 1, "二等奖": 2}, prizeCounts)
+	assert.True(t, winningUsers[designated.Id])
+
+	// The designated account is counted as a participant even without a top-up.
+	assert.EqualValues(t, 3, drawn.ParticipantCount)
+
+	var designatedQuota User
+	require.NoError(t, db.Select("quota").First(&designatedQuota, designated.Id).Error)
+	expectedQuota, err := activityLotteryPrizeQuota(50_000, activityLotteryCurrencyForCampaign(campaign), campaign.QuotaPerUnit)
+	require.NoError(t, err)
+	assert.Equal(t, expectedQuota, designatedQuota.Quota)
+}
+
+func TestActivityLotteryDesignatedUserAloneIsEnoughToReachMinimumParticipants(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	designated := &User{Username: "lone-designated", AffCode: "lone-designated-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(designated).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "仅指定用户",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  1,
+		DesignatedUserId: designated.Id,
+		Prizes:           []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 500}},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	assert.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+	assert.EqualValues(t, 1, drawn.ParticipantCount)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 1)
+	assert.Equal(t, designated.Id, winners[0].UserId)
+}
+
+func TestActivityLotteryMissingDesignatedUserFallsBackToRandomDraw(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	participant := &User{Username: "fallback-participant", AffCode: "fallback-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(participant).Error)
+	// The designated account must pass draft validation, then disappear
+	// before the draw to exercise the fallback path.
+	soonDeleted := &User{Username: "fallback-designated", AffCode: "fallback-designated-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(soonDeleted).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "兜底随机",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  1,
+		DesignatedUserId: soonDeleted.Id,
+		Prizes:           []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 500}},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&TopUp{
+		UserId: participant.Id, TradeNo: "fallback-topup", Status: common.TopUpStatusSuccess,
+		Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 1,
+	}).Error)
+
+	// Simulate the designated account being deleted before the draw.
+	require.NoError(t, db.Delete(&User{}, soonDeleted.Id).Error)
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	assert.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 1)
+	assert.Equal(t, participant.Id, winners[0].UserId, "falls back to the random draw")
+}
+
+func TestActivityLotteryDraftRejectsUnknownDesignatedUser(t *testing.T) {
+	setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	_, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "未知用户",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  1,
+		DesignatedUserId: 987_654,
+		Prizes:           []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 500}},
+	}, publishedAt)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "designated user")
+
+	_, err = CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "负数用户",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  1,
+		DesignatedUserId: -3,
+		Prizes:           []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 500}},
+	}, publishedAt)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "designated user")
+}
+
+func TestActivityLotteryBlankDesignatedUserKeepsRandomDraw(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:           "纯随机",
+		DrawAt:          drawAt.Unix(),
+		MinParticipants: 2,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000},
+			{Name: "二等奖", Count: 1, AmountCents: 20_000},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	assert.Zero(t, draft.DesignatedUserId)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	users := []User{
+		{Username: "plain-random-1", AffCode: "plain-random-aff-1", Status: common.UserStatusEnabled},
+		{Username: "plain-random-2", AffCode: "plain-random-aff-2", Status: common.UserStatusEnabled},
+		{Username: "plain-random-3", AffCode: "plain-random-aff-3", Status: common.UserStatusEnabled},
+	}
+	require.NoError(t, db.Create(&users).Error)
+	for i, user := range users {
+		require.NoError(t, db.Create(&TopUp{
+			UserId: user.Id, TradeNo: fmt.Sprintf("plain-random-topup-%d", i+1),
+			Status: common.TopUpStatusSuccess, Amount: 1, Money: 5,
+			CompleteTime: campaign.QualificationStartAt + int64(i+1),
+		}).Error)
+	}
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	assert.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+	assert.EqualValues(t, 3, drawn.ParticipantCount)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 2)
+	seen := map[int]bool{}
+	for _, winner := range winners {
+		assert.False(t, seen[winner.UserId])
+		seen[winner.UserId] = true
+	}
+}
+
+// TestActivityLotteryDesignatedAdminDrawEndToEnd walks the full product flow
+// with the administrator designated: draft -> publish -> top-ups -> draw. The
+// administrator holds the top prize while every remaining slot goes to a
+// randomly sampled qualified account.
+func TestActivityLotteryDesignatedAdminDrawEndToEnd(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 29, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	admin := &User{Username: "admin", DisplayName: "Root User", Role: common.RoleRootUser, Status: common.UserStatusEnabled, AffCode: "e2e-admin-aff"}
+	require.NoError(t, db.Create(admin).Error)
+	require.Equal(t, 1, admin.Id, "the first account is the administrator")
+
+	testUsers := make([]User, 0, 10)
+	for i := 1; i <= 10; i++ {
+		testUsers = append(testUsers, User{
+			Username: fmt.Sprintf("e2e-user-%d", i), AffCode: fmt.Sprintf("e2e-aff-%d", i),
+			Status: common.UserStatusEnabled, DisplayName: fmt.Sprintf("Test User %d", i),
+		})
+	}
+	require.NoError(t, db.Create(&testUsers).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:                "指定管理员中奖",
+		Description:          "一等奖内定给管理员，其余随机",
+		QualificationStartAt: beijingDayStart(publishedAt),
+		DrawAt:               drawAt.Unix(),
+		MinParticipants:      6,
+		DesignatedUserId:     admin.Id,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000},
+			{Name: "二等奖", Count: 2, AmountCents: 20_000},
+			{Name: "三等奖", Count: 3, AmountCents: 5_000},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	require.Equal(t, admin.Id, draft.DesignatedUserId)
+
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusOpen, campaign.Status)
+
+	// Five ordinary accounts qualify; the designated administrator does not
+	// top up at all.
+	qualified := make(map[int]bool, 5)
+	for i, user := range testUsers[:5] {
+		require.NoError(t, db.Create(&TopUp{
+			UserId: user.Id, TradeNo: fmt.Sprintf("e2e-topup-%d", i+1),
+			Status: common.TopUpStatusSuccess, Amount: 1, Money: 5,
+			CompleteTime: campaign.QualificationStartAt + int64(i+1),
+		}).Error)
+		qualified[user.Id] = true
+	}
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+	assert.EqualValues(t, 6, drawn.ParticipantCount, "5 qualified accounts plus the designated administrator")
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 6)
+
+	prizeCounts := map[string]int{}
+	seen := map[int]bool{}
+	var adminPrizeName string
+	for _, winner := range winners {
+		prizeCounts[winner.PrizeName]++
+		assert.False(t, seen[winner.UserId], "no account wins twice")
+		seen[winner.UserId] = true
+		assert.Equal(t, ActivityLotteryGrantStatusGranted, winner.CreditStatus)
+		assert.Equal(t, winner.Quota, readUserQuotaForActivityLotteryTest(t, db, winner.UserId))
+		if winner.UserId == admin.Id {
+			adminPrizeName = winner.PrizeName
+		} else {
+			assert.True(t, qualified[winner.UserId], "remaining winners come from the qualified pool")
+		}
+	}
+	assert.Equal(t, "一等奖", adminPrizeName, "the designated administrator receives the top prize")
+	assert.Equal(t, map[string]int{"一等奖": 1, "二等奖": 2, "三等奖": 3}, prizeCounts)
+
+	_, err = DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt.Add(time.Minute))
+	require.NoError(t, err)
+	var total int64
+	require.NoError(t, db.Model(&ActivityLotteryWinner{}).Count(&total).Error)
+	assert.EqualValues(t, 6, total, "re-running the draw does not duplicate prizes")
+}

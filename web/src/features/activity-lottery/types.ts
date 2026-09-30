@@ -43,6 +43,8 @@ export interface ActivityLotteryCampaign {
   qualification_end_at: number
   draw_at: number
   min_participants: number
+  /** When greater than zero, one top-tier prize slot is reserved for this account. */
+  designated_user_id: number
   participant_count: number
   usd_exchange_rate: number
   quota_per_unit: number
@@ -99,5 +101,6 @@ export interface ActivityLotteryDraftInput {
   qualification_start_at: number
   draw_at: number
   min_participants: number
+  designated_user_id: number
   prizes: ActivityLotteryPrizeInput[]
 }

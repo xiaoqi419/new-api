@@ -216,13 +216,22 @@ export function ActivityLotteryAdmin() {
                         </p>
                       )}
                     </div>
-                    <Badge
-                      variant={
-                        campaign.status === 'open' ? 'warning' : 'secondary'
-                      }
-                    >
-                      {activityLotteryStatusLabel(campaign.status, t)}
-                    </Badge>
+                    <div className='flex flex-wrap items-center justify-end gap-2'>
+                      {campaign.designated_user_id > 0 && (
+                        <Badge variant='outline'>
+                          {t('Designated winner #{{id}}', {
+                            id: campaign.designated_user_id,
+                          })}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant={
+                          campaign.status === 'open' ? 'warning' : 'secondary'
+                        }
+                      >
+                        {activityLotteryStatusLabel(campaign.status, t)}
+                      </Badge>
+                    </div>
                   </div>
                   <div className='grid gap-3 border-y py-3 text-sm sm:grid-cols-5'>
                     <div>

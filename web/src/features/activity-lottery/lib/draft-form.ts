@@ -71,6 +71,13 @@ export function getActivityLotteryDraftSchema(
             (/^[1-9]\d{0,6}$/.test(value) && Number(value) <= 1_000_000),
           t('Enter a valid minimum participant count')
         ),
+      designatedUserId: z
+        .string()
+        .trim()
+        .refine(
+          (value) => value === '' || /^[1-9]\d{0,9}$/.test(value),
+          t('Enter a positive numeric user ID')
+        ),
       prizes: z
         .array(
           z.object({
@@ -172,6 +179,7 @@ export function getActivityLotteryDraftDefaults(
       startDateLocal: formatShanghaiStartDate(Math.floor(Date.now() / 1000)),
       drawAtLocal: '',
       minParticipants: '',
+      designatedUserId: '',
       prizes: [{ name: '', count: '1', amountDisplay: '' }],
     }
   }
@@ -185,6 +193,10 @@ export function getActivityLotteryDraftDefaults(
         : formatShanghaiStartDate(Math.floor(Date.now() / 1000)),
     drawAtLocal: formatShanghaiInputTime(campaign.draw_at),
     minParticipants: String(campaign.min_participants),
+    designatedUserId:
+      campaign.designated_user_id > 0
+        ? String(campaign.designated_user_id)
+        : '',
     prizes: campaign.prizes.map((prize) => ({
       name: prize.name,
       count: String(prize.count),
@@ -215,6 +227,9 @@ export function toActivityLotteryDraftInput(
     draw_at: drawAt,
     min_participants: values.minParticipants
       ? Number(values.minParticipants)
+      : 0,
+    designated_user_id: values.designatedUserId
+      ? Number(values.designatedUserId)
       : 0,
     prizes: values.prizes.map((prize) => {
       const amountMinor = parseActivityPrizeAmount(

@@ -52,6 +52,7 @@ const campaign: ActivityLotteryCampaign = {
   qualification_end_at: 0,
   draw_at: Date.parse('2026-10-07T16:00:00Z') / 1000,
   min_participants: 29,
+  designated_user_id: 0,
   participant_count: 0,
   usd_exchange_rate: 0,
   quota_per_unit: 0,
