@@ -181,8 +181,10 @@ docker inspect -f '{{.State.Health.Status}}' torch-ai-test-app
 docker inspect -f '{{.State.Health.Status}}' new-api-international
 docker exec torch-ai-test-app wget -q -O - http://localhost:3000/api/status
 docker exec new-api-international wget -q -O - http://localhost:3000/api/status
-curl -fsS https://aierxin.cc/api/status
 curl -fsS https://codezip.io/api/status
+# 国内站按设计会拦截大陆 IP 并返回 451，因此这里不能用 curl -f：
+# 000 才是真正连不上（故障），200 和 451 都说明站点和应用是活的。
+curl -s -o /dev/null -w '%{http_code}\n' https://aierxin.cc/api/status
 ```
 
 同时确认：
@@ -190,6 +192,8 @@ curl -fsS https://codezip.io/api/status
 - 两个应用容器的镜像标签都是目标 `TAG`；
 - 两个 PostgreSQL 和 Redis 容器仍在运行，容器 ID/数据卷没有变化；
 - 网关容器没有被重建，`server_name`、`proxy_pass` 和国际站 `/assets/branding/` 路由仍在；
+- 国内站 `aierxin.cc` 有意拦截大陆 IP（网关 `geo` + `mainland-policy.env`），大陆网络访问会拿到 HTTP 451 区域受限页。
+  从大陆执行上面的 `curl` 看到 451 属于**正常**，不等于发布失败；真故障表现为 `000`。需要看到 200 时，把该 `curl` 放到服务器上执行。
 - 登录页、支付入口和本次变更涉及的核心路径可以正常加载；
 - 浏览器缓存或 CDN 造成的旧前端资源应通过版本化资源和强制刷新排除，不要通过删除数据库解决。
 
