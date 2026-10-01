@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "Для розыгрыша 7 октября в 24:00 укажите 8 октября в 00:00. Розыгрыш не может быть раньше окончания дня участия.",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "Для розыгрыша 7 октября в 24:00 укажите 8 октября в 00:00. Розыгрыш должен быть не раньше чем через день после начала участия.",
     "Go to wallet": "Перейти в кошелёк",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "Если подходящих аккаунтов меньше минимума, розыгрыш завершится без призов.",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "Даже если подходящих аккаунтов меньше, розыгрыш состоится, а незаполненные призовые места не выдаются. Значение справочное.",
     "Loading activities...": "Загрузка акций…",
     "Loading recharge lottery...": "Загрузка розыгрыша за пополнение…",
     "Minimum participants must cover every prize slot": "Минимум участников не может быть меньше числа призовых мест",

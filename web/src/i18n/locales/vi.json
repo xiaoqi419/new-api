@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "Để quay số lúc 24:00 ngày 7/10, hãy nhập 00:00 ngày 8/10. Không thể quay số trước khi ngày tham gia kết thúc.",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "Để quay số lúc 24:00 ngày 7/10, hãy nhập 00:00 ngày 8/10. Thời gian quay số phải cách ngày bắt đầu tham gia ít nhất một ngày.",
     "Go to wallet": "Đến ví",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "Nếu số tài khoản hợp lệ thấp hơn mức tối thiểu, kỳ này sẽ kết thúc mà không trao giải.",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "Dù số tài khoản hợp lệ ít hơn, kỳ quay vẫn diễn ra và các giải không thể lấp đầy sẽ không được trao. Giá trị này chỉ mang tính tham khảo.",
     "Loading activities...": "Đang tải hoạt động…",
     "Loading recharge lottery...": "Đang tải quay số nạp ví…",
     "Minimum participants must cover every prize slot": "Số người tham gia tối thiểu không được ít hơn số suất trúng thưởng",

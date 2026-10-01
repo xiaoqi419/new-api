@@ -446,7 +446,7 @@ func TestActivityLotteryConcurrentDrawsCannotDuplicateWinners(t *testing.T) {
 	assert.Zero(t, codeCount)
 }
 
-func TestActivityLotteryDrawExpiresWithoutIssuingCodesWhenParticipantsAreInsufficient(t *testing.T) {
+func TestActivityLotteryDrawsWhenParticipantsFallShortOfPrizes(t *testing.T) {
 	db := setupActivityLotteryTestDB(t)
 	shanghai := time.FixedZone("CST", 8*60*60)
 	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
@@ -464,21 +464,67 @@ func TestActivityLotteryDrawExpiresWithoutIssuingCodesWhenParticipantsAreInsuffi
 	require.NoError(t, err)
 	assert.Equal(t, 4, campaign.MinParticipants)
 
-	require.NoError(t, db.Create(&[]TopUp{
-		{UserId: 1, TradeNo: "under-one", Status: common.TopUpStatusSuccess, Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 1},
-		{UserId: 2, TradeNo: "under-two", Status: common.TopUpStatusSuccess, Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 2},
-		{UserId: 3, TradeNo: "under-three", Status: common.TopUpStatusSuccess, Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 3},
-	}).Error)
+	// Three accounts qualify for four slots. The round must still draw and
+	// leave the fourth slot unawarded instead of ending without a draw.
+	accounts := []struct{ name, trade string }{
+		{"short-one", "short-topup-one"},
+		{"short-two", "short-topup-two"},
+		{"short-three", "short-topup-three"},
+	}
+	for i, account := range accounts {
+		user := &User{Username: account.name, AffCode: account.name + "-aff", Status: common.UserStatusEnabled}
+		require.NoError(t, db.Create(user).Error)
+		require.NoError(t, db.Create(&TopUp{
+			UserId: user.Id, TradeNo: account.trade, Status: common.TopUpStatusSuccess,
+			Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + int64(i) + 1,
+		}).Error)
+	}
 
 	result, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
 	require.NoError(t, err)
-	assert.Equal(t, ActivityLotteryStatusExpired, result.Status)
+	assert.Equal(t, ActivityLotteryStatusDrawn, result.Status)
 	assert.EqualValues(t, 3, result.ParticipantCount)
-	var winnerCount, codeCount int64
-	require.NoError(t, db.Model(&ActivityLotteryWinner{}).Count(&winnerCount).Error)
-	require.NoError(t, db.Model(&Redemption{}).Count(&codeCount).Error)
+	assert.NotZero(t, result.DrawnAt)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Order("id asc").Find(&winners).Error)
+	require.Len(t, winners, 3)
+	assert.Equal(t, "一等奖", winners[0].PrizeName)
+	assert.Equal(t, "二等奖", winners[1].PrizeName)
+	assert.Equal(t, "二等奖", winners[2].PrizeName)
+
+	seen := map[int]bool{}
+	for _, winner := range winners {
+		assert.False(t, seen[winner.UserId], "a user must not win twice")
+		seen[winner.UserId] = true
+	}
+}
+
+func TestActivityLotteryDrawsWithNoParticipantsAtAll(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:  "无人参与",
+		DrawAt: drawAt.Unix(),
+		Prizes: []ActivityLotteryPrizeInput{{Name: "一等奖", Count: 1, AmountCents: 500}},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	// An empty pool must still finalize as drawn with zero winners rather than
+	// panicking on an out-of-range slot lookup.
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	assert.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+	assert.Zero(t, drawn.ParticipantCount)
+
+	var winnerCount int64
+	require.NoError(t, db.Model(&ActivityLotteryWinner{}).
+		Where("campaign_id = ?", campaign.Id).Count(&winnerCount).Error)
 	assert.Zero(t, winnerCount)
-	assert.Zero(t, codeCount)
 }
 
 func TestActivityLotteryDueCampaignIsScheduledOnlyUntilItIsFinalized(t *testing.T) {
@@ -772,7 +818,7 @@ func TestActivityLotteryDesignatedUserReceivesTopPrizeWithoutQualifyingTopUp(t *
 	assert.Equal(t, expectedQuota, designatedQuota.Quota)
 }
 
-func TestActivityLotteryDesignatedUserAloneIsEnoughToReachMinimumParticipants(t *testing.T) {
+func TestActivityLotteryDesignatedUserWinsWithoutAnyOtherParticipants(t *testing.T) {
 	db := setupActivityLotteryTestDB(t)
 	shanghai := time.FixedZone("CST", 8*60*60)
 	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)

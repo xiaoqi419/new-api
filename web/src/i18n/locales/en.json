@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.",
     "Go to wallet": "Go to wallet",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "If fewer accounts qualify, the round ends without issuing prizes.",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.",
     "Loading activities...": "Loading activities...",
     "Loading recharge lottery...": "Loading recharge lottery...",
     "Minimum participants must cover every prize slot": "Minimum participants must cover every prize slot",

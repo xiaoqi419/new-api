@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "Pour un tirage le 7 octobre à 24 h, saisissez le 8 octobre à 00 h. Le tirage ne peut pas précéder la fin de la journée de participation.",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "Pour un tirage le 7 octobre à 24 h, saisissez le 8 octobre à 00 h. Le tirage doit avoir lieu au moins un jour après le début de participation.",
     "Go to wallet": "Aller au portefeuille",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "Si le nombre de comptes admissibles est insuffisant, le tirage se termine sans attribution de lots.",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "Même si le nombre de comptes admissibles est inférieur, le tirage a lieu et les lots non attribués sont omis. Cette valeur est indicative.",
     "Loading activities...": "Chargement des activités…",
     "Loading recharge lottery...": "Chargement du tirage lié aux rechargements…",
     "Minimum participants must cover every prize slot": "Le minimum de participants doit couvrir toutes les places gagnantes",

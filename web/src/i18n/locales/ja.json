@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "10月7日24:00に抽選する場合は10月8日00:00を入力してください。参加日の終了前には抽選できません。",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "10月7日24:00に抽選する場合は10月8日00:00を入力してください。抽選日時は参加開始日の1日後以降にしてください。",
     "Go to wallet": "ウォレットへ移動",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "対象アカウント数が最低人数に満たない場合、賞品を発行せずに終了します。",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "対象アカウントがこの数値より少なくても抽選は実施され、埋まらなかった賞品枠は発行されません。この数値は参考値です。",
     "Loading activities...": "イベントを読み込み中…",
     "Loading recharge lottery...": "チャージ抽選を読み込み中…",
     "Minimum participants must cover every prize slot": "最低参加人数は当選枠数以上にしてください",

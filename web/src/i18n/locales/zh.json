@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "如需 10 月 7 日 24:00 开奖，请填写 10 月 8 日 00:00。开奖不能早于参与日结束。",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "如需 10 月 7 日 24:00 开奖，请填写 10 月 8 日 00:00。开奖时间至少应晚于参与开始日期一天。",
     "Go to wallet": "前往钱包",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "如合格账号少于最低参与人数，本期结束且不发奖。",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "即使合格账号少于此数值，本期仍会照常开奖，未能填满的名额不予发放。该数值仅供参考。",
     "Loading activities...": "正在加载活动…",
     "Loading recharge lottery...": "正在加载充值抽奖…",
     "Minimum participants must cover every prize slot": "最低参与人数不能少于中奖名额",

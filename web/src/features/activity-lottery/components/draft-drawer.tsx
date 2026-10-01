@@ -403,7 +403,7 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                     </FormControl>
                     <FormDescription>
                       {t(
-                        'If fewer accounts qualify, the round ends without issuing prizes.'
+                        'If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.'
                       )}
                     </FormDescription>
                     <FormMessage />

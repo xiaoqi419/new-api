@@ -8372,7 +8372,7 @@
     "For October 7 at 24:00, enter October 8 at 00:00. The draw cannot precede the end of the participation day.": "如需 10 月 7 日 24:00 開獎，請填寫 10 月 8 日 00:00。開獎不得早於參與日結束。",
     "For October 7 at 24:00, enter October 8 at 00:00. The draw must be at least one day after the participation start date.": "如需 10 月 7 日 24:00 開獎，請填寫 10 月 8 日 00:00。開獎時間至少應晚於參與開始日期一天。",
     "Go to wallet": "前往錢包",
-    "If fewer accounts qualify, the round ends without issuing prizes.": "如合格帳號少於最低參與人數，本期結束且不發獎。",
+    "If fewer accounts qualify, the round still draws and any unfilled prize slot is left unawarded. This value is for reference only.": "即使合格帳號少於此數值，本期仍會照常開獎，未能填滿的名額不予發放。該數值僅供參考。",
     "Loading activities...": "正在載入活動…",
     "Loading recharge lottery...": "正在載入儲值抽獎…",
     "Minimum participants must cover every prize slot": "最低參與人數不得少於中獎名額",

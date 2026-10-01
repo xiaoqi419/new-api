@@ -533,49 +533,51 @@ func DrawActivityLotteryCampaign(ctx context.Context, id int, now time.Time) (*A
 			participantCount++
 		}
 
-		status := ActivityLotteryStatusDrawn
-		if participantCount < int64(campaign.MinParticipants) || len(selected) < selectedSlots {
-			status = ActivityLotteryStatusExpired
-		} else {
-			if selectedSlots > 0 {
-				position := 0
-				// The designated account takes the first slot of the top prize
-				// tier, so that one slot is skipped while the sampled accounts
-				// fill everything else in tier order.
-				topTierReserved := designatedUserId > 0
-				for _, prize := range prizes {
-					count := prize.Count
-					if topTierReserved {
-						count--
-						topTierReserved = false
-					}
-					for range count {
-						userId := selected[position]
-						position++
-						winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
-						if err != nil {
-							return err
-						}
-						grantedWinners = append(grantedWinners, *winner)
-					}
+		// A shortfall of participants no longer cancels the round. Prizes are
+		// issued to whoever qualified, in tier order, and a slot that cannot be
+		// filled because the pool ran out is simply left unawarded.
+		if selectedSlots > 0 {
+			position := 0
+			// The designated account takes the first slot of the top prize
+			// tier, so that one slot is skipped while the sampled accounts
+			// fill everything else in tier order.
+			topTierReserved := designatedUserId > 0
+			for _, prize := range prizes {
+				count := prize.Count
+				if topTierReserved {
+					count--
+					topTierReserved = false
 				}
-			}
-			if designatedUserId > 0 {
-				winner, err := grantActivityLotteryPrize(tx, &campaign, prizes[0], designatedUserId, now)
-				if err != nil {
-					return err
+				for range count {
+					if position >= len(selected) {
+						break
+					}
+					userId := selected[position]
+					position++
+					winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
+					if err != nil {
+						return err
+					}
+					grantedWinners = append(grantedWinners, *winner)
 				}
-				grantedWinners = append(grantedWinners, *winner)
+				if position >= len(selected) {
+					break
+				}
 			}
 		}
+		if designatedUserId > 0 {
+			winner, err := grantActivityLotteryPrize(tx, &campaign, prizes[0], designatedUserId, now)
+			if err != nil {
+				return err
+			}
+			grantedWinners = append(grantedWinners, *winner)
+		}
 		updates := map[string]any{
-			"status":            status,
+			"status":            ActivityLotteryStatusDrawn,
 			"active_key":        nil,
 			"participant_count": participantCount,
 			"updated_at":        now.Unix(),
-		}
-		if status == ActivityLotteryStatusDrawn {
-			updates["drawn_at"] = now.Unix()
+			"drawn_at":          now.Unix(),
 		}
 		result := tx.Model(&ActivityLotteryCampaign{}).
 			Where("id = ? AND status = ?", id, ActivityLotteryStatusOpen).
