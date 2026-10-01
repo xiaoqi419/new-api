@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPelicanSlotStartAlignsToShanghaiTenMinutes(t *testing.T) {
+func TestPelicanSlotStartAlignsToShanghaiFifteenMinutes(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
 	now := time.Date(2026, 9, 28, 17, 24, 15, 0, loc)
 	got := time.Unix(PelicanSlotStart(now), 0).In(loc)
 	assert.Equal(t, 17, got.Hour())
-	assert.Equal(t, 20, got.Minute())
+	assert.Equal(t, 15, got.Minute())
 	assert.Equal(t, 0, got.Second())
 
 	same := time.Date(2026, 9, 28, 17, 29, 59, 0, loc)
@@ -31,15 +31,15 @@ func TestPelicanWindowSlots(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
 	now := time.Date(2026, 9, 28, 18, 7, 0, 0, loc)
 	day := PelicanWindowSlots("24h", now)
-	require.Len(t, day, 144)
+	require.Len(t, day, 96)
 	assert.Equal(t, PelicanSlotStart(now), day[len(day)-1])
-	assert.Equal(t, int64(10*60), day[1]-day[0])
-	assert.Equal(t, PelicanSlotStart(now)-int64(143*10*60), day[0])
+	assert.Equal(t, int64(15*60), day[1]-day[0])
+	assert.Equal(t, PelicanSlotStart(now)-int64(95*15*60), day[0])
 
 	three := PelicanWindowSlots("3d", now)
-	require.Len(t, three, 432)
+	require.Len(t, three, 288)
 	assert.Equal(t, day[len(day)-1], three[len(three)-1])
-	assert.Equal(t, PelicanSlotStart(now)-int64(431*10*60), three[0])
+	assert.Equal(t, PelicanSlotStart(now)-int64(287*15*60), three[0])
 }
 
 func TestJudgeLogicAnswer(t *testing.T) {

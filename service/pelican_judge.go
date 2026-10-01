@@ -12,7 +12,7 @@ import (
 
 const (
 	PelicanLogicAnswer = "21"
-	pelicanSlot        = 10 * time.Minute
+	pelicanSlot        = 15 * time.Minute
 	pelicanPromptLimit = 8000
 	pelicanAnswerLimit = 12
 )
@@ -37,7 +37,7 @@ func pelicanLocation() *time.Location {
 	return loc
 }
 
-// PelicanSlotStart is the Shanghai ten-minute bucket that contains now.
+// PelicanSlotStart is the Shanghai fifteen-minute bucket that contains now.
 func PelicanSlotStart(now time.Time) int64 {
 	loc := pelicanLocation()
 	local := now.In(loc)
@@ -47,7 +47,7 @@ func PelicanSlotStart(now time.Time) int64 {
 	return slot.Unix()
 }
 
-// PelicanWindowSlots returns the ten-minute starts covered by 24h or 3d, ending at the current slot.
+// PelicanWindowSlots returns the fifteen-minute starts covered by 24h or 3d, ending at the current slot.
 func PelicanWindowSlots(window string, now time.Time) []int64 {
 	span := 24 * time.Hour
 	if window == "3d" {
