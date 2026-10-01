@@ -30,6 +30,18 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-01',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '降智监测改为每 15 分钟检测一次。24 小时和 3 天色块按 15 分钟分档，同一分组在同一时段只测一次，绘图题目也按这个时段更换。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-09-29',
     changes: [
       {

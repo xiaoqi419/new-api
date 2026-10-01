@@ -11,7 +11,7 @@ import (
 
 const pelicanTextLimit = 60000
 
-// PelicanProbe is one ten-minute logic or drawing check for a group.
+// PelicanProbe is one fifteen-minute logic or drawing check for a group.
 type PelicanProbe struct {
 	Id           int     `json:"id" gorm:"primaryKey"`
 	GroupName    string  `json:"group_name" gorm:"type:varchar(64);uniqueIndex:idx_pelican_slot,priority:1"`
