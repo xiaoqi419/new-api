@@ -59,6 +59,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 1,
       amount_cents: 50_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 2,
@@ -68,6 +69,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 3,
       amount_cents: 20_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 3,
@@ -77,6 +79,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 5,
       amount_cents: 5_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 4,
@@ -86,6 +89,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 20,
       amount_cents: 1_000,
       quota: 0,
+      designated_user_id: 0,
     },
   ],
 }
@@ -128,10 +132,10 @@ test('editing a legacy draft previews 29 winners and its CNY prize pool before s
       min_participants: 29,
       designated_user_id: 0,
       prizes: [
-        { name: '一等奖', count: 1, amount_cents: 50_000 },
-        { name: '二等奖', count: 3, amount_cents: 20_000 },
-        { name: '三等奖', count: 5, amount_cents: 5_000 },
-        { name: '四等奖', count: 20, amount_cents: 1_000 },
+        { name: '一等奖', count: 1, amount_cents: 50_000, designated_user_id: 0 },
+        { name: '二等奖', count: 3, amount_cents: 20_000, designated_user_id: 0 },
+        { name: '三等奖', count: 5, amount_cents: 5_000, designated_user_id: 0 },
+        { name: '四等奖', count: 20, amount_cents: 1_000, designated_user_id: 0 },
       ],
     })
   })
@@ -164,7 +168,7 @@ test('editing a USD draft labels and previews the prize pool in dollars', async 
   expect(screen.getByText('$1,550')).toBeVisible()
 })
 
-test('the designated winner field stays blank by default and submits zero', async () => {
+test('every prize tier has its own designated winner field, blank by default', async () => {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   })
@@ -178,20 +182,25 @@ test('the designated winner field stays blank by default and submits zero', asyn
     </QueryClientProvider>
   )
 
-  expect(
-    await screen.findByLabelText('Designated winner user ID')
-  ).toHaveValue('')
+  const inputs = await screen.findAllByLabelText('Designated winner user ID')
+  expect(inputs).toHaveLength(campaign.prizes.length)
+  expect(inputs[0]).toHaveValue('')
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
 
   await waitFor(() => {
     expect(adminUpdateActivityLotteryRound).toHaveBeenCalledWith(
       7,
-      expect.objectContaining({ designated_user_id: 0 })
+      expect.objectContaining({
+        designated_user_id: 0,
+        prizes: expect.arrayContaining([
+          expect.objectContaining({ designated_user_id: 0 }),
+        ]),
+      })
     )
   })
 })
 
-test('an existing designated winner is echoed back and submitted as a number', async () => {
+test('a per-tier designated winner is echoed back and submitted as a number', async () => {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   })
@@ -200,24 +209,37 @@ test('an existing designated winner is echoed back and submitted as a number', a
       <ActivityLotteryDraftDrawer
         open
         onOpenChange={vi.fn()}
-        campaign={{ ...campaign, designated_user_id: 42 }}
+        campaign={{
+          ...campaign,
+          prizes: campaign.prizes.map((prize, index) =>
+            index === 0 ? { ...prize, designated_user_id: 42 } : prize
+          ),
+        }}
       />
     </QueryClientProvider>
   )
 
-  const input = await screen.findByLabelText('Designated winner user ID')
-  expect(input).toHaveValue('42')
+  const inputs = await screen.findAllByLabelText('Designated winner user ID')
+  expect(inputs[0]).toHaveValue('42')
+  expect(inputs[1]).toHaveValue('')
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
 
   await waitFor(() => {
     expect(adminUpdateActivityLotteryRound).toHaveBeenCalledWith(
       7,
-      expect.objectContaining({ designated_user_id: 42 })
+      expect.objectContaining({
+        prizes: expect.arrayContaining([
+          expect.objectContaining({
+            name: '一等奖',
+            designated_user_id: 42,
+          }),
+        ]),
+      })
     )
   })
 })
 
-test('a non-numeric designated winner is rejected before saving', async () => {
+test('a non-numeric per-tier designated winner is rejected before saving', async () => {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   })
@@ -231,12 +253,39 @@ test('a non-numeric designated winner is rejected before saving', async () => {
     </QueryClientProvider>
   )
 
-  const input = await screen.findByLabelText('Designated winner user ID')
-  fireEvent.change(input, { target: { value: 'abc' } })
+  const inputs = await screen.findAllByLabelText('Designated winner user ID')
+  fireEvent.change(inputs[0], { target: { value: 'abc' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
 
   expect(
     await screen.findByText('Enter a positive numeric user ID')
+  ).toBeVisible()
+  expect(adminUpdateActivityLotteryRound).not.toHaveBeenCalled()
+})
+
+test('the same account cannot be designated on two prize tiers', async () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ActivityLotteryDraftDrawer
+        open
+        onOpenChange={vi.fn()}
+        campaign={campaign}
+      />
+    </QueryClientProvider>
+  )
+
+  const inputs = await screen.findAllByLabelText('Designated winner user ID')
+  fireEvent.change(inputs[0], { target: { value: '42' } })
+  fireEvent.change(inputs[1], { target: { value: '42' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+
+  expect(
+    await screen.findByText(
+      'The same account cannot be designated for more than one prize tier'
+    )
   ).toBeVisible()
   expect(adminUpdateActivityLotteryRound).not.toHaveBeenCalled()
 })

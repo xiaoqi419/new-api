@@ -527,6 +527,170 @@ func TestActivityLotteryDrawsWithNoParticipantsAtAll(t *testing.T) {
 	assert.Zero(t, winnerCount)
 }
 
+func TestActivityLotteryPerTierDesignatedUsersTakeTheirOwnTier(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	topTier := &User{Username: "tier-top", AffCode: "tier-top-aff", Status: common.UserStatusEnabled}
+	secondTier := &User{Username: "tier-second", AffCode: "tier-second-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(topTier).Error)
+	require.NoError(t, db.Create(secondTier).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:           "档位级指定",
+		DrawAt:          drawAt.Unix(),
+		MinParticipants: 3,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000, DesignatedUserId: topTier.Id},
+			{Name: "二等奖", Count: 2, AmountCents: 20_000, DesignatedUserId: secondTier.Id},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	// The second tier keeps one random slot after the designation, so a single
+	// qualified account should take it.
+	participant := &User{Username: "tier-random", AffCode: "tier-random-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(participant).Error)
+	require.NoError(t, db.Create(&TopUp{
+		UserId: participant.Id, TradeNo: "tier-random-topup", Status: common.TopUpStatusSuccess,
+		Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 1,
+	}).Error)
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Order("id asc").Find(&winners).Error)
+	require.Len(t, winners, 3)
+
+	tierOf := map[int]string{}
+	for _, winner := range winners {
+		assert.False(t, tierOf[winner.UserId] != "", "no account wins twice")
+		tierOf[winner.UserId] = winner.PrizeName
+	}
+	assert.Equal(t, "一等奖", tierOf[topTier.Id])
+	assert.Equal(t, "二等奖", tierOf[secondTier.Id])
+	assert.Equal(t, "二等奖", tierOf[participant.Id])
+
+	// Both designated accounts count as participants even without a top-up.
+	assert.EqualValues(t, 3, drawn.ParticipantCount)
+}
+
+func TestActivityLotteryRejectsDuplicateTierDesignatedUser(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	repeated := &User{Username: "tier-repeat", AffCode: "tier-repeat-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(repeated).Error)
+
+	_, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:           "重复指定",
+		DrawAt:          drawAt.Unix(),
+		MinParticipants: 2,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000, DesignatedUserId: repeated.Id},
+			{Name: "二等奖", Count: 1, AmountCents: 20_000, DesignatedUserId: repeated.Id},
+		},
+	}, publishedAt)
+	require.Error(t, err, "the same account must not be designated twice")
+
+	// An unknown account is rejected as well.
+	_, err = CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:           "未知指定",
+		DrawAt:          drawAt.Unix(),
+		MinParticipants: 1,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000, DesignatedUserId: 999_999},
+		},
+	}, publishedAt)
+	require.Error(t, err, "an unknown designated account must be rejected")
+}
+
+func TestActivityLotteryDesignatedAccountAlsoInPoolWinsOnlyOnce(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	// This account both qualifies through a top-up and is designated. It must
+	// be excluded from the random sample, otherwise the second win would
+	// collide with the winner table's unique index and fail the whole draw.
+	both := &User{Username: "tier-both", AffCode: "tier-both-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(both).Error)
+
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:           "既参与又指定",
+		DrawAt:          drawAt.Unix(),
+		MinParticipants: 3,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000, DesignatedUserId: both.Id},
+			{Name: "二等奖", Count: 2, AmountCents: 20_000},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&TopUp{
+		UserId: both.Id, TradeNo: "tier-both-topup", Status: common.TopUpStatusSuccess,
+		Amount: 1, Money: 5, CompleteTime: campaign.QualificationStartAt + 1,
+	}).Error)
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 1, "only the designated account qualified once")
+	assert.Equal(t, both.Id, winners[0].UserId)
+	assert.Equal(t, "一等奖", winners[0].PrizeName)
+	// The account is counted once even though it is both designated and qualified.
+	assert.EqualValues(t, 1, drawn.ParticipantCount)
+}
+
+func TestActivityLotteryLegacyCampaignFieldStillTargetsTopTier(t *testing.T) {
+	db := setupActivityLotteryTestDB(t)
+	shanghai := time.FixedZone("CST", 8*60*60)
+	publishedAt := time.Date(2026, time.September, 28, 12, 0, 0, 0, shanghai)
+	drawAt := time.Date(2026, time.October, 8, 0, 0, 0, 0, shanghai)
+
+	legacy := &User{Username: "legacy-designated", AffCode: "legacy-designated-aff", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(legacy).Error)
+
+	// Campaigns stored before per-tier designation keep their behaviour: the
+	// campaign level field still reserves the top tier.
+	draft, err := CreateActivityLotteryDraft(ActivityLotteryDraftInput{
+		Title:            "旧字段兼容",
+		DrawAt:           drawAt.Unix(),
+		MinParticipants:  2,
+		DesignatedUserId: legacy.Id,
+		Prizes: []ActivityLotteryPrizeInput{
+			{Name: "一等奖", Count: 1, AmountCents: 50_000},
+			{Name: "二等奖", Count: 1, AmountCents: 20_000},
+		},
+	}, publishedAt)
+	require.NoError(t, err)
+	campaign, err := PublishActivityLotteryCampaign(draft.Id, publishedAt)
+	require.NoError(t, err)
+
+	drawn, err := DrawActivityLotteryCampaign(context.Background(), campaign.Id, drawAt)
+	require.NoError(t, err)
+	require.Equal(t, ActivityLotteryStatusDrawn, drawn.Status)
+
+	var winners []ActivityLotteryWinner
+	require.NoError(t, db.Where("campaign_id = ?", campaign.Id).Find(&winners).Error)
+	require.Len(t, winners, 1)
+	assert.Equal(t, legacy.Id, winners[0].UserId)
+	assert.Equal(t, "一等奖", winners[0].PrizeName)
+}
+
 func TestActivityLotteryDueCampaignIsScheduledOnlyUntilItIsFinalized(t *testing.T) {
 	setupActivityLotteryTestDB(t)
 	shanghai := time.FixedZone("CST", 8*60*60)

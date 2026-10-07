@@ -71,13 +71,6 @@ export function getActivityLotteryDraftSchema(
             (/^[1-9]\d{0,6}$/.test(value) && Number(value) <= 1_000_000),
           t('Enter a valid minimum participant count')
         ),
-      designatedUserId: z
-        .string()
-        .trim()
-        .refine(
-          (value) => value === '' || /^[1-9]\d{0,9}$/.test(value),
-          t('Enter a positive numeric user ID')
-        ),
       prizes: z
         .array(
           z.object({
@@ -100,6 +93,13 @@ export function getActivityLotteryDraftSchema(
                 maximum: formatActivityPrizeLimit(currency.maxAmount, currency),
               })
             ),
+            designatedUserId: z
+              .string()
+              .trim()
+              .refine(
+                (value) => value === '' || /^[1-9]\d{0,9}$/.test(value),
+                t('Enter a positive numeric user ID')
+              ),
           })
         )
         .min(1, t('Add at least one prize tier'))
@@ -158,6 +158,24 @@ export function getActivityLotteryDraftSchema(
           message: t('Minimum participants must cover every prize slot'),
         })
       }
+      const designatedSeen = new Set<string>()
+      values.prizes.forEach((prize, index) => {
+        const designated = prize.designatedUserId
+        if (!designated) {
+          return
+        }
+        if (designatedSeen.has(designated)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['prizes', index, 'designatedUserId'],
+            message: t(
+              'The same account cannot be designated for more than one prize tier'
+            ),
+          })
+          return
+        }
+        designatedSeen.add(designated)
+      })
     })
 }
 
@@ -179,8 +197,9 @@ export function getActivityLotteryDraftDefaults(
       startDateLocal: formatShanghaiStartDate(Math.floor(Date.now() / 1000)),
       drawAtLocal: '',
       minParticipants: '',
-      designatedUserId: '',
-      prizes: [{ name: '', count: '1', amountDisplay: '' }],
+      prizes: [
+        { name: '', count: '1', amountDisplay: '', designatedUserId: '' },
+      ],
     }
   }
 
@@ -193,16 +212,14 @@ export function getActivityLotteryDraftDefaults(
         : formatShanghaiStartDate(Math.floor(Date.now() / 1000)),
     drawAtLocal: formatShanghaiInputTime(campaign.draw_at),
     minParticipants: String(campaign.min_participants),
-    designatedUserId:
-      campaign.designated_user_id > 0
-        ? String(campaign.designated_user_id)
-        : '',
     prizes: campaign.prizes.map((prize) => ({
       name: prize.name,
       count: String(prize.count),
       amountDisplay: currency.usesMinorUnits
         ? (prize.amount_cents / 100).toFixed(2)
         : String(prize.amount_cents),
+      designatedUserId:
+        prize.designated_user_id > 0 ? String(prize.designated_user_id) : '',
     })),
   }
 }
@@ -228,9 +245,9 @@ export function toActivityLotteryDraftInput(
     min_participants: values.minParticipants
       ? Number(values.minParticipants)
       : 0,
-    designated_user_id: values.designatedUserId
-      ? Number(values.designatedUserId)
-      : 0,
+    // Legacy campaign level field. The form designates per prize tier now, so
+    // it is always cleared; existing published campaigns keep their stored value.
+    designated_user_id: 0,
     prizes: values.prizes.map((prize) => {
       const amountMinor = parseActivityPrizeAmount(
         prize.amountDisplay,
@@ -243,6 +260,9 @@ export function toActivityLotteryDraftInput(
         name: prize.name.trim(),
         count: Number(prize.count),
         amount_cents: amountMinor,
+        designated_user_id: prize.designatedUserId
+          ? Number(prize.designatedUserId)
+          : 0,
       }
     }),
   }

@@ -113,6 +113,7 @@ test('a completed round remains reachable from the activity history', async () =
         count: 1,
         amount_cents: 50_000,
         quota: 34_246_575,
+        designated_user_id: 0,
       },
     ],
   }

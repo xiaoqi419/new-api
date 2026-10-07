@@ -336,6 +336,29 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name={`prizes.${index}.designatedUserId`}
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FormLabel>{t('Designated winner user ID')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            aria-invalid={fieldState.invalid}
+                            inputMode='numeric'
+                            placeholder={t('Leave blank for a random draw')}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'Reserves one slot of this tier for the given account. Other tiers are unaffected, and a tier left blank stays fully random.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </Card>
               ))}
               <Button
@@ -347,6 +370,7 @@ export function ActivityLotteryDraftDrawer(props: Props) {
                     name: '',
                     count: '1',
                     amountDisplay: '',
+                    designatedUserId: '',
                   })
                 }
               >
@@ -362,29 +386,6 @@ export function ActivityLotteryDraftDrawer(props: Props) {
 
             <SideDrawerSection>
               <SideDrawerSectionHeader title={t('Draw policy')} />
-              <FormField
-                control={form.control}
-                name='designatedUserId'
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>{t('Designated winner user ID')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        aria-invalid={fieldState.invalid}
-                        inputMode='numeric'
-                        placeholder={t('Leave blank for a random draw')}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t(
-                        'If filled in, the top prize tier is granted directly to this account and the remaining slots are still drawn at random. Leave blank to keep the standard random draw.'
-                      )}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name='minParticipants'

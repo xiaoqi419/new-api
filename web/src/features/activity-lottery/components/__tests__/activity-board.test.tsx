@@ -66,6 +66,7 @@ function viewFixture(
           count: 1,
           amount_cents: 50_000,
           quota: 34_246_575,
+          designated_user_id: 0,
         },
         {
           id: 2,
@@ -75,6 +76,7 @@ function viewFixture(
           count: 3,
           amount_cents: 20_000,
           quota: 13_698_630,
+          designated_user_id: 0,
         },
       ],
     },

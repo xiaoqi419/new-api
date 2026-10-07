@@ -32,13 +32,21 @@ const validDraft = {
   startDateLocal: '2026-09-28',
   drawAtLocal: '2026-10-08T00:00',
   minParticipants: '',
-  designatedUserId: '',
   prizes: [
-    { name: '一等奖', count: '1', amountDisplay: '500' },
-    { name: '二等奖', count: '3', amountDisplay: '200' },
-    { name: '三等奖', count: '5', amountDisplay: '50' },
-    { name: '四等奖', count: '20', amountDisplay: '10' },
+    { name: '一等奖', count: '1', amountDisplay: '500', designatedUserId: '' },
+    { name: '二等奖', count: '3', amountDisplay: '200', designatedUserId: '' },
+    { name: '三等奖', count: '5', amountDisplay: '50', designatedUserId: '' },
+    { name: '四等奖', count: '20', amountDisplay: '10', designatedUserId: '' },
   ],
+}
+
+function withTierDesignation(index: number, value: string) {
+  return {
+    ...validDraft,
+    prizes: validDraft.prizes.map((prize, i) =>
+      i === index ? { ...prize, designatedUserId: value } : prize
+    ),
+  }
 }
 
 test('a prior Beijing start date and midnight draw map to the exact qualification window and prize budget', () => {
@@ -66,15 +74,15 @@ test('a prior Beijing start date and midnight draw map to the exact qualificatio
     min_participants: 0,
     designated_user_id: 0,
     prizes: [
-      { name: '一等奖', count: 1, amount_cents: 50_000 },
-      { name: '二等奖', count: 3, amount_cents: 20_000 },
-      { name: '三等奖', count: 5, amount_cents: 5_000 },
-      { name: '四等奖', count: 20, amount_cents: 1_000 },
+      { name: '一等奖', count: 1, amount_cents: 50_000, designated_user_id: 0 },
+      { name: '二等奖', count: 3, amount_cents: 20_000, designated_user_id: 0 },
+      { name: '三等奖', count: 5, amount_cents: 5_000, designated_user_id: 0 },
+      { name: '四等奖', count: 20, amount_cents: 1_000, designated_user_id: 0 },
     ],
   })
 })
 
-test('a blank designated winner stays zero while a valid ID is carried through', () => {
+test('a blank per-tier designated winner stays zero while a valid ID is carried through', () => {
   const usd = activityLotteryCurrencyFromConfig({
     displayInCurrency: true,
     quotaDisplayType: 'USD',
@@ -88,41 +96,58 @@ test('a blank designated winner stays zero while a valid ID is carried through',
   const blank = schema.safeParse(validDraft)
   expect(blank.success).toBe(true)
   if (blank.success) {
-    expect(
-      toActivityLotteryDraftInput(blank.data, usd).designated_user_id
-    ).toBe(0)
+    const input = toActivityLotteryDraftInput(blank.data, usd)
+    // The legacy campaign level field is no longer edited by the form.
+    expect(input.designated_user_id).toBe(0)
+    expect(input.prizes.map((prize) => prize.designated_user_id)).toEqual([
+      0, 0, 0, 0,
+    ])
   }
 
-  const assigned = schema.safeParse({
-    ...validDraft,
-    designatedUserId: '42',
-  })
+  const assigned = schema.safeParse(withTierDesignation(0, '42'))
   expect(assigned.success).toBe(true)
   if (assigned.success) {
-    expect(
-      toActivityLotteryDraftInput(assigned.data, usd).designated_user_id
-    ).toBe(42)
+    const input = toActivityLotteryDraftInput(assigned.data, usd)
+    expect(input.designated_user_id).toBe(0)
+    expect(input.prizes.map((prize) => prize.designated_user_id)).toEqual([
+      42, 0, 0, 0,
+    ])
   }
 })
 
-test('a non-numeric designated winner is rejected', () => {
+test('a non-numeric per-tier designated winner is rejected', () => {
   const schema = getActivityLotteryDraftSchema(
     i18next.t,
     undefined,
     publishedAt
   )
-  expect(
-    schema.safeParse({ ...validDraft, designatedUserId: 'abc' }).success
-  ).toBe(false)
-  expect(
-    schema.safeParse({ ...validDraft, designatedUserId: '0' }).success
-  ).toBe(false)
-  expect(
-    schema.safeParse({ ...validDraft, designatedUserId: '-1' }).success
-  ).toBe(false)
-  expect(
-    schema.safeParse({ ...validDraft, designatedUserId: '  7  ' }).success
-  ).toBe(true)
+  expect(schema.safeParse(withTierDesignation(0, 'abc')).success).toBe(false)
+  expect(schema.safeParse(withTierDesignation(0, '0')).success).toBe(false)
+  expect(schema.safeParse(withTierDesignation(0, '-1')).success).toBe(false)
+  expect(schema.safeParse(withTierDesignation(0, '  7  ')).success).toBe(true)
+})
+
+test('designating the same account on two prize tiers is rejected', () => {
+  const schema = getActivityLotteryDraftSchema(
+    i18next.t,
+    undefined,
+    publishedAt
+  )
+  const duplicated = {
+    ...validDraft,
+    prizes: validDraft.prizes.map((prize, index) =>
+      index < 2 ? { ...prize, designatedUserId: '42' } : prize
+    ),
+  }
+  const result = schema.safeParse(duplicated)
+  expect(result.success).toBe(false)
+  if (!result.success) {
+    expect(
+      result.error.issues.some((issue) =>
+        issue.message.includes('more than one prize tier')
+      )
+    ).toBe(true)
+  }
 })
 
 test('invalid start dates, past draw times, and too few participants are rejected', () => {

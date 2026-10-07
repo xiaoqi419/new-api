@@ -63,6 +63,9 @@ type ActivityLotteryPrize struct {
 	// currency; in TOKENS mode it stores raw quota units for API compatibility.
 	AmountCents int64 `json:"amount_cents" gorm:"bigint"`
 	Quota       int   `json:"quota" gorm:"bigint"`
+	// DesignatedUserId optionally reserves one slot of this tier for a single
+	// account; zero keeps the tier fully random.
+	DesignatedUserId int `json:"designated_user_id"`
 }
 
 type ActivityLotteryWinner struct {
@@ -85,6 +88,8 @@ type ActivityLotteryPrizeInput struct {
 	// AmountCents keeps the original API field name while following the
 	// display currency captured when the draft is created.
 	AmountCents int64 `json:"amount_cents"`
+	// DesignatedUserId reserves one slot of this tier for a single account.
+	DesignatedUserId int `json:"designated_user_id"`
 }
 
 type ActivityLotteryDraftInput struct {
@@ -168,18 +173,36 @@ func validateActivityLotteryDraft(input *ActivityLotteryDraftInput, now time.Tim
 	if totalSlots > 1000 || poolCents > 100_000_000 {
 		return errors.New("activity lottery prize pool exceeds the allowed limit")
 	}
-	// A designated winner takes over one slot, so the tier it belongs to must
-	// offer at least one. Only a negative value is rejected outright; a
-	// designated account that disappears before the draw falls back to a
-	// normal random draw.
+	// Each tier may reserve one slot for a designated account. The campaign
+	// level field is kept as a legacy alias that targets the top tier. Only a
+	// negative value is rejected outright; an account that disappears before
+	// the draw falls back to a normal random draw for its tier.
+	designatedTiers := make(map[int]string)
 	if input.DesignatedUserId < 0 {
 		return errors.New("activity lottery designated user id is invalid")
 	}
-	if input.DesignatedUserId > 0 {
-		if input.Prizes[0].Count < 1 {
-			return errors.New("the top prize tier must have at least one winner slot")
+	for i := range input.Prizes {
+		prize := &input.Prizes[i]
+		if prize.DesignatedUserId < 0 {
+			return errors.New("activity lottery designated user id is invalid")
 		}
-		if _, err := GetUserById(input.DesignatedUserId, false); err != nil {
+		if prize.DesignatedUserId == 0 {
+			continue
+		}
+		if prior, taken := designatedTiers[prize.DesignatedUserId]; taken {
+			return fmt.Errorf("activity lottery designated user %d is already assigned to %s", prize.DesignatedUserId, prior)
+		}
+		designatedTiers[prize.DesignatedUserId] = prize.Name
+	}
+	if input.DesignatedUserId > 0 {
+		// Repeating the top tier's own designation is redundant but harmless.
+		if prior, taken := designatedTiers[input.DesignatedUserId]; taken && input.Prizes[0].DesignatedUserId != input.DesignatedUserId {
+			return fmt.Errorf("activity lottery designated user %d is already assigned to %s", input.DesignatedUserId, prior)
+		}
+		designatedTiers[input.DesignatedUserId] = input.Prizes[0].Name
+	}
+	for userId := range designatedTiers {
+		if _, err := GetUserById(userId, false); err != nil {
 			return errors.New("activity lottery designated user does not exist")
 		}
 	}
@@ -208,11 +231,12 @@ func GetActivityLotteryCampaignById(id int) (*ActivityLotteryCampaign, error) {
 func insertActivityLotteryPrizes(tx *gorm.DB, campaignId int, items []ActivityLotteryPrizeInput) error {
 	for position, item := range items {
 		prize := &ActivityLotteryPrize{
-			CampaignId:  campaignId,
-			Position:    position + 1,
-			Name:        item.Name,
-			Count:       item.Count,
-			AmountCents: item.AmountCents,
+			CampaignId:       campaignId,
+			Position:         position + 1,
+			Name:             item.Name,
+			Count:            item.Count,
+			AmountCents:      item.AmountCents,
+			DesignatedUserId: item.DesignatedUserId,
 		}
 		if err := tx.Create(prize).Error; err != nil {
 			return err
@@ -429,9 +453,15 @@ func PublishActivityLotteryCampaign(id int, now time.Time) (*ActivityLotteryCamp
 	return GetActivityLotteryCampaignById(id)
 }
 
-func sampleActivityLotteryUsers(tx *gorm.DB, campaign *ActivityLotteryCampaign, slots int) ([]int, int64, error) {
-	rows, err := activityLotteryEligibleTopups(tx, campaign).
-		Distinct("user_id").Order("user_id asc").Rows()
+func sampleActivityLotteryUsers(tx *gorm.DB, campaign *ActivityLotteryCampaign, slots int, excluded []int) ([]int, int64, error) {
+	query := activityLotteryEligibleTopups(tx, campaign)
+	if len(excluded) > 0 {
+		// Designated accounts already hold a slot, so they must not also be
+		// sampled: a second win would violate the one-prize-per-account rule
+		// and collide with the winner table's unique index.
+		query = query.Where("user_id NOT IN ?", excluded)
+	}
+	rows, err := query.Distinct("user_id").Order("user_id asc").Rows()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -508,69 +538,71 @@ func DrawActivityLotteryCampaign(ctx context.Context, id int, now time.Time) (*A
 			return errors.New("activity lottery prize slots are invalid")
 		}
 
-		// A designated winner only replaces the first slot of the top prize
-		// tier. It is not required to have qualified through a top-up, and it
-		// counts towards both the participant total and the minimum that
-		// unblocks the round. If the account no longer exists the campaign
-		// silently falls back to a fully random draw.
-		designatedUserId := campaign.DesignatedUserId
-		if designatedUserId > 0 {
-			if _, err := GetUserById(designatedUserId, false); err != nil {
-				logger.LogWarn(ctx, fmt.Sprintf("activity lottery #%d designated user %d no longer exists; falling back to a random draw", id, designatedUserId))
-				designatedUserId = 0
+		// Each tier may reserve one slot for a designated account; the campaign
+		// level field is a legacy alias for the top tier. A designated account
+		// is not required to have qualified through a top-up, and it counts
+		// towards the participant total. If the account no longer exists its
+		// tier silently falls back to a random draw.
+		designations := make(map[int]int, len(prizes))
+		for _, prize := range prizes {
+			if prize.DesignatedUserId <= 0 {
+				continue
+			}
+			if _, err := GetUserById(prize.DesignatedUserId, false); err != nil {
+				logger.LogWarn(ctx, fmt.Sprintf("activity lottery #%d designated user %d for tier %q no longer exists; falling back to a random draw", id, prize.DesignatedUserId, prize.Name))
+				continue
+			}
+			designations[prize.Id] = prize.DesignatedUserId
+		}
+		if campaign.DesignatedUserId > 0 {
+			if _, taken := designations[prizes[0].Id]; !taken {
+				if _, err := GetUserById(campaign.DesignatedUserId, false); err != nil {
+					logger.LogWarn(ctx, fmt.Sprintf("activity lottery #%d designated user %d no longer exists; falling back to a random draw", id, campaign.DesignatedUserId))
+				} else {
+					designations[prizes[0].Id] = campaign.DesignatedUserId
+				}
 			}
 		}
 
-		selectedSlots := slots
-		if designatedUserId > 0 {
-			selectedSlots = slots - 1
+		designatedUsers := make([]int, 0, len(designations))
+		for _, userId := range designations {
+			designatedUsers = append(designatedUsers, userId)
 		}
-		selected, participantCount, err := sampleActivityLotteryUsers(tx, &campaign, selectedSlots)
+
+		selected, participantCount, err := sampleActivityLotteryUsers(tx, &campaign, slots-len(designations), designatedUsers)
 		if err != nil {
 			return err
 		}
-		if designatedUserId > 0 {
-			participantCount++
-		}
+		participantCount += int64(len(designations))
 
 		// A shortfall of participants no longer cancels the round. Prizes are
 		// issued to whoever qualified, in tier order, and a slot that cannot be
-		// filled because the pool ran out is simply left unawarded.
-		if selectedSlots > 0 {
-			position := 0
-			// The designated account takes the first slot of the top prize
-			// tier, so that one slot is skipped while the sampled accounts
-			// fill everything else in tier order.
-			topTierReserved := designatedUserId > 0
-			for _, prize := range prizes {
-				count := prize.Count
-				if topTierReserved {
-					count--
-					topTierReserved = false
+		// filled because the pool ran out is simply left unawarded. Every tier
+		// is visited so that a designation on a later tier is still honoured
+		// after the sampled pool runs dry.
+		position := 0
+		for _, prize := range prizes {
+			count := prize.Count
+			if userId, ok := designations[prize.Id]; ok {
+				count--
+				winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
+				if err != nil {
+					return err
 				}
-				for range count {
-					if position >= len(selected) {
-						break
-					}
-					userId := selected[position]
-					position++
-					winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
-					if err != nil {
-						return err
-					}
-					grantedWinners = append(grantedWinners, *winner)
-				}
+				grantedWinners = append(grantedWinners, *winner)
+			}
+			for range count {
 				if position >= len(selected) {
 					break
 				}
+				userId := selected[position]
+				position++
+				winner, err := grantActivityLotteryPrize(tx, &campaign, prize, userId, now)
+				if err != nil {
+					return err
+				}
+				grantedWinners = append(grantedWinners, *winner)
 			}
-		}
-		if designatedUserId > 0 {
-			winner, err := grantActivityLotteryPrize(tx, &campaign, prizes[0], designatedUserId, now)
-			if err != nil {
-				return err
-			}
-			grantedWinners = append(grantedWinners, *winner)
 		}
 		updates := map[string]any{
 			"status":            ActivityLotteryStatusDrawn,

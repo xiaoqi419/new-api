@@ -68,6 +68,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 1,
       amount_cents: 50_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 2,
@@ -77,6 +78,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 3,
       amount_cents: 20_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 3,
@@ -86,6 +88,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 5,
       amount_cents: 5_000,
       quota: 0,
+      designated_user_id: 0,
     },
     {
       id: 4,
@@ -95,6 +98,7 @@ const campaign: ActivityLotteryCampaign = {
       count: 20,
       amount_cents: 1_000,
       quota: 0,
+      designated_user_id: 0,
     },
   ],
 }

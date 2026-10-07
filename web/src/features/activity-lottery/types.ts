@@ -31,6 +31,8 @@ export interface ActivityLotteryPrize {
   count: number
   amount_cents: number
   quota: number
+  /** One slot of this tier is reserved for this account; 0 keeps it random. */
+  designated_user_id: number
 }
 
 export interface ActivityLotteryCampaign {
@@ -93,6 +95,8 @@ export interface ActivityLotteryPrizeInput {
   count: number
   /** Smallest unit of the campaign's captured display currency; raw quota in TOKENS mode. */
   amount_cents: number
+  /** Reserves one slot of this tier for the account; 0 keeps the tier random. */
+  designated_user_id: number
 }
 
 export interface ActivityLotteryDraftInput {
