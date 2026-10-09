@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
-import { AccessTokenCard } from '@/features/security/components/access-token-card'
+import { AccessTokensCard } from '@/features/security/components/access-tokens-card'
 import { useDialogs } from '@/hooks/use-dialog'
 
 import type { UserProfile } from '../types'
@@ -125,7 +125,7 @@ export function ProfileSecurityCard({
         username={profile.username}
       />
 
-      <AccessTokenCard />
+      <AccessTokensCard />
 
       <DeleteAccountDialog
         open={dialogs.isOpen('delete')}

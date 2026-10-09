@@ -22,17 +22,64 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 
 import { api } from '@/lib/api'
 
+import { UsersProvider } from '../../users-provider'
 import { UserBindingDialog } from '../user-binding-dialog'
+
+/**
+ * The dialog reads `/api/status` through the shared React Query cache, so it
+ * needs a provider. A fresh client per render keeps tests isolated.
+ */
+const queryClients: QueryClient[] = []
+
+function createQueryClient(): QueryClient {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  })
+  queryClients.push(queryClient)
+  return queryClient
+}
+
+function renderWithQueryClient(
+  ui: React.ReactElement,
+  queryClient = createQueryClient()
+): ReturnType<typeof render> {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <UsersProvider>{ui}</UsersProvider>
+    </QueryClientProvider>
+  )
+}
 
 type ApiMethod = (url: string) => Promise<{ data: unknown }>
 type MockableApi = {
   get: ApiMethod
+  post: ApiMethod
   delete: ApiMethod
 }
 
 const apiClient = api as unknown as MockableApi
 const originalGet = apiClient.get
+const originalPost = apiClient.post
 const originalDelete = apiClient.delete
+
+const verificationMethods = {
+  data: {
+    success: true,
+    data: {
+      scope: 'admin.user.binding.clear',
+      methods: [{ method: '2fa', available: true }],
+      oauth_providers: [],
+      password_encryption_enabled: false,
+    },
+  },
+}
+
+// Every unbind is gated by the shared step-up ceremony mounted in UsersProvider.
+async function completeUnbindVerification() {
+  const code = await screen.findByLabelText('Authenticator code or backup code')
+  fireEvent.change(code, { target: { value: '123456' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Verify' }))
+}
 const originalGetAnimations = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
   'getAnimations'
@@ -82,7 +129,9 @@ afterAll(() => {
 })
 
 afterEach(() => {
+  queryClients.splice(0).forEach((client) => client.clear())
   apiClient.get = originalGet
+  apiClient.post = originalPost
   apiClient.delete = originalDelete
 })
 
@@ -95,6 +144,8 @@ describe('UserBindingDialog built-in bindings', () => {
           return { data: { success: true, data: user } }
         case '/api/user/7/oauth/bindings':
           return { data: { success: true, data: [] } }
+        case '/api/verify/methods':
+          return verificationMethods
         case '/api/status':
           return {
             data: {
@@ -113,19 +164,27 @@ describe('UserBindingDialog built-in bindings', () => {
           throw new Error(`Unexpected GET ${url}`)
       }
     }
+    apiClient.post = async (url) => {
+      if (url !== '/api/verify') throw new Error(`Unexpected POST ${url}`)
+      return {
+        data: {
+          success: true,
+          data: {
+            proof_token: 'binding-proof',
+            method: '2fa',
+            scope: 'admin.user.binding.clear',
+            expires_at: Math.floor(Date.now() / 1000) + 60,
+          },
+        },
+      }
+    }
     apiClient.delete = async (url) => {
       deletedUrls.push(url)
       return { data: { success: true, message: 'success' } }
     }
 
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <UserBindingDialog open userId={7} onOpenChange={() => undefined} />
-      </QueryClientProvider>
+    renderWithQueryClient(
+      <UserBindingDialog open userId={7} onOpenChange={() => undefined} />
     )
 
     const expectedBindings = [
@@ -142,6 +201,7 @@ describe('UserBindingDialog built-in bindings', () => {
     for (const [provider, bindingType] of expectedBindings) {
       fireEvent.click(findUnbindButton(provider))
       fireEvent.click(screen.getByRole('button', { name: 'Confirm Unbind' }))
+      await completeUnbindVerification()
       await waitFor(() => {
         expect(deletedUrls.at(-1)).toBe(`/api/user/7/bindings/${bindingType}`)
       })

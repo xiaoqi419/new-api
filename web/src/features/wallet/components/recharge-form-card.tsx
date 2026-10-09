@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 
 /*
 Copyright (C) 2023-2026 QuantumNous
@@ -236,7 +236,9 @@ export function RechargeFormCard({
             <>
               {topupInfo?.topup_bonus?.tiers?.length ? (
                 <div className='bg-muted/40 space-y-2 rounded-lg border p-3'>
-                  <p className='text-sm font-medium'>{t('Recharge bonus tiers')}</p>
+                  <p className='text-sm font-medium'>
+                    {t('Recharge bonus tiers')}
+                  </p>
                   <ul className='space-y-1 text-sm'>
                     {topupInfo.topup_bonus.tiers.map((tier) => (
                       <li key={tier.pay}>
@@ -289,17 +291,27 @@ export function RechargeFormCard({
                             </div>
                             {hasDiscount && (
                               <div className='text-success text-xs font-medium'>
-                                {getDiscountLabel(discount)}
+                                {getDiscountLabel(discount, t)}
                               </div>
                             )}
                           </div>
                           <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            Pay {formatCurrency(actualPrice)}
-                            {hasDiscount && savedAmount > 0 && (
-                              <span className='text-success'>
-                                {' '}
-                                • Save {formatCurrency(savedAmount)}
-                              </span>
+                            {hasDiscount && savedAmount > 0 ? (
+                              <Trans
+                                t={t}
+                                i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
+                                values={{
+                                  amount: formatCurrency(actualPrice),
+                                  saved: formatCurrency(savedAmount),
+                                }}
+                                components={{
+                                  savings: <span className='text-success' />,
+                                }}
+                              />
+                            ) : (
+                              t('Pay {{amount}}', {
+                                amount: formatCurrency(actualPrice),
+                              })
                             )}
                           </div>
                         </Button>
@@ -326,7 +338,7 @@ export function RechargeFormCard({
                     max={maxTopup ?? undefined}
                     placeholder={
                       maxTopup === null
-                        ? `Minimum ${minTopup}`
+                        ? t('Minimum {{amount}}', { amount: minTopup })
                         : `${minTopup} - ${maxTopup}`
                     }
                     className='h-9 text-base sm:h-10 sm:text-lg'

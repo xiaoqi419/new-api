@@ -30,6 +30,28 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-09',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '合入官方 New API rc.41、rc.42：支持最多 20 个具名后台访问令牌、权限范围和到期时间，敏感用户管理操作增加一次性验证。',
+          '新增 Seedream 5.0 Flash 与 Grok Imagine 视频插件，高级自定义渠道支持 Claude、Gemini 转 Responses，Moonshot 支持 Responses 透传。',
+          '新增渠道刷新按钮、用户分组筛选、参数覆盖正则条件和定价表达式差异高亮。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '升级任务插件引擎与 Token 计数模块，优化长文本、工具定义及图片用量估算，降低本地请求处理开销。',
+          '完善搜索次数计费、Gemini 流式用量统计、Codex 工具及媒体转换，以及中断流和已完成图片的结算。',
+          '前端静态资源使用独立限流和压缩缓存，兼容主站双主题与无限画布；保留现有充值活动、额度和渠道扩展。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-01',
     changes: [
       {
