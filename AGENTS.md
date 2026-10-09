@@ -8,7 +8,7 @@ This is an AI API gateway/proxy built with Go. It aggregates 40+ upstream AI pro
 
 ## Tech Stack
 
-- **Backend**: Go 1.22+, Gin web framework, GORM v2 ORM
+- **Backend**: Go 1.26 for the root module and `tokenkit/`, Go 1.25.1 for `relaykit/`; Gin web framework, GORM v2 ORM
 - **Frontend**: React 19, TypeScript, Rsbuild, Base UI, Tailwind CSS
 - **Databases**: SQLite, MySQL, PostgreSQL (all three must be supported)
 - **Cache**: Redis (go-redis) + in-memory cache
@@ -35,6 +35,7 @@ types/         — Type definitions (relay formats, file sources, errors)
 i18n/          — Backend internationalization (go-i18n, en/zh)
 oauth/         — OAuth provider implementations
 pkg/           — Internal packages (cachex, ionet)
+tokenkit/      — Independent text and image token counting module
 web/           — Frontend (React 19, Rsbuild, Base UI, Tailwind)
   src/i18n/    — Frontend internationalization (i18next, en/zh/zh-TW/fr/ru/ja/vi)
 ```
@@ -64,10 +65,10 @@ web/           — Frontend (React 19, Rsbuild, Base UI, Tailwind)
 
 ### Backend Rules
 
-**relaykit module independence:** The `relaykit/` Go module MUST remain independently buildable.
+**relaykit and tokenkit module independence:** The `relaykit/` and `tokenkit/` Go modules MUST remain independently buildable.
 
-- Code under `relaykit/` MUST NOT import or depend on packages from the root `new-api` module, or rely on root-only configuration, generated files, or workspace wiring.
-- Any change affecting `relaykit/` or its public APIs MUST be verified with `cd relaykit && GOWORK=off go build ./...`; a successful root-module build is not sufficient.
+- Code under `relaykit/` or `tokenkit/` MUST NOT import or depend on packages from the root `new-api` module, or rely on root-only configuration, generated files, or workspace wiring. `tokenkit/` MUST NOT depend on `relaykit/`.
+- Any change affecting either module or its public APIs MUST be verified with `GOWORK=off go build ./...` inside that module; a successful root-module build is not sufficient.
 
 **JSON package:** All JSON marshal/unmarshal operations MUST use the wrapper functions in `common/json.go`:
 

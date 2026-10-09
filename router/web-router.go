@@ -9,7 +9,6 @@ import (
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/gin-contrib/gzip"
-	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,17 +33,32 @@ func SetWebRouter(router *gin.Engine, assets ThemeAssets, pluginDispatcher gin.H
 	classicFS := common.EmbedFolder(assets.ClassicBuildFS, "web/classic/dist")
 	themeFS := common.NewThemeAwareFS(defaultFS, classicFS)
 	canvasFS := common.EmbedFolderAt(assets.CanvasBuildFS, "web/canvas/dist", canvasBasePath)
+	defaultFiles := middleware.ServeFrontendFiles(defaultFS)
+	classicFiles := middleware.ServeFrontendFiles(classicFS)
+	canvasFiles := middleware.ServeFrontendFiles(common.EmbedFolder(assets.CanvasBuildFS, "web/canvas/dist"), canvasBasePath)
+	compress := gzip.Gzip(gzip.DefaultCompression)
 
 	router.NoRoute(pluginDispatcher,
 		legacyTaskRouteDispatcher(),
 		middleware.RouteTag("web"),
-		gzip.Gzip(gzip.DefaultCompression),
+		func(c *gin.Context) {
+			// ServeFrontendFiles sends build files already compressed.
+			if !themeFS.Exists("/", c.Request.URL.Path) && !canvasFS.Exists("/", c.Request.URL.Path) {
+				compress(c)
+			}
+		},
 		middleware.AccessTokenAudit(),
-		middleware.GlobalWebRateLimit(),
+		middleware.GlobalWebRateLimit(themeFS, canvasFS),
 		middleware.Cache(),
 		middleware.MainlandWebAccess(),
-		static.Serve(canvasBasePath, canvasFS),
-		static.Serve("/", themeFS),
+		canvasFiles,
+		func(c *gin.Context) {
+			if common.GetTheme() == "classic" {
+				classicFiles(c)
+			} else {
+				defaultFiles(c)
+			}
+		},
 		func(c *gin.Context) {
 			c.Set(middleware.RouteTagKey, "web")
 			if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/assets") {

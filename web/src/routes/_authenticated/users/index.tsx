@@ -35,7 +35,13 @@ const usersSearchSchema = z.object({
     .array(z.enum(['1', '10', '100']))
     .optional()
     .catch([]),
-  group: z.string().optional().catch(''),
+  group: z
+    .union([
+      z.string().transform((value) => (value ? [value] : [])),
+      z.array(z.string()),
+    ])
+    .optional()
+    .catch([]),
   balance: z
     .array(z.enum(['negative', 'zero', 'positive']))
     .optional()
