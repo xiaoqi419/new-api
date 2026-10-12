@@ -10,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	pluginruntime "github.com/QuantumNous/new-api/pkg/jsplugin"
@@ -18,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/config"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -133,6 +135,7 @@ func pinMappingOrderPlugin(t *testing.T, c *gin.Context, source string) {
 
 func newTaskSubmitContext(t *testing.T, originalModel, mapping string) (*gin.Context, *relaycommon.RelayInfo) {
 	t.Helper()
+	require.NoError(t, i18n.Init())
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -465,6 +468,79 @@ export function parseTaskResult() { return {status:"SUCCESS"}; }
 			require.NotNil(t, result)
 			assert.Equal(t, "job-42", result.UpstreamTaskID)
 			assert.JSONEq(t, `{"status":`+strconv.Itoa(tc.status)+`}`, string(result.TaskData))
+		})
+	}
+}
+
+func TestRelayTaskSubmitFreezesAutomaticDurationReservationMode(t *testing.T) {
+	service.InitHttpClient()
+	previousUnit := common.QuotaPerUnit
+	previousPatches := constant.TaskPricePatches
+	previousPrices := ratio_setting.ModelPrice2JSONString()
+	previousGroups := ratio_setting.GroupRatio2JSONString()
+	previousSpecialGroups := ratio_setting.GroupGroupRatio2JSONString()
+	common.QuotaPerUnit = 1000
+	require.NoError(t, ratio_setting.UpdateModelPriceByJSONString(`{"wan3.0-video":0.1,"my-wan3":0.1}`))
+	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"default":1}`))
+	require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{}`))
+	t.Cleanup(func() {
+		common.QuotaPerUnit = previousUnit
+		constant.TaskPricePatches = previousPatches
+		require.NoError(t, ratio_setting.UpdateModelPriceByJSONString(previousPrices))
+		require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(previousGroups))
+		require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(previousSpecialGroups))
+	})
+	const source = `
+export const meta = {apiVersion:1,key:"auto-reservation",name:"Auto Reservation",version:"1.0.0",author:{name:"Test"},models:["wan3.0-video"],fetchMode:"per_task"};
+export function buildSubmitRequest(ctx) { return {url:ctx.baseUrl+"/submit",method:"POST",body:{model:ctx.upstreamModel,parameters:{duration:-1}},action:"text_to_video"}; }
+export function extractUsage() { return {seconds:30,auto_duration:1,"resolution-1080P":1.5}; }
+export function parseSubmitResponse() { return {taskId:"auto-reservation-job"}; }
+export function buildQueryRequest(ctx) { return {url:ctx.baseUrl+"/query"}; }
+export function parseTaskResult() { return {status:"SUCCESS"}; }
+`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	for _, tc := range []struct {
+		name, model, mapping string
+		patches              []string
+		wantMarker           bool
+		wantQuota            int
+	}{
+		{"automatic seconds reservation", "wan3.0-video", "", nil, true, 4500},
+		{"flat price patch", "wan3.0-video", "", []string{"wan3.0-video"}, false, 100},
+		{"patch matches billing model only", "my-wan3", `{"my-wan3":"wan3.0-video"}`, []string{"wan3.0-video"}, true, 4500},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			saveBillingConfig(t)
+			require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+				"billing_setting.billing_mode": `{}`, "billing_setting.billing_expr": `{}`, billing_setting.PluginBillingExprOption: `{}`,
+			}))
+			constant.TaskPricePatches = tc.patches
+			c, info := newTaskSubmitContext(t, tc.model, tc.mapping)
+			common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, server.URL)
+			c.Set("group", "default")
+			info.UserGroup, info.UsingGroup = "default", "default"
+			info.OriginModelName = tc.model
+			info.Billing = &imageReservation{limit: 1 << 30}
+			pinMappingOrderPlugin(t, c, source)
+
+			result, taskErr := RelayTaskSubmit(c, info)
+
+			require.Nil(t, taskErr, "submission error: %+v", taskErr)
+			require.NotNil(t, result)
+			assert.Equal(t, tc.wantQuota, result.Quota)
+			ratios := info.PriceData.OtherRatios()
+			assert.Equal(t, 30.0, ratios["seconds"])
+			assert.Equal(t, 1.5, ratios["resolution-1080P"])
+			if tc.wantMarker {
+				assert.Equal(t, 1.0, ratios["auto_duration"])
+			} else {
+				assert.NotContains(t, ratios, "auto_duration")
+			}
 		})
 	}
 }

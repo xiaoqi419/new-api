@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
@@ -151,12 +152,12 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 	if err != nil {
 		return err
 	}
-	logger.LogInfo(ctx, "realtime streaming consume quota success, quota: "+fmt.Sprintf("%d", quota))
+	logger.LogInfo(ctx, common.LogText("realtime streaming consume quota success, quota: %d", quota))
 	return nil
 }
 
 func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, modelName string,
-	usage *dto.RealtimeUsage, extraContent string) {
+	usage *dto.RealtimeUsage, extraContent []*common.Message) {
 
 	var tieredResult *billingexpr.TieredResult
 	tieredOk, tieredQuota, tieredRes := TryTieredSettle(relayInfo, billingexpr.TokenParams{
@@ -208,12 +209,20 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 	}
 
 	totalTokens := usage.TotalTokens
-	var logContent string
+	var logContent []*common.Message
 	if !usePrice {
-		logContent = fmt.Sprintf("模型倍率 %.2f，补全倍率 %.2f，音频倍率 %.2f，音频补全倍率 %.2f，分组倍率 %.2f",
-			modelRatio, completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+		logContent = append(logContent, common.NewMessage("Model ratio {{model_ratio}}, completion ratio {{completion_ratio}}, audio ratio {{audio_ratio}}, audio completion ratio {{audio_completion_ratio}}, group ratio {{group_ratio}}", map[string]any{
+			"model_ratio":            fmt.Sprintf("%.2f", modelRatio),
+			"completion_ratio":       fmt.Sprintf("%.2f", completionRatio.InexactFloat64()),
+			"audio_ratio":            fmt.Sprintf("%.2f", audioRatio.InexactFloat64()),
+			"audio_completion_ratio": fmt.Sprintf("%.2f", audioCompletionRatio.InexactFloat64()),
+			"group_ratio":            fmt.Sprintf("%.2f", groupRatio),
+		}))
 	} else {
-		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f", modelPrice, groupRatio)
+		logContent = append(logContent, common.NewMessage("Model price {{model_price}}, group ratio {{group_ratio}}", map[string]any{
+			"model_price": fmt.Sprintf("%.2f", modelPrice),
+			"group_ratio": fmt.Sprintf("%.2f", groupRatio),
+		}))
 	}
 
 	// record all the consume log even if quota is 0
@@ -221,22 +230,20 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 		// in this case, must be some error happened
 		// we cannot just return, because we may have to return the pre-consumed quota
 		quota = 0
-		logContent += "（可能是上游超时）"
-		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, "+
-			"tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, modelName, relayInfo.FinalPreConsumedQuota))
+		logContent = append(logContent, common.NewMessage("Possibly an upstream timeout"))
+		logger.LogError(ctx, common.LogText("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d",
+			relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, modelName, relayInfo.FinalPreConsumedQuota))
 	} else {
 		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, quota)
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, quota)
 	}
 
 	if err := SettleBilling(ctx, relayInfo, quota); err != nil {
-		logger.LogError(ctx, "error settling billing: "+err.Error())
+		logger.LogError(ctx, common.LogText("error settling billing: %s", err.Error()))
 	}
 
 	logModel := modelName
-	if extraContent != "" {
-		logContent += ", " + extraContent
-	}
+	logContent = append(logContent, extraContent...)
 	other := GenerateWssOtherInfo(ctx, relayInfo, usage, modelRatio, groupRatio,
 		completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
 	if tieredResult != nil {
@@ -285,7 +292,7 @@ func CalcOpenRouterCacheCreateTokens(usage dto.Usage, priceData types.PriceData)
 	return quota
 }
 
-func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage *dto.Usage, extraContent string) {
+func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage *dto.Usage, extraContent []*common.Message) {
 	if usage == nil {
 		usage = &dto.Usage{PromptTokens: relayInfo.GetEstimatePromptTokens(), TotalTokens: relayInfo.GetEstimatePromptTokens()}
 	}
@@ -341,12 +348,20 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 	}
 
 	totalTokens := usage.TotalTokens
-	var logContent string
+	var logContent []*common.Message
 	if !usePrice {
-		logContent = fmt.Sprintf("模型倍率 %.2f，补全倍率 %.2f，音频倍率 %.2f，音频补全倍率 %.2f，分组倍率 %.2f",
-			modelRatio, completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), groupRatio)
+		logContent = append(logContent, common.NewMessage("Model ratio {{model_ratio}}, completion ratio {{completion_ratio}}, audio ratio {{audio_ratio}}, audio completion ratio {{audio_completion_ratio}}, group ratio {{group_ratio}}", map[string]any{
+			"model_ratio":            fmt.Sprintf("%.2f", modelRatio),
+			"completion_ratio":       fmt.Sprintf("%.2f", completionRatio.InexactFloat64()),
+			"audio_ratio":            fmt.Sprintf("%.2f", audioRatio.InexactFloat64()),
+			"audio_completion_ratio": fmt.Sprintf("%.2f", audioCompletionRatio.InexactFloat64()),
+			"group_ratio":            fmt.Sprintf("%.2f", groupRatio),
+		}))
 	} else {
-		logContent = fmt.Sprintf("模型价格 %.2f，分组倍率 %.2f", modelPrice, groupRatio)
+		logContent = append(logContent, common.NewMessage("Model price {{model_price}}, group ratio {{group_ratio}}", map[string]any{
+			"model_price": fmt.Sprintf("%.2f", modelPrice),
+			"group_ratio": fmt.Sprintf("%.2f", groupRatio),
+		}))
 	}
 
 	// record all the consume log even if quota is 0
@@ -354,22 +369,20 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 		// in this case, must be some error happened
 		// we cannot just return, because we may have to return the pre-consumed quota
 		quota = 0
-		logContent += "（可能是上游超时）"
-		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, "+
-			"tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, billingModelName, relayInfo.FinalPreConsumedQuota))
+		logContent = append(logContent, common.NewMessage("Possibly an upstream timeout"))
+		logger.LogError(ctx, common.LogText("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d",
+			relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, billingModelName, relayInfo.FinalPreConsumedQuota))
 	} else {
 		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, quota)
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, quota)
 	}
 
 	if err := SettleBilling(ctx, relayInfo, quota); err != nil {
-		logger.LogError(ctx, "error settling billing: "+err.Error())
+		logger.LogError(ctx, common.LogText("error settling billing: %s", err.Error()))
 	}
 
 	logModel := billingModelName
-	if extraContent != "" {
-		logContent += ", " + extraContent
-	}
+	logContent = append(logContent, extraContent...)
 	other := GenerateAudioOtherInfo(ctx, relayInfo, usage, modelRatio, groupRatio,
 		completionRatio.InexactFloat64(), audioRatio.InexactFloat64(), audioCompletionRatio.InexactFloat64(), modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
 	if tieredResult != nil {
@@ -395,7 +408,7 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 
 func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 	if quota < 0 {
-		return errors.New("quota 不能为负数！")
+		return errors.New("quota cannot be negative")
 	}
 	if relayInfo.IsPlayground {
 		return nil
@@ -549,21 +562,13 @@ func sendLegacyQuotaNotify(userID int, userEmail string, userSetting dto.UserSet
 		return
 	}
 
-	prompt := "您的额度即将用尽"
+	lang := userSetting.Language
+	prompt := i18n.Translate(lang, i18n.MsgNotifyQuotaLowTitle)
 	if subscription {
-		prompt = "您的订阅额度即将用尽"
+		prompt = i18n.Translate(lang, i18n.MsgNotifySubscriptionQuotaLowTitle)
 	}
 	remainingText := legacyQuotaText(remaining)
-	topUpLink := PaymentReturnURL("/wallet")
-	content := "{{value}}，当前剩余额度为 {{value}}，为了不影响您的使用，请及时充值。<br/>充值链接：<a href='{{value}}'>{{value}}</a>"
-	values := []interface{}{prompt, remainingText, topUpLink, topUpLink}
-	if userSetting.NotifyType == dto.NotifyTypeBark {
-		content = "{{value}}，剩余额度：{{value}}，请及时充值"
-		values = []interface{}{prompt, remainingText}
-	} else if userSetting.NotifyType == dto.NotifyTypeGotify {
-		content = "{{value}}，当前剩余额度为 {{value}}，请及时充值。"
-		values = []interface{}{prompt, remainingText}
-	}
+	content, values := quotaNotifyContent(lang, userSetting.NotifyType, prompt, remainingText)
 	notification := dto.NewNotify(dto.NotifyTypeQuotaExceed, prompt, content, values)
 	gopool.Go(func() {
 		if err := notifyQuotaUser(userID, userEmail, userSetting, notification); err != nil {
@@ -624,4 +629,20 @@ func checkAndSendQuotaReminderForBalances(userID int, kind model.QuotaReminderBa
 			common.SysLog(fmt.Sprintf("quota reminder delivery claim expired for %s user %d", kind, userID))
 		}
 	})
+}
+
+// quotaNotifyContent renders a low-quota notice in the user's saved language.
+// Bark and Gotify get plain text; email and webhook get HTML with the top-up
+// link. values stay in the notify payload for webhook receivers.
+func quotaNotifyContent(lang string, notifyType string, prompt string, remaining string) (string, []any) {
+	switch notifyType {
+	case dto.NotifyTypeBark:
+		// Bark推送使用简短文本，不支持HTML
+		return i18n.Translate(lang, i18n.MsgNotifyQuotaLowBark, map[string]any{"Prompt": prompt, "Quota": remaining}), []any{prompt, remaining}
+	case dto.NotifyTypeGotify:
+		return i18n.Translate(lang, i18n.MsgNotifyQuotaLowGotify, map[string]any{"Prompt": prompt, "Quota": remaining}), []any{prompt, remaining}
+	default:
+		topUpLink := PaymentReturnURL("/wallet")
+		return i18n.Translate(lang, i18n.MsgNotifyQuotaLowEmail, map[string]any{"Prompt": prompt, "Quota": remaining, "Link": topUpLink}), []any{prompt, remaining, topUpLink, topUpLink}
+	}
 }

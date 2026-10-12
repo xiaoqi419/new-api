@@ -205,7 +205,7 @@ func TestSubscriptionRequestEpayFailsOnlyItsPendingOrderWhenCheckoutFails(t *tes
 	recorder := requestSubscriptionEpayCheckout(t, plan.Id, "alipay")
 
 	require.Equal(t, http.StatusOK, recorder.Code)
-	assert.JSONEq(t, `{"success":false,"message":"拉起支付失败"}`, recorder.Body.String())
+	assert.JSONEq(t, `{"success":false,"message":"Failed to start payment","message_key":"Failed to start payment"}`, recorder.Body.String())
 	var order model.SubscriptionOrder
 	require.NoError(t, model.DB.Where("plan_id = ?", plan.Id).First(&order).Error)
 	assert.Equal(t, model.PaymentProviderEpay, order.PaymentProvider)
@@ -223,7 +223,7 @@ func TestSubscriptionRequestEpayRejectsConfiguredDirectPaymentMethods(t *testing
 			recorder := requestSubscriptionEpayCheckout(t, plan.Id, paymentMethod)
 
 			require.Equal(t, http.StatusOK, recorder.Code)
-			assert.JSONEq(t, `{"success":false,"message":"支付方式不存在"}`, recorder.Body.String())
+			assert.JSONEq(t, `{"success":false,"message":"Payment method does not exist","message_key":"Payment method does not exist"}`, recorder.Body.String())
 			var orderCount int64
 			require.NoError(t, model.DB.Model(&model.SubscriptionOrder{}).Count(&orderCount).Error)
 			assert.Zero(t, orderCount)
@@ -266,12 +266,12 @@ func TestGetSubscriptionEpayStatusScopesOrderToCurrentUser(t *testing.T) {
 		{
 			name:     "hides another users order",
 			tradeNo:  "subscription-epay-foreign",
-			wantBody: `{"success":false,"message":"订单不存在"}`,
+			wantBody: `{"success":false,"message":"Order does not exist","message_key":"Order does not exist"}`,
 		},
 		{
 			name:     "does not expose another provider order",
 			tradeNo:  "subscription-stripe-owner",
-			wantBody: `{"success":false,"message":"订单不存在"}`,
+			wantBody: `{"success":false,"message":"Order does not exist","message_key":"Order does not exist"}`,
 		},
 	}
 

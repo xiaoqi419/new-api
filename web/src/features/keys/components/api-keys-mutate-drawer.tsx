@@ -53,7 +53,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { handleServerError } from '@/lib/handle-server-error'
-import { requireServerSuccess } from '@/lib/server-error-message'
+import {
+  requireServerSuccess,
+  translateServerText,
+} from '@/lib/server-error-message'
 
 import {
   createApiKey,
@@ -175,10 +178,10 @@ export function ApiKeysMutateDrawer({
       Object.entries(groupsData?.data || {}).map(([key, info]) => ({
         value: key,
         label: key,
-        desc: info.desc || key,
+        desc: info.desc ? translateServerText(t, info.desc) : key,
         ratio: info.ratio,
       })),
-    [groupsData]
+    [groupsData, t]
   )
   const backendHasAuto = groups.some((group) => group.value === 'auto')
   const availableAutoGroupNames = useMemo(

@@ -118,7 +118,7 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 		// Fail open: a rate-limit backend (Redis) outage must not escalate into a
 		// site-wide 500. Log the anomaly and let the request through so limiter
 		// dependency failures degrade gracefully instead of amplifying.
-		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (mark=%s), allowing request: %v", mark, err))
+		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (mark=%s), allowing request: %v", mark, err))
 		return
 	}
 	if !allowed {
@@ -282,7 +282,7 @@ func userRedisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, key
 	if err != nil {
 		// Fail open: see redisRateLimiter — a limiter backend outage should not
 		// turn into a 500 for the caller.
-		logger.LogError(c.Request.Context(), fmt.Sprintf("rate limit check failed (key=%s), allowing request: %v", key, err))
+		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (key=%s), allowing request: %v", key, err))
 		return
 	}
 	if !allowed {

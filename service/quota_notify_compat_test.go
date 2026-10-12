@@ -26,7 +26,7 @@ func TestCheckAndSendQuotaNotifyPreservesLegacyWalletChannel(t *testing.T) {
 		UserId:      910,
 		UserQuota:   100,
 		UserEmail:   "user@example.com",
-		UserSetting: dto.UserSetting{NotifyType: dto.NotifyTypeWebhook},
+		UserSetting: dto.UserSetting{NotifyType: dto.NotifyTypeWebhook, Language: "zh-CN"},
 	}
 	checkAndSendQuotaNotify(relayInfo, 60, 0)
 
@@ -58,7 +58,7 @@ func TestCheckAndSendSubscriptionQuotaNotifyPreservesLegacyChannel(t *testing.T)
 	relayInfo := &relaycommon.RelayInfo{
 		UserId:                                911,
 		UserEmail:                             "user@example.com",
-		UserSetting:                           dto.UserSetting{NotifyType: dto.NotifyTypeGotify},
+		UserSetting:                           dto.UserSetting{NotifyType: dto.NotifyTypeGotify, Language: "zh-CN"},
 		SubscriptionId:                        9111,
 		SubscriptionAmountTotal:               100,
 		SubscriptionAmountUsedAfterPreConsume: 60,
@@ -96,7 +96,7 @@ func TestCheckAndSendQuotaReminderForBalancesPreservesLegacyChannel(t *testing.T
 		0,
 		100,
 		40,
-		dto.UserSetting{NotifyType: dto.NotifyTypeBark},
+		dto.UserSetting{NotifyType: dto.NotifyTypeBark, Language: "zh-CN"},
 	)
 
 	select {

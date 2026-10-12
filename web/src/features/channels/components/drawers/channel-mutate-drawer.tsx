@@ -288,6 +288,7 @@ const SENSITIVE_FORM_FIELDS = [
   'proxy',
   'http_protocol',
   'http2_connection_shards',
+  'tls_insecure_skip_verify',
   'pass_through_body_enabled',
   'reasoning_effort_to_model_suffix',
   'system_prompt',
@@ -363,6 +364,7 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     (values.http_protocol && values.http_protocol !== 'auto') ||
     (values.http2_connection_shards != null &&
       values.http2_connection_shards > 1) ||
+    values.tls_insecure_skip_verify ||
     values.claude_beta_query ||
     values.upstream_model_update_check_enabled ||
     values.upstream_model_update_auto_sync_enabled ||
@@ -4375,6 +4377,32 @@ export function ChannelMutateDrawer({
                                   </FormItem>
                                 )
                               }}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name='tls_insecure_skip_verify'
+                              render={({ field }) => (
+                                <FormItem className='flex items-center justify-between px-4 py-3'>
+                                  <div className='space-y-0.5'>
+                                    <FormLabel>
+                                      {t('Skip Upstream TLS Verification')}
+                                    </FormLabel>
+                                    <FormDescription>
+                                      {t(
+                                        'Accept upstream certificates that fail validation, such as self-signed ones. Only enable for trusted internal upstreams.'
+                                      )}
+                                    </FormDescription>
+                                  </div>
+                                  <FormControl>
+                                    <Switch
+                                      disabled={sensitiveLocked}
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
                             />
 
                             <FormField

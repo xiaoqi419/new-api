@@ -754,7 +754,7 @@ func loadOptionsFromDatabase() error {
 	defer requestPolicyOptionMutex.Unlock()
 	defer func() {
 		if err := refreshRequestPolicySnapshot(); err != nil {
-			common.SysError("invalid request policy: " + err.Error())
+			common.SysError(common.LogText("invalid request policy: %s", err.Error()))
 		}
 	}()
 	passkeyOptionMutex.Lock()
@@ -781,9 +781,9 @@ func loadOptionsFromDatabase() error {
 func SyncOptions(frequency int) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Second)
-		common.SysLog("syncing options from database")
+		common.SysLog(common.LogText("syncing options from database"))
 		if err := loadOptionsFromDatabase(); err != nil {
-			common.SysLog("failed to sync options from database: " + err.Error())
+			common.SysLog(common.LogText("failed to sync options from database: %s", err.Error()))
 		}
 	}
 }
