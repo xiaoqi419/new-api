@@ -35,6 +35,7 @@ import type { UsageLog } from '../data/schema'
 import {
   formatModelName,
   formatModelDisplayName,
+  logTokenName,
   parseLogOther,
 } from '../lib/format'
 import {
@@ -110,7 +111,7 @@ export function CommonLogMobileCard<TData>(props: {
     },
     token: {
       label: t('Token'),
-      value: log.token_name,
+      value: logTokenName(log, t),
       visible: displayable && props.cells.has('token_name') && !!log.token_name,
       sensitive: true,
     },

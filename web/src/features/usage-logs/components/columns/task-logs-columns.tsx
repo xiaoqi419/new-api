@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { formatTimestampToDate } from '@/lib/format'
+import { translateServerText } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 import { TASK_STATUS } from '../../constants'
@@ -277,7 +278,8 @@ export function useTaskLogsColumns(
       header: t('Details'),
       cell: function DetailsCell({ row }) {
         const log = row.original
-        const failReason = row.getValue('fail_reason') as string
+        const rawFailReason = row.getValue('fail_reason') as string
+        const failReason = translateServerText(t, rawFailReason)
         const status = log.status
         const [dialogOpen, setDialogOpen] = useState(false)
         const previewMode = resolveTaskPreviewMode(log)

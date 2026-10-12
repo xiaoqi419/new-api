@@ -169,7 +169,7 @@ func sendEmailMessage(subject string, receiver string, contentType string, body 
 		return err2
 	}
 	if SMTPServer == "" && SMTPAccount == "" {
-		return fmt.Errorf("SMTP 服务器未配置")
+		return NewMessage("SMTP server is not configured")
 	}
 	encodedSubject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(subject)))
 	header := []byte(fmt.Sprintf("To: %s\r\n"+
@@ -219,7 +219,7 @@ func sendEmailMessage(subject string, receiver string, contentType string, body 
 	}
 	err = client.Quit()
 	if err != nil {
-		SysError("SMTP QUIT failed")
+		SysError(LogText("SMTP QUIT failed"))
 		return wrapSMTPStageError("QUIT", err)
 	}
 	return nil

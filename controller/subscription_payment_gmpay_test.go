@@ -184,7 +184,7 @@ func TestSubscriptionRequestEpaySeparatesLegacyAndNativePaymentMethods(t *testin
 	recorder := requestSubscriptionEpayCheckout(t, plan.Id, "alipay")
 
 	require.Equal(t, http.StatusOK, recorder.Code)
-	assert.JSONEq(t, `{"success":false,"message":"支付方式不存在"}`, recorder.Body.String())
+	assert.JSONEq(t, `{"success":false,"message":"Payment method does not exist","message_key":"Payment method does not exist"}`, recorder.Body.String())
 	var count int64
 	require.NoError(t, model.DB.Model(&model.SubscriptionOrder{}).Count(&count).Error)
 	assert.Zero(t, count)
@@ -311,7 +311,7 @@ func TestGetSubscriptionEpayStatusRejectsOrderFromInactiveGatewayMode(t *testing
 		body    string
 	}{
 		{tradeNo: "subscription-native-owner", body: `{"message":"success","data":{"status":"pending"}}`},
-		{tradeNo: "subscription-legacy-owner", body: `{"success":false,"message":"订单不存在"}`},
+		{tradeNo: "subscription-legacy-owner", body: `{"success":false,"message":"Order does not exist","message_key":"Order does not exist"}`},
 	}
 	for _, tc := range testCases {
 		recorder := httptest.NewRecorder()

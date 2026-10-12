@@ -30,6 +30,27 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-12',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '合入官方 New API rc.43 及后续兼容更新：渠道支持独立上游证书校验开关，任务插件支持读取声明域名内的上游数据。',
+          'Seedance 与 Wan 视频支持自动时长，按模型最长时长预扣并按实际用量结算，保留现有阶梯价格及静音默认值。',
+          '完善控制台、接口错误和通知多语言，日期时间选择支持秒，未配置默认语言时继续使用中文。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复 Responses 重试转换、图片输入、思考参数、流式正文及 WebSocket 会话关闭，保留 Gemini 工具与结构化输出约束。',
+          'Playground 本地数据按账号隔离，修复视频下载和输出分辨率计费，优化页面图标加载与代码加载失败恢复。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-09',
     changes: [
       {

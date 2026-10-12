@@ -98,7 +98,7 @@ func TestValidateTopupRange(t *testing.T) {
 				assert.Empty(t, recorder.Body.String())
 				return
 			}
-			assert.Contains(t, recorder.Body.String(), "充值")
+			assert.Contains(t, recorder.Body.String(), "Top-up amount")
 		})
 	}
 }

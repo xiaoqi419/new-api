@@ -9,6 +9,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestStreamResponseOpenAI2ClaudeKeepsAnswerInReasoningChunk(t *testing.T) {
+	thinking, answer := "consider this", "answer"
+	info := &convmeta.Values{SendResponseCount: 1}
+	responses := StreamResponseOpenAI2Claude(&dto.ChatCompletionsStreamResponse{
+		Id: "chatcmpl-mixed", Model: "model-test",
+		Choices: []dto.ChatCompletionsStreamResponseChoice{{
+			Delta: dto.ChatCompletionsStreamResponseChoiceDelta{
+				ReasoningContent: &thinking, Content: &answer,
+			},
+		}},
+	}, info)
+	var events []string
+	for _, response := range responses {
+		if response.Delta != nil && response.Delta.Type == "thinking_delta" {
+			events = append(events, "thinking:"+*response.Delta.Thinking)
+		} else if response.Type == "content_block_stop" {
+			events = append(events, "stop")
+		} else if response.Delta != nil && response.Delta.Type == "text_delta" {
+			events = append(events, "text:"+*response.Delta.Text)
+		}
+	}
+	assert.Equal(t, []string{"thinking:consider this", "stop", "text:answer"}, events)
+}
+
 func TestResponseOpenAI2ClaudeToolUseInputIsObject(t *testing.T) {
 	tests := []struct {
 		name string

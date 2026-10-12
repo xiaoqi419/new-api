@@ -107,7 +107,7 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 			}
 			downloaded, err := service.ConvertProviderImageURLToBase64WithProxy(url, proxy)
 			if err != nil {
-				logger.LogWarn(c, "zhipu_image_b64_conversion_failed")
+				logger.LogWarn(c, common.LogText("zhipu_image_b64_conversion_failed"))
 				publicImageSlots = append(publicImageSlots, false)
 				continue
 			}
@@ -115,7 +115,7 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		}
 
 		if b64 == "" {
-			logger.LogWarn(c, "zhipu_image_empty_b64")
+			logger.LogWarn(c, common.LogText("zhipu_image_empty_b64"))
 			publicImageSlots = append(publicImageSlots, false)
 			continue
 		}

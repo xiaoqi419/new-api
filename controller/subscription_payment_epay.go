@@ -30,7 +30,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 
 	var req SubscriptionEpayPayRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
-		common.ApiErrorMsg(c, "参数错误")
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	if !requirePlatformNativePaymentUser(c) {
@@ -43,15 +43,15 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		return
 	}
 	if !plan.Enabled {
-		common.ApiErrorMsg(c, "套餐未启用")
+		common.ApiErrorT(c, "Subscription plan is not enabled")
 		return
 	}
 	if plan.PriceAmount < 0.01 || (operation_setting.IsGMPayNativePaymentGatewayMode() && plan.PriceAmount <= 0.01) {
-		common.ApiErrorMsg(c, "套餐金额过低")
+		common.ApiErrorT(c, "Plan amount is too low")
 		return
 	}
 	if !subscriptionEpayPaymentMethodAllowed(req.PaymentMethod) {
-		common.ApiErrorMsg(c, "支付方式不存在")
+		common.ApiErrorT(c, "Payment method does not exist")
 		return
 	}
 
@@ -63,7 +63,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 			return
 		}
 		if count >= int64(plan.MaxPurchasePerUser) {
-			common.ApiErrorMsg(c, "已达到该套餐购买上限")
+			common.ApiErrorT(c, "Purchase limit for this plan has been reached")
 			return
 		}
 	}
@@ -75,12 +75,12 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	callBackAddress := service.GetCallbackAddress()
 	returnUrl, err := url.Parse(callBackAddress + "/api/subscription/epay/return")
 	if err != nil {
-		common.ApiErrorMsg(c, "回调地址配置错误")
+		common.ApiErrorT(c, "Callback URL configuration error")
 		return
 	}
 	notifyUrl, err := url.Parse(callBackAddress + "/api/subscription/epay/notify")
 	if err != nil {
-		common.ApiErrorMsg(c, "回调地址配置错误")
+		common.ApiErrorT(c, "Callback URL configuration error")
 		return
 	}
 
@@ -89,7 +89,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 
 	client := GetEpayClient()
 	if client == nil {
-		common.ApiErrorMsg(c, "当前管理员未配置支付信息")
+		common.ApiErrorT(c, "Payment information has not been configured by administrator")
 		return
 	}
 
@@ -104,7 +104,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		Status:          common.TopUpStatusPending,
 	}
 	if err := order.Insert(); err != nil {
-		common.ApiErrorMsg(c, "创建订单失败")
+		common.ApiErrorT(c, "Failed to create order")
 		return
 	}
 	money := strconv.FormatFloat(plan.PriceAmount, 'f', 2, 64)
@@ -135,7 +135,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	}
 	if err != nil {
 		_ = model.FailPendingSubscriptionOrder(tradeNo, model.PaymentProviderEpay)
-		common.ApiErrorMsg(c, "拉起支付失败")
+		common.ApiErrorT(c, "Failed to start payment")
 		return
 	}
 }
@@ -144,12 +144,12 @@ func SubscriptionRequestEpay(c *gin.Context) {
 func GetSubscriptionEpayStatus(c *gin.Context) {
 	tradeNo := c.Query("trade_no")
 	if tradeNo == "" {
-		common.ApiErrorMsg(c, "参数错误")
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	order := model.GetSubscriptionOrderByTradeNoAndUserId(tradeNo, c.GetInt("id"))
 	if order == nil || order.PaymentProvider != model.PaymentProviderEpay || !subscriptionOrderMatchesEffectiveGatewayMode(order) {
-		common.ApiErrorMsg(c, "订单不存在")
+		common.ApiErrorT(c, "Order does not exist")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": order.Status}})

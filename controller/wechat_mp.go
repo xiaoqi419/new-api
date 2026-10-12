@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/gin-gonic/gin"
@@ -389,7 +388,7 @@ func WeChatMpLoginRegister(c *gin.Context) {
 		Token string `json:"token"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	openid, status := wechatMpConfirmedOpenid(req.Token)
@@ -434,7 +433,7 @@ func WeChatMpLoginBindVerification(c *gin.Context) {
 	}
 	email := model.NormalizeEmail(c.Query("email"))
 	if err := common.Validate.Var(email, "required,email"); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	if _, err := model.GetUniqueUserByEmail(email); err == nil {
@@ -465,7 +464,7 @@ func WeChatMpLoginBind(c *gin.Context) {
 		Code  string `json:"code"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	openid, status := wechatMpConfirmedOpenid(req.Token)

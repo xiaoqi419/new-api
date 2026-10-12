@@ -38,7 +38,7 @@ func TestAlibabaWan3(t *testing.T) {
 		return roundTrip(t, value), nil
 	}
 
-	t.Run("duration -1 becomes the auto_duration marker so the host accepts the body", func(t *testing.T) {
+	t.Run("duration -1 becomes the auto_duration marker in every decoder", func(t *testing.T) {
 		resolved, callErr := decodeResponses("wan3.0-video", map[string]any{"model": "wan3.0-video", "input": "a cat", "duration": -1})
 		require.NoError(t, callErr)
 		requestBody := resolved["requestBody"].(map[string]any)
@@ -77,10 +77,41 @@ func TestAlibabaWan3(t *testing.T) {
 
 		value, callErr = plugin.Engine.Call(t.Context(), "extractUsage", usageCtx("billing_ratios", body))
 		require.NoError(t, callErr)
-		assert.Equal(t, float64(30), roundTrip(t, value)["seconds"])
+		ratios := roundTrip(t, value)
+		assert.Equal(t, float64(30), ratios["seconds"])
+		assert.Equal(t, float64(1), ratios["auto_duration"])
 
 		_, callErr = plugin.Engine.Call(t.Context(), "buildSubmitRequest", submitCtx("wan2.7-t2v", "wan2.7-t2v", map[string]any{"model": "wan2.7-t2v", "prompt": "a cat", "auto_duration": true}))
 		require.ErrorContains(t, callErr, "only supported by wan3.0")
+	})
+
+	// /v1/video/generations has no plugin decoder, so -1 reaches the host's
+	// request validation as a vendor parameter; duration-auto@1 lets it through.
+	t.Run("metadata parameters keep -1 on /v1/video/generations", func(t *testing.T) {
+		body, facts, _ := submitAlibabaRequest(t, plugin, "wan3.0-video", map[string]any{
+			"model": "wan3.0-video", "prompt": "a cat", "metadata": map[string]any{"parameters": map[string]any{"duration": -1}},
+		})
+		assert.Equal(t, float64(-1), body["parameters"].(map[string]any)["duration"])
+		assert.Equal(t, float64(30), facts["seconds"])
+		value, callErr := plugin.Engine.Call(t.Context(), "extractUsage", usageCtx("billing_ratios", map[string]any{
+			"model": "wan3.0-video", "prompt": "a cat", "metadata": map[string]any{"parameters": map[string]any{"duration": -1}},
+		}))
+		require.NoError(t, callErr)
+		ratios := roundTrip(t, value)
+		assert.Equal(t, float64(30), ratios["seconds"])
+		assert.Equal(t, float64(1), ratios["auto_duration"])
+	})
+
+	t.Run("fixed durations keep their legacy per-request reservation", func(t *testing.T) {
+		for _, body := range []map[string]any{
+			{"model": "wan3.0-video", "prompt": "a cat", "duration": 5},
+			{"model": "wan3.0-video", "prompt": "a cat", "duration": 5, "media": []any{map[string]any{"type": "reference_video", "url": "https://cdn.example/clip.mp4"}}},
+			{"model": "wan3.0-video", "prompt": "a cat", "auto_duration": true, "metadata": map[string]any{"parameters": map[string]any{"duration": 5}}},
+		} {
+			value, callErr := plugin.Engine.Call(t.Context(), "extractUsage", usageCtx("billing_ratios", body))
+			require.NoError(t, callErr)
+			assert.NotContains(t, roundTrip(t, value), "auto_duration")
+		}
 	})
 
 	t.Run("channel-mapped alias resolves defaults from the upstream model", func(t *testing.T) {

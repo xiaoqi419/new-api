@@ -54,7 +54,11 @@ func BlockMainlandWebAccess(c *gin.Context) bool {
 	status := html.EscapeString(i18n.T(c, i18n.MsgMainlandWebAccessStatus))
 	title := html.EscapeString(i18n.T(c, i18n.MsgMainlandWebAccessTitle))
 	message := html.EscapeString(i18n.T(c, i18n.MsgMainlandWebAccessMessage))
-	language := html.EscapeString(i18n.GetLangFromContext(c))
+	lang := i18n.StatedLang(c)
+	if lang == "" {
+		lang = common.DefaultLanguage
+	}
+	language := html.EscapeString(lang)
 	page := fmt.Sprintf(`<!doctype html>
 <html lang="%s" data-theme="%s">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>%s</title><style>
