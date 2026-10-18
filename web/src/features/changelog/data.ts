@@ -30,6 +30,26 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-18',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 New API rc.44、rc.45：使用日志支持筛选导出 CSV，渠道优先级支持拖动排序，API Key 可独立控制用户余额查询权限。',
+          '新增渠道通知和低余额提醒开关，保留现有币种阈值、模板与提醒状态；支持 DeepSeek V4.1 Flash、Search/Fetch 和 AWS Mantle Messages。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复 Claude 零用量和纯缓存计费、工具调用旁的正文与思考摘要转换，以及不同独立分组之间的限流计数。',
+          '完善 Vidu 实际生成参数计费、任务结算日志、定价显示和容器过载判断，保留钱包、充值活动、渠道扩展、双主题与无限画布。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-12',
     changes: [
       {

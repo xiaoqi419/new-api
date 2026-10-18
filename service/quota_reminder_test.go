@@ -70,6 +70,28 @@ func TestQuotaReminderCompensationRecoversMissingStateAndPaginates(t *testing.T)
 	require.Equal(t, int64(1), count)
 }
 
+func TestPendingQuotaReminderHonorsCurrentUserOptOut(t *testing.T) {
+	truncate(t)
+	user := model.User{Id: 21_099, Username: "reminder-opt-out", Status: common.UserStatusEnabled, Quota: 10}
+	enabled := true
+	user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+	require.NoError(t, model.DB.Create(&user).Error)
+	triggered, err := model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+	require.NoError(t, err)
+	require.True(t, triggered)
+	enabled = false
+	user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+	require.NoError(t, model.DB.Model(&user).Update("setting", user.Setting).Error)
+	sent, err := sendQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 10, 50, "")
+	require.NoError(t, err)
+	assert.False(t, sent)
+	state, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	assert.Equal(t, model.QuotaReminderStatusSuppressed, state.Status)
+	assert.Empty(t, state.DeliveryToken)
+}
+
 func TestRunQuotaReminderTaskSuppressesPendingWhenDisabled(t *testing.T) {
 	truncate(t)
 	oldEnabled := common.QuotaRemindEnabled
@@ -367,4 +389,177 @@ func TestQuotaReminderConfigForUserUsesPersonalDisplaySnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, email.HTML, "€1")
 	require.Contains(t, email.HTML, "€2")
+}
+
+func TestQuotaReminderCompensationSuppressesUserOptOutWithoutReplayingLowCycle(t *testing.T) {
+	for _, kind := range []model.QuotaReminderBalanceKind{model.QuotaReminderBalanceWallet, model.QuotaReminderBalanceSubscription} {
+		for _, phase := range []string{"missing", "pending", "sending"} {
+			t.Run(string(kind)+"/"+phase, func(t *testing.T) {
+				setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+				user := model.User{Id: 21998, Username: "disabled-cycle-user", Status: common.UserStatusEnabled, Quota: 10}
+				enabled := false
+				user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+				require.NoError(t, model.DB.Create(&user).Error)
+				const resourceID int64 = 25
+				if phase != "missing" {
+					triggered, err := model.TransitionQuotaReminder(user.Id, kind, resourceID, 100, 10, 50)
+					require.NoError(t, err)
+					require.True(t, triggered)
+					if phase == "sending" {
+						_, claimed, err := model.ClaimQuotaReminderDeliveryWithToken(user.Id, kind, resourceID)
+						require.NoError(t, err)
+						require.True(t, claimed)
+					}
+				}
+				require.NoError(t, compensateQuotaReminderRecord(user.Id, kind, resourceID, user.GetSetting(), 10))
+				state, err := model.GetQuotaReminderState(user.Id, kind, resourceID)
+				require.NoError(t, err)
+				require.NotNil(t, state)
+				assert.Equal(t, model.QuotaReminderStatusSuppressed, state.Status)
+				assert.False(t, state.Armed)
+				assert.Empty(t, state.DeliveryToken)
+				enabled = true
+				user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+				require.NoError(t, model.DB.Model(&user).Update("setting", user.Setting).Error)
+				require.NoError(t, compensateQuotaReminderRecord(user.Id, kind, resourceID, user.GetSetting(), 10))
+				_, claimed, err := model.ClaimQuotaReminderDeliveryWithToken(user.Id, kind, resourceID)
+				require.NoError(t, err)
+				assert.False(t, claimed, "re-enabling a still-low balance must not replay the disabled cycle")
+				require.NoError(t, compensateQuotaReminderRecord(user.Id, kind, resourceID, user.GetSetting(), 100))
+				require.NoError(t, compensateQuotaReminderRecord(user.Id, kind, resourceID, user.GetSetting(), 10))
+				_, claimed, err = model.ClaimQuotaReminderDeliveryWithToken(user.Id, kind, resourceID)
+				require.NoError(t, err)
+				assert.True(t, claimed, "a fresh high-to-low crossing must remain eligible")
+			})
+		}
+	}
+}
+
+func TestStaleQuotaReminderSenderCannotSuppressNewDeliveryClaim(t *testing.T) {
+	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	createQuotaBillingPipelineUser(t, 21997, 10)
+	_, err := model.TransitionQuotaReminder(21997, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+	require.NoError(t, err)
+	tokenA, claimed, err := model.ClaimQuotaReminderDeliveryWithToken(21997, model.QuotaReminderBalanceWallet, 0)
+	require.NoError(t, err)
+	require.True(t, claimed)
+	_, err = model.TransitionQuotaReminder(21997, model.QuotaReminderBalanceWallet, 0, 10, 100, 50)
+	require.NoError(t, err)
+	_, err = model.TransitionQuotaReminder(21997, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+	require.NoError(t, err)
+	tokenB, claimed, err := model.ClaimQuotaReminderDeliveryWithToken(21997, model.QuotaReminderBalanceWallet, 0)
+	require.NoError(t, err)
+	require.True(t, claimed)
+	require.NotEqual(t, tokenA, tokenB)
+	disabled := false
+	user := model.User{Id: 21997}
+	user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &disabled})
+	require.NoError(t, model.DB.Model(&user).Update("setting", user.Setting).Error)
+	for _, token := range []string{tokenA, ""} {
+		sent, err := sendQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 10, 50, token)
+		require.NoError(t, err)
+		assert.False(t, sent)
+		active, err := model.IsQuotaReminderDeliveryClaimActive(user.Id, model.QuotaReminderBalanceWallet, 0, tokenB)
+		require.NoError(t, err)
+		assert.True(t, active, "a stale or tokenless sender must not clear another worker's claim")
+	}
+}
+
+func TestObservedQuotaReminderSuppressionLeavesConcurrentChangesUntouched(t *testing.T) {
+	for _, change := range []string{"new_claim", "balance", "preference"} {
+		t.Run(change, func(t *testing.T) {
+			setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+			user := model.User{Id: 21996, Username: "observed-cycle-user", Status: common.UserStatusEnabled, Quota: 10}
+			enabled := false
+			user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+			require.NoError(t, model.DB.Create(&user).Error)
+			_, err := model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+			require.NoError(t, err)
+			tokenA, claimed, err := model.ClaimQuotaReminderDeliveryWithToken(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			require.True(t, claimed)
+			observed, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			require.NotNil(t, observed)
+			tokenB := tokenA
+			switch change {
+			case "new_claim":
+				_, err = model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 10, 100, 50)
+				require.NoError(t, err)
+				_, err = model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+				require.NoError(t, err)
+				tokenB, claimed, err = model.ClaimQuotaReminderDeliveryWithToken(user.Id, model.QuotaReminderBalanceWallet, 0)
+				require.NoError(t, err)
+				require.True(t, claimed)
+				require.NotEqual(t, tokenA, tokenB)
+			case "balance":
+				_, err = model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 10, 20, 50)
+				require.NoError(t, err)
+			case "preference":
+				latest := model.User{Id: user.Id}
+				enabled = true
+				latest.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled})
+				require.NoError(t, model.DB.Model(&latest).Update("setting", latest.Setting).Error)
+			}
+			suppressed, err := suppressObservedQuotaReminderState(observed, user.Setting)
+			require.NoError(t, err)
+			assert.False(t, suppressed)
+			active, err := model.IsQuotaReminderDeliveryClaimActive(user.Id, model.QuotaReminderBalanceWallet, 0, tokenB)
+			require.NoError(t, err)
+			assert.True(t, active)
+			state, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			if change == "balance" {
+				assert.Equal(t, int64(20), state.LastBalance)
+			}
+		})
+	}
+}
+
+func TestDisabledQuotaReminderBaselineCannotOverwriteConcurrentRecovery(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		t.Run(strconv.FormatBool(existing), func(t *testing.T) {
+			setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+			user := model.User{Id: 21995, Username: "atomic-disabled-baseline", Status: common.UserStatusEnabled, Quota: 10}
+			disabled := false
+			user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &disabled})
+			require.NoError(t, model.DB.Create(&user).Error)
+			baseline := model.QuotaReminderState{UserID: user.Id, BalanceKind: model.QuotaReminderBalanceWallet, LastBalance: 10, Threshold: 50}
+			var observed *model.QuotaReminderState
+			if existing {
+				_, err := model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+				require.NoError(t, err)
+				observed, err = model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+				require.NoError(t, err)
+				require.NotNil(t, observed)
+			}
+			_, err := model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 10, 100, 50)
+			require.NoError(t, err)
+			require.NoError(t, recordDisabledQuotaReminderBaseline(observed, baseline, user.Setting))
+			state, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+			require.NoError(t, err)
+			require.NotNil(t, state)
+			assert.True(t, state.Armed)
+			assert.Equal(t, model.QuotaReminderStatusArmed, state.Status)
+			assert.Equal(t, int64(100), state.LastBalance)
+		})
+	}
+}
+
+func TestDisabledQuotaReminderBaselineTracksRecoveryInOneUpdate(t *testing.T) {
+	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	user := model.User{Id: 21994, Username: "disabled-high-baseline", Status: common.UserStatusEnabled, Quota: 100}
+	disabled := false
+	user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &disabled})
+	require.NoError(t, model.DB.Create(&user).Error)
+	_, err := model.TransitionQuotaReminder(user.Id, model.QuotaReminderBalanceWallet, 0, 100, 10, 50)
+	require.NoError(t, err)
+	require.NoError(t, compensateQuotaReminderRecord(user.Id, model.QuotaReminderBalanceWallet, 0, user.GetSetting(), 100))
+	state, err := model.GetQuotaReminderState(user.Id, model.QuotaReminderBalanceWallet, 0)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	assert.True(t, state.Armed)
+	assert.Equal(t, int64(100), state.LastBalance)
+	assert.Equal(t, model.QuotaReminderStatusArmed, state.Status)
+	assert.Empty(t, state.DeliveryToken)
 }

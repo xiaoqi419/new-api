@@ -58,6 +58,7 @@ export const apiKeySchema = z.object({
   model_limits: z.string().nullish().default(''),
   allow_ips: z.string().nullish().default(''),
   max_concurrency: z.number().catch(0),
+  allow_user_quota_query: z.boolean().optional().default(false),
 })
 
 export type ApiKey = z.infer<typeof apiKeySchema>
@@ -103,6 +104,7 @@ export interface ApiKeyFormData {
   model_limits_enabled: boolean
   model_limits: string
   allow_ips: string
+  allow_user_quota_query: boolean
   group: string
   group_switch_enabled: boolean
   group_switch_groups: string

@@ -35,6 +35,8 @@ type Token struct {
 	MaxConcurrency       int            `json:"max_concurrency" gorm:"type:int;default:0"` // 令牌级最大并发，0=不限
 	AutoGroups           string         `json:"-" gorm:"type:text"`                        // 上游 auto 分组候选快照，见 GetAutoGroups
 	DeletedAt            gorm.DeletedAt `gorm:"index"`
+	// New API-created tokens opt in; migrated rows keep the zero-value permission.
+	AllowUserQuotaQuery bool `json:"allow_user_quota_query"`
 }
 
 // GetGroupSwitchGroups parses the token's candidate group list. Returns an
@@ -333,7 +335,7 @@ func (token *Token) Update() (err error) {
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
 		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "max_concurrency",
 		"group_switch_enabled", "group_switch_groups", "group_switch_threshold", "group_switch_cooldown",
-		"auto_groups").Updates(token).Error
+		"auto_groups", "allow_user_quota_query").Updates(token).Error
 	return err
 }
 

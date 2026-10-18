@@ -28,6 +28,65 @@ func TestTokenAutoGroupsRoundTripThroughRedisHashCache(t *testing.T) {
 	assert.Equal(t, []string{"vip", "default"}, groups)
 }
 
+func TestTokenAllowUserQuotaQueryRoundTripsThroughRedisHashCache(t *testing.T) {
+	server := useUserCacheMiniRedis(t)
+	token := Token{Id: 43, UserId: 7, Key: "token-user-quota-cache-key", Name: "user-quota-cache", AllowUserQuotaQuery: true}
+
+	initialized, err := cacheInitToken(token)
+	require.NoError(t, err)
+	require.Equal(t, 1, initialized)
+	cached, err := cacheGetTokenByKey(token.Key)
+	require.NoError(t, err)
+	assert.True(t, cached.AllowUserQuotaQuery)
+	assert.Positive(t, server.TTL(getTokenCacheKey(token.Key)))
+}
+
+func TestTokenQuotaQueryPermissionRevocationInvalidatesCacheAndPreservesRouting(t *testing.T) {
+	truncateTables(t)
+	useUserCacheMiniRedis(t)
+	token := Token{
+		UserId: 7, Key: "token-quota-query-revoke", Name: "quota-query-revoke", ExpiredTime: -1,
+		AllowUserQuotaQuery: true, Group: "auto", AutoGroups: `["default","vip"]`,
+		GroupSwitchEnabled: true, GroupSwitchGroups: `["vip","default"]`, GroupSwitchThreshold: 3, GroupSwitchCooldown: 30,
+		MaxConcurrency: 4, RemainQuota: 100, UsedQuota: 20,
+	}
+	require.NoError(t, token.Insert())
+	initialized, err := cacheInitToken(token)
+	require.NoError(t, err)
+	require.Equal(t, 1, initialized)
+	cached, err := GetTokenByKey(token.Key, false)
+	require.NoError(t, err)
+	require.True(t, cached.AllowUserQuotaQuery)
+
+	token.AllowUserQuotaQuery = false
+	require.NoError(t, token.Update())
+	_, err = cacheGetTokenByKey(token.Key)
+	require.Error(t, err, "revoked wallet visibility must not survive in a preheated cache")
+	reloaded, err := GetTokenByKey(token.Key, false)
+	require.NoError(t, err)
+	assert.False(t, reloaded.AllowUserQuotaQuery)
+	assert.Equal(t, token.AutoGroups, reloaded.AutoGroups)
+	assert.True(t, reloaded.GroupSwitchEnabled)
+	assert.Equal(t, []string{"vip", "default"}, reloaded.GetGroupSwitchGroups())
+	assert.Equal(t, 3, reloaded.GroupSwitchThreshold)
+	assert.Equal(t, 30, reloaded.GroupSwitchCooldown)
+	assert.Equal(t, 4, reloaded.MaxConcurrency)
+	assert.Equal(t, 100, reloaded.RemainQuota)
+	assert.Equal(t, 20, reloaded.UsedQuota)
+
+	for _, enabled := range []bool{false, true} {
+		reloaded.AllowUserQuotaQuery = enabled
+		encoded, err := common.Marshal(reloaded)
+		require.NoError(t, err)
+		var payload map[string]any
+		require.NoError(t, common.Unmarshal(encoded, &payload))
+		assert.Equal(t, enabled, payload["allow_user_quota_query"], "explicit false must remain visible to clients")
+		var cloned Token
+		require.NoError(t, common.Unmarshal(encoded, &cloned))
+		assert.Equal(t, enabled, cloned.AllowUserQuotaQuery)
+	}
+}
+
 func TestTokenUpdateSynchronouslyNarrowsPreheatedAutoGroupsCache(t *testing.T) {
 	truncateTables(t)
 	useUserCacheMiniRedis(t)

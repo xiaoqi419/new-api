@@ -31,7 +31,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-// oxlint-disable-next-line import/no-cycle -- SearchProvider owns this overlay and exposes its open state.
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
 import { useSidebarView } from '@/hooks/use-sidebar-view'
@@ -43,6 +42,8 @@ export function CommandMenu() {
   const navigate = useNavigate()
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
+  // Offer the same pages as the sidebar, so search never lists pages the
+  // user's role or the sidebar settings hide.
   const { navGroups } = useSidebarView()
 
   const runCommand = React.useCallback(
@@ -67,7 +68,7 @@ export function CommandMenu() {
                     const Icon = navItem.icon ?? ArrowRight
                     return (
                       <CommandItem
-                        key={navItem.url}
+                        key={`${navItem.title}-${navItem.url}`}
                         value={navItem.title}
                         onSelect={() => {
                           runCommand(() => navigate({ to: navItem.url }))

@@ -278,3 +278,24 @@ describe('API keys mutate drawer Auto group integration', () => {
     expect(createdPayloads[0]?.auto_groups).toEqual(['vip'])
   })
 })
+
+describe('API keys mutate drawer user quota query switch', () => {
+  test('sends false for a new key after the switch, which starts on, is turned off', async () => {
+    const createdPayloads: Array<Record<string, unknown>> = []
+    installApiFixtures(createdPayloads)
+    await renderCreateDrawer()
+
+    changeInput(getControlByLabel('Name'), 'no-user-quota')
+    fireEvent.click(screen.getByRole('tab', { name: 'Advanced Settings' }))
+    const quotaQuerySwitch = await screen.findByRole('switch', {
+      name: 'Allow querying user quota',
+    })
+    expect(quotaQuerySwitch).toBeChecked()
+    fireEvent.click(quotaQuerySwitch)
+    expect(quotaQuerySwitch).not.toBeChecked()
+
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(createdPayloads).toHaveLength(1))
+    expect(createdPayloads[0]?.allow_user_quota_query).toBe(false)
+  })
+})

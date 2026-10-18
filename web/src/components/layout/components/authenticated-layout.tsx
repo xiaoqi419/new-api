@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { CommandMenu } from '@/components/command-menu'
 import { ModalAnnouncementDialog } from '@/components/notification-popover'
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
@@ -78,6 +79,7 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
           </SidebarInset>
         </div>
       </SidebarProvider>
+      <CommandMenu />
     </SearchProvider>
   )
 }

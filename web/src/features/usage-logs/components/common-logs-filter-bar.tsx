@@ -56,12 +56,14 @@ import { getDefaultTimeRange } from '../lib/utils'
 import type { CommonLogFilters } from '../types'
 import { CommonLogsStats } from './common-logs-stats'
 import { CompactDateTimeRangePicker } from './compact-date-time-range-picker'
+import { ExportLogsDialog } from './dialogs/export-logs-dialog'
 import {
   LogsFilterField,
   LogsFilterInput,
   LogsFilterToolbar,
 } from './logs-filter-toolbar'
 import { useLogsViewScope, useUsageLogsContext } from './usage-logs-provider'
+
 const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 type LogTypeValue = (typeof LOG_TYPE_FILTERS)[number]['value']
@@ -584,6 +586,7 @@ export function CommonLogsFilterBar<TData>(
       table={props.table}
       compactMobile
       stats={statsBar}
+      actionEnd={<ExportLogsDialog />}
       actionStart={
         <>
           {sensitiveToggle}

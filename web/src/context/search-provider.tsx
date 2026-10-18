@@ -18,9 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createContext, useContext, useEffect, useState } from 'react'
 
-// oxlint-disable-next-line import/no-cycle -- CommandMenu consumes this provider's hook.
-import { CommandMenu } from '@/components/command-menu'
-
 type SearchContextType = {
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -49,7 +46,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
   return (
     <SearchContext.Provider value={{ open, setOpen }}>
       {children}
-      <CommandMenu />
     </SearchContext.Provider>
   )
 }
