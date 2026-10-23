@@ -98,7 +98,11 @@ loopback-only static preview with mocked APIs; a SQLite upgrade rehearsal is
 not claimed for this iteration. Neither production installation was contacted
 or modified. Remote PR/CI results are recorded in the external delivery manifest.
 
-PR #75 did not produce a `pull_request` Actions run despite enabled repository
-Actions and an active CI workflow. A manual CI trigger was added to the existing
-workflow so the exact pushed candidate can be checked without deploying or
-changing repository-wide settings. Both event paths check out `github.sha`.
+PR #75 did not produce a `pull_request` Actions run despite the permissions API
+reporting `enabled: true` and an active CI workflow. A manual CI trigger was
+added to the existing workflow; dispatch was then rejected with HTTP 422:
+`Actions has been disabled for this repository.` Both event paths check out
+`github.sha`. Repository settings were not changed to work around this denial.
+The reviewed branch is pushed; merge to `main` remains blocked until GitHub CI
+is available and passes. No merge, release tag, image publish or deployment is
+claimed.
