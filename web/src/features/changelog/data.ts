@@ -30,6 +30,26 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-23',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 New API rc.46 及后续更新：支持 Resend 邮件、百炼多模态向量，数据看板展示缓存用量，日志详情支持复制模型名。',
+          '完善任务插件原生上传、请求头传递和共享端点选路，上游价格同步支持按站点汇率调整。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '升级 Go 1.26.10，修复证书信任安全问题；修复任务重试定价、发送前补预扣及轮询重定向凭据保护。',
+          '修复 Claude 缓存写入计费和流式保活，支持 OpenAI 12 小时缓存写入计价，完善慢速流式客户端、结构化输出和渠道透传设置兼容性。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-18',
     changes: [
       {

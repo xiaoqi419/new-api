@@ -126,7 +126,7 @@ func newSMTPClient(addr string) (*smtp.Client, error) {
 }
 
 func SendEmail(subject string, receiver string, content string) error {
-	return sendEmailMessage(subject, receiver, "text/html; charset=UTF-8", []byte(content))
+	return sendEmailWithBodies(subject, receiver, content, "", "text/html; charset=UTF-8", []byte(content))
 }
 
 // SendEmailWithAlternative sends matching plain-text and HTML bodies as a
@@ -157,7 +157,32 @@ func SendEmailWithAlternative(subject string, receiver string, htmlContent strin
 	if err := writer.Close(); err != nil {
 		return fmt.Errorf("close email body: %w", err)
 	}
-	return sendEmailMessage(subject, receiver, fmt.Sprintf("multipart/alternative; boundary=%q", writer.Boundary()), body.Bytes())
+	return sendEmailWithBodies(
+		subject,
+		receiver,
+		htmlContent,
+		textContent,
+		fmt.Sprintf("multipart/alternative; boundary=%q", writer.Boundary()),
+		body.Bytes(),
+	)
+}
+
+func sendEmailWithBodies(subject, receiver, htmlContent, textContent, smtpContentType string, smtpBody []byte) error {
+	OptionMapRWMutex.RLock()
+	provider := OptionMap["EmailProvider"]
+	resendKey := OptionMap["ResendApiKey"]
+	resendFrom := OptionMap["ResendFrom"]
+	OptionMapRWMutex.RUnlock()
+	// One selector controls delivery. Never fall back to a second provider:
+	// a failed response does not prove that the first provider did not send.
+	switch provider {
+	case "resend":
+		return sendResendEmail(resendKey, resendFrom, subject, receiver, htmlContent, textContent)
+	case "", "smtp": // Preserve existing installations without a selector.
+	default:
+		return NewMessage("Email sending method must be SMTP or Resend")
+	}
+	return sendEmailMessage(subject, receiver, smtpContentType, smtpBody)
 }
 
 func sendEmailMessage(subject string, receiver string, contentType string, body []byte) error {

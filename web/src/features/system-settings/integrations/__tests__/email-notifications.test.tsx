@@ -35,6 +35,10 @@ function Fixture() {
       <SettingsPageProvider actionsContainer={container}>
         <EmailSettingsSection
           defaultValues={{
+            EmailProvider: 'smtp',
+            ResendApiKey: '',
+            ResendKeyConfigured: false,
+            ResendFrom: '',
             SMTPServer: 'smtp.example.com',
             SMTPPort: '587',
             SMTPAccount: 'noreply@example.com',
@@ -72,7 +76,7 @@ test('saving only SMTP authentication does not change existing reminder preferen
   const user = userEvent.setup()
   renderSettings()
   await user.click(screen.getByRole('switch', { name: 'Force AUTH LOGIN' }))
-  await user.click(screen.getByRole('button', { name: 'Save SMTP settings' }))
+  await user.click(screen.getByRole('button', { name: 'Save Changes' }))
   await waitFor(() =>
     expect(api.put).toHaveBeenCalledWith('/api/option/', {
       key: 'SMTPForceAuthLogin',

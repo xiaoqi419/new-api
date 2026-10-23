@@ -64,15 +64,17 @@ type operationResponse struct {
 
 type TaskAdaptor struct {
 	taskcommon.BaseBilling
-	ChannelType int
-	apiKey      string
-	baseURL     string
+	ChannelType    int
+	apiKey         string
+	baseURL        string
+	headerOverride map[string]any
 }
 
 func (a *TaskAdaptor) Init(info *relaycommon.RelayInfo) {
 	a.ChannelType = info.ChannelType
 	a.baseURL = info.ChannelBaseUrl
 	a.apiKey = info.ApiKey
+	a.headerOverride = info.HeadersOverride
 }
 
 // ValidateRequestAndSetAction parses body, validates fields and sets default action.
@@ -277,6 +279,10 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("x-goog-user-project", adc.ProjectID)
+	queryInfo := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{ApiKey: key, HeadersOverride: a.headerOverride}}
+	if err := channel.ApplyHeaderOverride(queryInfo, nil, req); err != nil {
+		return nil, err
+	}
 	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
 		return nil, fmt.Errorf("new proxy http client failed: %w", err)

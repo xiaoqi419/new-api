@@ -42,6 +42,42 @@ const channel = channelSchema.parse({
 })
 
 describe('channel reasoning effort suffix setting', () => {
+  test.each([true, false])(
+    'advanced custom body passthrough persists %s without changing routes or header overrides',
+    (enabled) => {
+      const routes = {
+        advanced_routes: [
+          {
+            incoming_path: '/v1/chat/completions',
+            upstream_path: '/v1/chat/completions',
+            converter: 'none',
+          },
+        ],
+      }
+      const configured = {
+        ...channel,
+        type: 58,
+        settings: JSON.stringify({ advanced_custom: routes }),
+        header_override: '{"*":true}',
+        setting: JSON.stringify({ pass_through_body_enabled: !enabled }),
+      }
+      const form = transformChannelToFormDefaults(configured)
+      const updated = transformFormDataToUpdatePayload(
+        { ...form, pass_through_body_enabled: enabled },
+        channel.id
+      )
+      const reopened = transformChannelToFormDefaults({
+        ...configured,
+        ...updated,
+      })
+      expect(reopened.pass_through_body_enabled).toBe(enabled)
+      expect(JSON.parse(updated.settings ?? '{}').advanced_custom).toEqual(
+        routes
+      )
+      expect(JSON.parse(updated.header_override ?? '{}')).toEqual({ '*': true })
+    }
+  )
+
   test('new and existing channels without the setting keep conversion disabled', () => {
     expect(CHANNEL_FORM_DEFAULT_VALUES.reasoning_effort_to_model_suffix).toBe(
       false
