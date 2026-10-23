@@ -109,6 +109,9 @@ func (a *legacyTaskBridge) ParseResponse(c *gin.Context, resp *http.Response, in
 	return &channel.TaskSubmitResponse{UpstreamTaskID: id, TaskData: data, ClientResponse: response}, nil
 }
 func (a *legacyTaskBridge) FetchTask(baseURL, key string, task *model.Task, proxy string) (*http.Response, error) {
+	if task.PrivateData.Key != "" {
+		key = task.PrivateData.Key
+	}
 	return a.legacyTaskAdaptor.FetchTask(baseURL, key, map[string]any{"task_id": task.GetUpstreamTaskID(), "action": task.Action}, proxy)
 }
 func (a *legacyTaskBridge) ParseTaskResult(_ *model.Task, _ *http.Response, body []byte) (*relaycommon.TaskInfo, error) {

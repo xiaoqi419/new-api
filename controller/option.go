@@ -192,7 +192,7 @@ func GetOptions(c *gin.Context) {
 	optionValues := make(map[string]string)
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
-		if k == "theme.frontend" || k == billing_setting.BillingModeOptionKey || k == billing_setting.BillingExprOptionKey {
+		if k == "theme.frontend" || k == billing_setting.BillingModeOptionKey || k == billing_setting.BillingExprOptionKey || k == "ResendKeyConfigured" {
 			continue
 		}
 		value := common.Interface2String(v)
@@ -212,6 +212,9 @@ func GetOptions(c *gin.Context) {
 			optionValues[k] = value
 		}
 	}
+	options = append(options, &model.Option{
+		Key: "ResendKeyConfigured", Value: strconv.FormatBool(strings.TrimSpace(common.OptionMap["ResendApiKey"]) != ""),
+	})
 	common.OptionMapRWMutex.Unlock()
 	// Expose effective billing settings, including built-in model defaults,
 	// without writing those defaults back to the administrator option store.
@@ -705,7 +708,7 @@ func SendTestEmail(c *gin.Context) {
 		return
 	}
 
-	if err := sendSMTPTestEmail(receiver, "SMTP"); err != nil {
+	if err := sendSMTPTestEmail(receiver, "邮件发送"); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -762,7 +765,7 @@ func SendQuotaReminderTestEmail(c *gin.Context) {
 func sendSMTPTestEmail(receiver, kind string) error {
 	subject := fmt.Sprintf("%s %s测试邮件", common.SystemName, kind)
 	content := fmt.Sprintf("<p>这是一封来自 %s 的%s测试邮件。</p>"+
-		"<p>您能收到它，说明当前保存的 SMTP 配置可以正常发信。</p>"+
+		"<p>您能收到它，说明当前保存的邮件配置可以正常发信。</p>"+
 		"<p>发送时间：%s</p>", common.SystemName, kind, time.Now().Format("2006-01-02 15:04:05"))
 	return common.SendEmail(subject, receiver, content)
 }

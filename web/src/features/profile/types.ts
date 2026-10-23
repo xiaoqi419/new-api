@@ -100,6 +100,7 @@ export interface UserSettings {
   notify_type?: NotifyType
   /** Quota warning threshold */
   quota_warning_threshold?: number | null
+  quota_warning_enabled?: boolean
   /** Display unit captured when the personal threshold was saved */
   quota_warning_threshold_unit?: string
   quota_warning_threshold_quota_per_unit?: number
@@ -126,6 +127,8 @@ export interface UserSettings {
   record_ip_log?: boolean
   /** Receive upstream model update notifications (admin only) */
   upstream_model_update_notify_enabled?: boolean
+  /** Receive channel notifications (admin only); absent means on for root only */
+  channel_notify_enabled?: boolean
   /** Preferred interface/API response language */
   language?: string
 }
@@ -158,6 +161,7 @@ export interface EmailBindingFlow extends AccountSecurityResult {
 export interface UpdateUserSettingsRequest {
   notify_type?: string
   quota_warning_threshold?: number | null
+  quota_warning_enabled?: boolean
   webhook_url?: string
   webhook_secret?: string
   notification_email?: string
@@ -168,6 +172,7 @@ export interface UpdateUserSettingsRequest {
   accept_unset_model_ratio_model?: boolean
   record_ip_log?: boolean
   upstream_model_update_notify_enabled?: boolean
+  channel_notify_enabled?: boolean
 }
 
 /**

@@ -30,6 +30,46 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-23',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 New API rc.46 及后续更新：支持 Resend 邮件、百炼多模态向量，数据看板展示缓存用量，日志详情支持复制模型名。',
+          '完善任务插件原生上传、请求头传递和共享端点选路，上游价格同步支持按站点汇率调整。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '升级 Go 1.26.10，修复证书信任安全问题；修复任务重试定价、发送前补预扣及轮询重定向凭据保护。',
+          '修复 Claude 缓存写入计费和流式保活，支持 OpenAI 12 小时缓存写入计价，完善慢速流式客户端、结构化输出和渠道透传设置兼容性。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-18',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 New API rc.44、rc.45：使用日志支持筛选导出 CSV，渠道优先级支持拖动排序，API Key 可独立控制用户余额查询权限。',
+          '新增渠道通知和低余额提醒开关，保留现有币种阈值、模板与提醒状态；支持 DeepSeek V4.1 Flash、Search/Fetch 和 AWS Mantle Messages。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复 Claude 零用量和纯缓存计费、工具调用旁的正文与思考摘要转换，以及不同独立分组之间的限流计数。',
+          '完善 Vidu 实际生成参数计费、任务结算日志、定价显示和容器过载判断，保留钱包、充值活动、渠道扩展、双主题与无限画布。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-12',
     changes: [
       {

@@ -86,7 +86,7 @@ func TestNewAPIChannelServesExtendedTaskPlugins(t *testing.T) {
 	priority := int64(0)
 	weight := uint(1)
 	baseURL := "https://gateway.example"
-	extended := `{"task_extend_plugin_keys":["alpha","gamma"]}`
+	extended := `{"task_extend_plugin_keys":["alpha","gamma","hailuo","vidu","veo"]}`
 	single := `{"task_plugin_key":"delta"}`
 	channels := []Channel{
 		{Id: 920001, Type: constant.ChannelTypeNewAPI, Status: common.ChannelStatusEnabled, Name: "gateway", Models: "shared,chat", Group: "default", Priority: &priority, Weight: &weight, BaseURL: &baseURL, Setting: &extended},
@@ -116,6 +116,18 @@ func TestNewAPIChannelServesExtendedTaskPlugins(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, selected)
 	assert.Equal(t, "gateway", selected.Name, "requests without a pinned plugin keep using the gateway")
+	originalCache := common.MemoryCacheEnabled
+	t.Cleanup(func() { common.MemoryCacheEnabled = originalCache; InitChannelCache() })
+	for _, cached := range []bool{false, true} {
+		common.MemoryCacheEnabled = cached
+		InitChannelCache()
+		for _, key := range []string{"hailuo", "vidu", "veo"} {
+			selected, err := GetRandomSatisfiedChannelWithFilters("default", "shared", 0, identityFilters(key, nil))
+			require.NoError(t, err)
+			require.NotNil(t, selected, "plugin %s, cache %v", key, cached)
+			assert.Equal(t, "gateway", selected.Name)
+		}
+	}
 }
 
 func TestTaskPluginFiltersPreserveRoutingPoolAllowlistAndExclusions(t *testing.T) {
@@ -148,5 +160,69 @@ func TestTaskPluginFiltersPreserveRoutingPoolAllowlistAndExclusions(t *testing.T
 		selected, err = GetRandomSatisfiedChannelFiltered("default", "shared", 0, "", filter)
 		require.NoError(t, err)
 		assert.Nil(t, selected, "excluded channels must not return through plugin routing")
+	}
+}
+
+func TestModelModifierNamesRouteWithAndWithoutMemoryCache(t *testing.T) {
+	truncateTables(t)
+	originalMemoryCache := common.MemoryCacheEnabled
+	t.Cleanup(func() { common.MemoryCacheEnabled = originalMemoryCache; InitChannelCache() })
+	channel := Channel{Id: 930001, Type: constant.ChannelTypeDeepSeek, Status: common.ChannelStatusEnabled, Name: "deepseek", Models: "deepseek-flash", Group: "default"}
+	require.NoError(t, channel.Insert())
+
+	for _, memoryCache := range []bool{false, true} {
+		common.MemoryCacheEnabled = memoryCache
+		InitChannelCache()
+		selected, err := GetRandomSatisfiedChannel("default", "deepseek-flash@effort:max", 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, selected, "memory cache %v", memoryCache)
+		assert.Equal(t, "deepseek", selected.Name)
+		selected, err = GetRandomSatisfiedChannel("default", "deepseek-pro@effort:max", 0, "")
+		require.NoError(t, err)
+		assert.Nil(t, selected, "memory cache %v", memoryCache)
+	}
+}
+
+func TestModelModifierRoutingPreservesConstraintsAndFallbackTiers(t *testing.T) {
+	truncateTables(t)
+	originalCache := common.MemoryCacheEnabled
+	t.Cleanup(func() { common.MemoryCacheEnabled = originalCache; InitChannelCache() })
+	primaryPriority, fallbackPriority := int64(10), int64(100)
+	primarySetting := `{"task_extend_plugin_keys":["hailuo"]}`
+	fallbackSetting := `{"task_extend_plugin_keys":["hailuo"],"fallback":true}`
+	channels := []Channel{
+		{Id: 940001, Type: constant.ChannelTypeNewAPI, Status: common.ChannelStatusEnabled, Name: "primary", Models: "deepseek-flash", Group: "default", Priority: &primaryPriority, Setting: &primarySetting},
+		{Id: 940002, Type: constant.ChannelTypeNewAPI, Status: common.ChannelStatusEnabled, Name: "fallback", Models: "deepseek-flash", Group: "default", Priority: &fallbackPriority, Setting: &fallbackSetting},
+	}
+	for i := range channels {
+		require.NoError(t, channels[i].Insert())
+	}
+	for _, cached := range []bool{false, true} {
+		common.MemoryCacheEnabled = cached
+		InitChannelCache()
+		filter := ChannelSelectionFilter{Filters: identityFilters("hailuo", nil)}
+		selected, err := GetRandomSatisfiedChannelFiltered("default", "deepseek-flash@effort:max", 0, "", filter)
+		require.NoError(t, err)
+		require.NotNil(t, selected)
+		assert.Equal(t, channels[0].Id, selected.Id, "fallback must remain last despite higher numeric priority")
+		selected, err = GetRandomSatisfiedChannelFiltered("default", "deepseek-flash@effort:max", 1, "", filter)
+		require.NoError(t, err)
+		require.NotNil(t, selected)
+		assert.Equal(t, channels[1].Id, selected.Id)
+
+		filter.AllowedChannelIDs = map[int]struct{}{channels[0].Id: {}}
+		filter.ExcludedChannelIDs = map[int]struct{}{channels[0].Id: {}}
+		selected, err = GetRandomSatisfiedChannelFiltered("default", "deepseek-flash@effort:max", 0, "", filter)
+		require.NoError(t, err)
+		assert.Nil(t, selected, "normalized routing must preserve both allowlist and exclusions")
+		filter.AllowedChannelIDs = map[int]struct{}{channels[1].Id: {}}
+		selected, err = GetRandomSatisfiedChannelFiltered("default", "deepseek-flash@effort:max", 0, "", filter)
+		require.NoError(t, err)
+		require.NotNil(t, selected)
+		assert.Equal(t, channels[1].Id, selected.Id)
+		filter.Filters = identityFilters("vidu", nil)
+		selected, err = GetRandomSatisfiedChannelFiltered("default", "deepseek-flash@effort:max", 0, "", filter)
+		require.NoError(t, err)
+		assert.Nil(t, selected, "normalized routing must not bypass the pinned plugin binding")
 	}
 }

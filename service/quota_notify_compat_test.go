@@ -1,9 +1,11 @@
 package service
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -13,6 +15,7 @@ import (
 
 func TestCheckAndSendQuotaNotifyPreservesLegacyWalletChannel(t *testing.T) {
 	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	createQuotaBillingPipelineUser(t, 910, 100)
 	called := make(chan dto.Notify, 1)
 	previousNotifyQuotaUser := notifyQuotaUser
 	notifyQuotaUser = func(_ int, _ string, setting dto.UserSetting, notification dto.Notify) error {
@@ -44,8 +47,21 @@ func TestCheckAndSendQuotaNotifyPreservesLegacyWalletChannel(t *testing.T) {
 	assert.Nil(t, state, "legacy channels must not enter the email reminder state machine")
 }
 
+func TestQuotaReminderOptOutPreservesBalanceAndSkipsDelivery(t *testing.T) {
+	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	disabled := false
+	for _, notifyType := range []string{dto.NotifyTypeEmail, dto.NotifyTypeWebhook} {
+		settings := dto.UserSetting{NotifyType: notifyType, QuotaWarningEnabled: &disabled}
+		checkAndSendQuotaReminderForBalances(913, model.QuotaReminderBalanceWallet, 0, 100, 0, settings)
+		state, err := model.GetQuotaReminderState(913, model.QuotaReminderBalanceWallet, 0)
+		require.NoError(t, err)
+		assert.Nil(t, state, "a user who opted out must not acquire a delivery claim")
+	}
+}
+
 func TestCheckAndSendSubscriptionQuotaNotifyPreservesLegacyChannel(t *testing.T) {
 	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	createQuotaBillingPipelineUser(t, 911, 100)
 	called := make(chan dto.Notify, 1)
 	previousNotifyQuotaUser := notifyQuotaUser
 	notifyQuotaUser = func(_ int, _ string, setting dto.UserSetting, notification dto.Notify) error {
@@ -81,6 +97,7 @@ func TestCheckAndSendSubscriptionQuotaNotifyPreservesLegacyChannel(t *testing.T)
 
 func TestCheckAndSendQuotaReminderForBalancesPreservesLegacyChannel(t *testing.T) {
 	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	createQuotaBillingPipelineUser(t, 912, 100)
 	called := make(chan dto.Notify, 1)
 	previousNotifyQuotaUser := notifyQuotaUser
 	notifyQuotaUser = func(_ int, _ string, setting dto.UserSetting, notification dto.Notify) error {
@@ -111,4 +128,59 @@ func TestCheckAndSendQuotaReminderForBalancesPreservesLegacyChannel(t *testing.T
 	state, err := model.GetQuotaReminderState(912, model.QuotaReminderBalanceWallet, 0)
 	require.NoError(t, err)
 	assert.Nil(t, state, "legacy channels must not enter the email reminder state machine")
+}
+
+func TestQueuedLegacyQuotaNotifyHonorsCurrentUserOptOut(t *testing.T) {
+	for _, channel := range []string{dto.NotifyTypeWebhook, dto.NotifyTypeBark, dto.NotifyTypeGotify} {
+		for _, missing := range []bool{false, true} {
+			t.Run(channel+"/missing="+strconv.FormatBool(missing), func(t *testing.T) {
+				setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+				createQuotaBillingPipelineUser(t, 919, 100)
+				previousSubmit := submitQuotaNotification
+				previousNotify := notifyQuotaUser
+				t.Cleanup(func() { submitQuotaNotification = previousSubmit; notifyQuotaUser = previousNotify })
+				var queued func()
+				submitQuotaNotification = func(work func()) { queued = work }
+				sent := false
+				notifyQuotaUser = func(_ int, _ string, _ dto.UserSetting, _ dto.Notify) error { sent = true; return nil }
+				sendLegacyQuotaNotify(919, "user@example.com", dto.UserSetting{NotifyType: channel, Language: "zh-CN"}, 10, false)
+				require.NotNil(t, queued)
+				if missing {
+					require.NoError(t, model.DB.Delete(&model.User{}, 919).Error)
+				} else {
+					disabled := false
+					user := model.User{Id: 919}
+					user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &disabled})
+					require.NoError(t, model.DB.Model(&user).Update("setting", user.Setting).Error)
+				}
+				queued()
+				assert.False(t, sent, "the queued notification must not use an obsolete enabled setting")
+			})
+		}
+	}
+}
+
+func TestQueuedLegacyQuotaNotifyPreservesCapturedThresholdAfterReload(t *testing.T) {
+	setupQuotaBillingPipelineTest(t, quotaPipelineOptions())
+	createQuotaBillingPipelineUser(t, 920, 100)
+	previousSubmit := submitQuotaNotification
+	previousNotify := notifyQuotaUser
+	t.Cleanup(func() { submitQuotaNotification = previousSubmit; notifyQuotaUser = previousNotify })
+	var queued func()
+	submitQuotaNotification = func(work func()) { queued = work }
+	sent := false
+	original := dto.UserSetting{NotifyType: dto.NotifyTypeWebhook, Language: "zh-CN", QuotaWarningThreshold: 50, QuotaWarningThresholdUnit: common.QuotaDisplayUnitTokens}
+	notifyQuotaUser = func(_ int, _ string, setting dto.UserSetting, _ dto.Notify) error {
+		sent = true
+		assert.Equal(t, original, setting)
+		return nil
+	}
+	sendLegacyQuotaNotify(920, "user@example.com", original, 10, false)
+	require.NotNil(t, queued)
+	enabled := true
+	user := model.User{Id: 920}
+	user.SetSetting(dto.UserSetting{QuotaWarningEnabled: &enabled, QuotaWarningThreshold: 1, QuotaWarningThresholdUnit: common.QuotaDisplayUnitTokens})
+	require.NoError(t, model.DB.Model(&user).Update("setting", user.Setting).Error)
+	queued()
+	assert.True(t, sent, "reloading opt-in must not recalculate the queued notification threshold")
 }

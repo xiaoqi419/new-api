@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -429,6 +430,24 @@ func sendQuotaReminder(userID int, kind model.QuotaReminderBalanceKind, resource
 		return false, err
 	}
 	setting := user.GetSetting()
+	if setting.QuotaWarningEnabled != nil && !*setting.QuotaWarningEnabled {
+		state, stateErr := model.GetQuotaReminderState(userID, kind, resourceID)
+		if stateErr != nil {
+			return false, stateErr
+		}
+		if state == nil {
+			return false, nil
+		}
+		if token != "" {
+			if state.Status != model.QuotaReminderStatusSending || state.DeliveryToken != token {
+				return false, nil
+			}
+		} else if state.DeliveryToken != "" {
+			return false, nil
+		}
+		_, suppressErr := suppressObservedQuotaReminderState(state, user.Setting)
+		return false, suppressErr
+	}
 	to := setting.NotificationEmail
 	if to == "" {
 		to = user.Email
@@ -668,6 +687,20 @@ func compensateQuotaReminderRecord(userID int, kind model.QuotaReminderBalanceKi
 	if err != nil {
 		return err
 	}
+	if setting.QuotaWarningEnabled != nil && !*setting.QuotaWarningEnabled {
+		user, err := model.GetUserById(userID, false)
+		if err != nil {
+			return err
+		}
+		latest := user.GetSetting()
+		if latest.QuotaWarningEnabled == nil || *latest.QuotaWarningEnabled {
+			return nil
+		}
+		return recordDisabledQuotaReminderBaseline(state, model.QuotaReminderState{
+			UserID: userID, BalanceKind: kind, ResourceID: resourceID,
+			LastBalance: current, Threshold: threshold,
+		}, user.Setting)
+	}
 	if state == nil && current >= threshold {
 		return nil
 	}
@@ -708,6 +741,46 @@ func listPendingQuotaReminderStatesPage(afterID int64, limit int) ([]model.Quota
 		model.QuotaReminderStatusLowPending, model.QuotaReminderStatusSending, staleAttempt).
 		Order("id asc").Limit(limit).Find(&states).Error
 	return states, err
+}
+
+// recordDisabledQuotaReminderBaseline observes disabled balances without overwriting a newer cycle.
+func recordDisabledQuotaReminderBaseline(observed *model.QuotaReminderState, baseline model.QuotaReminderState, userSetting string) error {
+	baseline.Armed = baseline.LastBalance >= baseline.Threshold
+	baseline.Status = model.QuotaReminderStatusSuppressed
+	if baseline.Armed {
+		baseline.Status = model.QuotaReminderStatusArmed
+	}
+	if observed == nil {
+		return model.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&baseline).Error
+	}
+	return model.DB.Model(&model.QuotaReminderState{}).
+		Where("id = ? AND user_id = ? AND balance_kind = ? AND resource_id = ?", observed.ID, observed.UserID, observed.BalanceKind, observed.ResourceID).
+		Where("status = ? AND delivery_token = ? AND updated_at = ?", observed.Status, observed.DeliveryToken, observed.UpdatedAt).
+		Where("last_balance = ? AND threshold = ? AND armed = ?", observed.LastBalance, observed.Threshold, observed.Armed).
+		Where("user_id IN (?)", model.DB.Model(&model.User{}).Select("id").Where("id = ? AND setting = ?", observed.UserID, userSetting)).
+		Updates(map[string]interface{}{
+			"last_balance": baseline.LastBalance, "threshold": baseline.Threshold,
+			"armed": baseline.Armed, "status": baseline.Status, "delivery_token": "",
+			"last_error": "", "threshold_display_unit": "", "threshold_quota_per_unit": 0,
+			"threshold_usd_exchange_rate": 0, "threshold_custom_exchange_rate": 0,
+			"threshold_currency_symbol": "", "updated_at": common.GetTimestamp(),
+		}).Error
+}
+
+// suppressObservedQuotaReminderState leaves a newer cycle or changed user preference untouched.
+func suppressObservedQuotaReminderState(state *model.QuotaReminderState, userSetting string) (bool, error) {
+	result := model.DB.Model(&model.QuotaReminderState{}).
+		Where("id = ? AND user_id = ? AND balance_kind = ? AND resource_id = ?", state.ID, state.UserID, state.BalanceKind, state.ResourceID).
+		Where("status = ? AND delivery_token = ? AND updated_at = ?", state.Status, state.DeliveryToken, state.UpdatedAt).
+		Where("last_balance = ? AND threshold = ? AND armed = ?", state.LastBalance, state.Threshold, state.Armed).
+		Where("user_id IN (?)", model.DB.Model(&model.User{}).Select("id").Where("id = ? AND setting = ?", state.UserID, userSetting)).
+		Updates(map[string]interface{}{
+			"armed": false, "status": model.QuotaReminderStatusSuppressed, "delivery_token": "",
+			"last_error": "", "threshold_display_unit": "", "threshold_quota_per_unit": 0,
+			"threshold_usd_exchange_rate": 0, "threshold_custom_exchange_rate": 0,
+			"threshold_currency_symbol": "", "updated_at": common.GetTimestamp(),
+		})
+	return result.RowsAffected == 1, result.Error
 }
 
 func suppressQuotaReminderState(stateID int64) error {

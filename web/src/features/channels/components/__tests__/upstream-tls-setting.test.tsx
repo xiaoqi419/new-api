@@ -168,3 +168,103 @@ test('turning on the upstream TLS verification skip saves it in the channel sett
     tls_insecure_skip_verify: true,
   })
 })
+
+test.each([
+  {
+    saved: undefined,
+    shown: 'InvokeModel (legacy)',
+    next: 'Mantle (Messages API)',
+    value: 'mantle',
+  },
+  {
+    saved: 'mantle',
+    shown: 'Mantle (Messages API)',
+    next: 'InvokeModel (legacy)',
+    value: 'invoke_model',
+  },
+])(
+  'AWS API defaults or restores $shown and saves the selected interface',
+  async ({ saved, shown, next, value }) => {
+    editingChannel = {
+      ...editingChannel,
+      type: 33,
+      base_url: '',
+      models: 'claude-opus-4-7',
+      settings: JSON.stringify({
+        aws_key_type: 'api_key',
+        aws_api_type: saved,
+      }),
+    }
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValue({ data: { success: true } })
+    const user = userEvent.setup()
+    render(<ConfigurationHarness currentRow={editingChannel} />)
+    const selector = await screen.findByRole('combobox', { name: 'AWS API' })
+    await waitFor(() => expect(selector).toHaveTextContent(shown))
+    await user.click(selector)
+    await user.click(screen.getByRole('option', { name: next }))
+    expect(selector).toHaveTextContent(next)
+    await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+    const payload = put.mock.calls[0]?.[1] as { settings: string }
+    expect(JSON.parse(payload.settings)).toMatchObject({
+      aws_key_type: 'api_key',
+      aws_api_type: value,
+    })
+  }
+)
+
+test('AWS interface selection is disabled without sensitive channel write permission', async () => {
+  editingChannel = {
+    ...editingChannel,
+    type: 33,
+    settings: '{"aws_api_type":"mantle"}',
+  }
+  useAuthStore.setState({
+    auth: {
+      ...originalAuth,
+      user: {
+        id: 10,
+        username: 'operator',
+        role: ROLE.ADMIN,
+        permissions: {
+          admin_permissions: { channel: { read: true, write: true } },
+        },
+      },
+    },
+  })
+  render(<ConfigurationHarness currentRow={editingChannel} />)
+  expect(
+    await screen.findByRole('combobox', { name: 'AWS API' })
+  ).toBeDisabled()
+})
+
+test('Vertex API key project ID is editable and saved without changing the fork channel editor layout', async () => {
+  editingChannel = {
+    ...editingChannel,
+    type: 41,
+    models: 'gemini-4-argon',
+    other: '{"default":"global"}',
+    settings:
+      '{"vertex_key_type":"api_key","vertex_project_id":"saved-project"}',
+  }
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValue({ data: { success: true } })
+  const user = userEvent.setup()
+  render(<ConfigurationHarness currentRow={editingChannel} />)
+  const project = await screen.findByRole('textbox', {
+    name: 'Vertex AI Project ID',
+  })
+  expect(project).toHaveValue('saved-project')
+  await user.clear(project)
+  await user.type(project, 'new-project')
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  await waitFor(() => expect(put).toHaveBeenCalled())
+  const payload = put.mock.calls[0]?.[1] as { settings: string }
+  expect(JSON.parse(payload.settings)).toMatchObject({
+    vertex_key_type: 'api_key',
+    vertex_project_id: 'new-project',
+  })
+})

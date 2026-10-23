@@ -6,6 +6,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -70,9 +71,21 @@ func GetChannelFiltered(group string, model string, retry int, requestPath strin
 	if err != nil {
 		return nil, err
 	}
-	abilities, err = filterAbilitiesByConstraintsWithError(abilities, model, append(append([]dto.ChannelFilter(nil), filter.Filters...), dto.ChannelFilter{Kind: dto.FilterRequestPath, RequestPath: requestPath}))
+	filters := append(append([]dto.ChannelFilter(nil), filter.Filters...), dto.ChannelFilter{Kind: dto.FilterRequestPath, RequestPath: requestPath})
+	abilities, err = filterAbilitiesByConstraintsWithError(abilities, model, filters)
 	if err != nil {
 		return nil, err
+	}
+	// Match the cache's routing-name fallback without widening request constraints.
+	if normalized := ratio_setting.RoutingMatchModelName(model); len(abilities) == 0 && normalized != "" && normalized != model {
+		err = DB.Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, normalized, true).Find(&abilities).Error
+		if err != nil {
+			return nil, err
+		}
+		abilities, err = filterAbilitiesByConstraintsWithError(abilities, model, filters)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if len(abilities) == 0 {
 		return nil, nil
