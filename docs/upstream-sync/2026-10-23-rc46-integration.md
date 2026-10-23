@@ -97,3 +97,8 @@ was rejected by automatic approval (`blocked by policy`), so browser QA used a
 loopback-only static preview with mocked APIs; a SQLite upgrade rehearsal is
 not claimed for this iteration. Neither production installation was contacted
 or modified. Remote PR/CI results are recorded in the external delivery manifest.
+
+PR #75 did not produce a `pull_request` Actions run despite enabled repository
+Actions and an active CI workflow. A manual CI trigger was added to the existing
+workflow so the exact pushed candidate can be checked without deploying or
+changing repository-wide settings. Both event paths check out `github.sha`.
