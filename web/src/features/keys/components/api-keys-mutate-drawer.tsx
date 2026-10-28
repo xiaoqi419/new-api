@@ -226,6 +226,9 @@ export function ApiKeysMutateDrawer({
   // Load existing data when updating
   useEffect(() => {
     if (!open) {
+      form.reset(
+        getApiKeyFormDefaultValues(defaultUseAutoGroup && backendHasAuto)
+      )
       setInitializedTarget(null)
       return
     }
@@ -278,6 +281,13 @@ export function ApiKeysMutateDrawer({
     initializedTarget,
   ])
 
+  const isFormInitialized =
+    open &&
+    initializedTarget === (isUpdate ? `update:${currentRowId}` : 'create') &&
+    !!groupsData &&
+    autoGroupsFetched &&
+    !autoGroupsFetching &&
+    (isUpdate ? apiKeyFetched && !apiKeyFetching : !statusLoading)
   const selectedGroup = form.watch('group')
 
   // Correct fixed group after groups load: if the form value is not in
@@ -300,6 +310,7 @@ export function ApiKeysMutateDrawer({
   }, [groups, form, selectedGroup])
 
   const onSubmit = async (data: ApiKeyFormValues) => {
+    if (!isFormInitialized || isSubmitting) return
     setIsSubmitting(true)
     try {
       const basePayload = transformFormDataToPayload(data)
@@ -365,7 +376,7 @@ export function ApiKeysMutateDrawer({
 
   const handleSetExpiry = (months: number, days: number, hours: number) => {
     if (months === 0 && days === 0 && hours === 0) {
-      form.setValue('expired_time', undefined)
+      form.setValue('expired_time', null)
       return
     }
 
@@ -391,12 +402,7 @@ export function ApiKeysMutateDrawer({
   return (
     <Dialog
       open={open}
-      onOpenChange={(v) => {
-        onOpenChange(v)
-        if (!v) {
-          form.reset()
-        }
-      }}
+      onOpenChange={onOpenChange}
       title={isUpdate ? t('Update API Key') : t('Create API Key')}
       description={
         isUpdate
@@ -419,7 +425,7 @@ export function ApiKeysMutateDrawer({
           <Button
             type='submit'
             form='api-key-form'
-            disabled={isSubmitting}
+            disabled={!isFormInitialized || isSubmitting}
             className='w-full sm:w-auto'
           >
             {isSubmitting ? t('Saving...') : t('Save changes')}
@@ -431,13 +437,15 @@ export function ApiKeysMutateDrawer({
         <form
           id='api-key-form'
           onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+          aria-busy={!isFormInitialized}
+          inert={!isFormInitialized || isSubmitting ? true : undefined}
           className='flex flex-col gap-4'
         >
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(String(v))}
           >
-            <TabsList className='w-full flex-wrap justify-start'>
+            <TabsList className='w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto [&>[data-slot=tabs-trigger]]:h-7'>
               <TabsTrigger value='basic'>{t('Basic Information')}</TabsTrigger>
               <TabsTrigger value='rate'>{t('Rate & Quota')}</TabsTrigger>
               <TabsTrigger value='security'>
@@ -713,8 +721,8 @@ export function ApiKeysMutateDrawer({
                     <div className='grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center'>
                       <FormControl>
                         <DateTimePicker
-                          value={field.value}
-                          onChange={field.onChange}
+                          value={field.value ?? undefined}
+                          onChange={(date) => field.onChange(date ?? null)}
                           placeholder={t('Never expires')}
                           className='min-w-0 [&_input[type=time]]:w-24 sm:[&_input[type=time]]:w-32'
                         />

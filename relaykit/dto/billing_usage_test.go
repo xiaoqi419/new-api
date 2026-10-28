@@ -49,6 +49,40 @@ func TestNewOpenAIChatBillingUsageRequiresTokenContent(t *testing.T) {
 	assert.Equal(t, 1, billingUsage.OpenAIUsage.PromptTokens)
 }
 
+func TestOpenAIBillingUsagePreservesCacheCreationOnlyDelta(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		base, delta *Usage
+		capture     func(*Usage) *BillingUsage
+	}{
+		{
+			name:    "chat",
+			base:    &Usage{PromptTokens: 1000, CompletionTokens: 7, TotalTokens: 1007},
+			delta:   &Usage{PromptTokensDetails: InputTokenDetails{CacheCreationInputTokens: 300}},
+			capture: NewOpenAIChatBillingUsage,
+		},
+		{
+			name:    "responses",
+			base:    &Usage{InputTokens: 1000, OutputTokens: 7, TotalTokens: 1007},
+			delta:   &Usage{InputTokensDetails: &InputTokenDetails{CacheCreationInputTokens: 300}},
+			capture: NewOpenAIResponsesBillingUsage,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			delta := tc.capture(tc.delta)
+			require.NotNil(t, delta)
+			merged := MergeBillingUsageNonZero(tc.capture(tc.base), delta)
+			canonical, ok := merged.CanonicalUsage()
+			require.True(t, ok)
+			require.NotNil(t, canonical)
+			assert.Equal(t, 1000, canonical.PromptTokens)
+			assert.Equal(t, 7, canonical.CompletionTokens)
+			assert.Equal(t, 1007, canonical.TotalTokens)
+			assert.Equal(t, 300, canonical.PromptTokensDetails.CacheCreationTokensTotal())
+		})
+	}
+}
+
 func TestImageCacheDetailsSurviveUsageSnapshots(t *testing.T) {
 	var original Usage
 	require.NoError(t, kitutil.Unmarshal([]byte(`{"input_tokens":1000,"input_tokens_details":{"cached_tokens":300,"image_tokens":600,"cached_tokens_details":{"image_tokens":200,"text_tokens":100}}}`), &original))

@@ -30,6 +30,21 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-28',
+    changes: [
+      {
+        kind: 'fix',
+        items: [
+          '同步官方 New API rc.47 及后续修复：视频任务默认等待 72 小时后才超时退款，继续尊重自定义超时设置。',
+          '修复 Gemini 生图参数转换、工具调用旁的正文保留、Claude 工具参数数字精度和停止序列兼容性。',
+          '完善缓存写入用量计费、动态按次定价筛选和访问日志凭据脱敏，修复令牌、兑换码和模型切换编辑时残留旧值的问题。',
+          '缓存参数覆盖规则的正则编译结果，升级前端构建工具和依赖，保留钱包、充值、双主题与无限画布。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-23',
     changes: [
       {
