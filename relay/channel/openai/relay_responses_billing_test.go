@@ -523,6 +523,25 @@ func TestOaiResponsesHandlersKeepCacheWriteTTLSplit(t *testing.T) {
 	}
 }
 
+func TestOaiResponsesCompactionHandlerKeepsCacheCreationInputTokens(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{"id":"cmp_1","object":"response.compaction","output":[],"usage":{"input_tokens":100,"output_tokens":10,"total_tokens":110,"input_tokens_details":{"cache_creation_input_tokens":30}}}`)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+
+	usage, apiErr := OaiResponsesCompactionHandler(c, resp)
+	require.Nil(t, apiErr)
+	require.NotNil(t, usage)
+	assert.Equal(t, 100, usage.PromptTokens)
+	assert.Equal(t, 10, usage.CompletionTokens)
+	assert.Equal(t, 110, usage.TotalTokens)
+	assert.Equal(t, 30, usage.PromptTokensDetails.CacheCreationTokensTotal())
+}
+
 func TestOaiResponsesHandlerRewritesSGLangCreatedAtToInt(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
