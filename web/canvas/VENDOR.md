@@ -7,11 +7,11 @@ main frontend embeds in a same-origin iframe on its own `/canvas` page.
 |                     |                                                                                   |
 | ------------------- | --------------------------------------------------------------------------------- |
 | Upstream            | https://github.com/basketikun/infinite-canvas                                     |
-| Version             | `v0.19.0`                                                                         |
-| Upstream tag commit | `e856c878e0a34651bb828e28f0af20d71016a7d4`                                        |
-| Release date        | 2026-09-16                                                                        |
+| Version             | `v0.20.0`                                                                         |
+| Upstream tag commit | `3a6b64b602ad062b29fac66902ed18a7ef5fd9dc`                                        |
+| Release date        | 2026-10-10                                                                        |
 | License             | MIT (see `LICENSE`)                                                               |
-| Imported from       | `https://codeload.github.com/basketikun/infinite-canvas/tar.gz/refs/tags/v0.19.0` |
+| Imported from       | `https://codeload.github.com/basketikun/infinite-canvas/tar.gz/refs/tags/v0.20.0` |
 
 The upstream application is a pure browser SPA with no backend of its own: it talks
 directly to an OpenAI-compatible endpoint from the browser, and keeps its API key,
@@ -25,7 +25,7 @@ is pinned to this site and cannot be edited, so it can only ever call this gatew
 - Upstream repository root files `VERSION`, `CHANGELOG.md` and `LICENSE` were copied
   into this directory, because only `web/` is vendored. `vite.config.ts` reads the
   first two, so its paths were adjusted accordingly.
-- Not vendored: `package-lock.json` (this project uses bun), `vercel.json` and
+- Not vendored: `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `package-lock.json` (this project uses bun), `vercel.json` and
   `docker-entrypoint.sh` (nginx-specific; here the build output is served by the Go
   binary instead of nginx).
 - Upstream `AGENTS.md` is intentionally not vendored, so it cannot be mistaken for
@@ -33,7 +33,7 @@ is pinned to this site and cannot be edited, so it can only ever call this gatew
 
 ## Local patches
 
-The vendored source is synced from the `v0.19.0` tag. The authoritative semantic-diff
+The vendored source is synced from the `v0.20.0` tag. The authoritative semantic-diff
 manifest is kept in `scripts/format-integration.mjs`; every path listed there must be
 reviewed and replayed after a future upstream upgrade. The manifest is intentionally
 explicit because the rest of `web/` remains upstream-owned code.
@@ -74,6 +74,16 @@ The local changes fall into these groups:
    redacting connection data. The added tests cover navigation visibility, bridge and
    bootstrap lifecycle, migration, account/config races, model capability checks, and
    credential-safe Agent/media behavior.
+
+The configuration and model selection dialogs retain the fork's save/reopen and
+request race guards. New regenerate/auto-focus preferences pass through both
+local hydration and config import/export with strict enum/boolean normalization.
+The model resolver keeps unavailable explicit selections while retaining the
+embedded no-demo-fallback rule. The three upstream Bun test files are relocated
+to the existing Vitest suite; the format manifest records their destinations.
+The Gemini image script template maps rounded pixel presets to supported aspect
+ratios, matching the native request path. Changed-file lint also removes unused
+private conversion helpers/imports and keeps the selection toggle equivalent.
 
 The added integration files are `scripts/format-integration.mjs`,
 `public/official-plugins.json`, `vitest.config.ts`, `src/test-setup.ts`,
@@ -126,16 +136,16 @@ project's. It is therefore excluded from:
 `scripts/format-integration.mjs`. It formats and checks the explicit local manifest and
 all regression tests, while mixed files that retain upstream layout are parser-checked
 without rewriting the vendored baseline. If `CANVAS_PRISTINE_WEB` points to a clean
-`v0.19.0/web` checkout, those mixed files also receive a changed-line audit against the
+`v0.20.0/web` checkout, those mixed files also receive a changed-line audit against the
 pristine source. `bun run format` writes only the owned manifest files. The complete
 upstream audit remains available as `bun run format:check:upstream`; it is expected to
-report the formatting differences already present in the pristine v0.18.0 release.
+report the formatting differences already present in the pristine v0.20.0 release.
 
 To reproduce the semantic diff and verify that the manifest is complete:
 
 ```sh
-git clone --depth 1 --branch v0.19.0 https://github.com/basketikun/infinite-canvas.git /tmp/infinite-canvas-v0.19.0
-CANVAS_PRISTINE_WEB=/tmp/infinite-canvas-v0.19.0/web node web/canvas/scripts/format-integration.mjs --audit-pristine
+git clone --depth 1 --branch v0.20.0 https://github.com/basketikun/infinite-canvas.git /tmp/infinite-canvas-v0.20.0
+CANVAS_PRISTINE_WEB=/tmp/infinite-canvas-v0.20.0/web node web/canvas/scripts/format-integration.mjs --audit-pristine
 ```
 
 On PowerShell, set `$env:CANVAS_PRISTINE_WEB` to the extracted `web` directory before
@@ -164,7 +174,7 @@ existing canvas before shipping.
 
 ## License obligations
 
-- The vendored Canvas application from `v0.19.0` is MIT licensed. Keep the complete
+- The vendored Canvas application from `v0.20.0` is MIT licensed. Keep the complete
   upstream MIT text and the `Copyright (c) 2026 basketikun` notice in `LICENSE`.
 - The surrounding New API project remains under its own AGPL and attribution terms;
   the two license boundaries must not be replaced with one another.

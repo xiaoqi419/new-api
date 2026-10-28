@@ -63,6 +63,8 @@ export type AiConfig = {
     canvasImageCount: string;
     proxyEnabled: boolean;
     proxyUrl: string;
+    nodeRegenerateBehavior: "new-node" | "overwrite";
+    autoFocusOnSelect: boolean;
 };
 
 export type WebdavSyncConfig = {
@@ -225,6 +227,8 @@ export const defaultConfig: AiConfig = {
     canvasImageCount: "3",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
+    nodeRegenerateBehavior: "new-node",
+    autoFocusOnSelect: false,
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -251,6 +255,8 @@ function normalizePersistedConfig(value: unknown): AiConfig {
     config.reasoningEffort = normalizeReasoningEffort(source.reasoningEffort);
     config.models = Array.isArray(source.models) ? source.models.filter((item): item is string => typeof item === "string") : [];
     config.proxyEnabled = source.proxyEnabled === true;
+    config.nodeRegenerateBehavior = source.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node";
+    config.autoFocusOnSelect = source.autoFocusOnSelect === true;
     config.proxyUrl = normalizeString(source.proxyUrl, DEFAULT_LOCAL_PROXY_URL);
     // Embedded relay keys are supplied by the authenticated host at runtime;
     // never hydrate or persist a real key from localStorage.
@@ -347,10 +353,14 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
     const modelKey = { image: "imageModel", video: "videoModel", audio: "audioModel", text: "textModel" } as const;
     const defaultModel = config[modelKey[capability]];
     const fallbackModel = defaultConfig[modelKey[capability]];
-    if (currentModel && modelMatchesCapability(config, currentModel, capability)) return currentModel;
-    if (defaultModel && modelMatchesCapability(config, defaultModel, capability)) return defaultModel;
-    // Embedded Canvas waits for the host catalog rather than falling back to
-    // the vendored demo model, which could issue an unintended relay request.
+    for (const model of [currentModel, defaultModel]) {
+        if (!model) continue;
+        const configuredCapability = modelCapabilityOf(config, model);
+        // Keep unavailable selections visible so readiness blocks generation.
+        // A known capability switch may choose the configured default instead.
+        if (!configuredCapability || configuredCapability === capability) return model;
+    }
+    // Embedded Canvas must not fall back to the vendored demo model.
     if (isEmbedded()) return "";
     return fallbackModel;
 }
@@ -366,8 +376,8 @@ export function resolveModelScript(config: AiConfig, value: string) {
 }
 
 function isAiConfigReady(config: AiConfig, model: string) {
-    const channel = resolveModelChannel(config, model);
-    return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
+    const match = findChannelModel(config, model);
+    return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
 }
 
 export const useConfigStore = create<ConfigStore>()(
@@ -459,6 +469,8 @@ export const useConfigStore = create<ConfigStore>()(
                         canvasImageCount: config.canvasImageCount || "3",
                         proxyEnabled: Boolean(config.proxyEnabled),
                         proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
+                        nodeRegenerateBehavior: config.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
+                        autoFocusOnSelect: Boolean(config.autoFocusOnSelect),
                     },
                 };
             },

@@ -18,7 +18,7 @@ const pristineRoot = process.env.CANVAS_PRISTINE_WEB ? resolve(process.env.CANVA
 const supportedExtensions = new Set([".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx", ".json", ".md", ".yaml", ".yml"]);
 
 // These are the files whose contents differ semantically from the pristine
-// upstream v0.19.0 web/ tree. Keeping this list explicit makes an upgrade
+// upstream v0.20.0 web/ tree. Keeping this list explicit makes an upgrade
 // reviewable and prevents the formatter from silently taking ownership of the
 // entire vendored application.
 const semanticPatchFiles = [
@@ -35,6 +35,7 @@ const semanticPatchFiles = [
     "src/pages/canvas/project.tsx",
     "src/services/api/canvas-agent.ts",
     "src/services/api/image.ts",
+    "src/services/api/model-plugin.ts",
     "src/services/app-sync.ts",
     "src/services/config-file.ts",
     "src/stores/canvas/use-canvas-store.ts",
@@ -49,11 +50,14 @@ const semanticPatchFiles = [
     "src/components/agent/agent-event-formatters.ts",
     "src/components/agent/local-agent-panel.tsx",
     "src/components/canvas/canvas-top-bar.tsx",
+    "src/components/canvas/canvas-side-panel.tsx",
     "src/components/layout/app-providers.tsx",
+    "src/components/layout/app-config-modal.tsx",
     "src/components/layout/app-top-nav.tsx",
     "src/components/layout/channel-editor-drawer.tsx",
     "src/components/layout/mobile-nav-drawer.tsx",
     "src/components/layout/model-script-editor.tsx",
+    "src/components/layout/model-select-modal.tsx",
     "src/components/layout/user-status-actions.tsx",
     "src/layouts/user-layout.tsx",
 ];
@@ -88,7 +92,7 @@ const testDirectories = ["src/components/agent/__tests__", "src/components/layou
 const explicitTestFiles = ["src/components/agent/use-agent-message-asset-url.test.tsx", "src/lib/canvas/canvas-data-migration.test.ts", "src/services/api/canvas-agent.test.ts", "src/services/app-sync.test.ts"];
 
 // These files contain upstream code plus a small local patch. The pristine
-// v0.19.0 source itself is not formatted by the current Prettier release, so a
+// v0.20.0 source itself is not formatted by the current Prettier release, so a
 // whole-file check would rewrite unrelated vendored code. They are still
 // parser-checked by default and receive a changed-line audit when
 // CANVAS_PRISTINE_WEB points to a clean upstream web/ checkout.
@@ -112,7 +116,13 @@ const baselineFormatFiles = new Set([
     "src/components/layout/model-script-editor.tsx",
 ]);
 
-const intentionallyAbsentUpstreamFiles = new Set(["docker-entrypoint.sh", "package-lock.json", "vercel.json"]);
+const intentionallyAbsentUpstreamFiles = new Set(["docker-entrypoint.sh", "package-lock.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "vercel.json"]);
+// Upstream Bun tests run in the existing Vitest suite after import adaptation.
+const relocatedUpstreamTests = new Map([
+    ["tests/image-thumbnail.test.ts", "src/lib/__tests__/image-thumbnail.test.ts"],
+    ["tests/model-selection.test.ts", "src/lib/__tests__/model-selection.test.ts"],
+    ["tests/canvas-focus-viewport.test.ts", "src/lib/canvas/__tests__/canvas-focus-viewport.test.ts"],
+]);
 // Local tooling/configuration files are allowed to differ from the pristine
 // upstream tree, but are not themselves vendored application patches.
 const localConfigFiles = new Set([".prettierignore"]);
@@ -214,7 +224,6 @@ async function checkManifestFormatting() {
             if (pristineRoot) {
                 const pristinePath = join(pristineRoot, path);
                 if (existsSync(pristinePath)) {
-                    const pristineSource = readFileSync(pristinePath, "utf8");
                     const ranges = changedLineRanges(pristinePath, join(root, path));
                     const mismatches = changedLinesMatchFormatted(source, formatted, ranges);
                     if (mismatches.length) failures.push(`${path} (local changed lines are not Prettier-formatted: ${mismatches.join(", ")})`);
@@ -223,7 +232,7 @@ async function checkManifestFormatting() {
                     notes.push(`${path}: parser checked; no pristine counterpart at ${pristineRoot}`);
                 }
             } else {
-                notes.push(`${path}: parser checked; whole-file format differs from upstream v0.18 baseline (set CANVAS_PRISTINE_WEB for hunk audit)`);
+                notes.push(`${path}: parser checked; whole-file format differs from upstream v0.20.0 baseline (set CANVAS_PRISTINE_WEB for hunk audit)`);
             }
             continue;
         }
@@ -250,7 +259,7 @@ function readUpstreamFiles(path) {
 
 function auditPristineTree() {
     if (!pristineRoot) {
-        console.error("Pristine audit requires CANVAS_PRISTINE_WEB to point to a clean upstream v0.19.0 web/ checkout.");
+        console.error("Pristine audit requires CANVAS_PRISTINE_WEB to point to a clean upstream v0.20.0 web/ checkout.");
         process.exitCode = 2;
         return;
     }
@@ -261,6 +270,8 @@ function auditPristineTree() {
         const rel = relative(pristineRoot, pristinePath).replaceAll("\\", "/");
         const localPath = join(localRoot, rel);
         if (!existsSync(localPath)) {
+            const relocatedTest = relocatedUpstreamTests.get(rel);
+            if (relocatedTest && manifest.has(relocatedTest) && existsSync(join(localRoot, relocatedTest))) continue;
             if (!intentionallyAbsentUpstreamFiles.has(rel)) failures.push(`missing local upstream file: ${rel}`);
             continue;
         }

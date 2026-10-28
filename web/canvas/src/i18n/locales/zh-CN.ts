@@ -29,7 +29,7 @@ export default {
         imageReadFailed: "读取图片失败",
     },
     settingsPanels: {
-        common: { auto: "自动", low: "低", medium: "中", high: "高", xhigh: "极高" },
+        common: { auto: "自动", low: "低", medium: "中", high: "高", xhigh: "极高", max: "最高" },
         image: {
             title: "图像设置",
             quality: "质量",
@@ -77,7 +77,7 @@ export default {
             videos: "参考视频 File 数组，可直接 form.append；画布或工作台接入的参考视频，无则为空数组",
             audios: "参考音频 File 数组，可直接 form.append；画布或工作台接入的参考音频，无则为空数组",
             messages: "对话消息数组，含系统消息",
-            params: "生成参数：生图 {size,quality,count,background}、视频 {mode,seconds,size,resolution,ratio,generateAudio,watermark}（mode 为 frames 首尾帧或 reference 全能参考；超过 2 张图时为 reference）、音频 {voice,format,speed,instructions}",
+            params: "生成参数：生图 {size,resolution,quality,count,background}、视频 {mode,seconds,size,resolution,ratio,generateAudio,watermark}（mode 为 frames 首尾帧或 reference 全能参考；超过 2 张图时为 reference）、音频 {voice,format,speed,instructions}",
             model: "模型名称（不含渠道前缀）",
             baseUrl: "渠道接口地址（原样，未拼 /v1）",
             apiKey: "渠道 API Key，请求头里自己带上",
@@ -156,6 +156,8 @@ export default {
         noVideoTask: "接口没有返回视频任务",
         videoDownloadFailed: "视频下载失败",
         localAssetReadFailed: "读取本地资产失败",
+
+        imageTimeout: "生图请求超时，接口长时间没有返回，请稍后重试或更换渠道",
     },
     prompts: {
         title: "提示词中心",
@@ -376,6 +378,8 @@ export default {
             lines: "线",
             blank: "空白",
             imageInfo: "图片信息",
+
+            focus: "居中聚焦",
         },
         project: {
             untitled: "未命名画布",
@@ -469,6 +473,9 @@ export default {
             sourceEmpty: "该来源暂无提示词",
             viewDetails: "查看详情",
             filter: { image: "图片", video: "视频", text: "文本", audio: "音频", config: "配置", group: "分组" },
+
+            viewList: "切换为列表",
+            viewGrid: "切换为缩略图",
         },
         assetPicker: { title: "选择资产", insert: "插入", search: "搜索资产", empty: "没有资产" },
         imageTools: {
@@ -848,7 +855,9 @@ export default {
             records: "{{count}} 条",
             refresh: "刷新统计",
             readFailed: "读取本地存储失败",
-            stores: { appState: "应用状态", images: "图片文件", media: "音视频文件", imageLogs: "生图记录", videoLogs: "视频记录", agentMessages: "Agent 消息", promptCache: "提示词缓存" },
+            stores: { appState: "应用状态", images: "图片文件", media: "音视频文件", imageLogs: "生图记录", videoLogs: "视频记录", agentMessages: "Agent 消息", promptCache: "提示词缓存", imagePreviews: "图片缩略图" },
+
+            quotaUnavailable: "当前浏览器不提供配额估算",
         },
         promptSources: {
             add: "新增来源",
@@ -950,6 +959,15 @@ export default {
             audioInstructionsPlaceholder: "例如：自然、温暖、适合旁白。",
             systemPrompt: "系统提示词",
             systemPromptPlaceholder: "例如：你是一位擅长电影感写实摄影的视觉导演。",
+
+            imageResolution: "默认生图分辨率",
+            videoResolution: "默认视频分辨率",
+            regenerateBehavior: "已有内容的节点再次生成时",
+            regenerateBehaviorOverwrite: "原地重新生成（覆盖当前节点）",
+            regenerateBehaviorOverwriteDescription: "直接替换该节点的内容和参数，不新建节点。想保留旧结果时，先复制该节点。",
+            regenerateBehaviorNewNode: "新建节点（原行为）",
+            regenerateBehaviorNewNodeDescription: "保留当前节点，新建一个节点承接生成结果，适合做变体或分支。",
+            autoFocusOnSelect: "选中自动居中",
         },
         channelEditor: {
             title: "编辑渠道",

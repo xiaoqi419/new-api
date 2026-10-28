@@ -296,6 +296,8 @@ export function normalizeImportedConfig(value: unknown, lockedBaseUrl = lockedAp
         count: readConfigString("count"),
         canvasImageCount: readConfigString("canvasImageCount"),
         proxyEnabled: source.proxyEnabled === true,
+        nodeRegenerateBehavior: source.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
+        autoFocusOnSelect: source.autoFocusOnSelect === true,
         proxyUrl: readConfigString("proxyUrl"),
     } as AiConfig;
 
