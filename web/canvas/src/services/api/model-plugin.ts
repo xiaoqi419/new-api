@@ -225,10 +225,10 @@ export type PluginTemplate = { label: string; script: string };
 
 export function getPluginTemplates(): Record<ModelCapability, PluginTemplate[]> {
     return {
-    image: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `/**
+        image: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `/**
  * OpenAI image generation and editing.
  * Text-to-image uses POST /v1/images/generations (JSON) when images is empty.
  * Image editing uses POST /v1/images/edits (multipart) when images has data URLs.
@@ -236,7 +236,7 @@ export function getPluginTemplates(): Record<ModelCapability, PluginTemplate[]> 
  * @param {string[]} images - reference images as data URLs; empty for text-to-image
  * @param {object} params
  * @param {string} params.size - output size, e.g. "1024x1024" or "auto"
- * @param {string} params.quality - "low" | "medium" | "high"
+ * @param {string} params.quality - "low" | "medium" | "high" | "xhigh" | "max"
  * @param {number} params.count - number of images
  * @param {string} [params.background] - "transparent" when requested
  * @param {string} model
@@ -320,17 +320,18 @@ return await generateImage({
   apiKey,
   request,
 });`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `/**
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `/**
  * Gemini image generation via models/{model}:generateContent.
- * Reference images go into parts.inline_data. size maps to aspectRatio; quality maps to imageSize.
+ * Reference images go into parts.inline_data. size maps to aspectRatio, resolution maps to imageSize; Gemini has no quality parameter.
  * @param {string} prompt
  * @param {string[]} images - reference images as data URLs
  * @param {object} params
- * @param {string} params.size - "1024x1024", "16:9", "auto", etc.; sent as aspectRatio
- * @param {string} params.quality - "low" | "medium" | "high"; sent as imageSize 1K/2K/4K
+ * @param {string} params.size - "2048x2048", "16:9", "auto", etc.; sent as aspectRatio
+ * @param {string} params.resolution - "1k" | "2k" | "4k" | "auto"; sent as imageSize
+ * @param {string} params.quality - "low" | "medium" | "high" | "xhigh" | "max"; unused here
  * @param {number} params.count - number of generateContent calls
  * @param {string} model
  * @param {string} baseUrl
@@ -338,12 +339,22 @@ return await generateImage({
  * @param {function} request
  * @returns {Promise<string[]>} image data URLs
  */
+function closestAspectRatio(width, height) {
+  const ratios = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"];
+  const target = width / height;
+  return ratios.reduce((best, ratio) => {
+    const [w, h] = ratio.split(":").map(Number);
+    const [bw, bh] = best.split(":").map(Number);
+    return Math.abs(w / h - target) < Math.abs(bw / bh - target) ? ratio : best;
+  }, "1:1");
+}
+
 async function generateImage({
   prompt,
   images,
   params: {
     size,
-    quality,
+    resolution,
     count,
   },
   model,
@@ -364,26 +375,19 @@ async function generateImage({
     }
   }
 
-  const aspectRatioMap = {
-    "1024x1024": "1:1",
-    "1280x720": "16:9",
-    "720x1280": "9:16",
-    "1536x1024": "3:2",
-    "1024x1536": "2:3",
-  };
-  const imageSizeMap = {
-    low: "1K",
-    medium: "2K",
-    high: "4K",
-  };
   let aspectRatio = "1:1";
   if (size && size !== "auto") {
-    aspectRatio = aspectRatioMap[size] || size;
+    const pixels = size.match(/^(\\d+)x(\\d+)$/);
+    if (pixels) {
+      const width = Number(pixels[1]);
+      const height = Number(pixels[2]);
+      aspectRatio = closestAspectRatio(width, height);
+    } else if (size.includes(":")) {
+      const [width, height] = size.split(":").map(Number);
+      aspectRatio = closestAspectRatio(width, height);
+    }
   }
-  let imageSize = "1K";
-  if (imageSizeMap[quality]) {
-    imageSize = imageSizeMap[quality];
-  }
+  const imageSize = resolution && resolution !== "auto" ? resolution.toUpperCase() : undefined;
   const n = Number(count) || 1;
   const urls = [];
 
@@ -432,12 +436,12 @@ return await generateImage({
   apiKey,
   request,
 });`,
-        },
-    ],
-    video: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `/**
+            },
+        ],
+        video: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `/**
  * OpenAI-compatible video: POST /v1/videos (multipart), then poll GET /v1/videos/{id}.
  * Do not set Content-Type on FormData; the browser adds the boundary.
  * @param {string} prompt
@@ -555,10 +559,10 @@ return await generateVideo({
   request,
   poll,
 });`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `/**
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `/**
  * Gemini Veo video: POST models/{model}:predictLongRunning, then poll the operation.
  * First/last-frame mode: images[0] -> image, images[1] -> lastFrame.
  * Reference mode: all images -> referenceImages.
@@ -715,12 +719,12 @@ return await generateVideo({
   request,
   poll,
 });`,
-        },
-    ],
-    audio: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `/**
+            },
+        ],
+        audio: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `/**
  * OpenAI speech: POST /v1/audio/speech.
  * @param {string} prompt - text to speak
  * @param {object} params
@@ -774,10 +778,10 @@ return await generateAudio({
   apiKey,
   request,
 });`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `/**
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `/**
  * Gemini TTS: POST models/{model}:generateContent with AUDIO modality.
  * Audio bytes are returned in inlineData.data (base64 PCM).
  * @param {string} prompt - text to speak
@@ -843,12 +847,12 @@ return await generateAudio({
   apiKey,
   request,
 });`,
-        },
-    ],
-    text: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `/**
+            },
+        ],
+        text: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `/**
  * OpenAI text: POST /v1/responses.
  * @param {{role: string, content: string}[]} messages - includes the system message when present
  * @param {string} model
@@ -902,10 +906,10 @@ return await generateText({
   request,
   onDelta,
 });`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `/**
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `/**
  * Gemini text: POST models/{model}:generateContent.
  * System messages are skipped in contents; systemPrompt goes to systemInstruction.
  * @param {{role: string, content: string}[]} messages
@@ -968,8 +972,8 @@ return await generateText({
   request,
   onDelta,
 });`,
-        },
-    ],
+            },
+        ],
     };
 }
 

@@ -33,6 +33,26 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-28',
     changes: [
       {
+        kind: 'feature',
+        items: [
+          '无限画布升级至 v0.20.0：新增元素缩略图视图、居中聚焦、可选自动居中和原位重新生成。',
+          '图片质量与分辨率独立设置，新增极高、最高质量和默认图片、视频分辨率偏好。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '修复画布缩放定位、节点复制参考连线和失效模型静默替换，完善 Gemini 分辨率与视频参考图兼容性。',
+          '保留站内令牌选择、账号隔离、主题同步、接口地址锁定和已有画布数据。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-10-28',
+    changes: [
+      {
         kind: 'fix',
         items: [
           '同步官方 New API rc.47 及后续修复：视频任务默认等待 72 小时后才超时退款，继续尊重自定义超时设置。',

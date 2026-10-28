@@ -29,7 +29,7 @@ export default {
         imageReadFailed: "Failed to read image",
     },
     settingsPanels: {
-        common: { auto: "Auto", low: "Low", medium: "Medium", high: "High", xhigh: "Extra high" },
+        common: { auto: "Auto", low: "Low", medium: "Medium", high: "High", xhigh: "Extra high", max: "Maximum" },
         image: {
             title: "Image settings",
             quality: "Quality",
@@ -83,7 +83,7 @@ export default {
             videos: "Reference videos as a File array you can form.append; empty when none are attached from the canvas or workbench",
             audios: "Reference audio as a File array you can form.append; empty when none are attached from the canvas or workbench",
             messages: "Conversation message array including the system message",
-            params: "Generation parameters: image {size,quality,count,background}, video {mode,seconds,size,resolution,ratio,generateAudio,watermark} (mode is frames for first/last frame or reference for general references; more than 2 images become reference), audio {voice,format,speed,instructions}",
+            params: "Generation parameters: image {size,resolution,quality,count,background}, video {mode,seconds,size,resolution,ratio,generateAudio,watermark} (mode is frames for first/last frame or reference for general references; more than 2 images become reference), audio {voice,format,speed,instructions}",
             model: "Model name without the provider prefix",
             baseUrl: "Provider endpoint as entered, without appending /v1",
             apiKey: "Provider API key; add it to request headers yourself",
@@ -162,6 +162,8 @@ export default {
         noVideoTask: "The API did not return a video task",
         videoDownloadFailed: "Failed to download video",
         localAssetReadFailed: "Failed to read local asset",
+
+        imageTimeout: "The image request timed out. The endpoint did not respond in time; retry later or switch channels.",
     },
     prompts: {
         title: "Prompt Center",
@@ -382,6 +384,8 @@ export default {
             lines: "Lines",
             blank: "Blank",
             imageInfo: "Image info",
+
+            focus: "Center focus",
         },
         project: {
             untitled: "Untitled canvas",
@@ -484,6 +488,9 @@ export default {
             sourceEmpty: "No prompts from this source",
             viewDetails: "View details",
             filter: { image: "Image", video: "Video", text: "Text", audio: "Audio", config: "Configuration", group: "Group" },
+
+            viewList: "Switch to list",
+            viewGrid: "Switch to thumbnails",
         },
         assetPicker: { title: "Select assets", insert: "Insert", search: "Search assets", empty: "No assets" },
         imageTools: {
@@ -887,7 +894,9 @@ export default {
             records: "{{count}} records",
             refresh: "Refresh usage",
             readFailed: "Failed to read local storage",
-            stores: { appState: "App state", images: "Image files", media: "Audio and video files", imageLogs: "Image history", videoLogs: "Video history", agentMessages: "Agent messages", promptCache: "Prompt cache" },
+            stores: { appState: "App state", images: "Image files", media: "Audio and video files", imageLogs: "Image history", videoLogs: "Video history", agentMessages: "Agent messages", promptCache: "Prompt cache", imagePreviews: "Image thumbnails" },
+
+            quotaUnavailable: "Quota estimation is unavailable in this browser",
         },
         promptSources: {
             add: "Add source",
@@ -995,6 +1004,15 @@ export default {
             audioInstructionsPlaceholder: "For example: natural, warm, and suitable for narration.",
             systemPrompt: "System prompt",
             systemPromptPlaceholder: "For example: You are a visual director specializing in cinematic, photorealistic imagery.",
+
+            imageResolution: "Default image resolution",
+            videoResolution: "Default video resolution",
+            regenerateBehavior: "When generating on a node that already has content",
+            regenerateBehaviorOverwrite: "Regenerate in place (overwrite the node)",
+            regenerateBehaviorOverwriteDescription: "Replace the node's content and settings in place without creating a new node. Copy the node first to keep the old result.",
+            regenerateBehaviorNewNode: "Create a new node (original behavior)",
+            regenerateBehaviorNewNodeDescription: "Keep the current node and create a new one for the result. Good for variants or branches.",
+            autoFocusOnSelect: "Auto-center on select",
         },
         channelEditor: {
             title: "Edit provider",
