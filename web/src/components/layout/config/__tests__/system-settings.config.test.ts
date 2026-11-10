@@ -57,7 +57,7 @@ const translate = ((key: string) => key) as TFunction
 
 describe('system settings sidebar navigation', () => {
   test('uses Lucide icons for every nested navigation category', () => {
-    const groups = SYSTEM_SETTINGS_VIEW.getNavGroups(translate)
+    const groups = SYSTEM_SETTINGS_VIEW.getNavGroups(translate, {})
     const icons = groups.flatMap((group) =>
       group.items.map((item) => item.icon)
     )

@@ -30,7 +30,8 @@ type StaticRowActionsProps = {
   deleteLabel: string
   menuLabel: string
   onEdit: () => void
-  onDelete: () => void
+  /** Without it the row has nothing to delete and shows only the edit button. */
+  onDelete?: () => void
   editDisabled?: boolean
   deleteDisabled?: boolean
 }
@@ -47,18 +48,20 @@ export function StaticRowActions(props: StaticRowActionsProps) {
       >
         <Pencil />
       </Button>
-      <DataTableRowActionMenu ariaLabel={props.menuLabel}>
-        <DropdownMenuItem
-          onClick={props.onDelete}
-          disabled={props.deleteDisabled}
-          className='text-destructive focus:text-destructive'
-        >
-          {props.deleteLabel}
-          <DropdownMenuShortcut>
-            <Trash2 size={16} />
-          </DropdownMenuShortcut>
-        </DropdownMenuItem>
-      </DataTableRowActionMenu>
+      {props.onDelete && (
+        <DataTableRowActionMenu ariaLabel={props.menuLabel}>
+          <DropdownMenuItem
+            onClick={props.onDelete}
+            disabled={props.deleteDisabled}
+            className='text-destructive focus:text-destructive'
+          >
+            {props.deleteLabel}
+            <DropdownMenuShortcut>
+              <Trash2 size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DataTableRowActionMenu>
+      )}
     </div>
   )
 }

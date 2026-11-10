@@ -296,6 +296,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.POST("/payment_gateway_mode/apply", middleware.UserCriticalRateLimit("payment-gateway-mode-apply"), controller.ApplyPaymentGatewayMode)
 			optionRoute.PUT("/passkey/domains", controller.UpdatePasskeyDomains)
 			optionRoute.GET("/model_pricing", controller.GetModelPricingConfig)
+			optionRoute.GET("/model_pricing/issues", controller.GetModelPricingIssues)
 			optionRoute.PATCH("/model_pricing", controller.UpdateModelPricingConfig)
 			optionRoute.POST("/model_pricing/convert", controller.PreviewModelPricingConversion)
 			optionRoute.POST("/model_pricing/preview", controller.PreviewModelPricing)

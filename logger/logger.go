@@ -43,6 +43,22 @@ func SetupLogger() {
 	defer func() {
 		setupLogWorking = false
 	}()
+	if *common.LogDir == "" {
+		setupLogLock.Lock()
+		defer setupLogLock.Unlock()
+		currentLogPathMu.Lock()
+		oldFile := currentLogFile
+		currentLogFile = nil
+		currentLogPath = ""
+		currentLogPathMu.Unlock()
+		common.LogWriterMu.Lock()
+		gin.DefaultWriter, gin.DefaultErrorWriter = os.Stdout, os.Stderr
+		if oldFile != nil {
+			_ = oldFile.Close()
+		}
+		common.LogWriterMu.Unlock()
+		return
+	}
 	if *common.LogDir != "" {
 		ok := setupLogLock.TryLock()
 		if !ok {
