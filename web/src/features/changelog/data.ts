@@ -30,6 +30,27 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-11-10',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '同步官方 New API rc.48、rc.49：新增 gpt-image-2.6 参数、DeepSeek Responses 工具历史兼容、Gemini Argon 思考强度和 Azure Responses WebSocket。',
+          '模型定价新增异常提醒、保存前逐项确认和删除撤销；任务插件支持厂商原生调用路径、可灵 4.0 及 Vertex Gemini Omni。',
+        ],
+      },
+      {
+        kind: 'fix',
+        items: [
+          '为用户、令牌和登录会话缓存增加完整性签名，修复 Redis 集群跨槽问题并保留分组切换、并发上限、代理商和实时余额。',
+          '修复手动禁用渠道被自动启用、多密钥恢复失效、Vertex 令牌重复获取、SQLite 裸路径并发配置和 OAuth 邀请关系丢失。',
+          '完善流式结束识别、日志轮转和退出登录后的请求收尾，保留钱包充值、双主题、无限画布及图片视频阶梯定价。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-10-28',
     changes: [
       {

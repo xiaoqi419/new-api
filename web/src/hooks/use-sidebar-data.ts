@@ -53,7 +53,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { filterHiddenAuthenticatedEntries } from '@/components/layout/lib/authenticated-entrypoint-visibility'
-import type { SidebarData } from '@/components/layout/types'
+import type { SidebarBadges, SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -72,7 +72,7 @@ export function filterHiddenSidebarEntries(
  * These are shown when the URL does not match any nested sidebar view
  * registered in `layout/lib/sidebar-view-registry.ts`.
  */
-export function useSidebarData(): SidebarData {
+export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
   const isAgent = useAuthStore((s) => s.auth.user?.is_agent)
 
@@ -368,6 +368,8 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/system-settings'],
             icon: Settings,
             requiredRole: ROLE.SUPER_ADMIN,
+            // Model pricing lives in System Settings.
+            badge: badges.modelPricing,
           },
         ],
       },

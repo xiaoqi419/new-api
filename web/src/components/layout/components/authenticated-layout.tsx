@@ -28,6 +28,7 @@ import { usePromoBanner } from '@/hooks/use-promo-banner'
 import { getCookie } from '@/lib/cookies'
 import { PROMO_BANNER_HEIGHT } from '@/lib/promo-banner'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
@@ -40,6 +41,9 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const { visible: promoVisible } = usePromoBanner()
   const modalAnnouncements = useModalAnnouncements()
+  const signedIn = useAuthStore((s) => !!s.auth.user)
+  // Unmount pages on sign-out, otherwise their queries refetch and toast "Session expired!" / "invalid access token"
+  if (!signedIn) return null
 
   return (
     <SearchProvider>

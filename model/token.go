@@ -36,7 +36,9 @@ type Token struct {
 	AutoGroups           string         `json:"-" gorm:"type:text"`                        // 上游 auto 分组候选快照，见 GetAutoGroups
 	DeletedAt            gorm.DeletedAt `gorm:"index"`
 	// New API-created tokens opt in; migrated rows keep the zero-value permission.
-	AllowUserQuotaQuery bool `json:"allow_user_quota_query"`
+	AllowUserQuotaQuery bool   `json:"allow_user_quota_query"`
+	CacheExpiresAt      int64  `json:"-" gorm:"-"`
+	CacheMAC            string `json:"-" gorm:"-"`
 }
 
 // GetGroupSwitchGroups parses the token's candidate group list. Returns an
@@ -311,8 +313,8 @@ func GetTokenByKey(key string, fromDB bool) (token *Token, err error) {
 		return nil, err
 	}
 	if common.RedisEnabled {
-		// 冷缓存时用数据库快照初始化；已存在的哈希只刷新 TTL，
-		// 避免快照覆盖 Redis 中已被原子预扣的余额。初始化失败不影响本次读取。
+		// 用数据库快照初始化或修复元数据，Lua 保留正在使用的额度计数。
+		// 初始化失败不影响本次读取。
 		if _, cacheErr := cacheInitToken(*token); cacheErr != nil {
 			common.SysLog(common.LogText("failed to init token cache: %s", cacheErr.Error()))
 		}
