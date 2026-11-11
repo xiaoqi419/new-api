@@ -52,6 +52,7 @@ import {
   hasConfigurableTopup,
   calculatePresetPricing,
 } from '../lib'
+import { rechargeDiscount } from '../lib/recharge-discount'
 import type {
   PaymentMethod,
   PresetAmount,
@@ -237,15 +238,27 @@ export function RechargeFormCard({
               {topupInfo?.topup_bonus?.tiers?.length ? (
                 <div className='bg-muted/40 space-y-2 rounded-lg border p-3'>
                   <p className='text-sm font-medium'>
-                    {t('Recharge bonus tiers')}
+                    {topupInfo.topup_bonus?.mode === 'discount'
+                      ? t('Recharge discount tiers')
+                      : t('Recharge bonus tiers')}
                   </p>
                   <ul className='space-y-1 text-sm'>
                     {topupInfo.topup_bonus.tiers.map((tier) => (
                       <li key={tier.pay}>
-                        {t('Recharge {{pay}} CNY, get {{gift}} CNY extra', {
-                          pay: formatBonusYuan(tier.pay),
-                          gift: formatBonusYuan(tier.gift),
-                        })}
+                        {topupInfo.topup_bonus?.mode === 'discount'
+                          ? t(
+                              'Recharge at least {{amount}}: pay {{percent}}% of the price',
+                              {
+                                amount: formatBonusYuan(tier.pay),
+                                percent: formatBonusYuan(
+                                  (tier.discount ?? 1) * 100
+                                ),
+                              }
+                            )
+                          : t('Recharge {{pay}} CNY, get {{gift}} CNY extra', {
+                              pay: formatBonusYuan(tier.pay),
+                              gift: formatBonusYuan(tier.gift ?? 0),
+                            })}
                       </li>
                     ))}
                   </ul>
@@ -258,10 +271,12 @@ export function RechargeFormCard({
                   </Label>
                   <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
                     {presetAmounts.map((preset) => {
-                      const discount =
-                        preset.discount ||
-                        topupInfo?.discount?.[preset.value] ||
-                        1.0
+                      const discount = rechargeDiscount(
+                        preset.value,
+                        topupInfo?.topup_bonus,
+                        topupInfo?.discount,
+                        preset.discount
+                      )
                       const {
                         displayValue,
                         actualPrice,

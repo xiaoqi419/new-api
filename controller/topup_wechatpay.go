@@ -126,7 +126,7 @@ func wechatConvertAmount(amount int64) int64 {
 	return amount
 }
 
-func insertWechatTopUp(userId int, amount int64, payMoney float64, tradeNo string) error {
+func insertWechatTopUp(userId int, amount int64, payMoney float64, tradeNo string, campaign ...*model.TopUpBonusPublic) error {
 	topUp := &model.TopUp{
 		UserId:          userId,
 		Amount:          wechatConvertAmount(amount),
@@ -137,7 +137,7 @@ func insertWechatTopUp(userId int, amount int64, payMoney float64, tradeNo strin
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	return topUp.Insert()
+	return insertCampaignTopUp(topUp, paymentCampaign(campaign), float64(amount))
 }
 
 // RequestWechatPay 处理 Native 扫码与 H5 两种渠道下单（scene: native / h5）。
@@ -165,7 +165,8 @@ func RequestWechatPay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, 0)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, 0, campaign)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -205,7 +206,7 @@ func RequestWechatPay(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 			return
 		}
-		if err := insertWechatTopUp(id, req.Amount, payMoney, tradeNo); err != nil {
+		if err := insertWechatTopUp(id, req.Amount, payMoney, tradeNo, campaign); err != nil {
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 			return
 		}
@@ -237,7 +238,7 @@ func RequestWechatPay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "生成二维码失败"})
 		return
 	}
-	if err := insertWechatTopUp(id, req.Amount, payMoney, tradeNo); err != nil {
+	if err := insertWechatTopUp(id, req.Amount, payMoney, tradeNo, campaign); err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return
 	}
@@ -259,9 +260,29 @@ func signJSAPIState(payload string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-func buildJSAPIState(userId int, amount int64, totalCents int64) string {
+func buildJSAPIState(userId int, amount int64, totalCents int64, campaign ...*model.TopUpBonusPublic) string {
 	payload := fmt.Sprintf("%d|%d|%d|%d", userId, amount, totalCents, time.Now().Add(10*time.Minute).Unix())
-	token := base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + signJSAPIState(payload)
+	if len(campaign) > 0 {
+		mode := "n"
+		rate := 1.0
+		gift := 0
+		if campaign[0] != nil {
+			if campaign[0].Mode == "discount" {
+				mode = "d"
+				rate, _ = campaign[0].Discount(float64(amount))
+			} else {
+				mode = "g"
+				gift, _ = campaign[0].BonusQuota(float64(totalCents) / 100)
+			}
+		}
+		payload = strings.Join([]string{strconv.FormatInt(int64(userId), 36), strconv.FormatInt(amount, 36), strconv.FormatInt(totalCents, 36), strconv.FormatInt(time.Now().Add(10*time.Minute).Unix(), 36), mode, strconv.FormatFloat(rate, 'f', -1, 64), strconv.FormatInt(int64(gift), 36)}, "|")
+	}
+	signature := signJSAPIState(payload)
+	if len(campaign) > 0 {
+		raw, _ := hex.DecodeString(signature)
+		signature = base64.RawURLEncoding.EncodeToString(raw)
+	}
+	token := base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + signature
 	return token
 }
 
@@ -275,17 +296,24 @@ func parseJSAPIState(token string) (userId int, amount int64, totalCents int64, 
 		return 0, 0, 0, errors.New("state 解码失败")
 	}
 	payload := string(raw)
-	if !hmac.Equal([]byte(parts[1]), []byte(signJSAPIState(payload))) {
+	signature := signJSAPIState(payload)
+	rawSignature, _ := hex.DecodeString(signature)
+	if !hmac.Equal([]byte(parts[1]), []byte(signature)) && !hmac.Equal([]byte(parts[1]), []byte(base64.RawURLEncoding.EncodeToString(rawSignature))) {
 		return 0, 0, 0, errors.New("state 校验失败")
 	}
 	fields := strings.Split(payload, "|")
-	if len(fields) != 4 {
+	if len(fields) != 4 && len(fields) != 7 {
 		return 0, 0, 0, errors.New("state 字段错误")
 	}
-	userId, _ = strconv.Atoi(fields[0])
-	amount, _ = strconv.ParseInt(fields[1], 10, 64)
-	totalCents, _ = strconv.ParseInt(fields[2], 10, 64)
-	exp, _ := strconv.ParseInt(fields[3], 10, 64)
+	base := 10
+	if len(fields) == 7 {
+		base = 36
+	}
+	parsedUser, _ := strconv.ParseInt(fields[0], base, 64)
+	userId = int(parsedUser)
+	amount, _ = strconv.ParseInt(fields[1], base, 64)
+	totalCents, _ = strconv.ParseInt(fields[2], base, 64)
+	exp, _ := strconv.ParseInt(fields[3], base, 64)
 	if time.Now().Unix() > exp {
 		return 0, 0, 0, errors.New("支付会话已过期")
 	}
@@ -318,13 +346,14 @@ func PrepareWechatJSAPI(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, 0)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, 0, campaign)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
 	}
 	totalCents := decimal.NewFromFloat(payMoney).Mul(decimal.NewFromInt(100)).Round(0).IntPart()
-	state := buildJSAPIState(id, req.Amount, totalCents)
+	state := buildJSAPIState(id, req.Amount, totalCents, campaign)
 	redirectUri := wechatBaseUrl() + "/api/user/wechatpay/jsapi/callback"
 	authorizeUrl := fmt.Sprintf(
 		"https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_base&state=%s#wechat_redirect",
@@ -374,6 +403,26 @@ func WechatJSAPICallback(c *gin.Context) {
 		c.Data(http.StatusForbidden, "text/html; charset=utf-8", []byte("<h3>未开启微信内支付</h3>"))
 		return
 	}
+	// The authenticated state carries only the selected offer, keeping OAuth state compact.
+	var snapshot *model.TopUp
+	rawState, _ := base64.RawURLEncoding.DecodeString(strings.SplitN(state, ".", 2)[0])
+	fields := strings.Split(string(rawState), "|")
+	if len(fields) == 7 {
+		rate, rateErr := strconv.ParseFloat(fields[5], 64)
+		bonusValue, bonusErr := strconv.ParseInt(fields[6], 36, 64)
+		bonus := int(bonusValue)
+		if rateErr != nil || bonusErr != nil || bonus < 0 {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		modes := map[string]string{"n": "none", "d": "discount", "g": "gift"}
+		mode, ok := modes[fields[4]]
+		if !ok {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		snapshot = &model.TopUp{CampaignSnapshot: true, CampaignMode: mode, CampaignDiscount: rate, BonusQuota: bonus}
+	}
 	client, _, privKey, err := ensureWechatPay(ctx)
 	if err != nil {
 		c.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte("<h3>微信支付暂不可用</h3>"))
@@ -403,7 +452,14 @@ func WechatJSAPICallback(c *gin.Context) {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte("<h3>下单失败，请重试</h3>"))
 		return
 	}
-	if err := insertWechatTopUp(userId, amount, payMoney, tradeNo); err != nil {
+	order := &model.TopUp{UserId: userId, Amount: wechatConvertAmount(amount), Money: payMoney, TradeNo: tradeNo, PaymentMethod: model.PaymentMethodWechatPay, PaymentProvider: model.PaymentProviderWechatPay, CreateTime: time.Now().Unix(), Status: common.TopUpStatusPending}
+	if snapshot != nil {
+		order.CampaignSnapshot = true
+		order.CampaignMode = snapshot.CampaignMode
+		order.CampaignDiscount = snapshot.CampaignDiscount
+		order.BonusQuota = snapshot.BonusQuota
+	}
+	if err := order.Insert(); err != nil {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte("<h3>创建订单失败</h3>"))
 		return
 	}

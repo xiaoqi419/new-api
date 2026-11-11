@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,6 +199,28 @@ func GetTopUpInfo(c *gin.Context) {
 		"topup_link":              common.TopUpLink,
 		"topup_bonus":             model.ActiveTopUpBonus(common.GetTimestamp()),
 	}
+	campaign, _ := data["topup_bonus"].(*model.TopUpBonusPublic)
+	if campaign != nil && campaign.Mode == "discount" {
+		options := append([]int(nil), operation_setting.GetPaymentSetting().AmountOptions...)
+		seen := map[int]bool{}
+		for _, value := range options {
+			seen[value] = true
+		}
+		for _, tier := range campaign.Tiers {
+			threshold := int(tier.Pay)
+			if !seen[threshold] {
+				options = append(options, threshold)
+			}
+		}
+		sort.Ints(options)
+		discounts := map[int]float64{}
+		for _, value := range options {
+			rate, _ := campaign.Discount(float64(value))
+			discounts[value] = rate
+		}
+		data["amount_options"] = options
+		data["discount"] = discounts
+	}
 	// Legacy EPay must not expose the Native asset capability. Native mode
 	// deliberately returns an empty array when EPUSDT is unavailable so the
 	// wallet can fail closed instead of falling back to the default TRON order.
@@ -275,14 +298,14 @@ func epayCallbackAmountMatches(callbackMoney string, orderMoney float64) bool {
 
 // getPayMoney 计算易支付应付金额。unitPrice 为「元/单位」单价（代理自定义套餐价，
 // 为 0 时回退平台全局 operation_setting.Price）。
-func getPayMoney(amount int64, group string, unitPrice float64) float64 {
-	return getPayMoneyDecimal(amount, group, unitPrice).InexactFloat64()
+func getPayMoney(amount int64, group string, unitPrice float64, campaign ...*model.TopUpBonusPublic) float64 {
+	return getPayMoneyDecimal(amount, group, unitPrice, campaign...).Round(2).InexactFloat64()
 }
 
 // getPayMoneyDecimal is the decimal counterpart used by Native checkout fee
 // calculation. Keeping the intermediate amount as decimal avoids a binary
 // float round-trip before the user-paid fee is applied.
-func getPayMoneyDecimal(amount int64, group string, unitPrice float64) decimal.Decimal {
+func getPayMoneyDecimal(amount int64, group string, unitPrice float64, campaign ...*model.TopUpBonusPublic) decimal.Decimal {
 	if unitPrice <= 0 {
 		unitPrice = operation_setting.Price
 	}
@@ -302,12 +325,7 @@ func getPayMoneyDecimal(amount int64, group string, unitPrice float64) decimal.D
 	dTopupGroupRatio := decimal.NewFromFloat(topupGroupRatio)
 	dPrice := decimal.NewFromFloat(unitPrice)
 	// apply optional preset discount by the original request amount (if configured), default 1.0
-	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(amount)]; ok {
-		if ds > 0 {
-			discount = ds
-		}
-	}
+	discount := topupPaymentDiscount(float64(amount), paymentCampaign(campaign))
 	dDiscount := decimal.NewFromFloat(discount)
 
 	payMoney := dAmount.Mul(dPrice).Mul(dTopupGroupRatio).Mul(dDiscount)
@@ -365,6 +383,11 @@ func GetMaxTopup(minTopup int64) int64 {
 			maxOption = common.MaxWalletQuota
 		} else {
 			maxOption = quota
+		}
+	}
+	if campaign := model.ActiveTopUpBonus(common.GetTimestamp()); campaign != nil && campaign.Mode == "discount" {
+		for _, tier := range campaign.Tiers {
+			maxOption = max(maxOption, int(tier.Pay))
 		}
 	}
 	return max(int64(maxOption), minTopup)
@@ -502,7 +525,8 @@ func RequestEpay(c *gin.Context) {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice, campaign)
 	if payMoney < 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return
@@ -564,7 +588,7 @@ func RequestEpay(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	err = topUp.Insert()
+	err = insertCampaignTopUp(topUp, campaign, float64(req.Amount))
 	if err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Epay failed to create top-up order user_id=%d trade_no=%s payment_method=%s amount=%d error=%q", id, tradeNo, req.PaymentMethod, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to create order"))
@@ -594,7 +618,8 @@ func settleDevInstantTopup(c *gin.Context, req EpayRequest) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, 0)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, 0, campaign)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -623,7 +648,7 @@ func settleDevInstantTopup(c *gin.Context, req EpayRequest) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	if err = topUp.Insert(); err != nil {
+	if err = insertCampaignTopUp(topUp, campaign, float64(req.Amount)); err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return
 	}
@@ -687,7 +712,8 @@ func RequestEpayCheckout(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	basePayMoneyDecimal := getPayMoneyDecimal(req.Amount, group, epayCfg.UnitPrice)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	basePayMoneyDecimal := getPayMoneyDecimal(req.Amount, group, epayCfg.UnitPrice, campaign)
 	basePayMoney := basePayMoneyDecimal.InexactFloat64()
 	payMoney := basePayMoney
 	useGMPayNative := shouldUseGMPayNative(req.PaymentMethod)
@@ -781,7 +807,7 @@ func RequestEpayCheckout(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	if err := topUp.Insert(); err != nil {
+	if err := insertCampaignTopUp(topUp, campaign, float64(req.Amount)); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 MAPI 创建充值订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d error=%q", userID, tradeNo, req.PaymentMethod, req.Amount, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return
@@ -892,7 +918,8 @@ func AgentConsolePrepayEpay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, 0)
+	var campaign *model.TopUpBonusPublic
+	payMoney := getPayMoney(req.Amount, group, 0, campaign)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -1206,7 +1233,8 @@ func RequestAmount(c *gin.Context) {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, epayCfg.UnitPrice, campaign)
 	if payMoney <= 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return

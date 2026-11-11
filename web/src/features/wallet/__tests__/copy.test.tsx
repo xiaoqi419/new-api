@@ -159,3 +159,54 @@ it.each([
     expect(screen.getByPlaceholderText(enPlaceholder)).toBeVisible()
   }
 )
+
+it('shows threshold campaign prices without stacking preset discounts', () => {
+  render(
+    <I18nextProvider i18n={i18n}>
+      <RechargeFormCard
+        topupInfo={{
+          enable_online_topup: true,
+          enable_stripe_topup: false,
+          pay_methods: [],
+          min_topup: 1,
+          stripe_min_topup: 1,
+          amount_options: [100, 300, 500],
+          discount: { 300: 0.5 },
+          topup_bonus: {
+            mode: 'discount',
+            tiers: [
+              { pay: 100, discount: 0.9 },
+              { pay: 500, discount: 0.8 },
+            ],
+          },
+        }}
+        presetAmounts={[
+          { value: 100 },
+          { value: 300, discount: 0.5 },
+          { value: 500 },
+        ]}
+        selectedPreset={null}
+        topupAmount={300}
+        paymentAmount={270}
+        priceRatio={1}
+        calculating={false}
+        paymentLoading={null}
+        redemptionCode=''
+        redeeming={false}
+        onSelectPreset={vi.fn()}
+        onTopupAmountChange={vi.fn()}
+        onPaymentMethodSelect={vi.fn()}
+        onRedemptionCodeChange={vi.fn()}
+        onRedeem={vi.fn()}
+      />
+    </I18nextProvider>
+  )
+  expect(screen.getByRole('button', { name: /^300 / })).toHaveTextContent(
+    '支付 270'
+  )
+  expect(screen.getByRole('button', { name: /^500 / })).toHaveTextContent(
+    '支付 400'
+  )
+  expect(screen.getByText('充值满 100：支付原价的 90%')).toBeVisible()
+  expect(screen.queryByText(/额外赠送/)).not.toBeInTheDocument()
+})

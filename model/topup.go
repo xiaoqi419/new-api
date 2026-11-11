@@ -13,20 +13,25 @@ import (
 )
 
 type TopUp struct {
-	Id              int     `json:"id"`
-	UserId          int     `json:"user_id" gorm:"index"`
-	Amount          int64   `json:"amount"`
-	Money           float64 `json:"money"`
-	TradeNo         string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
-	PaymentMethod   string  `json:"payment_method" gorm:"type:varchar(50)"`
-	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
-	GroupBuyId      int     `json:"group_buy_id" gorm:"index;default:0"`
-	AgentPrepayId   int     `json:"agent_prepay_id" gorm:"index;default:0"` // >0 表示这是一笔代理预充值订单，到账目标为该代理钱包(而非用户额度)
-	CreateTime      int64   `json:"create_time"`
-	CompleteTime    int64   `json:"complete_time"`
-	Status          string  `json:"status"`
-	HeldQuota       int     `json:"held_quota" gorm:"type:bigint;default:0"` // held 状态时记录的待补发到账额度（代理钱包补足后补发）
-	BonusQuota      int     `json:"bonus_quota" gorm:"default:0"`
+	CampaignMode     string  `json:"campaign_mode" gorm:"type:varchar(16)"`
+	CampaignDiscount float64 `json:"campaign_discount"`
+	PaymentCurrency  string  `json:"payment_currency" gorm:"type:varchar(8)"`
+	CampaignSnapshot bool    `json:"campaign_snapshot"`
+	CreditedQuota    int     `json:"credited_quota" gorm:"type:bigint"`
+	Id               int     `json:"id"`
+	UserId           int     `json:"user_id" gorm:"index"`
+	Amount           int64   `json:"amount"`
+	Money            float64 `json:"money"`
+	TradeNo          string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
+	PaymentMethod    string  `json:"payment_method" gorm:"type:varchar(50)"`
+	PaymentProvider  string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
+	GroupBuyId       int     `json:"group_buy_id" gorm:"index;default:0"`
+	AgentPrepayId    int     `json:"agent_prepay_id" gorm:"index;default:0"` // >0 表示这是一笔代理预充值订单，到账目标为该代理钱包(而非用户额度)
+	CreateTime       int64   `json:"create_time"`
+	CompleteTime     int64   `json:"complete_time"`
+	Status           string  `json:"status"`
+	HeldQuota        int     `json:"held_quota" gorm:"type:bigint;default:0"` // held 状态时记录的待补发到账额度（代理钱包补足后补发）
+	BonusQuota       int     `json:"bonus_quota" gorm:"default:0"`
 }
 
 const (
@@ -80,6 +85,20 @@ func SumSuccessTopUp(since int64) (money float64, count int64, err error) {
 }
 
 func (topUp *TopUp) Insert() error {
+	if !topUp.CampaignSnapshot && topUp.AgentPrepayId == 0 && topUp.GroupBuyId == 0 {
+		campaign := ActiveTopUpBonus(topUp.CreateTime)
+		bonus, err := campaign.BonusQuota(topUp.Money)
+		if err != nil {
+			return err
+		}
+		topUp.BonusQuota = bonus
+		topUp.CampaignSnapshot = true
+		topUp.CampaignMode = "none"
+		if campaign != nil {
+			topUp.CampaignMode = campaign.Mode
+		}
+	}
+
 	var err error
 	err = DB.Create(topUp).Error
 	return err
@@ -245,7 +264,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
-		bonus, bonusErr := TopUpBonusQuota(topUp.Money, common.GetTimestamp())
+		bonus, bonusErr := topUp.settlementBonus()
 		if bonusErr != nil {
 			return bonusErr
 		}
@@ -323,6 +342,9 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		)
 		if quotaErr != nil {
 			return errors.New("无效的充值额度")
+		}
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
 		}
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
@@ -577,7 +599,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		}
 
 		// 计算应充值额度：
-		// - Stripe 订单：Money 代表经分组倍率换算后的美元数量，直接 * QuotaPerUnit
+		// - 历史 Stripe 订单：Money 代表经分组倍率换算后的美元数量；新折扣订单使用 CreditedQuota 快照。
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
 		if topUp.PaymentProvider == PaymentProviderStripe {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
@@ -606,6 +628,9 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		completedTopUp = topUp
 
 		// 到账/挂单（代理用户按 cost_ratio 结算，钱包不足则挂单）
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
+		}
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e
@@ -751,6 +776,9 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return errors.New("无效的充值额度")
 		}
 
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
+		}
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e
@@ -823,6 +851,9 @@ func RechargeOfficialOrder(tradeNo string, expectedProvider string, logSource st
 		}
 
 		paymentMethod = topUp.PaymentMethod
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
+		}
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e
@@ -891,6 +922,9 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return errors.New("无效的充值额度")
 		}
 
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
+		}
 		var e error
 		credited, e = CompletePaidTopupTx(tx, topUp, quotaToAdd)
 		return e

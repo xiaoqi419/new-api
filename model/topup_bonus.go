@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -18,11 +19,13 @@ const TopUpBonusOptionKey = "TopUpBonusCampaign"
 const topUpBonusTierLimit = 20
 
 type TopUpBonusTier struct {
-	Pay  float64 `json:"pay"`
-	Gift float64 `json:"gift"`
+	Pay      float64 `json:"pay"`
+	Gift     float64 `json:"gift,omitempty"`
+	Discount float64 `json:"discount,omitempty"`
 }
 
 type TopUpBonusCampaign struct {
+	Mode    string           `json:"mode"`
 	Enabled bool             `json:"enabled"`
 	Start   int64            `json:"start"`
 	End     int64            `json:"end"`
@@ -30,11 +33,12 @@ type TopUpBonusCampaign struct {
 }
 
 type TopUpBonusPublic struct {
+	Mode  string           `json:"mode"`
 	Tiers []TopUpBonusTier `json:"tiers"`
 }
 
 func defaultTopUpBonusCampaign() TopUpBonusCampaign {
-	return TopUpBonusCampaign{Tiers: []TopUpBonusTier{}}
+	return TopUpBonusCampaign{Mode: "gift", Tiers: []TopUpBonusTier{}}
 }
 
 func NormalizeTopUpBonusCampaign(raw string) (string, error) {
@@ -43,6 +47,12 @@ func NormalizeTopUpBonusCampaign(raw string) (string, error) {
 		if err := common.UnmarshalJsonStr(raw, &campaign); err != nil {
 			return "", errors.New("充值活动配置必须是 JSON 对象")
 		}
+	}
+	if campaign.Mode == "" {
+		campaign.Mode = "gift"
+	}
+	if campaign.Mode != "gift" && campaign.Mode != "discount" {
+		return "", common.NewMessage("Invalid recharge campaign mode")
 	}
 	if campaign.Tiers == nil {
 		campaign.Tiers = []TopUpBonusTier{}
@@ -59,16 +69,28 @@ func NormalizeTopUpBonusCampaign(raw string) (string, error) {
 	seen := make(map[int64]struct{}, len(campaign.Tiers))
 	for index := range campaign.Tiers {
 		payCents, payOK := yuanCents(campaign.Tiers[index].Pay)
-		giftCents, giftOK := yuanCents(campaign.Tiers[index].Gift)
-		if !payOK || !giftOK || payCents <= 0 || giftCents <= 0 || payCents > 100_000_000 || giftCents > 100_000_000 {
+		if !payOK {
 			return "", errors.New("充值活动档位金额无效")
+		}
+		if campaign.Mode == "discount" {
+			rate := campaign.Tiers[index].Discount
+			if payCents%100 != 0 || math.IsNaN(rate) || math.IsInf(rate, 0) || rate <= 0 || rate >= 1 || !decimal.NewFromFloat(rate).Equal(decimal.NewFromFloat(rate).Round(4)) {
+				return "", common.NewMessage("Invalid recharge discount")
+			}
+			campaign.Tiers[index].Gift = 0
+		} else {
+			giftCents, giftOK := yuanCents(campaign.Tiers[index].Gift)
+			if !giftOK {
+				return "", errors.New("充值活动档位金额无效")
+			}
+			campaign.Tiers[index].Gift = float64(giftCents) / 100
+			campaign.Tiers[index].Discount = 0
 		}
 		if _, ok := seen[payCents]; ok {
 			return "", errors.New("充值活动档位金额重复")
 		}
 		seen[payCents] = struct{}{}
 		campaign.Tiers[index].Pay = float64(payCents) / 100
-		campaign.Tiers[index].Gift = float64(giftCents) / 100
 	}
 	sort.Slice(campaign.Tiers, func(i, j int) bool {
 		return campaign.Tiers[i].Pay < campaign.Tiers[j].Pay
@@ -103,12 +125,16 @@ func ActiveTopUpBonus(now int64) *TopUpBonusPublic {
 	if !campaign.Enabled || now < campaign.Start || now > campaign.End || len(campaign.Tiers) == 0 {
 		return nil
 	}
-	return &TopUpBonusPublic{Tiers: campaign.Tiers}
+	return &TopUpBonusPublic{Mode: campaign.Mode, Tiers: campaign.Tiers}
 }
 
 func TopUpBonusQuota(money float64, at int64) (int, error) {
-	public := ActiveTopUpBonus(at)
-	if public == nil {
+	return ActiveTopUpBonus(at).BonusQuota(money)
+}
+
+// BonusQuota evaluates a captured campaign without rereading mutable settings.
+func (public *TopUpBonusPublic) BonusQuota(money float64) (int, error) {
+	if public == nil || public.Mode != "gift" {
 		return 0, nil
 	}
 	paidCents, ok := yuanCents(money)
@@ -133,7 +159,7 @@ func TopUpBonusQuota(money float64, at int64) (int, error) {
 }
 
 func yuanCents(value float64) (int64, bool) {
-	if value <= 0 {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value <= 0 {
 		return 0, false
 	}
 	scaled := decimal.NewFromFloat(value).Mul(decimal.NewFromInt(100))
@@ -190,4 +216,35 @@ func TopUpBonusLogSuffix(bonus int) string {
 
 func QuotaWithTopUpBonus(paid int, bonus int) int {
 	return quotaWithBonus(paid, bonus)
+}
+
+// TopUpDiscount applies the highest qualifying threshold to the entire requested amount.
+func TopUpDiscount(amount float64, at int64) (float64, bool) {
+	return ActiveTopUpBonus(at).Discount(amount)
+}
+
+// Discount evaluates a captured campaign, keeping checkout and order metadata consistent.
+func (campaign *TopUpBonusPublic) Discount(amount float64) (float64, bool) {
+	if campaign == nil || campaign.Mode != "discount" {
+		return 1, false
+	}
+	if math.IsNaN(amount) || math.IsInf(amount, 0) || amount <= 0 {
+		return 1, true
+	}
+	rate := 1.0
+	threshold := 0.0
+	for _, tier := range campaign.Tiers {
+		if tier.Pay <= amount && tier.Pay > threshold {
+			threshold = tier.Pay
+			rate = tier.Discount
+		}
+	}
+	return rate, true
+}
+
+func (topUp *TopUp) settlementBonus() (int, error) {
+	if topUp.CampaignSnapshot {
+		return topUp.BonusQuota, nil
+	}
+	return TopUpBonusQuota(topUp.Money, common.GetTimestamp())
 }

@@ -40,6 +40,7 @@ import {
   copy,
   getQuotaPerUnit,
 } from '../../helpers'
+import { rechargeDiscount } from './lib/recharge-discount'
 import GroupBuyCard from './GroupBuyCard'
 import InvitationCard from './InvitationCard'
 import InvoiceCard from './InvoiceCard'
@@ -793,6 +794,7 @@ const TopUp = () => {
         setTopupInfo({
           amount_options: data.amount_options || [],
           discount: data.discount || {},
+          topup_bonus: data.topup_bonus,
         })
 
         // 处理支付方式
@@ -1089,7 +1091,7 @@ const TopUp = () => {
     setSelectedPreset(preset.value)
 
     // 计算实际支付金额，考虑折扣
-    const discount = preset.discount || topupInfo.discount[preset.value] || 1.0
+    const discount = rechargeDiscount(preset.value, topupInfo, preset.discount)
     const discountedAmount = preset.value * priceRatio * discount
     setAmount(discountedAmount)
   }
@@ -1136,7 +1138,7 @@ const TopUp = () => {
         payWay={payWay}
         payMethods={confirmPayMethods}
         amountNumber={amount}
-        discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
+        discountRate={rechargeDiscount(topUpCount, topupInfo)}
       />
 
       {/* 充值账单模态框 */}
