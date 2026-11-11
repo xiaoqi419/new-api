@@ -122,7 +122,19 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	reference := fmt.Sprintf("new-api-ref-%d-%d-%s", user.Id, time.Now().UnixMilli(), randstr.String(4))
 	referenceId := "ref_" + common.Sha1([]byte(reference))
 
-	payLink, err := genStripeLinkWithConfig(cfg, referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	var checkoutMoney *stripeCampaignQuote
+	storedMoney := chargedMoney
+	if _, active := campaign.Discount(float64(req.Amount)); active {
+		quoted := decimal.NewFromFloat(getStripePayMoney(float64(req.Amount), user.Group, cfg.UnitPrice, campaign)).Round(2).InexactFloat64()
+		if quoted <= 0 {
+			paymentError(c, common.NewMessage("Payment amount is too low"))
+			return
+		}
+		checkoutMoney = &stripeCampaignQuote{Money: quoted}
+		storedMoney = quoted
+	}
+	payLink, err := genStripeLinkWithConfig(cfg, referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL, checkoutMoney)
 	if err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Stripe failed to create Checkout Session user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to start payment"))
@@ -132,20 +144,24 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          req.Amount,
-		Money:           chargedMoney,
+		Money:           storedMoney,
+		CreditedQuota:   projectedQuota,
 		TradeNo:         referenceId,
 		PaymentMethod:   model.PaymentMethodStripe,
 		PaymentProvider: model.PaymentProviderStripe,
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	err = topUp.Insert()
+	if checkoutMoney != nil {
+		topUp.PaymentCurrency = checkoutMoney.Currency
+	}
+	err = insertCampaignTopUp(topUp, campaign, float64(req.Amount))
 	if err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Stripe failed to create top-up order user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to create order"))
 		return
 	}
-	logger.LogInfo(c.Request.Context(), common.LogText("Stripe top-up order created user_id=%d trade_no=%s amount=%d money=%.2f", id, referenceId, req.Amount, chargedMoney))
+	logger.LogInfo(c.Request.Context(), common.LogText("Stripe top-up order created user_id=%d trade_no=%s amount=%d money=%.2f", id, referenceId, req.Amount, storedMoney))
 	c.JSON(http.StatusOK, gin.H{
 		"message": "success",
 		"data": gin.H{
@@ -320,6 +336,14 @@ func fulfillOrder(ctx context.Context, event stripe.Event, referenceId string, c
 		return
 	}
 
+	if topup := model.GetTopUpByTradeNo(referenceId); topup != nil && topup.CampaignSnapshot && topup.CampaignMode == "discount" {
+		paid, parseErr := strconv.ParseInt(event.GetObjectValue("amount_total"), 10, 64)
+		expected := decimal.NewFromFloat(topup.Money).Mul(decimal.NewFromInt(100)).Round(0)
+		if parseErr != nil || !expected.Equal(decimal.NewFromInt(paid)) || !strings.EqualFold(topup.PaymentCurrency, event.GetObjectValue("currency")) {
+			logger.LogError(ctx, "Stripe campaign payment amount mismatch")
+			return
+		}
+	}
 	err := model.Recharge(referenceId, customerId, callerIp)
 	if err != nil {
 		logger.LogError(ctx, common.LogText("Stripe top-up processing failed trade_no=%s event_type=%s client_ip=%s error=%q", referenceId, string(event.Type), callerIp, err.Error()))
@@ -390,9 +414,14 @@ func genStripeLink(referenceId string, customerId string, email string, amount i
 	}, referenceId, customerId, email, amount, successURL, cancelURL)
 }
 
+type stripeCampaignQuote struct {
+	Money    float64
+	Currency string
+}
+
 // genStripeLinkWithConfig 用给定(平台或代理)Stripe 配置创建 Checkout Session 并返回支付链接。
 // 使用 per-call client(client.API)绑定该配置的 API 密钥，避免多租户下全局 stripe.Key 竞态。
-func genStripeLinkWithConfig(cfg tenantStripeConfig, referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string) (string, error) {
+func genStripeLinkWithConfig(cfg tenantStripeConfig, referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string, quotedMoney ...*stripeCampaignQuote) (string, error) {
 	if !strings.HasPrefix(cfg.ApiSecret, "sk_") && !strings.HasPrefix(cfg.ApiSecret, "rk_") {
 		return "", errors.New("invalid Stripe API key")
 	}
@@ -434,6 +463,22 @@ func genStripeLinkWithConfig(cfg tenantStripeConfig, referenceId string, custome
 
 	sc := &stripeclient.API{}
 	sc.Init(cfg.ApiSecret, nil)
+	if len(quotedMoney) > 0 && quotedMoney[0] != nil {
+		price, err := sc.Prices.Get(cfg.PriceId, nil)
+		if err != nil {
+			return "", err
+		}
+		if price.Product == nil || price.Product.ID == "" || !price.Active || price.Recurring != nil || (price.Currency != stripe.CurrencyUSD && price.Currency != stripe.CurrencyCNY) {
+			return "", errors.New("campaign checkout requires an active one-time USD or CNY price")
+		}
+		cents := decimal.NewFromFloat(quotedMoney[0].Money).Mul(decimal.NewFromInt(100)).Round(0)
+		if !cents.IsPositive() || cents.GreaterThan(decimal.NewFromInt(99_999_999)) {
+			return "", errors.New("campaign checkout amount out of range")
+		}
+		params.LineItems = []*stripe.CheckoutSessionLineItemParams{{Quantity: stripe.Int64(1), PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{Currency: stripe.String(string(price.Currency)), Product: stripe.String(price.Product.ID), UnitAmount: stripe.Int64(cents.IntPart())}}}
+		params.AllowPromotionCodes = stripe.Bool(false)
+		quotedMoney[0].Currency = string(price.Currency)
+	}
 	result, err := sc.CheckoutSessions.New(params)
 	if err != nil {
 		return "", err
@@ -452,7 +497,7 @@ func GetChargedAmount(count float64, user model.User) float64 {
 }
 
 // getStripePayMoney 估算 Stripe 应付金额。unitPrice 为代理自定义单价，<=0 时回退全局 StripeUnitPrice。
-func getStripePayMoney(amount float64, group string, unitPrice float64) float64 {
+func getStripePayMoney(amount float64, group string, unitPrice float64, campaign ...*model.TopUpBonusPublic) float64 {
 	if unitPrice <= 0 {
 		unitPrice = setting.StripeUnitPrice
 	}
@@ -466,12 +511,7 @@ func getStripePayMoney(amount float64, group string, unitPrice float64) float64 
 		topupGroupRatio = 1
 	}
 	// apply optional preset discount by the original request amount (if configured), default 1.0
-	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(originalAmount)]; ok {
-		if ds > 0 {
-			discount = ds
-		}
-	}
+	discount := topupPaymentDiscount(originalAmount, paymentCampaign(campaign))
 	payMoney := amount * unitPrice * topupGroupRatio * discount
 	return payMoney
 }

@@ -189,3 +189,124 @@ func TestCompletePaidTopupByTradeNoBonusIsIdempotent(t *testing.T) {
 	assert.Equal(t, 0, bonusAgain)
 	assert.Equal(t, paidQuota+expectedBonus, readUserQuota(t, user.Id))
 }
+
+func TestDiscountCampaignThresholdTiers(t *testing.T) {
+	now := common.GetTimestamp()
+	withTopUpBonusCampaign(t, fmt.Sprintf(`{"enabled":true,"mode":"discount","start":%d,"end":%d,"tiers":[{"pay":100,"discount":0.9},{"pay":500,"discount":0.8}]}`, now-10, now+60))
+	for _, tc := range []struct{ amount, rate float64 }{{99, 1}, {100, .9}, {101, .9}, {300, .9}, {499, .9}, {500, .8}, {501, .8}, {1000, .8}} {
+		rate, active := TopUpDiscount(tc.amount, now)
+		assert.True(t, active)
+		assert.Equal(t, tc.rate, rate)
+	}
+	bonus, err := TopUpBonusQuota(200, now)
+	require.NoError(t, err)
+	assert.Zero(t, bonus)
+	_, active := TopUpDiscount(100, now+61)
+	assert.False(t, active)
+}
+
+func TestDiscountCampaignValidation(t *testing.T) {
+	for _, raw := range []string{
+		`{"mode":"invalid"}`,
+		`{"mode":"discount","tiers":[{"pay":100,"discount":0}]}`,
+		`{"mode":"discount","tiers":[{"pay":100,"discount":1.1}]}`,
+		`{"mode":"discount","tiers":[{"pay":100.5,"discount":0.9}]}`,
+		`{"mode":"discount","tiers":[{"pay":100,"discount":0.99999}]}`,
+	} {
+		_, err := NormalizeTopUpBonusCampaign(raw)
+		require.Error(t, err, raw)
+	}
+	normalized, err := NormalizeTopUpBonusCampaign(`{"mode":"discount","tiers":[{"pay":100,"discount":0.9}]}`)
+	require.NoError(t, err)
+	assert.Contains(t, normalized, `"mode":"discount"`)
+}
+
+func TestNewTopupFreezesGiftBeforeCampaignChanges(t *testing.T) {
+	setupAgentSettleTest(t)
+	withTopUpBonusCampaign(t, openBonusCampaign(`[{"pay":100,"gift":10}]`))
+	user := User{Id: 40, Username: "snapshot-gift", Password: "password", Status: common.UserStatusEnabled}
+	require.NoError(t, DB.Create(&user).Error)
+	topup := TopUp{UserId: user.Id, Amount: 100, Money: 100, TradeNo: "snapshot-gift-order", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp()}
+	require.NoError(t, topup.Insert())
+	assert.True(t, topup.CampaignSnapshot)
+	withTopUpBonusCampaign(t, `{"enabled":false}`)
+	paid := giftQuotaForYuan(t, 100)
+	credited, bonus, err := CompletePaidTopupByTradeNo(topup.TradeNo, PaymentProviderEpay, "", paid)
+	require.NoError(t, err)
+	assert.True(t, credited)
+	assert.Equal(t, giftQuotaForYuan(t, 10), bonus)
+	assert.Equal(t, giftQuotaForYuan(t, 110), readUserQuota(t, user.Id))
+}
+
+func TestDiscountOrderCannotGainLaterGiftOrLoseCreditedQuota(t *testing.T) {
+	setupAgentSettleTest(t)
+	user := User{Id: 41, Username: "snapshot-discount", Password: "password", Status: common.UserStatusEnabled}
+	require.NoError(t, DB.Create(&user).Error)
+	paid := giftQuotaForYuan(t, 100)
+	topup := TopUp{UserId: user.Id, Amount: 100, Money: 90, TradeNo: "snapshot-discount-order", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(), CampaignSnapshot: true, CampaignMode: "discount", CampaignDiscount: .9, CreditedQuota: paid}
+	require.NoError(t, topup.Insert())
+	withTopUpBonusCampaign(t, openBonusCampaign(`[{"pay":90,"gift":20}]`))
+	credited, bonus, err := CompletePaidTopupByTradeNo(topup.TradeNo, PaymentProviderEpay, "", giftQuotaForYuan(t, 90))
+	require.NoError(t, err)
+	assert.True(t, credited)
+	assert.Zero(t, bonus)
+	assert.Equal(t, paid, readUserQuota(t, user.Id))
+	again, _, err := CompletePaidTopupByTradeNo(topup.TradeNo, PaymentProviderEpay, "", paid)
+	require.NoError(t, err)
+	assert.False(t, again)
+	assert.Equal(t, paid, readUserQuota(t, user.Id))
+}
+
+func TestDiscountStripeSettlementUsesFrozenPurchasedQuota(t *testing.T) {
+	for _, manual := range []bool{false, true} {
+		t.Run(fmt.Sprintf("manual_%v", manual), func(t *testing.T) {
+			setupAgentSettleTest(t)
+			user := User{Id: 42, Username: "stripe-discount", Password: "password", Status: common.UserStatusEnabled}
+			require.NoError(t, DB.Create(&user).Error)
+			topup := TopUp{UserId: user.Id, Amount: 100, Money: 90, TradeNo: "stripe-discount", PaymentProvider: PaymentProviderStripe, Status: common.TopUpStatusPending, CreateTime: common.GetTimestamp(), CampaignSnapshot: true, CampaignMode: "discount", CampaignDiscount: .9, CreditedQuota: giftQuotaForYuan(t, 100)}
+			require.NoError(t, topup.Insert())
+			withTopUpBonusCampaign(t, openBonusCampaign(`[{"pay":90,"gift":20}]`))
+			if manual {
+				require.NoError(t, ManualCompleteTopUp(topup.TradeNo, ""))
+			} else {
+				require.NoError(t, Recharge(topup.TradeNo, "cus_test", ""))
+			}
+			assert.Equal(t, giftQuotaForYuan(t, 100), readUserQuota(t, user.Id))
+			var saved TopUp
+			require.NoError(t, DB.First(&saved, topup.Id).Error)
+			assert.Equal(t, 90.0, saved.Money)
+			assert.Zero(t, saved.BonusQuota)
+		})
+	}
+}
+
+func TestDiscountCampaignLifecycleAndDuplicateTiers(t *testing.T) {
+	now := common.GetTimestamp()
+	for _, window := range []struct {
+		enabled    bool
+		start, end int64
+	}{{false, now - 10, now + 10}, {true, now + 10, now + 20}, {true, now - 20, now - 10}} {
+		withTopUpBonusCampaign(t, fmt.Sprintf(`{"mode":"discount","enabled":%t,"start":%d,"end":%d,"tiers":[{"pay":100,"discount":0.9}]}`, window.enabled, window.start, window.end))
+		rate, active := TopUpDiscount(100, now)
+		assert.False(t, active)
+		assert.Equal(t, 1.0, rate)
+	}
+	_, err := NormalizeTopUpBonusCampaign(`{"mode":"discount","tiers":[{"pay":100,"discount":0.9},{"pay":100,"discount":0.8}]}`)
+	require.Error(t, err)
+}
+
+func TestCapturedCampaignRemainsStableDuringPayment(t *testing.T) {
+	now := common.GetTimestamp()
+	withTopUpBonusCampaign(t, fmt.Sprintf(`{"enabled":true,"mode":"discount","start":%d,"end":%d,"tiers":[{"pay":500,"discount":0.8},{"pay":100,"discount":0.9}]}`, now-1, now+100))
+	captured := ActiveTopUpBonus(now)
+	withTopUpBonusCampaign(t, openBonusCampaign(`[{"pay":100,"gift":50}]`))
+	rate, active := captured.Discount(499)
+	assert.True(t, active)
+	assert.Equal(t, .9, rate)
+	rate, active = captured.Discount(500)
+	assert.True(t, active)
+	assert.Equal(t, .8, rate)
+	gift, err := captured.BonusQuota(500)
+	require.NoError(t, err)
+	assert.Zero(t, gift)
+}

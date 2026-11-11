@@ -95,10 +95,10 @@ func SettleTerminalUserTopupTx(tx *gorm.DB, userId int, agentId int, quotaToAdd 
 }
 
 // ApplyTerminalTopupTx 在给定事务内完成到账/挂单，并相应更新 topUp 状态（success/held）。
-// 活动赠送在首次离开 pending 时按实付金额冻结；只有真正到账时才把赠送额度加给用户。
+// 新订单使用下单时的活动快照；无快照的历史订单保留首次结算时匹配赠金的行为。
 // 返回 credited；调用方仅在 credited=true 时执行充值成功钩子。
 func ApplyTerminalTopupTx(tx *gorm.DB, topUp *TopUp, user *User, quotaToAdd int) (credited bool, err error) {
-	bonus, bonusErr := TopUpBonusQuota(topUp.Money, common.GetTimestamp())
+	bonus, bonusErr := topUp.settlementBonus()
 	if bonusErr != nil {
 		return false, bonusErr
 	}
@@ -163,6 +163,9 @@ func CompletePaidTopupByTradeNo(tradeNo string, expectedProvider string, payment
 		}
 		if paymentMethodOverride != "" && topUp.PaymentMethod != paymentMethodOverride {
 			topUp.PaymentMethod = paymentMethodOverride
+		}
+		if topUp.CreditedQuota > 0 {
+			quotaToAdd = topUp.CreditedQuota
 		}
 		userId = topUp.UserId
 		var e error

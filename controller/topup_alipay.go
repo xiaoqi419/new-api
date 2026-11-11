@@ -125,7 +125,8 @@ func RequestAlipay(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, 0)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getPayMoney(req.Amount, group, 0, campaign)
 	if payMoney < 0.01 {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "充值金额过低"})
 		return
@@ -161,7 +162,7 @@ func RequestAlipay(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	if err := topUp.Insert(); err != nil {
+	if err := insertCampaignTopUp(topUp, campaign, float64(req.Amount)); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("支付宝 创建订单失败 user_id=%d trade_no=%s error=%q", id, tradeNo, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "创建订单失败"})
 		return

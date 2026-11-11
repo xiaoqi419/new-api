@@ -43,7 +43,8 @@ func RequestWaffoPancakeAmount(c *gin.Context) {
 		return
 	}
 
-	payMoney := getWaffoPancakePayMoney(req.Amount, group)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getWaffoPancakePayMoney(req.Amount, group, campaign)
 	if payMoney <= 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return
@@ -52,7 +53,7 @@ func RequestWaffoPancakeAmount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": fmt.Sprintf("%.2f", payMoney)})
 }
 
-func getWaffoPancakePayMoney(amount int64, group string) float64 {
+func getWaffoPancakePayMoney(amount int64, group string, campaign ...*model.TopUpBonusPublic) float64 {
 	dAmount := decimal.NewFromInt(amount)
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dAmount = dAmount.Div(decimal.NewFromFloat(common.QuotaPerUnit))
@@ -63,17 +64,14 @@ func getWaffoPancakePayMoney(amount int64, group string) float64 {
 		topupGroupRatio = 1
 	}
 
-	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(amount)]; ok && ds > 0 {
-		discount = ds
-	}
+	discount := topupPaymentDiscount(float64(amount), paymentCampaign(campaign))
 
 	payMoney := dAmount.
 		Mul(decimal.NewFromFloat(setting.WaffoPancakeUnitPrice)).
 		Mul(decimal.NewFromFloat(topupGroupRatio)).
 		Mul(decimal.NewFromFloat(discount))
 
-	return payMoney.InexactFloat64()
+	return payMoney.Round(2).InexactFloat64()
 }
 
 func normalizeWaffoPancakeTopUpAmount(amount int64) int64 {
@@ -369,7 +367,8 @@ func RequestWaffoPancakePay(c *gin.Context) {
 		return
 	}
 
-	payMoney := getWaffoPancakePayMoney(req.Amount, group)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getWaffoPancakePayMoney(req.Amount, group, campaign)
 	if payMoney < 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return
@@ -386,7 +385,7 @@ func RequestWaffoPancakePay(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	if err := topUp.Insert(); err != nil {
+	if err := insertCampaignTopUp(topUp, campaign, float64(req.Amount)); err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Waffo Pancake failed to create top-up order user_id=%d trade_no=%s amount=%d error=%q", id, tradeNo, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to create order"))
 		return

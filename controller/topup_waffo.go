@@ -16,6 +16,7 @@ import (
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/thanhpk/randstr"
 	waffo "github.com/waffo-com/waffo-go"
 	"github.com/waffo-com/waffo-go/config"
@@ -86,7 +87,7 @@ func formatWaffoAmount(amount float64, currency string) string {
 // getWaffoPayMoney converts the user-facing amount to USD for Waffo payment.
 // Waffo only accepts USD, so this function handles the conversion from different
 // display types (USD/CNY/TOKENS) to the actual USD amount to charge.
-func getWaffoPayMoney(amount float64, group string) float64 {
+func getWaffoPayMoney(amount float64, group string, campaign ...*model.TopUpBonusPublic) float64 {
 	originalAmount := amount
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		amount = amount / common.QuotaPerUnit
@@ -95,13 +96,8 @@ func getWaffoPayMoney(amount float64, group string) float64 {
 	if topupGroupRatio == 0 {
 		topupGroupRatio = 1
 	}
-	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(originalAmount)]; ok {
-		if ds > 0 {
-			discount = ds
-		}
-	}
-	return amount * setting.WaffoUnitPrice * topupGroupRatio * discount
+	discount := topupPaymentDiscount(originalAmount, paymentCampaign(campaign))
+	return decimal.NewFromFloat(amount).Mul(decimal.NewFromFloat(setting.WaffoUnitPrice)).Mul(decimal.NewFromFloat(topupGroupRatio)).Mul(decimal.NewFromFloat(discount)).Round(2).InexactFloat64()
 }
 
 type WaffoPayRequest struct {
@@ -132,7 +128,8 @@ func RequestWaffoAmount(c *gin.Context) {
 		return
 	}
 
-	payMoney := getWaffoPayMoney(float64(req.Amount), group)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getWaffoPayMoney(float64(req.Amount), group, campaign)
 	if payMoney <= 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return
@@ -200,7 +197,8 @@ func RequestWaffoPay(c *gin.Context) {
 	// resolvedPayMethodType/Name 为空时，Waffo 自动选择支付方式
 
 	group, _ := model.GetUserGroup(id, true)
-	payMoney := getWaffoPayMoney(float64(req.Amount), group)
+	campaign := model.ActiveTopUpBonus(common.GetTimestamp())
+	payMoney := getWaffoPayMoney(float64(req.Amount), group, campaign)
 	if payMoney < 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return
@@ -227,7 +225,7 @@ func RequestWaffoPay(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
-	if err := topUp.Insert(); err != nil {
+	if err := insertCampaignTopUp(topUp, campaign, float64(req.Amount)); err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Waffo failed to create top-up order user_id=%d trade_no=%s amount=%d error=%q", id, merchantOrderId, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to create order"))
 		return

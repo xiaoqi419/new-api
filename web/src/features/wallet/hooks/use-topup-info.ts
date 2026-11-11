@@ -288,6 +288,14 @@ export function useTopupInfo() {
         ),
       }
 
+      if (processedData.topup_bonus?.mode === 'discount') {
+        processedData.amount_options = [
+          ...new Set([
+            ...processedData.amount_options,
+            ...processedData.topup_bonus.tiers.map((tier) => tier.pay),
+          ]),
+        ].sort((a, b) => a - b)
+      }
       setTopupInfo(processedData)
 
       if (processedData.amount_options.length > 0) {

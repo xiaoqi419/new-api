@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
+import { rechargeDiscount } from './lib/recharge-discount';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Avatar,
@@ -466,9 +467,7 @@ const RechargeCard = ({
                   <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2'>
                     {presetAmounts.map((preset) => {
                       const discount =
-                        preset.discount ||
-                        topupInfo?.discount?.[preset.value] ||
-                        1.0;
+                        rechargeDiscount(preset.value, topupInfo, preset.discount);
                       const originalPrice = preset.value * priceRatio;
                       const discountedPrice = originalPrice * discount;
                       const hasDiscount = discount < 1.0;

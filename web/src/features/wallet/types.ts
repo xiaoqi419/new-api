@@ -282,7 +282,8 @@ export interface TopupInfo {
   enable_redemption?: boolean
   /** Active recharge-bonus tiers, present only while the campaign is open. */
   topup_bonus?: {
-    tiers: Array<{ pay: number; gift: number }>
+    mode?: 'gift' | 'discount'
+    tiers: Array<{ pay: number; gift?: number; discount?: number }>
   } | null
   /** Whether compliance confirmation has been completed */
   payment_compliance_confirmed?: boolean

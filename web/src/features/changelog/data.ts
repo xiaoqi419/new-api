@@ -30,6 +30,19 @@ import type { ChangelogEntry } from './types'
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
+    date: '2026-11-11',
+    changes: [
+      {
+        kind: 'feature',
+        items: [
+          '充值活动新增折扣模式与多门槛配置：按达到的最高门槛对整笔充值打折，保留原有赠金模式。',
+          '支付订单固定活动优惠，避免活动调整影响已创建订单；充值页面同步展示门槛折扣。',
+        ],
+      },
+    ],
+  },
+  {
+    version: import.meta.env.VITE_REACT_APP_VERSION || 'development',
     date: '2026-11-10',
     changes: [
       {

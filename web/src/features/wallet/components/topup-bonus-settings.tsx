@@ -30,12 +30,20 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { updateSystemOption } from '@/features/system-settings/api'
 import {
   getOptionValue,
   useSystemOptions,
 } from '@/features/system-settings/hooks/use-system-options'
+import { formatNumber } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -47,9 +55,11 @@ interface BonusTier {
   id: string
   pay: string
   gift: string
+  discount: string
 }
 
 interface BonusDraft {
+  mode: 'gift' | 'discount'
   enabled: boolean
   start: string
   end: string
@@ -71,13 +81,14 @@ function unixFromInput(value: string) {
 }
 
 function blankTier(id: string): BonusTier {
-  return { id, pay: '', gift: '' }
+  return { id, pay: '', gift: '', discount: '' }
 }
 
 let addedTierCount = 0
 
 function draftFrom(raw: string): BonusDraft {
   const empty: BonusDraft = {
+    mode: 'gift',
     enabled: false,
     start: '',
     end: '',
@@ -85,19 +96,24 @@ function draftFrom(raw: string): BonusDraft {
   }
   try {
     const parsed = JSON.parse(raw) as {
+      mode?: 'gift' | 'discount'
       enabled?: boolean
       start?: number
       end?: number
-      tiers?: Array<{ pay?: number; gift?: number }>
+      tiers?: Array<{ pay?: number; gift?: number; discount?: number }>
     }
     const tiers = Array.isArray(parsed.tiers)
       ? parsed.tiers.map((tier, index) => ({
           id: `tier-${index}`,
           pay: tier.pay ? String(tier.pay) : '',
           gift: tier.gift ? String(tier.gift) : '',
+          discount: tier.discount
+            ? String(Number((tier.discount * 10).toFixed(3)))
+            : '',
         }))
       : []
     return {
+      mode: parsed.mode === 'discount' ? 'discount' : 'gift',
       enabled: parsed.enabled === true,
       start: localInput(parsed.start || 0),
       end: localInput(parsed.end || 0),
@@ -130,15 +146,29 @@ function RootTopUpBonusSettings() {
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
+        mode: visible.mode,
         enabled: visible.enabled,
         start: unixFromInput(visible.start),
         end: unixFromInput(visible.end),
         tiers: visible.tiers
-          .map((tier) => ({ pay: Number(tier.pay), gift: Number(tier.gift) }))
-          .filter((tier) => tier.pay > 0 || tier.gift > 0),
+          .filter(
+            (tier) =>
+              tier.pay !== '' ||
+              (visible.mode === 'discount'
+                ? tier.discount !== ''
+                : tier.gift !== '')
+          )
+          .map((tier) =>
+            visible.mode === 'discount'
+              ? { pay: Number(tier.pay), discount: Number(tier.discount) / 10 }
+              : { pay: Number(tier.pay), gift: Number(tier.gift) }
+          ),
       }
       requireServerSuccess(
-        await updateSystemOption({ key: OPTION_KEY, value: JSON.stringify(payload) })
+        await updateSystemOption({
+          key: OPTION_KEY,
+          value: JSON.stringify(payload),
+        })
       )
     },
     onSuccess: async () => {
@@ -173,10 +203,40 @@ function RootTopUpBonusSettings() {
               }
             />
           </Field>
+          <Field>
+            <FieldLabel htmlFor='topup-campaign-mode'>
+              {t('Campaign mode')}
+            </FieldLabel>
+            <Select
+              value={visible.mode}
+              disabled={save.isPending}
+              onValueChange={(value) => {
+                if (value === 'gift' || value === 'discount') {
+                  update({ ...visible, mode: value })
+                }
+              }}
+            >
+              <SelectTrigger id='topup-campaign-mode'>
+                <SelectValue>
+                  {visible.mode === 'discount'
+                    ? t('Discount mode')
+                    : t('Gift mode')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='gift'>{t('Gift mode')}</SelectItem>
+                <SelectItem value='discount'>{t('Discount mode')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
           <FieldDescription>
-            {t(
-              'While this is on, a successful wallet top-up automatically receives the highest matching gift.'
-            )}
+            {visible.mode === 'discount'
+              ? t(
+                  'The highest reached recharge threshold applies to the whole amount. Discounts do not stack.'
+                )
+              : t(
+                  'While this is on, a successful wallet top-up automatically receives the highest matching gift.'
+                )}
           </FieldDescription>
           <div className='grid gap-3 sm:grid-cols-2'>
             <Field>
@@ -205,10 +265,15 @@ function RootTopUpBonusSettings() {
             </Field>
           </div>
           {visible.tiers.map((tier, index) => (
-            <div key={tier.id} className='grid gap-2 sm:grid-cols-[1fr_1fr_auto]'>
+            <div
+              key={tier.id}
+              className='grid gap-2 sm:grid-cols-[1fr_1fr_auto]'
+            >
               <Field>
                 <FieldLabel htmlFor={`topup-bonus-pay-${index}`}>
-                  {t('Pay amount (CNY)')}
+                  {visible.mode === 'discount'
+                    ? t('Recharge threshold')
+                    : t('Pay amount (CNY)')}
                 </FieldLabel>
                 <Input
                   id={`topup-bonus-pay-${index}`}
@@ -227,22 +292,41 @@ function RootTopUpBonusSettings() {
               </Field>
               <Field>
                 <FieldLabel htmlFor={`topup-bonus-gift-${index}`}>
-                  {t('Gift amount (CNY)')}
+                  {visible.mode === 'discount'
+                    ? t('Discount (9 means pay 90%)')
+                    : t('Gift amount (CNY)')}
                 </FieldLabel>
                 <Input
                   id={`topup-bonus-gift-${index}`}
                   inputMode='decimal'
-                  value={tier.gift}
+                  value={
+                    visible.mode === 'discount' ? tier.discount : tier.gift
+                  }
                   disabled={save.isPending}
                   onChange={(event) => {
                     const tiers = visible.tiers.map((item, itemIndex) =>
                       itemIndex === index
-                        ? { ...item, gift: event.target.value }
+                        ? {
+                            ...item,
+                            [visible.mode === 'discount' ? 'discount' : 'gift']:
+                              event.target.value,
+                          }
                         : item
                     )
                     update({ ...visible, tiers })
                   }}
                 />
+                {visible.mode === 'discount' &&
+                Number(tier.pay) > 0 &&
+                Number(tier.discount) > 0 &&
+                Number(tier.discount) < 10 ? (
+                  <FieldDescription>
+                    {t(
+                      'At this threshold, pay {{percent}}% of the regular price',
+                      { percent: formatNumber(Number(tier.discount) * 10) }
+                    )}
+                  </FieldDescription>
+                ) : null}
               </Field>
               <Button
                 type='button'
@@ -252,7 +336,9 @@ function RootTopUpBonusSettings() {
                 onClick={() =>
                   update({
                     ...visible,
-                    tiers: visible.tiers.filter((_, itemIndex) => itemIndex !== index),
+                    tiers: visible.tiers.filter(
+                      (_, itemIndex) => itemIndex !== index
+                    ),
                   })
                 }
               >
@@ -268,7 +354,10 @@ function RootTopUpBonusSettings() {
               onClick={() =>
                 update({
                   ...visible,
-                  tiers: [...visible.tiers, blankTier(`tier-added-${++addedTierCount}`)],
+                  tiers: [
+                    ...visible.tiers,
+                    blankTier(`tier-added-${++addedTierCount}`),
+                  ],
                 })
               }
             >
